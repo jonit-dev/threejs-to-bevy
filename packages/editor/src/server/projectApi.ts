@@ -1034,6 +1034,7 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
   switch (kind) {
     case "asset":
     case "audio":
+    case "distribution":
     case "environment":
     case "generator":
     case "input":
@@ -1055,6 +1056,8 @@ function sourceFamilyForDocumentKind(kind: AuthoringDocumentKind): EditorInspect
     case "interaction":
     case "systems":
       return "system";
+    case "persistence":
+      return "runtime";
     case "unknown":
       return "scene";
   }

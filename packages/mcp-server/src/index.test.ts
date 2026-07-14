@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { type AddressInfo } from "node:net";
 import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
-import { CLI_COMMAND_REGISTRY, dispatch } from "@threenative/cli";
+import { assetCommand, assetCreationStrategy, blenderMcpOutcomeCoverage, CLI_COMMAND_REGISTRY, dispatch, type IAssetCommandOptions } from "@threenative/cli";
 
 import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } from "./index.js";
 
@@ -25,23 +26,354 @@ interface IJsonPayload {
 }
 
 test("mcp wrapper exposes the authoring tool registry", () => {
-  assert.deepEqual(
-    AUTHORING_MCP_TOOLS.map((tool) => tool.name),
-    [
-      "scene.inspect",
-      "scene.validate",
-      "cookbook_lookup",
-      ...AUTHORING_OPERATION_NAMES,
-      "bundle.import",
-      "project.build",
-      "project.screenshot",
-      "project.verify",
-    ],
-  );
+  const exposed = AUTHORING_MCP_TOOLS.map((tool) => tool.name);
+  const commandOwned = Object.values(CLI_COMMAND_REGISTRY).flatMap((command) => command.adapters?.mcp === undefined ? [] : (Array.isArray(command.adapters.mcp) ? command.adapters.mcp : [command.adapters.mcp]).map((adapter) => adapter.name));
+  assert.ok(commandOwned.every((name) => exposed.includes(name)));
+  assert.ok(AUTHORING_OPERATION_NAMES.every((name) => exposed.includes(name)));
+  assert.equal(new Set(exposed).size, exposed.length);
+  assert.ok(["scene.inspect", "scene.validate", "bundle.import", "project.build", "project.screenshot", "project.verify"].every((name) => exposed.includes(name as typeof exposed[number])));
+});
+
+test("Hyper3D MCP lifecycle derives argv and rejects missing paid-provider acknowledgements before execution", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-hyper3d-"));
+  const calls: string[][] = [];
+  const execute = async (argv: readonly string[]) => { calls.push([...argv]); return { exitCode: 0, stdout: '{"code":"TN_MODEL_PROVIDER_OK"}\n' }; };
+  try {
+    const rejected = await callAuthoringMcpTool({ arguments: { acceptCost: false, acceptProviderTerms: true, confirmInputRights: true, jobId: "crate-job", prompt: "beveled crate" }, name: "asset.hyper3d_generate" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    assert.equal(rejected.isError, true);
+    assert.equal(calls.length, 0);
+
+    await callAuthoringMcpTool({ arguments: { acceptCost: true, acceptProviderTerms: true, bbox: "1,2,3", confirmInputRights: true, jobId: "crate-job", prompt: "beveled crate" }, name: "asset.hyper3d_generate" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: { jobId: "crate-job" }, name: "asset.hyper3d_poll" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: { assetId: "crate", jobId: "crate-job", targetSize: 1 }, name: "asset.hyper3d_import" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: {}, name: "asset.hunyuan_status" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    assert.deepEqual(calls[0], ["asset", "model-provider", "generate", "hyper3d", "--id", "crate-job", "--prompt", "beveled crate", "--bbox", "1,2,3", "--accept-cost", "--accept-provider-terms", "--confirm-input-rights", "--project", root, "--json"]);
+    assert.deepEqual(calls[1], ["asset", "model-provider", "poll", "hyper3d", "crate-job", "--project", root, "--json"]);
+    assert.deepEqual(calls[2], ["asset", "model-provider", "import", "hyper3d", "crate-job", "--id", "crate", "--target-size", "1", "--project", root, "--json"]);
+    assert.deepEqual(calls[3], ["asset", "model-provider", "status", "hunyuan", "--json"]);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("provider MCP schemas reject remote generated mistyped and out-of-budget arguments before execution", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-provider-schema-")); let calls = 0;
+  const execute = async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; };
+  try {
+    const base = { acceptCost: true, acceptProviderTerms: true, confirmInputRights: true, jobId: "image-job" };
+    const invalidImages: unknown[] = ["https://example.com/ref.png", "dist/ref.png", 123];
+    for (const image of invalidImages) {
+      const result = await callAuthoringMcpTool({ arguments: { ...base, image }, name: "asset.hyper3d_generate" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+      assert.equal(result.isError, true);
+    }
+    const invalidType = await callAuthoringMcpTool({ arguments: { limit: 3, query: "brick", type: "invalid" }, name: "asset.polyhaven_search" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const invalidLimit = await callAuthoringMcpTool({ arguments: { limit: 999, query: "chair" }, name: "asset.sketchfab_search" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const invalidScale = await callAuthoringMcpTool({ arguments: { acceptedLicense: "cc-by", assetId: "chair", modelUid: "0123456789abcdef0123456789abcdef", targetSize: -1 }, name: "asset.sketchfab_import" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    assert.equal(invalidType.isError, true); assert.equal(invalidLimit.isError, true); assert.equal(invalidScale.isError, true);
+    assert.equal(calls, 0);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("provider status categories and creation strategy derive bounded CLI argv", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-provider-registry-")); const calls: string[][] = [];
+  const execute = async (argv: readonly string[]) => { calls.push([...argv]); return { exitCode: 0, stdout: '{"code":"TN_PROVIDER_OK"}\n' }; };
+  try {
+    await callAuthoringMcpTool({ arguments: { live: false }, name: "asset.polyhaven_status" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: { limit: 4, live: true, type: "textures" }, name: "asset.polyhaven_categories" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: { live: false }, name: "asset.sketchfab_status" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    await callAuthoringMcpTool({ arguments: {}, name: "asset.creation_strategy" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    assert.deepEqual(calls, [
+      ["asset", "provider", "status", "poly-haven", "--json"],
+      ["asset", "provider", "categories", "poly-haven", "--type", "textures", "--limit", "4", "--live", "--json"],
+      ["asset", "provider", "status", "sketchfab", "--json"],
+      ["asset", "strategy", "--json"],
+    ]);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should prove nineteen of twenty-two upstream outcome rows and safe deferrals", () => {
+  assert.equal(blenderMcpOutcomeCoverage.length, 22);
+  assert.deepEqual(blenderMcpOutcomeCoverage.map((row) => row.id), Array.from({ length: 22 }, (_, index) => index + 1));
+  assert.equal(blenderMcpOutcomeCoverage.filter((row) => row.disposition !== "deferred").length, 19);
+  assert.equal(blenderMcpOutcomeCoverage[3]?.disposition, "safe-replacement");
+  assert.deepEqual(blenderMcpOutcomeCoverage.slice(19).map((row) => row.disposition), ["deferred", "deferred", "deferred"]);
+  assert.ok(blenderMcpOutcomeCoverage.every((row) => row.evidence !== ""));
+  const tools = new Set(AUTHORING_MCP_TOOLS.map((tool) => tool.name));
+  assert.ok(blenderMcpOutcomeCoverage.slice(0, 19).every((row) => row.mcpTool !== undefined && tools.has(row.mcpTool as typeof AUTHORING_MCP_TOOLS[number]["name"])));
+  assert.ok(blenderMcpOutcomeCoverage.slice(0, 19).every((row) => [row.coreEvidence, row.cliEvidence, row.mcpEvidence].every((path) => typeof path === "string" && existsSync(resolve(process.cwd(), "../..", path)))));
+});
+
+test("asset inspect and model-test MCP adapters resolve project paths and return proof image content", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-model-proof-")); const calls: string[][] = [];
+  try {
+    await mkdir(join(root, "assets"), { recursive: true }); await writeFile(join(root, "assets/prop.glb"), "fixture");
+    const pngPath = join(root, "artifacts/mcp-model-test/artifacts/model-test.png"); await mkdir(resolve(pngPath, ".."), { recursive: true }); await writeFile(pngPath, Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+    const execute = async (argv: readonly string[]) => { calls.push([...argv]); return argv[0] === "asset" ? { exitCode: 0, stdout: '{"code":"TN_ASSET_INSPECT_OK"}\n' } : { exitCode: 0, stdout: `${JSON.stringify({ code: "TN_MODEL_TEST_OK", screenshot: { outPath: pngPath } })}\n` }; };
+    await callAuthoringMcpTool({ arguments: { assetPath: "assets/prop.glb" }, name: "asset.inspect" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const proof = await callAuthoringMcpTool({ arguments: { angle: 45, assetPath: "assets/prop.glb" }, name: "asset.model_test" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    assert.deepEqual(calls[0], ["asset", "inspect", join(root, "assets/prop.glb"), "--json"]);
+    assert.deepEqual(calls[1], ["model-test", join(root, "assets/prop.glb"), "--angle", "45", "--screenshot", "--out", join(root, "artifacts/mcp-model-test"), "--json"]);
+    assert.equal((proof.content as Array<{ type: string }>)[0]?.type, "image");
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("asset model-test rejects output-directory and returned-image symlink escapes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-model-symlink-")); const outside = await mkdtemp(join(tmpdir(), "tn-mcp-model-outside-")); let calls = 0;
+  try {
+    await mkdir(join(root, "assets"), { recursive: true }); await writeFile(join(root, "assets/prop.glb"), "fixture");
+    await symlink(outside, join(root, "artifacts"), "dir");
+    const rejectedOutput = await callAuthoringMcpTool({ arguments: { assetPath: "assets/prop.glb" }, name: "asset.model_test" }, { allowedProjectRoots: [root], execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; }, projectRoot: root });
+    assert.equal(rejectedOutput.isError, true); assert.equal(calls, 0);
+    await rm(join(root, "artifacts")); const localOutput = join(root, "artifacts/mcp-model-test"); await mkdir(localOutput, { recursive: true });
+    const outsidePng = join(outside, "secret.png"); await writeFile(outsidePng, Buffer.from("outside-secret-not-a-png")); const linked = join(localOutput, "model-test.png"); await symlink(outsidePng, linked);
+    await assert.rejects(callAuthoringMcpTool({ arguments: { assetPath: "assets/prop.glb" }, name: "asset.model_test" }, { allowedProjectRoots: [root], execute: async () => ({ exitCode: 0, stdout: `${JSON.stringify({ screenshot: { outPath: linked } })}\n` }), projectRoot: root }), /PATH_REJECTED/);
+  } finally { await rm(root, { force: true, recursive: true }); await rm(outside, { force: true, recursive: true }); }
+});
+
+test("Hunyuan MCP status returns the real fail-closed CLI result", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-hunyuan-real-"));
+  try {
+    const result = await callAuthoringMcpTool({ arguments: {}, name: "asset.hunyuan_status" }, { allowedProjectRoots: [root], execute: async (argv) => assetCommand(argv.slice(1)), projectRoot: root });
+    assert.equal((result.content as { code: string }).code, "TN_MODEL_PROVIDER_UNSUPPORTED");
+    assert.equal((result.content as { state: string }).state, "unsupported");
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should expose descriptor-owned creation strategy with reuse before paid or procedural generation", async () => {
+  const result = await assetCommand(["strategy", "--json"]); const payload = JSON.parse(result.stdout) as { guidance: string[] };
+  const guidance = payload.guidance.join(" ").toLowerCase();
+  assert.deepEqual(payload.guidance, assetCreationStrategy);
+  assert.ok(guidance.indexOf("catalog") < guidance.indexOf("paid model-provider"));
+  assert.ok(guidance.indexOf("reuse") < guidance.indexOf("paid model-provider"));
+  assert.ok(guidance.indexOf("paid model-provider") < guidance.indexOf("blender recipe"));
+  assert.doesNotMatch(guidance, /python|execute[_ ]blender[_ ]code|socket/iu);
+});
+
+test("asset.generate_blender MCP exposure derives schema and description from CLI descriptor", () => {
+  const configured = CLI_COMMAND_REGISTRY.asset.adapters?.mcp;
+  const adapter = (Array.isArray(configured) ? configured : configured === undefined ? [] : [configured]).find((candidate) => candidate.name === "asset.generate_blender");
+  const tool = AUTHORING_MCP_TOOLS.find((candidate) => candidate.name === "asset.generate_blender") as { description: string; inputSchema?: Record<string, unknown>; name: string } | undefined;
+
+  assert.notEqual(adapter, undefined);
+  assert.deepEqual((tool?.inputSchema?.required as unknown[] | undefined), ["assetId", "recipe"]);
+  assert.deepEqual(tool, adapter === undefined ? undefined : {
+    description: adapter.description,
+    inputSchema: adapter.inputSchema,
+    name: adapter.name,
+  });
+});
+
+test("Poly Haven MCP search and import derive argv and preserve CLI JSON", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-polyhaven-"));
+  const calls: string[][] = [];
+  const payload = { code: "TN_POLY_HAVEN_SEARCH_OK", results: [{ id: "rock_01" }], source: "live" };
+  try {
+    const search = await callAuthoringMcpTool({ arguments: { limit: 3, query: "rock", type: "models" }, name: "asset.polyhaven_search" }, { allowedProjectRoots: [root], execute: async (argv) => { calls.push([...argv]); return { exitCode: 0, stdout: `${JSON.stringify(payload)}\n` }; }, projectRoot: root });
+    const imported = await callAuthoringMcpTool({ arguments: { assetId: "rock", format: "gltf", maxBytes: 1000000, providerAssetId: "rock_01", resolution: "1k", type: "models" }, name: "asset.polyhaven_import" }, { allowedProjectRoots: [root], execute: async (argv) => { calls.push([...argv]); return { exitCode: 0, stdout: '{"code":"TN_POLY_HAVEN_IMPORT_OK","assetId":"rock"}\n' }; }, projectRoot: root });
+
+    assert.deepEqual(search.content, payload);
+    assert.deepEqual(calls[0], ["asset", "provider", "search", "poly-haven", "--query", "rock", "--type", "models", "--limit", "3", "--live", "--json"]);
+    assert.deepEqual(imported.content, { assetId: "rock", code: "TN_POLY_HAVEN_IMPORT_OK" });
+    assert.deepEqual(calls[1], ["asset", "provider", "import", "poly-haven", "rock_01", "--type", "models", "--resolution", "1k", "--format", "gltf", "--id", "rock", "--max-bytes", "1000000", "--project", root, "--json"]);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("Sketchfab MCP search preview and import derive argv preserve JSON and return image content", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-sketchfab-"));
+  const calls: string[][] = [];
+  const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xd9]);
+  const execute = async (argv: readonly string[]) => {
+    calls.push([...argv]);
+    if (argv.includes("search")) return { exitCode: 0, stdout: '{"code":"TN_SKETCHFAB_SEARCH_OK","results":[{"uid":"0123456789abcdef0123456789abcdef","license":{"id":"cc-by"}}]}\n' };
+    if (argv.includes("preview")) return { exitCode: 0, stdout: `${JSON.stringify({ code: "TN_SKETCHFAB_PREVIEW_OK", image: { dataBase64: imageBytes.toString("base64"), mimeType: "image/jpeg", sha256: "preview-hash" }, uid: "0123456789abcdef0123456789abcdef" })}\n` };
+    return { exitCode: 0, stdout: '{"code":"TN_SKETCHFAB_IMPORT_OK","assetId":"chair","bounds":{"size":[1,0.8,0.7]}}\n' };
+  };
+  try {
+    const search = await callAuthoringMcpTool({ arguments: { cursor: "17", limit: 3, query: "chair" }, name: "asset.sketchfab_search" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const preview = await callAuthoringMcpTool({ arguments: { modelUid: "0123456789abcdef0123456789abcdef" }, name: "asset.sketchfab_preview" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const imported = await callAuthoringMcpTool({ arguments: { acceptedLicense: "cc-by", assetId: "chair", maxBytes: 1000000, modelUid: "0123456789abcdef0123456789abcdef", targetSize: 1 }, name: "asset.sketchfab_import" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+
+    assert.deepEqual(search.content, { code: "TN_SKETCHFAB_SEARCH_OK", results: [{ license: { id: "cc-by" }, uid: "0123456789abcdef0123456789abcdef" }] });
+    assert.deepEqual(calls[0], ["asset", "provider", "search", "sketchfab", "--query", "chair", "--limit", "3", "--cursor", "17", "--json"]);
+    assert.deepEqual(preview.content, [{ data: imageBytes.toString("base64"), mimeType: "image/jpeg", type: "image" }, { text: '{"code":"TN_SKETCHFAB_PREVIEW_OK","image":{"mimeType":"image/jpeg","sha256":"preview-hash"},"uid":"0123456789abcdef0123456789abcdef"}', type: "text" }]);
+    assert.deepEqual(calls[1], ["asset", "provider", "preview", "sketchfab", "0123456789abcdef0123456789abcdef", "--json"]);
+    assert.deepEqual(imported.content, { assetId: "chair", bounds: { size: [1, 0.8, 0.7] }, code: "TN_SKETCHFAB_IMPORT_OK" });
+    assert.deepEqual(calls[2], ["asset", "provider", "import", "sketchfab", "0123456789abcdef0123456789abcdef", "--accept-license", "cc-by", "--target-size", "1", "--id", "chair", "--max-bytes", "1000000", "--project", root, "--json"]);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("Sketchfab MCP descriptors are the owning schema and reject implicit license acceptance", async () => {
+  const configured = CLI_COMMAND_REGISTRY.asset.adapters?.mcp;
+  const adapters = Array.isArray(configured) ? configured : configured === undefined ? [] : [configured];
+  const names = adapters.filter((adapter) => adapter.name.startsWith("asset.sketchfab_")).map((adapter) => adapter.name);
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-sketchfab-license-")); let calls = 0;
+  try {
+    const rejected = await callAuthoringMcpTool({ arguments: { assetId: "chair", modelUid: "0123456789abcdef0123456789abcdef", targetSize: 1 }, name: "asset.sketchfab_import" }, { allowedProjectRoots: [root], execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; }, projectRoot: root });
+    assert.deepEqual(names, ["asset.sketchfab_status", "asset.sketchfab_search", "asset.sketchfab_preview", "asset.sketchfab_import"]);
+    assert.deepEqual(AUTHORING_MCP_TOOLS.filter((tool) => names.includes(tool.name as typeof names[number])).map((tool) => tool.name), names);
+    assert.equal((rejected.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.equal(calls, 0);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should match CLI asset generation result through injected executor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-generate-blender-"));
+  const calls: string[][] = [];
+  const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
+  const cliPayload = {
+    code: "TN_ASSET_GENERATE_OK", command: "asset generate", diagnostics: [], filesWritten: ["assets/generated/crate.glb", "content/assets/crate.assets.json"],
+    inputHash: "sha256:input", inspection: { counts: { animations: 0, materials: 1, meshes: 1, triangles: 12 } }, nextCommands: ["tn asset inspect assets/generated/crate.glb --json"], ok: true, outputHash: "sha256:output",
+  };
+  try {
+    const result = await callAuthoringMcpTool({ arguments: { assetId: "crate", overwritePolicy: "replace", recipe }, name: "asset.generate_blender" }, {
+      allowedProjectRoots: [root],
+      execute: async (argv) => { calls.push([...argv]); return { exitCode: 0, stdout: `${JSON.stringify(cliPayload)}\n` }; },
+      projectRoot: root,
+    });
+
+    assert.equal(result.isError, false);
+    assert.deepEqual(result.content, cliPayload);
+    assert.deepEqual(result.cli.argv, calls[0]);
+    assert.deepEqual(calls[0]?.slice(0, 3), ["asset", "generate", "crate"]);
+    assert.equal(calls[0]?.includes("--provider"), true);
+    assert.equal(calls[0]?.includes("blender"), true);
+    assert.equal(calls[0]?.includes(JSON.stringify(recipe)), true);
+    assert.deepEqual(calls[0]?.slice(-3), ["--project", root, "--json"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should match the real CLI asset generation core through injected Blender dependencies", async () => {
+  const mcpRoot = await mkdtemp(join(tmpdir(), "tn-mcp-generate-real-core-"));
+  const cliRoot = await mkdtemp(join(tmpdir(), "tn-cli-generate-real-core-"));
+  const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
+  try {
+    const mcp = await callAuthoringMcpTool({ arguments: { assetId: "crate", overwritePolicy: "replace", recipe }, name: "asset.generate_blender" }, {
+      allowedProjectRoots: [mcpRoot],
+      execute: (argv) => assetCommand(argv.slice(1), { blenderDependencies: fakeBlenderDependencies() }),
+      projectRoot: mcpRoot,
+    });
+    const cli = await assetCommand(["generate", "crate", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--overwrite-policy", "replace", "--project", cliRoot, "--json"], { blenderDependencies: fakeBlenderDependencies() });
+
+    assert.equal(mcp.isError, false);
+    assert.equal(cli.exitCode, 0);
+    const cliPayload = JSON.parse(cli.stdout) as IJsonPayload;
+    assertHardenedExecution(mcp.content as IJsonPayload);
+    assertHardenedExecution(cliPayload);
+    assert.deepEqual(stripVolatileExecution(stripProjectPath(mcp.content)), stripVolatileExecution(stripProjectPath(cliPayload)));
+    assert.equal(await readFile(join(mcpRoot, "assets/generated/crate.glb"), "utf8"), await readFile(join(cliRoot, "assets/generated/crate.glb"), "utf8"));
+  } finally {
+    await rm(mcpRoot, { force: true, recursive: true });
+    await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("should reject Blender recipe and output traversal before executor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-generate-guards-"));
+  let calls = 0;
+  const execute = async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; };
+  try {
+    const recipeTraversal = await callAuthoringMcpTool({ arguments: { assetId: "crate", recipe: "../crate.recipe.json" }, name: "asset.generate_blender" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const outputTraversal = await callAuthoringMcpTool({ arguments: { assetId: "crate", out: "../crate.glb", recipe: { id: "crate" } }, name: "asset.generate_blender" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const generatedRecipe = await callAuthoringMcpTool({ arguments: { assetId: "crate", recipe: "dist/crate.recipe.json" }, name: "asset.generate_blender" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+
+    assert.equal((recipeTraversal.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal((outputTraversal.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal((generatedRecipe.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid generated asset id before project filesystem or executor access", async () => {
+  const projectRoot = join(tmpdir(), `tn-mcp-invalid-asset-id-${process.pid}-${Date.now()}`);
+  let calls = 0;
+  const result = await callAuthoringMcpTool({ arguments: { assetId: "../crate", recipe: { id: "crate" } }, name: "asset.generate_blender" }, {
+    allowedProjectRoots: [projectRoot],
+    execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; },
+    projectRoot,
+  });
+
+  assert.equal(result.isError, true);
+  assert.equal((result.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+  assert.equal((result.content as IJsonPayload).diagnostics?.[0]?.path, "assetId");
+  assert.equal(calls, 0);
+  await assert.rejects(readFile(projectRoot));
+});
+
+test("should reject Blender recipe and output symlinks that resolve outside the project", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-generate-symlink-root-"));
+  const outside = await mkdtemp(join(tmpdir(), "tn-mcp-generate-symlink-outside-"));
+  let calls = 0;
+  const execute = async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; };
+  try {
+    await mkdir(join(root, "content/generators"), { recursive: true });
+    await writeFile(join(outside, "crate.recipe.json"), "{}\n");
+    await symlink(join(outside, "crate.recipe.json"), join(root, "content/generators/crate.recipe.json"));
+    await mkdir(join(root, "assets"), { recursive: true });
+    await symlink(outside, join(root, "assets/generated"));
+
+    const recipeSymlink = await callAuthoringMcpTool({ arguments: { assetId: "crate", recipe: "content/generators/crate.recipe.json" }, name: "asset.generate_blender" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+    const outputSymlink = await callAuthoringMcpTool({ arguments: { assetId: "crate", out: "assets/generated/crate.glb", recipe: { id: "crate" } }, name: "asset.generate_blender" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+
+    assert.equal((recipeSymlink.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal((outputSymlink.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+    await rm(outside, { force: true, recursive: true });
+  }
+});
+
+test("should expose no Blender install remove or Python tools or arguments", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-generate-forbidden-"));
+  let calls = 0;
+  try {
+    const blenderToolNames = AUTHORING_MCP_TOOLS.map((tool) => tool.name).filter((name) => name.includes("blender"));
+    const schemaText = JSON.stringify(AUTHORING_MCP_TOOLS.find((tool) => tool.name === "asset.generate_blender")?.inputSchema);
+    const forbiddenArgument = await callAuthoringMcpTool({ arguments: { assetId: "crate", python: "print('unsafe')", recipe: { id: "crate" } }, name: "asset.generate_blender" }, {
+      allowedProjectRoots: [root], execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; }, projectRoot: root,
+    });
+    const forbiddenRecipe = await callAuthoringMcpTool({ arguments: { assetId: "crate", recipe: { id: "crate", script: "unsafe.py" } }, name: "asset.generate_blender" }, {
+      allowedProjectRoots: [root], execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; }, projectRoot: root,
+    });
+
+    assert.deepEqual(blenderToolNames, ["asset.generate_blender", "generator.record_blender"]);
+    assert.equal(blenderToolNames.some((name) => /install|remove|python/iu.test(name)), false);
+    assert.equal(/install|remove|python|code/iu.test(schemaText), false);
+    assert.equal((forbiddenArgument.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.equal((forbiddenRecipe.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve explicit Blender install fix without triggering download", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-generate-missing-"));
+  let calls = 0;
+  const missing = {
+    code: "TN_GENERATOR_RUN_FAILED", diagnostics: [{ code: "TN_EXTERNAL_TOOL_MISSING", fix: { instruction: "Install the pinned optional Blender tool.", snippet: "tn tool install blender --accept-download --json" }, severity: "error" }], message: "Generator 'crate' failed.", ok: false,
+  };
+  try {
+    const result = await callAuthoringMcpTool({ arguments: { assetId: "crate", recipe: { id: "crate" } }, name: "asset.generate_blender" }, {
+      allowedProjectRoots: [root],
+      execute: async (argv) => { calls += 1; assert.equal(argv[0], "asset"); return { exitCode: 1, stdout: `${JSON.stringify(missing)}\n` }; },
+      projectRoot: root,
+    });
+
+    assert.equal(result.isError, true);
+    assert.deepEqual(result.content, missing);
+    assert.equal(calls, 1);
+    assert.equal((result.content as IJsonPayload).diagnostics?.[0]?.fix?.snippet, "tn tool install blender --accept-download --json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("cookbook MCP exposure derives from the owning CLI command descriptor", () => {
-  const adapter = CLI_COMMAND_REGISTRY.cookbook.adapters?.mcp;
+  const configured = CLI_COMMAND_REGISTRY.cookbook.adapters?.mcp;
+  const adapter = (Array.isArray(configured) ? configured : configured === undefined ? [] : [configured]).find((candidate) => candidate.name === "cookbook_lookup");
 
   assert.notEqual(adapter, undefined);
   assert.equal(adapter?.name, "cookbook_lookup");
@@ -314,6 +646,26 @@ test("mcp wrapper blocks project roots outside the allowlist", async () => {
   }
 });
 
+test("mcp wrapper rejects an allowed-root symlink that resolves outside the allowlist", async () => {
+  const allowed = await mkdtemp(join(tmpdir(), "tn-mcp-realpath-allowed-"));
+  const outside = await mkdtemp(join(tmpdir(), "tn-mcp-realpath-outside-"));
+  const linkedProject = join(allowed, "linked-project");
+  let calls = 0;
+  try {
+    await symlink(outside, linkedProject);
+    const result = await callAuthoringMcpTool({ arguments: {}, name: "scene.validate" }, {
+      allowedProjectRoots: [allowed], execute: async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; }, projectRoot: linkedProject,
+    });
+
+    assert.equal(result.isError, true);
+    assert.equal((result.content as IJsonPayload).code, "TN_MCP_PROJECT_ROOT_REJECTED");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(allowed, { force: true, recursive: true });
+    await rm(outside, { force: true, recursive: true });
+  }
+});
+
 test("mcp wrapper blocks paths outside source authoring space", async () => {
   const root = await createMcpSceneProject();
 
@@ -378,6 +730,26 @@ test("mcp smoke performs inspect mutate validate build and verify", async () => 
 
 async function callMcp(root: string, name: Parameters<typeof callAuthoringMcpTool>[0]["name"], args: Record<string, unknown>): Promise<IAuthoringMcpResult> {
   return callAuthoringMcpTool({ arguments: args, name }, { allowedProjectRoots: [root], projectRoot: root });
+}
+
+function fakeBlenderDependencies(): NonNullable<IAssetCommandOptions["blenderDependencies"]> {
+  return {
+    inspect: async (path) => ({ code: "TN_ASSET_INSPECT_OK", counts: { animations: 0, materials: 1, meshes: 1, triangles: 12 }, diagnostics: [], file: { byteSize: 3, path } }),
+    now: () => new Date("2026-07-14T00:00:00.000Z"),
+    runnerPath: resolve(import.meta.dirname, "../../cli/src/blender/runner.py"),
+    toolStatus: async () => ({
+      artifact: { archive: "tar.xz", archiveFile: "blender.tar.xz", executablePath: "blender", expectedBytes: 1, host: "linux-x64", sha256: "0".repeat(64), url: "https://download.blender.org/blender.tar.xz" },
+      cachePath: "/managed", code: "TN_EXTERNAL_TOOL_READY", executablePath: "/managed/blender", id: "blender",
+      license: { name: "GPL", url: "https://developer.blender.org/docs/license/" }, ready: true, source: "managed", sourceUrl: "https://download.blender.org/source/", version: "4.5.11",
+    }),
+    uniqueId: () => "mcp-parity",
+    runProcess: async (_executable, args) => {
+      const job = JSON.parse(await readFile(args.at(-1)!, "utf8")) as { outputPath: string; resultPath: string };
+      await writeFile(job.outputPath, "glb");
+      await writeFile(job.resultPath, `${JSON.stringify({ animations: [], nodes: ["body"], ok: true })}\n`);
+      return { exitCode: 0, stderr: "", stdout: "", timedOut: false };
+    },
+  };
 }
 
 async function createMcpSceneProject(options: { invalidTarget?: boolean; minimal?: boolean } = {}): Promise<string> {
@@ -520,6 +892,24 @@ function stripProjectPath(value: unknown): unknown {
   }
   const { projectPath: _projectPath, ...rest } = value as Record<string, unknown>;
   return rest;
+}
+
+function assertHardenedExecution(value: IJsonPayload): void {
+  const execution = (value as unknown as Record<string, unknown>).execution as { argv?: string[]; cwd?: string; exitCode?: number; timedOut?: boolean } | undefined;
+  assert.deepEqual(execution?.argv?.slice(0, 6), ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python"]);
+  assert.equal(execution?.argv?.[7], "--");
+  assert.equal(execution?.argv?.[8], "--job");
+  assert.equal(execution?.argv?.[9], resolve(execution?.cwd ?? "", "job.json"));
+  assert.equal(execution?.exitCode, 0);
+  assert.equal(execution?.timedOut, false);
+}
+
+function stripVolatileExecution(value: unknown): unknown {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return value;
+  const record = value as Record<string, unknown>;
+  const execution = record.execution as { argv?: string[] } | undefined;
+  if (execution === undefined) return value;
+  return { ...record, execution: { ...execution, argv: execution.argv?.map((entry, index) => index === 9 ? "<owned-job>" : entry), cwd: "<work-directory>" } };
 }
 
 function stripImportPaths(value: unknown): unknown {

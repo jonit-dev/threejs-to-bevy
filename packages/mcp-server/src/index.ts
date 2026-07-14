@@ -1,7 +1,8 @@
-import { resolve, sep } from "node:path";
+import { readFile, realpath } from "node:fs/promises";
+import { dirname, relative, resolve, sep } from "node:path";
 
 import { AUTHORING_OPERATION_NAMES, buildAuthoringOperationCliArgv, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
-import { CLI_COMMAND_REGISTRY, dispatch, type CommandMcpToolName } from "@threenative/cli";
+import { CLI_COMMAND_REGISTRY, dispatch, type CommandMcpToolName, type ICommandMcpAdapterDefinition } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
   | AuthoringOperationName
@@ -20,6 +21,7 @@ export interface IAuthoringMcpToolCall {
 
 export interface IAuthoringMcpOptions {
   allowedProjectRoots?: readonly string[];
+  execute?: (argv: readonly string[]) => Promise<ICommandResult>;
   projectRoot: string;
 }
 
@@ -46,13 +48,14 @@ const registryBackedMcpTools: Array<{ description: string; name: AuthoringOperat
   };
 });
 
-const commandRegistryBackedMcpTools: Array<{ description: string; name: AuthoringMcpToolName }> = Object.values(CLI_COMMAND_REGISTRY)
-  .flatMap((command) => command.adapters?.mcp === undefined ? [] : [{
-    description: command.adapters.mcp.description,
-    name: command.adapters.mcp.name,
-  }]);
+const commandRegistryBackedMcpTools: Array<{ description: string; inputSchema?: Record<string, unknown>; name: AuthoringMcpToolName }> = Object.values(CLI_COMMAND_REGISTRY)
+  .flatMap((command) => command.adapters?.mcp === undefined ? [] : (Array.isArray(command.adapters.mcp) ? command.adapters.mcp : [command.adapters.mcp]).map((adapter) => ({
+    description: adapter.description,
+    ...(adapter.inputSchema === undefined ? {} : { inputSchema: adapter.inputSchema }),
+    name: adapter.name,
+  })));
 
-export const AUTHORING_MCP_TOOLS: Array<{ description: string; name: AuthoringMcpToolName }> = [
+export const AUTHORING_MCP_TOOLS: Array<{ description: string; inputSchema?: Record<string, unknown>; name: AuthoringMcpToolName }> = [
   { description: "Inspect a source scene document through tn scene inspect --json.", name: "scene.inspect" },
   { description: "Validate source scene documents through tn scene validate --json.", name: "scene.validate" },
   ...commandRegistryBackedMcpTools,
@@ -64,12 +67,16 @@ export const AUTHORING_MCP_TOOLS: Array<{ description: string; name: AuthoringMc
 ];
 
 export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options: IAuthoringMcpOptions): Promise<IAuthoringMcpResult> {
+  const args = call.arguments ?? {};
+  const earlyArgumentDiagnostic = validateEarlyCommandArguments(call.name, args);
+  if (earlyArgumentDiagnostic !== undefined) {
+    return mcpDiagnostic(earlyArgumentDiagnostic);
+  }
   const projectRoot = resolve(options.projectRoot);
-  const guard = validateProjectRoot(projectRoot, options.allowedProjectRoots ?? [process.cwd()]);
+  const guard = await validateProjectRoot(projectRoot, options.allowedProjectRoots ?? [process.cwd()]);
   if (guard !== undefined) {
     return mcpDiagnostic(guard);
   }
-  const args = call.arguments ?? {};
   let argv: string[];
   try {
     argv = toolToCliArgv(call.name, args, projectRoot);
@@ -80,16 +87,39 @@ export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options:
       path: call.name,
     });
   }
-  const invalidPath = validateToolPaths(call.name, args, projectRoot);
+  const invalidPath = await validateToolPaths(call.name, args, projectRoot);
   if (invalidPath !== undefined) {
     return mcpDiagnostic(invalidPath, argv);
   }
-  const result = await dispatch(argv);
-  return commandResultToMcp(result, argv);
+  const result = await (options.execute ?? dispatch)(argv);
+  return commandResultToMcp(result, argv, call.name, projectRoot);
 }
 
 function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): string[] {
   const project = ["--project", projectRoot];
+  const commandAdapter = commandMcpAdapter(name);
+  if (commandAdapter?.argv !== undefined) {
+    validateCommandMcpArguments(commandAdapter, args);
+    const argv = [...commandAdapter.argv.prefix];
+    for (const argument of commandAdapter.argv.arguments) {
+      const value = args[argument.name];
+      if (value === undefined) continue;
+      if (argument.boolean === true) {
+        if (typeof value !== "boolean") throw new Error(`MCP argument '${argument.name}' must be a boolean.`);
+        if (value && argument.flag !== undefined) argv.push(argument.flag);
+        continue;
+      }
+      const raw = argument.encoding === "json" && typeof value !== "string" ? JSON.stringify(value) : commandAdapterArgument(value, argument.name);
+      const encoded = argument.resolveProjectPath === true ? resolve(projectRoot, raw) : raw;
+      if (argument.positional === true) argv.push(encoded);
+      else if (argument.flag !== undefined) argv.push(argument.flag, encoded);
+    }
+    argv.push(...(commandAdapter.argv.fixed ?? []));
+    if (commandAdapter.argv.projectOutput !== undefined) argv.push(commandAdapter.argv.projectOutput.flag, resolve(projectRoot, commandAdapter.argv.projectOutput.path));
+    if (commandAdapter.argv.projectScoped === true) argv.push(...project);
+    argv.push("--json");
+    return argv;
+  }
   if (name === "cookbook_lookup") {
     const id = optionalStringArg(args, "id");
     const query = optionalStringArg(args, "query");
@@ -157,13 +187,27 @@ function toolToCliArgv(name: AuthoringMcpToolName, args: Record<string, unknown>
   return ["screenshot", "--url", url, "--out", out, "--json"];
 }
 
-function commandResultToMcp(result: ICommandResult, argv: string[]): IAuthoringMcpResult {
+async function commandResultToMcp(result: ICommandResult, argv: string[], toolName: AuthoringMcpToolName, projectRoot: string): Promise<IAuthoringMcpResult> {
   const raw = result.stdout.length > 0 ? result.stdout : result.stderr ?? "";
   let content: unknown = raw;
   try {
     content = JSON.parse(raw);
   } catch {
     // Human output remains useful when a CLI path has not yet gained JSON.
+  }
+  if (toolName === "asset.sketchfab_preview" && isRecord(content) && isRecord(content.image) && typeof content.image.dataBase64 === "string" && typeof content.image.mimeType === "string") {
+    const image = content.image;
+    const metadata = { ...content, image: { mimeType: image.mimeType, sha256: image.sha256 } };
+    content = [{ data: image.dataBase64, mimeType: image.mimeType, type: "image" }, { text: JSON.stringify(metadata), type: "text" }];
+  }
+  if (toolName === "asset.model_test" && isRecord(content) && isRecord(content.screenshot) && typeof content.screenshot.outPath === "string") {
+    const outPath = await realpath(resolve(content.screenshot.outPath)).catch(() => undefined);
+    const realRoot = await realpath(projectRoot);
+    if (outPath === undefined || !isContained(realRoot, outPath)) throw new Error("TN_MCP_PATH_REJECTED: model-test screenshot resolves outside the project root.");
+    const bytes = await readFile(outPath);
+    const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+    if (bytes.byteLength > 16 * 1024 * 1024 || bytes.byteLength < pngSignature.length || !bytes.subarray(0, pngSignature.length).equals(pngSignature)) throw new Error("TN_MCP_IMAGE_INVALID: model-test screenshot is not a bounded PNG.");
+    content = [{ data: bytes.toString("base64"), mimeType: "image/png", type: "image" }, { text: JSON.stringify(content), type: "text" }];
   }
   return {
     cli: { argv, exitCode: result.exitCode },
@@ -172,9 +216,10 @@ function commandResultToMcp(result: ICommandResult, argv: string[]): IAuthoringM
   };
 }
 
-function validateProjectRoot(projectRoot: string, allowedProjectRoots: readonly string[]): { code: string; message: string; path: string } | undefined {
-  const allowed = allowedProjectRoots.map((root) => resolve(root));
-  if (!allowed.some((root) => projectRoot === root || projectRoot.startsWith(`${root}${sep}`))) {
+async function validateProjectRoot(projectRoot: string, allowedProjectRoots: readonly string[]): Promise<{ code: string; message: string; path: string } | undefined> {
+  const projectRealPath = await realpath(projectRoot).catch(() => undefined);
+  const allowed = (await Promise.all(allowedProjectRoots.map((root) => realpath(resolve(root)).catch(() => undefined)))).filter((root): root is string => root !== undefined);
+  if (projectRealPath === undefined || !allowed.some((root) => isContained(root, projectRealPath))) {
     return {
       code: "TN_MCP_PROJECT_ROOT_REJECTED",
       message: "MCP authoring tools can only target the configured project root allowlist.",
@@ -184,7 +229,33 @@ function validateProjectRoot(projectRoot: string, allowedProjectRoots: readonly 
   return undefined;
 }
 
-function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): { code: string; message: string; path: string } | undefined {
+async function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): Promise<{ code: string; message: string; path: string } | undefined> {
+  if (name === "asset.generate_blender") {
+    const recipe = args.recipe;
+    if (typeof recipe === "string") {
+      const invalidRecipePath = await validateContainedPath(projectRoot, "recipe", recipe, /^content\/generators\/[a-z][a-z0-9._-]*\.recipe\.json$/u);
+      if (invalidRecipePath !== undefined) return invalidRecipePath;
+    } else if (containsForbiddenRecipeField(recipe)) {
+      return { code: "TN_MCP_ARGUMENT_INVALID", message: "MCP Blender recipes cannot contain Python, code, scripts, modules, add-ons, operators, or remote URLs.", path: "recipe" };
+    }
+    const out = optionalStringArg(args, "out") ?? `assets/generated/${stringArg(args, "assetId")}.glb`;
+    const invalidOutputPath = await validateContainedPath(projectRoot, "out", out, /^assets\/generated\/[a-z][a-z0-9._-]*\.glb$/u);
+    if (invalidOutputPath !== undefined) return invalidOutputPath;
+  }
+  if (name === "asset.hyper3d_generate" && typeof args.image === "string") {
+    if (/^[a-z][a-z0-9+.-]*:/iu.test(args.image)) return { code: "TN_MCP_PATH_REJECTED", message: "MCP Hyper3D image input must be a project-local path, not a remote URL.", path: args.image };
+    if (/(?:^|\/)(?:dist|artifacts|runtime|\.cache)(?:\/|$)|\.bundle\//u.test(args.image)) return { code: "TN_MCP_GENERATED_SOURCE_REJECTED", message: "MCP Hyper3D image input must not target generated bundle, artifact, cache, or runtime paths.", path: args.image };
+    const invalidImagePath = await validateContainedPath(projectRoot, "image", args.image, /^(?!.*(?:^|\/)\.\.(?:\/|$))[^\\]+\.(?:jpe?g|png|webp)$/u);
+    if (invalidImagePath !== undefined) return invalidImagePath;
+  }
+  if ((name === "asset.inspect" || name === "asset.model_test") && typeof args.assetPath === "string") {
+    const invalidAssetPath = await validateContainedPath(projectRoot, "assetPath", args.assetPath, /^(?:assets|content)\/[^\\]+\.(?:glb|gltf)$/u);
+    if (invalidAssetPath !== undefined) return invalidAssetPath;
+  }
+  if (name === "asset.model_test") {
+    const invalidOutput = await validateContainedPath(projectRoot, "modelTestOutput", "artifacts/mcp-model-test", /^artifacts\/mcp-model-test$/u);
+    if (invalidOutput !== undefined) return invalidOutput;
+  }
   const pathArgs = [
     ...(name === "scene.attach_script" ? [["modulePath", stringArg(args, "modulePath")] as const] : []),
     ...(name === "system.attach_script" ? [["modulePath", stringArg(args, "modulePath")] as const] : []),
@@ -201,6 +272,137 @@ function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unkn
     }
   }
   return undefined;
+}
+
+function commandMcpAdapter(name: AuthoringMcpToolName): ICommandMcpAdapterDefinition | undefined {
+  return Object.values(CLI_COMMAND_REGISTRY).flatMap((command) => command.adapters?.mcp === undefined ? [] : Array.isArray(command.adapters.mcp) ? command.adapters.mcp : [command.adapters.mcp]).find((adapter) => adapter.name === name);
+}
+
+function validateCommandMcpArguments(adapter: ICommandMcpAdapterDefinition, args: Record<string, unknown>): void {
+  const schema = adapter.inputSchema;
+  const properties = isRecord(schema?.properties) ? schema.properties : {};
+  const unknown = Object.keys(args).filter((key) => !(key in properties)).sort();
+  if (unknown.length > 0) throw new Error(`MCP tool '${adapter.name}' does not accept argument '${unknown[0]}'.`);
+  const required = Array.isArray(schema?.required) ? schema.required : [];
+  for (const key of required) {
+    if (typeof key === "string" && args[key] === undefined) throw new Error(`MCP argument '${key}' is required.`);
+  }
+  for (const [key, property] of Object.entries(properties)) {
+    if (args[key] !== undefined && isRecord(property)) {
+      const pathArgument = adapter.argv?.arguments.some((argument) => argument.name === key && argument.resolveProjectPath === true) === true || ["image", "out", "recipe"].includes(key);
+      if (key === "recipe" && typeof args[key] === "string") validateJsonSchemaValue(args[key], { type: "string" }, key);
+      else if (pathArgument && typeof property.pattern === "string") { const { pattern: _pattern, ...withoutPathPattern } = property; validateJsonSchemaValue(args[key], withoutPathPattern, key); }
+      else validateJsonSchemaValue(args[key], property, key);
+    }
+  }
+  if (adapter.name === "asset.hyper3d_generate") {
+    const hasPrompt = args.prompt !== undefined;
+    const hasImage = args.image !== undefined;
+    if (hasPrompt === hasImage) throw new Error("MCP tool 'asset.hyper3d_generate' requires exactly one of 'prompt' or 'image'.");
+  }
+  if (adapter.name === "asset.generate_blender") {
+    const earlyDiagnostic = validateEarlyCommandArguments(adapter.name, args);
+    if (earlyDiagnostic !== undefined) throw new Error(earlyDiagnostic.message);
+    if (typeof args.recipe !== "string" && !isRecord(args.recipe)) throw new Error("MCP argument 'recipe' must be a project-local recipe path or recipe object.");
+    const overwritePolicy = optionalStringArg(args, "overwritePolicy");
+    if (overwritePolicy !== undefined && !["manual", "replace", "skip"].includes(overwritePolicy)) throw new Error("MCP argument 'overwritePolicy' must be manual, replace, or skip.");
+    if (args.out !== undefined) stringArg(args, "out");
+  }
+}
+
+function validateJsonSchemaValue(value: unknown, schema: Record<string, unknown>, key: string): void {
+  if (Array.isArray(schema.oneOf)) {
+    const matches = schema.oneOf.filter((candidate) => isRecord(candidate) && jsonSchemaValueMatches(value, candidate)).length;
+    if (matches !== 1) throw new Error(`MCP argument '${key}' must match exactly one allowed schema.`);
+    return;
+  }
+  if (!jsonSchemaValueMatches(value, schema)) throw new Error(`MCP argument '${key}' does not satisfy its declared schema.`);
+}
+
+function jsonSchemaValueMatches(value: unknown, schema: Record<string, unknown>): boolean {
+  if ("const" in schema && value !== schema.const) return false;
+  if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return false;
+  if (schema.type === "string") {
+    if (typeof value !== "string") return false;
+    if (typeof schema.minLength === "number" && value.length < schema.minLength) return false;
+    if (typeof schema.maxLength === "number" && value.length > schema.maxLength) return false;
+    if (typeof schema.pattern === "string" && !new RegExp(schema.pattern, "u").test(value)) return false;
+  } else if (schema.type === "number") {
+    if (typeof value !== "number" || !Number.isFinite(value)) return false;
+    if (typeof schema.minimum === "number" && value < schema.minimum) return false;
+    if (typeof schema.maximum === "number" && value > schema.maximum) return false;
+    if (typeof schema.exclusiveMinimum === "number" && value <= schema.exclusiveMinimum) return false;
+  } else if (schema.type === "boolean" && typeof value !== "boolean") return false;
+  else if (schema.type === "object" && !isRecord(value)) return false;
+  return true;
+}
+
+function validateEarlyCommandArguments(name: AuthoringMcpToolName, args: Record<string, unknown>): { code: string; message: string; path: string } | undefined {
+  if (name !== "asset.generate_blender") return undefined;
+  const adapter = commandMcpAdapter(name);
+  const properties = isRecord(adapter?.inputSchema?.properties) ? adapter.inputSchema.properties : undefined;
+  const assetIdSchema = properties === undefined || !isRecord(properties.assetId) ? undefined : properties.assetId;
+  const pattern = assetIdSchema?.pattern;
+  const assetId = args.assetId;
+  if (typeof pattern !== "string") {
+    return { code: "TN_MCP_DESCRIPTOR_INVALID", message: "The asset.generate_blender descriptor is missing its assetId pattern.", path: "asset.generate_blender" };
+  }
+  if (typeof assetId !== "string" || !new RegExp(pattern, "u").test(assetId)) {
+    return { code: "TN_MCP_ARGUMENT_INVALID", message: `MCP argument 'assetId' must match ${pattern}.`, path: "assetId" };
+  }
+  return undefined;
+}
+
+function stringCommandArgument(value: unknown, key: string): string {
+  if (typeof value !== "string" || value.trim() === "") throw new Error(`MCP argument '${key}' must be a non-empty string.`);
+  return value;
+}
+
+function commandAdapterArgument(value: unknown, key: string): string {
+  if (typeof value === "number" && Number.isFinite(value)) return value.toString();
+  return stringCommandArgument(value, key);
+}
+
+async function validateContainedPath(projectRoot: string, key: string, value: string, expected: RegExp): Promise<{ code: string; message: string; path: string } | undefined> {
+  const resolved = resolve(projectRoot, value);
+  if (value.includes("..") || value.includes("\\") || !expected.test(value) || (!resolved.startsWith(`${projectRoot}${sep}`) && resolved !== projectRoot)) {
+    return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${key}' must stay in its bounded project source path.`, path: value };
+  }
+  const projectRealPath = await realpath(projectRoot).catch(() => undefined);
+  const candidateRealPath = await resolveThroughExistingAncestor(resolved);
+  if (projectRealPath === undefined || candidateRealPath === undefined || !isContained(projectRealPath, candidateRealPath)) {
+    return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${key}' resolves outside the allowed project root.`, path: value };
+  }
+  return undefined;
+}
+
+async function resolveThroughExistingAncestor(path: string): Promise<string | undefined> {
+  let ancestor = path;
+  while (true) {
+    try {
+      const ancestorRealPath = await realpath(ancestor);
+      return resolve(ancestorRealPath, relative(ancestor, path));
+    } catch {
+      const parent = dirname(ancestor);
+      if (parent === ancestor) return undefined;
+      ancestor = parent;
+    }
+  }
+}
+
+function isContained(root: string, candidate: string): boolean {
+  return candidate === root || candidate.startsWith(`${root}${sep}`);
+}
+
+function containsForbiddenRecipeField(value: unknown): boolean {
+  if (typeof value === "string") return /^https?:\/\//iu.test(value);
+  if (Array.isArray(value)) return value.some(containsForbiddenRecipeField);
+  if (!isRecord(value)) return false;
+  return Object.entries(value).some(([key, item]) => /^(?:python|code|script|module|addon|add-on|operator|driver)$/iu.test(key) || containsForbiddenRecipeField(item));
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function mcpDiagnostic(diagnostic: { code: string; message: string; path: string }, argv: string[] = []): IAuthoringMcpResult {

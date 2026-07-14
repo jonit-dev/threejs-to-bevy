@@ -1921,6 +1921,7 @@
       {
         "id": "opponent-card",
         "type": "column",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "layout": {
           "height": 170,
           "inset": {
@@ -1946,6 +1947,7 @@
       {
         "id": "opponent-avatar",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "A",
         "layout": {
           "align": "center",
@@ -1972,6 +1974,7 @@
       {
         "id": "opponent-name",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "ARTEMIS",
         "layout": {
           "inset": {
@@ -1990,6 +1993,7 @@
       {
         "id": "opponent-side",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "BLACK",
         "layout": {
           "inset": {
@@ -2007,6 +2011,7 @@
       {
         "id": "opponent-rating",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "RATING 1592",
         "layout": {
           "inset": {
@@ -2024,6 +2029,7 @@
       {
         "id": "opponent-clock",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "TIME 14:57",
         "layout": {
           "inset": {
@@ -2041,6 +2047,7 @@
       {
         "id": "player-card",
         "type": "column",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "layout": {
           "height": 132,
           "inset": {
@@ -2066,6 +2073,7 @@
       {
         "id": "player-avatar",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "Y",
         "layout": {
           "align": "center",
@@ -2092,6 +2100,7 @@
       {
         "id": "player-name",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "YOU",
         "layout": {
           "bottom": 234,
@@ -2110,6 +2119,7 @@
       {
         "id": "player-side",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "WHITE",
         "layout": {
           "bottom": 211,
@@ -2127,6 +2137,7 @@
       {
         "id": "player-rating",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "RATING 1654",
         "layout": {
           "bottom": 191,
@@ -2144,6 +2155,7 @@
       {
         "id": "player-clock",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "TIME 14:32",
         "layout": {
           "bottom": 171,
@@ -2161,6 +2173,7 @@
       {
         "id": "turn-card",
         "type": "column",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "layout": {
           "height": 96,
           "inset": {
@@ -2186,6 +2199,7 @@
       {
         "id": "turn-dot",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "●",
         "layout": {
           "inset": {
@@ -2203,6 +2217,7 @@
       {
         "id": "turn",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "YOUR TURN",
         "layout": {
           "inset": {
@@ -2221,6 +2236,7 @@
       {
         "id": "turn-sub",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "MOVE 1",
         "layout": {
           "inset": {
@@ -2238,6 +2254,7 @@
       {
         "id": "move-history-card",
         "type": "column",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "layout": {
           "height": 300,
           "inset": {
@@ -2263,6 +2280,7 @@
       {
         "id": "move-history-label",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "MOVES",
         "layout": {
           "inset": {
@@ -2280,6 +2298,7 @@
       {
         "id": "move-history",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "No moves yet",
         "layout": {
           "inset": {
@@ -2309,6 +2328,7 @@
           "width": 252
         },
         "style": {
+          "opacity": 0,
           "backgroundColor": "#090b0de8",
           "borderColor": "#c69a5066",
           "borderRadius": 8,
@@ -2328,6 +2348,7 @@
           "width": 220
         },
         "style": {
+          "opacity": 0,
           "color": "#d9d2c6",
           "fontSize": 14
         }
@@ -2345,6 +2366,7 @@
           "width": 220
         },
         "style": {
+          "opacity": 0,
           "color": "#ead8b8",
           "fontSize": 26
         }
@@ -2362,6 +2384,7 @@
           "width": 252
         },
         "style": {
+          "opacity": 0,
           "backgroundColor": "#090b0de8",
           "borderColor": "#c69a5066",
           "borderRadius": 8,
@@ -2381,6 +2404,7 @@
           "width": 220
         },
         "style": {
+          "opacity": 0,
           "color": "#d9d2c6",
           "fontSize": 14
         }
@@ -2398,6 +2422,7 @@
           "width": 220
         },
         "style": {
+          "opacity": 0,
           "color": "#70695f",
           "fontSize": 26
         }
@@ -2417,6 +2442,7 @@
           "width": 150
         },
         "style": {
+          "opacity": 0,
           "backgroundColor": "#17140ff2",
           "borderColor": "#d6aa55",
           "borderRadius": 7,
@@ -2441,6 +2467,7 @@
           "width": 150
         },
         "style": {
+          "opacity": 0,
           "backgroundColor": "#17140ff2",
           "borderColor": "#d6aa55",
           "borderRadius": 7,
@@ -2465,6 +2492,7 @@
           "width": 184
         },
         "style": {
+          "opacity": 0,
           "backgroundColor": "#20211ff5",
           "borderColor": "#5b554d",
           "borderRadius": 6,
@@ -2497,6 +2525,7 @@
       {
         "id": "promotion",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "Promotion: QUEEN",
         "layout": {
           "bottom": 24,
@@ -2512,6 +2541,7 @@
       {
         "id": "help",
         "type": "text",
+        "responsive": [{ "target": "mobile", "style": { "opacity": 0 } }, { "target": "tablet", "style": { "opacity": 0 } }],
         "text": "Click piece + destination  |  Drag + drop  |  Arrows + Enter  |  R restart",
         "layout": {
           "align": "center",

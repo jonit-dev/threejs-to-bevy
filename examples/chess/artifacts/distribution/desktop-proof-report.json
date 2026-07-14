@@ -1,0 +1,93 @@
+{
+  "schema": "threenative.desktop-distribution-proof",
+  "version": "0.1.0",
+  "recordedAt": "2026-07-14T08:15:00Z",
+  "project": "examples/chess",
+  "rows": [
+    {
+      "platform": "linux",
+      "runtime": "bevy",
+      "host": "linux",
+      "artifactSha256": "e457cca5e4d2707bea6790da427c20d71a398a446f1c0f7656fd073c3b25f607",
+      "launchEvidence": "examples/chess/artifacts/distribution/linux/bevy/bevy-appimage-current-input.png",
+      "signingStatus": "not-applicable",
+      "formats": {
+        "tar": {
+          "bytes": 173328843,
+          "packageReport": "examples/chess/artifacts/distribution/linux/bevy/tar-current/package-report.json",
+          "path": "examples/chess/artifacts/distribution/linux/bevy/tar-current/chess-bevy-linux-x64.tar.gz",
+          "sha256": "e9a5ec0891d5b82ce214f9ebc5fe5573a9a76e43879bf114351af7876df47f42"
+        },
+        "appimage": {
+          "bytes": 160401912,
+          "packageReport": "examples/chess/artifacts/distribution/linux/bevy/appimage-current/package-report.json",
+          "path": "examples/chess/artifacts/distribution/linux/bevy/appimage-current/chess-bevy-linux-x64.AppImage",
+          "sha256": "e457cca5e4d2707bea6790da427c20d71a398a446f1c0f7656fd073c3b25f607"
+        }
+      },
+      "proof": {
+        "tarLaunch": "passed",
+        "appimageLaunch": "passed",
+        "firstFrame": "passed",
+        "input": "passed",
+        "inputAction": "pressed W to select White",
+        "localAssets": "passed",
+        "tarScreenshot": "examples/chess/artifacts/distribution/linux/bevy/bevy-tar-current-input.png",
+        "requirements": {
+          "native-host-install": "passed",
+          "launch": "passed",
+          "first-frame": "passed",
+          "input": "passed",
+          "local-assets": "passed"
+        }
+      }
+    },
+    {
+      "platform": "linux",
+      "runtime": "webview",
+      "host": "linux",
+      "artifactSha256": "a59a4b3b2e6327631cf8786266581d5320273360bd61ed2f59edc2deb9a0d9f1",
+      "launchEvidence": "examples/chess/artifacts/distribution/linux/webview/tauri-appimage-auto-input.png",
+      "signingStatus": "not-applicable",
+      "formats": {
+        "tar": {
+          "bytes": 13518228,
+          "packageReport": "examples/chess/artifacts/distribution/linux/webview/tar-current/package-report.json",
+          "path": "examples/chess/artifacts/distribution/linux/webview/tar-current/ThreeNative-Chess_1.0.0_linux-x86_64.tar.gz",
+          "sha256": "550746e98667d0dfe062680aeaef72e6b07d5c4dbdbda4eba5d2b668396a7a02",
+          "repeatSha256": "550746e98667d0dfe062680aeaef72e6b07d5c4dbdbda4eba5d2b668396a7a02"
+        },
+        "appimage": {
+          "bytes": 117529080,
+          "packageReport": "examples/chess/artifacts/distribution/linux/webview/appimage-auto/package-report.json",
+          "path": "examples/chess/artifacts/distribution/linux/webview/appimage-auto/ThreeNative-Chess_1.0.0_amd64.AppImage",
+          "sha256": "a59a4b3b2e6327631cf8786266581d5320273360bd61ed2f59edc2deb9a0d9f1"
+        }
+      },
+      "proof": {
+        "tarLaunch": "passed",
+        "appimageLaunch": "passed",
+        "embeddedWebview": "passed",
+        "firstFrame": "passed",
+        "input": "passed",
+        "inputAction": "clicked Play White",
+        "localAssets": "passed",
+        "linuxDeployFallback": "passed",
+        "launchScreenshot": "examples/chess/artifacts/distribution/linux/webview/tauri-appimage-auto-launch.png",
+        "requirements": {
+          "native-host-install": "passed",
+          "embedded-webview": "passed",
+          "launch": "passed",
+          "first-frame": "passed",
+          "input": "passed",
+          "local-assets": "passed"
+        }
+      }
+    }
+  ],
+  "boundaries": [
+    "Windows and macOS remain planned until their eligible native hosts produce artifacts and launch proof",
+    "Linux rows are implemented, not promoted",
+    "Linux artifacts are explicitly unsigned because the registry marks them non-signable"
+  ]
+}

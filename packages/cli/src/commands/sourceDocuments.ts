@@ -33,6 +33,7 @@ import {
   createSystem,
   createSchemaDocument,
   createUiDocument,
+  dispatchAuthoringOperation,
   recordGeneratorProvenance,
   removeUiComponentInstance,
   setMaterial,
@@ -89,6 +90,68 @@ import {
 } from "./sourceCommandUtils.js";
 
 export { generatorCommand };
+
+export async function distributionCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+  const normalizedArgv = normalizeArgv(argv);
+  const [subcommand] = normalizedArgv;
+  const json = normalizedArgv.includes("--json");
+  const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "set-app") {
+    const appId = readFlag(normalizedArgv, "--app-id");
+    const displayName = readFlag(normalizedArgv, "--display-name");
+    const buildNumber = parseOptionalNumber(normalizedArgv, "--build-number");
+    if (buildNumber.diagnostic !== undefined) return renderUsage(json, buildNumber.diagnostic, distributionSetAppUsage());
+    if (appId === undefined || displayName === undefined) {
+      return renderUsage(json, "TN_DISTRIBUTION_SET_APP_ARGS_MISSING", distributionSetAppUsage());
+    }
+    return renderAuthoringResult("distribution", await dispatchAuthoringOperation({
+      args: {
+        appId,
+        displayName,
+        ...(buildNumber.value === undefined ? {} : { buildNumber: buildNumber.value }),
+        ...(readFlag(normalizedArgv, "--icons") === undefined ? {} : { icons: readFlag(normalizedArgv, "--icons") }),
+        ...(readFlag(normalizedArgv, "--privacy-policy-url") === undefined ? {} : { privacyPolicyUrl: readFlag(normalizedArgv, "--privacy-policy-url") }),
+        ...(readFlag(normalizedArgv, "--splash") === undefined ? {} : { splash: readFlag(normalizedArgv, "--splash") }),
+        ...(readFlag(normalizedArgv, "--version") === undefined ? {} : { version: readFlag(normalizedArgv, "--version") }),
+      },
+      name: "distribution.set_app",
+      projectPath,
+    }), json, `Distribution app '${appId}' updated.`);
+  }
+
+  if (subcommand === "set-target") {
+    const platform = readFlag(normalizedArgv, "--platform");
+    const runtime = readFlag(normalizedArgv, "--runtime");
+    const formats = readCsvFlag(normalizedArgv, "--formats");
+    if (platform === undefined || runtime === undefined || formats === undefined || formats.length === 0) {
+      return renderUsage(json, "TN_DISTRIBUTION_SET_TARGET_ARGS_MISSING", distributionSetTargetUsage());
+    }
+    return renderAuthoringResult("distribution", await dispatchAuthoringOperation({
+      args: {
+        formats,
+        platform,
+        runtime,
+        ...(readFlag(normalizedArgv, "--architecture") === undefined ? {} : { architecture: readFlag(normalizedArgv, "--architecture") }),
+        ...(readCsvFlag(normalizedArgv, "--capabilities") === undefined ? {} : { capabilities: readCsvFlag(normalizedArgv, "--capabilities") }),
+        ...(readFlag(normalizedArgv, "--channel") === undefined ? {} : { channel: readFlag(normalizedArgv, "--channel") }),
+        ...(readFlag(normalizedArgv, "--minimum-os") === undefined ? {} : { minimumOs: readFlag(normalizedArgv, "--minimum-os") }),
+      },
+      name: "distribution.set_target",
+      projectPath,
+    }), json, `Distribution target '${platform}/${runtime}' updated.`);
+  }
+
+  return renderUsage(json, "TN_DISTRIBUTION_COMMAND_UNKNOWN", `${distributionSetAppUsage()}\n${distributionSetTargetUsage()}`);
+}
+
+function distributionSetAppUsage(): string {
+  return "Usage: tn distribution set-app --app-id <reverse-dns-id> --display-name <name> [--version <semver>] [--build-number <n>] [--icons <path>] [--splash <path>] [--privacy-policy-url <url>] [--project <path>] [--json]";
+}
+
+function distributionSetTargetUsage(): string {
+  return "Usage: tn distribution set-target --platform <platform> --runtime <runtime> --formats <format,...> [--architecture <architecture>] [--capabilities <capability,...>] [--channel <channel>] [--minimum-os <version>] [--project <path>] [--json]";
+}
 
 export async function uiCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);

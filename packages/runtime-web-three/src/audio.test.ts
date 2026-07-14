@@ -189,6 +189,68 @@ test("audio element sink should diagnose missing audio assets", () => {
   assert.equal(sink.diagnostics[0]?.severity, "error");
 });
 
+test("audio element sink should render script services and resume loops after app visibility returns", () => {
+  const elements: FakeAudioElement[] = [];
+  const audio = {
+    schema: "threenative.audio" as const,
+    version: "0.1.0" as const,
+    music: [{ id: "music.arena", asset: "arena.music", autoplay: false, loop: true, volume: 0.4 }],
+    oneShots: [{ id: "sound.hit", asset: "hit.sound", event: "DamageEvent", volume: 0.75 }],
+  };
+  const sink = createWebAudioElementSink(
+    "/game.bundle",
+    {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        { id: "arena.music", kind: "audio", format: "ogg", path: "assets/arena.ogg" },
+        { id: "hit.sound", kind: "audio", format: "wav", path: "assets/hit.wav" },
+      ],
+    },
+    () => {
+      const element = new FakeAudioElement();
+      elements.push(element);
+      return element;
+    },
+  );
+
+  sink.handleServices([{
+    payload: {
+      request: { options: { loop: true, volume: 0.2 }, soundId: "music.arena" },
+      result: { accepted: true, kind: "loop", loop: true, playbackId: "music.arena#1", soundId: "music.arena", status: "playing", volume: 0.2 },
+    },
+    service: "audio.play",
+  }], audio);
+  sink.handleServices([{
+    payload: {
+      request: { options: {}, soundId: "sound.hit" },
+      result: { accepted: true, kind: "oneShot", loop: false, playbackId: "sound.hit#2", soundId: "sound.hit", status: "playing", volume: 0.75 },
+    },
+    service: "audio.play",
+  }], audio);
+
+  assert.deepEqual(elements.map((element) => ({ loop: element.loop, plays: element.plays, src: element.src, volume: element.volume })), [
+    { loop: true, plays: 1, src: "/game.bundle/assets/arena.ogg", volume: 0.2 },
+    { loop: false, plays: 1, src: "/game.bundle/assets/hit.wav", volume: 0.75 },
+  ]);
+
+  sink.pauseLoops();
+  assert.equal(elements[0]?.pauses, 1);
+  assert.equal(elements[1]?.pauses, 0);
+  sink.resumeLoops();
+  assert.equal(elements[0]?.plays, 2);
+
+  sink.handleServices([{
+    payload: {
+      request: { playbackId: "music.arena#1" },
+      result: { accepted: true, kind: "loop", loop: true, playbackId: "music.arena#1", soundId: "music.arena", status: "stopped", volume: 0.2 },
+    },
+    service: "audio.stop",
+  }], audio);
+  assert.equal(elements[0]?.pauses, 2);
+  assert.equal(elements[0]?.currentTime, 0);
+});
+
 test("should play and stop declared logical audio", () => {
   const audio = new ScriptAudioRuntimeController({
     schema: "threenative.audio",

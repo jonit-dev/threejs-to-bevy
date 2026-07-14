@@ -333,6 +333,7 @@ export {
   inspectScene,
   loadProjectForOperation,
   recordGeneratorProvenance,
+  recordBlenderGenerator,
   removeComponent,
   setCamera,
   setCameraComponent,

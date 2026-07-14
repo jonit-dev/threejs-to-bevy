@@ -76,15 +76,17 @@ test("project loader discovers supported source documents without treating bundl
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-"));
   try {
     await mkdir(join(root, "content", "scenes"), { recursive: true });
+    await mkdir(join(root, "content", "persistence"), { recursive: true });
     await mkdir(join(root, "dist", "game.bundle"), { recursive: true });
     await writeFile(join(root, "content", "scenes", "arena.scene.json"), '{"schema":"threenative.scene","id":"arena"}\n');
+    await writeFile(join(root, "content", "persistence", "game.persistence.json"), '{"schema":"threenative.local-data","version":"0.1.0","components":[],"resources":[],"saveSlots":[],"settings":[]}\n');
     await writeFile(join(root, "dist", "game.bundle", "world.ir.json"), "{}\n");
 
     const project = await loadAuthoringProject({ projectPath: root });
 
     assert.deepEqual(
       project.documents.map((document) => [document.projectRelativePath, document.kind]),
-      [["content/scenes/arena.scene.json", "scene"]],
+      [["content/persistence/game.persistence.json", "persistence"], ["content/scenes/arena.scene.json", "scene"]],
     );
     assert.equal(project.diagnostics.length, 0);
     assert.equal(isGeneratedArtifactPath("dist/game.bundle/world.ir.json"), true);

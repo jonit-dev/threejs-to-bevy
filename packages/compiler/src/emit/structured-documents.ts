@@ -6,6 +6,7 @@ import {
   type IGameFlowIr,
   type IInteractionsIr,
   type IIrSchemaFile,
+  type ILocalDataIr,
   type IMaterialIr,
   type IPrefabsIr,
   type IRuntimeConfigIr,
@@ -18,6 +19,18 @@ import type { IAssetModuleDeclaration, IAssetReference } from "@threenative/sdk"
 import type { IInternalAsset } from "./asset-copy.js";
 
 type StructuredMaterialColor = string | readonly [number, number, number] | readonly [number, number, number, number];
+
+export function readStructuredPersistence(documents: readonly IAuthoringDocument[] | undefined): ILocalDataIr | undefined {
+  const sources = (documents ?? []).filter((document) => document.kind === "persistence" && isRecord(document.data));
+  if (sources.length > 1) throw new Error("TN_COMPILER_PERSISTENCE_DUPLICATE: declare exactly one structured persistence document.");
+  const data = sources[0]?.data;
+  if (!isRecord(data)) return undefined;
+  return structuredClone(data) as unknown as ILocalDataIr;
+}
+
+export function readStructuredDistribution(documents: readonly IAuthoringDocument[] | undefined): unknown | undefined {
+  return documents?.find((document) => isRecord(document.data) && document.data.schema === "threenative.distribution")?.data;
+}
 
 export function readStructuredInteractions(documents: readonly IAuthoringDocument[] | undefined): IInteractionsIr | undefined {
   const sources = (documents ?? []).filter((document) => document.kind === "interaction" && isRecord(document.data));

@@ -1,4 +1,18 @@
 import { authoringDiagnostic } from "./diagnostics.js";
+import {
+  DISTRIBUTION_ARCHITECTURES,
+  DISTRIBUTION_CAPABILITIES,
+  DISTRIBUTION_CHANNELS,
+  DISTRIBUTION_FORMATS,
+  DISTRIBUTION_PLATFORMS,
+  DISTRIBUTION_RUNTIMES,
+  type DistributionArchitecture,
+  type DistributionCapability,
+  type DistributionChannel,
+  type DistributionFormat,
+  type DistributionPlatform,
+  type DistributionRuntime,
+} from "@threenative/ir";
 import { applyActorArchetype, listActorArchetypes, updateActorArchetype } from "./archetypes.js";
 import {
   addEntity,
@@ -46,7 +60,10 @@ import {
   createSequenceDocument,
   createSystem,
   createUiDocument,
+  setDistributionApp,
+  setDistributionTarget,
   recordGeneratorProvenance,
+  recordBlenderGenerator,
   removeComponent,
   removeEntity,
   removeResource,
@@ -112,7 +129,7 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
 };
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
+export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 
 export interface IAuthoringOperationArgumentDescriptor {
@@ -173,6 +190,42 @@ type OperationRegistryEntry<TName extends string = AuthoringOperationName> = IAu
 };
 
 const operationEntries = [
+  operation(descriptor("distribution.set_app", "Create or update durable distribution app identity and presentation metadata.", "distribution", "source-document", [
+    stringArg("appId"),
+    stringArg("displayName"),
+    stringArg("version", false),
+    numberArg("buildNumber", false),
+    stringArg("icons", false),
+    stringArg("splash", false),
+    stringArg("privacyPolicyUrl", false),
+  ]), async ({ args, projectPath }) => setDistributionApp({
+    appId: requiredString(args, "appId"),
+    buildNumber: optionalNumber(args, "buildNumber"),
+    displayName: requiredString(args, "displayName"),
+    icons: optionalString(args, "icons"),
+    privacyPolicyUrl: optionalString(args, "privacyPolicyUrl"),
+    projectPath,
+    splash: optionalString(args, "splash"),
+    version: optionalString(args, "version"),
+  })),
+  operation(descriptor("distribution.set_target", "Add or update one registry-backed distribution target without replacing siblings.", "distribution", "source-document", [
+    stringArg("platform", true, [...DISTRIBUTION_PLATFORMS]),
+    stringArg("runtime", true, [...DISTRIBUTION_RUNTIMES]),
+    stringArrayArg("formats", true, [...DISTRIBUTION_FORMATS]),
+    stringArg("architecture", false, [...DISTRIBUTION_ARCHITECTURES]),
+    stringArrayArg("capabilities", false, [...DISTRIBUTION_CAPABILITIES]),
+    stringArg("channel", false, [...DISTRIBUTION_CHANNELS]),
+    stringArg("minimumOs", false),
+  ]), async ({ args, projectPath }) => setDistributionTarget({
+    architecture: optionalString(args, "architecture") as DistributionArchitecture | undefined,
+    capabilities: optionalStringArray(args, "capabilities") as DistributionCapability[] | undefined,
+    channel: optionalString(args, "channel") as DistributionChannel | undefined,
+    formats: requiredStringArray(args, "formats") as DistributionFormat[],
+    minimumOs: optionalString(args, "minimumOs"),
+    platform: requiredString(args, "platform") as DistributionPlatform,
+    projectPath,
+    runtime: requiredString(args, "runtime") as DistributionRuntime,
+  })),
   operation(descriptor("archetype.apply", "Apply an actor archetype to structured source.", "archetype", "source-document", [
     stringArg("archetype"),
     stringArg("actorId"),
@@ -287,6 +340,25 @@ const operationEntries = [
     stringArg("outputHash", false),
   ]), async ({ args, projectPath }) =>
     recordGeneratorProvenance({ exportName: requiredString(args, "exportName"), generatorId: requiredString(args, "generatorId"), inputHash: optionalString(args, "inputHash"), modulePath: requiredString(args, "modulePath"), outputHash: optionalString(args, "outputHash"), outputs: requiredStringArray(args, "outputs"), overwritePolicy: optionalString(args, "overwritePolicy"), projectPath })),
+  operation(descriptor("generator.record_blender", "Record a bounded Blender recipe and durable provider provenance without running Blender.", "generator", "source-document", [
+    stringArg("generatorId"),
+    objectArg("recipe", false),
+    stringArg("recipePath", false),
+    stringArg("output"),
+    stringArg("overwritePolicy", false, ["manual", "replace", "skip"]),
+    stringArg("providerVersion", false),
+    objectArg("requestedBudgets", false),
+  ]), async ({ args, projectPath }) =>
+    recordBlenderGenerator({
+      generatorId: requiredString(args, "generatorId"),
+      output: requiredString(args, "output"),
+      overwritePolicy: optionalString(args, "overwritePolicy"),
+      projectPath,
+      providerVersion: optionalString(args, "providerVersion") ?? "4.5.11",
+      recipe: optionalObject(args, "recipe"),
+      recipePath: optionalString(args, "recipePath"),
+      requestedBudgets: optionalObject(args, "requestedBudgets"),
+    })),
   operation(descriptor("scene.create", "Create a structured scene source document.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("file", false),
@@ -1341,7 +1413,10 @@ function readAdapterArgument(args: Record<string, unknown>, path: readonly strin
 
 function renderAdapterArgumentValue(operationName: string, argument: IAuthoringOperationArgumentDescriptor, value: unknown): string {
   if (argument.constraints?.enumValues !== undefined) {
-    if (typeof value !== "string" || !argument.constraints.enumValues.includes(value)) {
+    const valid = argument.type === "string-array"
+      ? isStringArray(value) && value.every((entry) => argument.constraints!.enumValues!.includes(entry))
+      : typeof value === "string" && argument.constraints.enumValues.includes(value);
+    if (!valid) {
       throw new Error(`Authoring operation '${operationName}' argument '${argument.name}' must be one of: ${argument.constraints.enumValues.join(", ")}.`);
     }
   }
@@ -1408,8 +1483,11 @@ function validateRegistryArguments(operation: IAuthoringOperationDescriptor, arg
     if (argument.type === "string" && (typeof value !== "string" || value.trim() === "")) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a non-empty string")];
     }
-    if (argument.constraints?.enumValues !== undefined && (typeof value !== "string" || !argument.constraints.enumValues.includes(value))) {
-      return [invalidArgumentDiagnostic(operation.name, argument.name, `one of: ${argument.constraints.enumValues.join(", ")}`)];
+    if (argument.constraints?.enumValues !== undefined) {
+      const valid = argument.type === "string-array"
+        ? isStringArray(value) && value.every((entry) => argument.constraints!.enumValues!.includes(entry))
+        : typeof value === "string" && argument.constraints.enumValues.includes(value);
+      if (!valid) return [invalidArgumentDiagnostic(operation.name, argument.name, `one or more of: ${argument.constraints.enumValues.join(", ")}`)];
     }
     if (argument.type === "number" && (typeof value !== "number" || !Number.isFinite(value))) {
       return [invalidArgumentDiagnostic(operation.name, argument.name, "a finite number")];
@@ -1544,8 +1622,8 @@ function stringArg(name: string, required = true, enumValues?: string[]): IAutho
   return { ...(enumValues === undefined ? {} : { constraints: { enumValues } }), name, required, type: "string" };
 }
 
-function stringArrayArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {
-  return { name, required, type: "string-array" };
+function stringArrayArg(name: string, required = true, enumValues?: string[]): IAuthoringOperationArgumentDescriptor {
+  return { ...(enumValues === undefined ? {} : { constraints: { enumValues } }), name, required, type: "string-array" };
 }
 
 function vectorArg(name: string, required = true): IAuthoringOperationArgumentDescriptor {

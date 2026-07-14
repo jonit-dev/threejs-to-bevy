@@ -1,4 +1,4 @@
-import type { IUiIr, IUiNodeIr, IWorldIr } from "@threenative/ir";
+import type { IUiIr, IUiNodeIr, IWorldIr, UiTargetProfileClass } from "@threenative/ir";
 
 import { resolveUiBinding } from "./bindings.js";
 import { dispatchUiAction, type IUiActionEvent } from "./inputBridge.js";
@@ -42,12 +42,13 @@ export interface IRenderedUi {
   root: IRenderedUiNode;
   safeArea?: IUiIr["safeArea"];
   setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
+  setTarget(target: UiTargetProfileClass): void;
   setValue(nodeId: string, value: boolean | number | string): IUiValueResult;
   trigger(nodeId: string, value?: number | string): void;
   update(): void;
 }
 
-export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
+export function renderUi(ui: IUiIr, world: IWorldIr, options: { target?: UiTargetProfileClass } = {}): IRenderedUi {
   const actions: IUiActionEvent[] = [];
   let recentActions: IUiActionEvent[] = [];
   const disabled = new Map<string, boolean>();
@@ -59,7 +60,8 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
     return node !== undefined && isFocusable(node);
   }));
   let currentFocus = [...focusable].sort()[0] ?? null;
-  let root = renderNode(ui.root, world);
+  let target = options.target ?? "desktop";
+  let root = renderNode(ui.root, world, target);
   root = applyState(root, disabled, values);
   return {
     actions,
@@ -130,6 +132,11 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
       root = applyState(root, disabled, values);
       return { accepted: true, disabled: nextDisabled, node: nodeId, status: "updated" };
     },
+    setTarget(nextTarget) {
+      if (target === nextTarget) return;
+      target = nextTarget;
+      root = applyState(renderNode(ui.root, world, target), disabled, values);
+    },
     setValue(nodeId, value) {
       if (!nodes.has(nodeId)) {
         return { accepted: false, node: nodeId, status: "missing", value };
@@ -145,7 +152,7 @@ export function renderUi(ui: IUiIr, world: IWorldIr): IRenderedUi {
       }
     },
     update() {
-      root = renderNode(ui.root, world);
+      root = renderNode(ui.root, world, target);
       root = applyState(root, disabled, values);
     },
   };
@@ -162,7 +169,7 @@ function applyState(node: IRenderedUiNode, disabled: ReadonlyMap<string, boolean
   };
 }
 
-function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
+function renderNode(node: IUiNodeIr, world: IWorldIr, target: UiTargetProfileClass): IRenderedUiNode {
   const bindingValue = resolveUiBinding(node.binding, world);
   const dynamicMinimap = node.kind === "minimap" ? readDynamicMinimap(bindingValue) : undefined;
   const minimap = node.minimap === undefined && dynamicMinimap === undefined
@@ -172,14 +179,14 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.action === undefined ? {} : { action: node.action }),
     ...(node.accessibilityLabel === undefined ? {} : { accessibilityLabel: node.accessibilityLabel }),
     ...(node.anchorId === undefined ? {} : { anchorId: node.anchorId }),
-    children: node.children?.map((child) => renderNode(child, world)) ?? [],
+    children: node.children?.map((child) => renderNode(child, world, target)) ?? [],
     ...(node.disabled === undefined ? {} : { disabled: node.disabled }),
     focusable: node.focusable ?? (node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar"),
     id: node.id,
     ...(node.image === undefined ? {} : { image: node.image }),
     kind: node.kind,
     ...(node.label === undefined ? {} : { label: node.label }),
-    ...(node.layout === undefined ? {} : { layout: node.layout }),
+    ...(responsiveLayout(node, target) === undefined ? {} : { layout: responsiveLayout(node, target) }),
     ...(node.max === undefined ? {} : { max: node.max }),
     ...(node.min === undefined ? {} : { min: node.min }),
     ...(minimap === undefined ? {} : { minimap }),
@@ -188,12 +195,29 @@ function renderNode(node: IUiNodeIr, world: IWorldIr): IRenderedUiNode {
     ...(node.role === undefined ? {} : { role: node.role }),
     ...(node.spans === undefined ? {} : { spans: node.spans }),
     ...(node.step === undefined ? {} : { step: node.step }),
-    ...(node.style === undefined ? {} : { style: node.style }),
+    ...(responsiveStyle(node, target) === undefined ? {} : { style: responsiveStyle(node, target) }),
     ...(node.src === undefined ? {} : { src: node.src }),
     text: typeof bindingValue === "string" || typeof bindingValue === "number" ? String(bindingValue) : node.text,
     value: typeof bindingValue === "number" ? bindingValue : node.value,
     ...(node.valueText === undefined ? {} : { valueText: node.valueText }),
   };
+}
+
+function responsiveLayout(node: IUiNodeIr, target: UiTargetProfileClass): IUiNodeIr["layout"] {
+  const override = node.responsive?.find((rule) => rule.target === target)?.layout;
+  if (override === undefined) return node.layout;
+  return {
+    ...(node.layout ?? {}),
+    ...override,
+    ...(node.layout?.grid === undefined && override.grid === undefined ? {} : { grid: { ...(node.layout?.grid ?? {}), ...(override.grid ?? {}) } }),
+    ...(node.layout?.inset === undefined && override.inset === undefined ? {} : { inset: { ...(node.layout?.inset ?? {}), ...(override.inset ?? {}) } }),
+  };
+}
+
+function responsiveStyle(node: IUiNodeIr, target: UiTargetProfileClass): IUiNodeIr["style"] {
+  const override = node.responsive?.find((rule) => rule.target === target)?.style;
+  if (override === undefined) return node.style;
+  return { ...(node.style ?? {}), ...override };
 }
 
 function readDynamicMinimap(value: unknown): IUiNodeIr["minimap"] | undefined {

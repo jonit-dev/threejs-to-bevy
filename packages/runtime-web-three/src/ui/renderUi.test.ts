@@ -116,6 +116,24 @@ test("ui should update minimap markers from resource binding", () => {
   assert.deepEqual(rendered.root.children[2]?.minimap?.markers, [{ x: 5, z: 6, color: "#22d3ee" }]);
 });
 
+test("ui should apply responsive layout for the active target class", () => {
+  const ui = makeUi();
+  ui.root.children![0] = {
+    ...ui.root.children![0]!,
+    layout: { inset: { left: 24, top: 34 }, width: 252 },
+    responsive: [
+      { target: "desktop", layout: { inset: { left: 24, top: 34 }, width: 252 } },
+      { target: "mobile", layout: { inset: { left: 8, top: 8 }, width: 156 }, style: { opacity: 0.5 } },
+    ],
+  };
+  const rendered = renderUi(ui, makeWorld(), { target: "desktop" });
+
+  assert.deepEqual(rendered.root.children[0]?.layout, { inset: { left: 24, top: 34 }, width: 252 });
+  rendered.setTarget("mobile");
+  assert.deepEqual(rendered.root.children[0]?.layout, { inset: { left: 8, top: 8 }, width: 156 });
+  assert.equal(rendered.root.children[0]?.style?.opacity, 0.5);
+});
+
 function makeUi(): IUiIr {
   return {
     schema: "threenative.ui",

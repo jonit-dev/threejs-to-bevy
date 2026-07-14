@@ -7,9 +7,130 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
-import { packageCommand, type ICefPayloadManifest } from "./package.js";
+import { DISTRIBUTION_TARGET_REGISTRY } from "@threenative/ir";
+
+import { packageCommand, resolvePackagePlanStatus, type ICefPayloadManifest } from "./package.js";
 
 const execFileAsync = promisify(execFile);
+
+test("package should plan every promoted target from the distribution registry", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-plan-"));
+  try {
+    await writeDistributionSource(root);
+
+    const result = await packageCommand(["plan", "--project", ".", "--matrix", "release", "--json"], root, {
+      planHost: "linux",
+      toolAvailability: () => true,
+    });
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.schema, "threenative.package-plan");
+    assert.deepEqual(
+      payload.rows.map((row: { platform: string; runtime: string }) => `${row.platform}/${row.runtime}`),
+      DISTRIBUTION_TARGET_REGISTRY.map(({ platform, runtime }) => `${platform}/${runtime}`),
+    );
+    assert.equal(payload.rows.every((row: { status: string }) => ["proof-required", "unsupported", "wrong-host"].includes(row.status)), true);
+    assert.equal(payload.rows.find((row: { platform: string }) => row.platform === "web")?.status, "proof-required");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package plan status should cover every registry lifecycle and prerequisite state", () => {
+  const base = { credentialPresent: true, declared: true, eligibleHost: true, missingTools: [] as string[], promotion: "promoted" as const, signable: false };
+  assert.equal(resolvePackagePlanStatus(base), "ready");
+  assert.equal(resolvePackagePlanStatus({ ...base, eligibleHost: false }), "wrong-host");
+  assert.equal(resolvePackagePlanStatus({ ...base, declared: false }), "missing-metadata");
+  assert.equal(resolvePackagePlanStatus({ ...base, promotion: "planned" }), "unsupported");
+  assert.equal(resolvePackagePlanStatus({ ...base, missingTools: ["cargo"] }), "missing-tool");
+  assert.equal(resolvePackagePlanStatus({ ...base, credentialPresent: false, signable: true }), "missing-credential");
+  assert.equal(resolvePackagePlanStatus({ ...base, promotion: "implemented" }), "proof-required");
+});
+
+test("package plan should reject unknown flags", async () => {
+  const result = await packageCommand(["plan", "--project", ".", "--matrix", "release", "--nonsense", "yes", "--json"]);
+  assert.equal(result.exitCode, 1);
+  assert.equal(JSON.parse(result.stdout).code, "TN_PACKAGE_USAGE");
+});
+
+test("package build should resolve registry targets before adapter dispatch", async () => {
+  const result = await packageCommand(["build", "--target", "windows", "--runtime", "bevy", "--format", "archive", "--json"], process.cwd(), { planHost: "linux" });
+  const payload = JSON.parse(result.stdout);
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_PACKAGE_WRONG_HOST");
+  assert.match(payload.message, /windows\/bevy/);
+});
+
+test("package build should dispatch the implemented android webview adapter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-android-dispatch-"));
+  try {
+    const result = await packageCommand(["build", "--project", ".", "--target", "android", "--runtime", "webview", "--format", "apk", "--json"], root, { planHost: "linux" });
+    const payload = JSON.parse(result.stdout);
+    assert.equal(result.exitCode, 1);
+    assert.notEqual(payload.code, "TN_PACKAGE_ADAPTER_UNAVAILABLE");
+    assert.equal(payload.code, "TN_PACKAGE_ANDROID_BUILD_FAILED");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package flat desktop alias should map to the registry-native build plan", { skip: process.platform !== "linux" }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-registry-alias-"));
+  try {
+    await writeBundle(root, ["web", "desktop"]);
+    const runtimeBuilder = async ({ outputPath }: { outputPath: string }): Promise<string> => {
+      await writeFile(outputPath, "runtime", { mode: 0o755 });
+      return outputPath;
+    };
+    const legacy = await packageCommand(["--bundle", "game.bundle", "--format", "archive", "--json"], root, { runtimeBuilder });
+    const legacyPayload = JSON.parse(legacy.stdout);
+    assert.match(legacyPayload.diagnostics[0].suggestion, /package build --target linux --runtime bevy --format tar/);
+
+    const native = await packageCommand(["build", "--target", "linux", "--runtime", "bevy", "--format", "tar", "--bundle", "game.bundle", "--out", "native", "--json"], root, { runtimeBuilder });
+    const nativePayload = JSON.parse(native.stdout);
+    assert.equal(native.exitCode, 0);
+    assert.equal(nativePayload.target, "linux");
+    assert.equal(nativePayload.format, "tar");
+
+    await writeFile(join(root, "threenative.config.json"), `${JSON.stringify({
+      entry: "content/scenes/main.scene.json",
+      outDir: "game.bundle",
+      schema: "threenative.project",
+      template: "structured-source-starter",
+      version: "0.1.0",
+    })}\n`);
+    const projectNative = await packageCommand([
+      "build", "--project", ".", "--target", "linux", "--runtime", "bevy", "--format", "tar", "--out", "native-project", "--json",
+    ], root, { runtimeBuilder });
+    assert.equal(projectNative.exitCode, 0);
+    assert.equal(JSON.parse(projectNative.stdout).sourceBundlePath, join(root, "game.bundle"));
+    assert.equal(nativePayload.diagnostics, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should report ios as wrong-host outside macos", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-plan-host-"));
+  try {
+    await writeDistributionSource(root);
+
+    const result = await packageCommand(["plan", "--project", ".", "--matrix", "declared", "--json"], root, {
+      planHost: "linux",
+      toolAvailability: () => true,
+    });
+    const payload = JSON.parse(result.stdout);
+    const iosRows = payload.rows.filter((row: { platform: string }) => row.platform === "ios");
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(iosRows.length, 2);
+    assert.equal(iosRows.every((row: { status: string }) => row.status === "wrong-host"), true);
+    assert.deepEqual(iosRows[0].eligibleHosts, ["macos"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
 test("package should copy a desktop bundle into stable artifact layout", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-package-"));
@@ -28,6 +149,7 @@ test("package should copy a desktop bundle into stable artifact layout", async (
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_PACKAGE_OK");
+    assert.equal(payload.diagnostics[0].code, "TN_PACKAGE_LEGACY_FLAGS_DEPRECATED");
     assert.deepEqual(runtimeFeatures, []);
     assert.equal(payload.target, "desktop");
     assert.equal(payload.artifacts.packagedBundlePath.endsWith("artifacts/package/desktop/game.bundle"), true);
@@ -36,7 +158,7 @@ test("package should copy a desktop bundle into stable artifact layout", async (
     assert.equal(payload.runtimeArgsPath.endsWith("artifacts/package/desktop/runtime.args.json"), true);
     assert.deepEqual(payload.files, ["assets.manifest.json", "manifest.json", "materials.ir.json", "target.profile.json", "world.ir.json"]);
 
-    const report = JSON.parse(await readFile(join(root, "artifacts/package/desktop/package.report.json"), "utf8"));
+    const report = JSON.parse(await readFile(join(root, "artifacts/package/package-report.json"), "utf8"));
     assert.equal(report.schema, "threenative.package-report");
     assert.equal(report.artifacts.runtimeExecutablePath.endsWith("artifacts/package/desktop/threenative_runtime"), true);
     const manifest = JSON.parse(await readFile(join(root, "artifacts/package/desktop/package.manifest.json"), "utf8"));
@@ -365,6 +487,27 @@ async function writeBundle(root: string, targets: string[], desktopOverlay = fal
     await mkdir(join(bundle, "overlay"));
     await writeFile(join(bundle, "overlay", "index.html"), "<!doctype html><title>HUD</title>");
   }
+}
+
+async function writeDistributionSource(root: string): Promise<void> {
+  await mkdir(join(root, "content"), { recursive: true });
+  await writeFile(join(root, "content/distribution.json"), JSON.stringify({
+    app: {
+      buildNumber: 1,
+      displayName: "Chess",
+      icons: "assets/chess.png",
+      id: "com.threenative.chess",
+      version: "1.0.0",
+    },
+    schema: "threenative.distribution",
+    signing: {
+      android: { credentialRef: "ci:android" },
+      apple: { credentialRef: "keychain:apple" },
+      windows: { credentialRef: "ci:windows" },
+    },
+    targets: DISTRIBUTION_TARGET_REGISTRY.map(({ formats, platform, runtime }) => ({ formats, platform, runtime })),
+    version: "0.1.0",
+  }));
 }
 
 function testCefManifest(path: string, bytes: Buffer): ICefPayloadManifest {

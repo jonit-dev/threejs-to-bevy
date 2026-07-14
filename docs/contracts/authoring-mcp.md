@@ -56,6 +56,36 @@ Representative MCP tools may expose only a subset of the CLI surface. Missing
 tool coverage is a feature gap, not permission to implement parallel mutation
 rules in MCP.
 
+## Asset Provider Adapters
+
+Asset-provider and model-provider MCP tools are declared by the same CLI
+registries that own their names, schemas, descriptions, and argv. The adapter
+must not maintain a second dispatch list. Provider status is credential-safe
+and offline by default; a live probe occurs only when the caller explicitly
+sets `live: true`.
+
+Provider results preserve CLI JSON semantics. A bounded preview may additionally
+be translated to MCP image content, but its temporary provider URL and bytes do
+not become durable source. Imported models, textures, and environments return
+project-relative artifact paths and provenance. User-supplied reference images
+must be project-local PNG, JPEG, or WebP files; traversal, symlink escape, and
+remote URL inputs fail before provider execution.
+
+Sketchfab import requires an explicit canonical license ID accepted by the
+caller. Hyper3D generation requires all three explicit booleans: cost
+acceptance, provider-terms acceptance, and confirmation of input rights. MCP
+must not infer those acknowledgements, store them as credentials, recursively
+poll a job, or retry a paid submission. Durable model-job records omit API keys
+and signed download URLs. Hunyuan generation, polling, and import remain absent;
+its status tool returns the registry-owned unsupported reason without network
+access.
+
+`asset.creation_strategy` exposes descriptor-owned guidance: inspect and reuse
+existing/catalog assets first, review provider license and previews before
+import, use paid generation only for a unique item, prefer bounded Blender
+recipes for simple custom props, then inspect, visually test, and build. It
+contains no raw Python or arbitrary Blender-code advice.
+
 `cookbook_lookup` is the read-only bridge for cookbook pointers returned in
 diagnostic fixes. Pass exactly one of `id` (equivalent to
 `tn cookbook show <id> --json`) or `query` (equivalent to

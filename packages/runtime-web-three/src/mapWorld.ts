@@ -669,8 +669,10 @@ function attachLoadedModel(object: THREE.Object3D, entityId: string, asset: Extr
     child.userData.entityId = entityId;
   });
   model.name = model.name === "" ? `model:${asset.id}` : model.name;
-  const overrideMaterial = object instanceof THREE.Mesh ? object.material : undefined;
   const overrideMaterialId = object.userData.threeNativeMaterialId as string | undefined;
+  const overrideMaterial = object instanceof THREE.Mesh && !preservesLoadedModelSourceMaterials(overrideMaterialId)
+    ? object.material
+    : undefined;
   prepareLoadedModel(model, shadowSettings, overrideMaterial, overrideMaterialId);
   clearPlaceholderGeometry(object);
   object.add(model);
@@ -694,6 +696,12 @@ function attachLoadedModel(object: THREE.Object3D, entityId: string, asset: Extr
   object.userData.threeNativeAnimationAsset = asset.id;
   object.userData.threeNativeAnimationClip = clip.name;
   object.userData.threeNativeAnimationClips = gltf.animations ?? [];
+}
+
+const modelTestSourceMaterialIds = new Set(["mat.model", "mat.model.under-test.instance"]);
+
+export function preservesLoadedModelSourceMaterials(materialId: string | undefined): boolean {
+  return materialId !== undefined && modelTestSourceMaterialIds.has(materialId);
 }
 
 export function applyAnimationServiceEffects(mapped: IThreeWorld, entries: readonly ISystemEffectLogEntry[]): void {

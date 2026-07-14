@@ -4,8 +4,9 @@ import { realpathSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { addCommand } from "./commands/add.js";
+import { ASSET_POLY_HAVEN_MCP_DESCRIPTORS, ASSET_PROVIDER_MCP_DESCRIPTORS, ASSET_PROVIDER_STATUS_MCP_DESCRIPTORS, ASSET_SKETCHFAB_MCP_DESCRIPTORS } from "./assetProviders/registry.js";
 import { actorCommand } from "./commands/actor.js";
-import { assetCommand } from "./commands/asset.js";
+import { ASSET_GENERATE_BLENDER_DESCRIPTOR, ASSET_INSPECT_MCP_DESCRIPTOR, assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
 import { buildCommand } from "./commands/build.js";
 import { bakeGiCommand } from "./commands/bakeGi.js";
@@ -20,9 +21,9 @@ import { gameCommand } from "./commands/game.js";
 import { helpCommand } from "./commands/help.js";
 import { iterateCommand } from "./commands/iterate.js";
 import { lookCommand } from "./commands/look.js";
-import { modelTestCommand } from "./commands/modelTest.js";
+import { MODEL_TEST_MCP_DESCRIPTOR, modelTestCommand } from "./commands/modelTest.js";
 import { overlayCommand } from "./commands/overlayAdd.js";
-import { packageCommand } from "./commands/package.js";
+import { packageCommand, packageCommandUsage } from "./commands/package.js";
 import { parityPlaytestCommand } from "./commands/parityPlaytest.js";
 import { performanceProofCommand } from "./commands/performanceProof.js";
 import { playtestCommand } from "./commands/playtest.js";
@@ -31,16 +32,24 @@ import { proofCommand, proveCommand } from "./commands/proof.js";
 import { recipeCommand } from "./commands/recipe.js";
 import { removeCommand } from "./commands/remove.js";
 import { sceneCommand } from "./commands/scene.js";
-import { animationCommand, audioCommand, environmentCommand, flowCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, sequenceCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
+import { animationCommand, audioCommand, distributionCommand, environmentCommand, flowCommand, generatorCommand, inputCommand, materialCommand, meshCommand, particleCommand, prefabCommand, projectCommand, resourcesCommand, runtimeCommand, schemaCommand, sequenceCommand, systemCommand, targetCommand, uiCommand } from "./commands/sourceDocuments.js";
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
 import { typesCommand } from "./commands/types.js";
+import { toolCommand } from "./commands/tool.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
+import { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, MODEL_PROVIDER_MCP_DESCRIPTORS, assetCreationStrategy, blenderMcpOutcomeCoverage, modelProviderRegistry } from "./modelProviders/registry.js";
 import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
 export type { CommandMcpToolName, ICommandMcpAdapterDefinition } from "./commands/registry.js";
+export type { IAssetCommandOptions } from "./commands/asset.js";
+export { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, ASSET_GENERATE_BLENDER_DESCRIPTOR, ASSET_INSPECT_MCP_DESCRIPTOR, ASSET_POLY_HAVEN_MCP_DESCRIPTORS, ASSET_PROVIDER_STATUS_MCP_DESCRIPTORS, ASSET_SKETCHFAB_MCP_DESCRIPTORS, MODEL_PROVIDER_MCP_DESCRIPTORS, MODEL_TEST_MCP_DESCRIPTOR, assetCommand, assetCreationStrategy, blenderMcpOutcomeCoverage, modelProviderRegistry };
+export { authoringCommand } from "./commands/authoring.js";
+export { buildCommand } from "./commands/build.js";
+export { toolCommand } from "./commands/tool.js";
 import { formatOverlayAddUsage } from "./overlays/scaffoldRegistry.js";
+export { EXTERNAL_TOOL_REGISTRY, externalToolHost, getExternalToolDefinition } from "./externalTools/registry.js";
 
 export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   add: {
@@ -54,10 +63,13 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn remove <spawner|timer|trigger-sequence|score|projectile|follow-camera> [--project <path>] [--json]",
   },
   asset: {
+    adapters: {
+      mcp: [ASSET_GENERATE_BLENDER_DESCRIPTOR.mcp, ASSET_INSPECT_MCP_DESCRIPTOR, ...ASSET_PROVIDER_MCP_DESCRIPTORS, ...MODEL_PROVIDER_MCP_DESCRIPTORS, ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR],
+    },
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
-    subcommands: ["add", "import", "inspect", "repair", "source"],
-    usage: "tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset import <source-path-or-url> --id <asset-id> [--license <id>] [--attribution <text>] [--variant name=#rrggbb] [--project <path>] [--json]\n              tn asset repair <path.glb|path.gltf> --strip-extensions [--no-backup] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--full] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <audio|buffer|model|texture> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]",
+    subcommands: ["add", "generate", "import", "inspect", "model-provider", "provider", "repair", "source", "strategy"],
+    usage: `${ASSET_GENERATE_BLENDER_DESCRIPTOR.usage}\n              ${modelProviderRegistry.flatMap((provider) => provider.features.map((feature) => feature.usage)).join("\n              ")}\n              tn asset model-provider status hunyuan [--json]\n              tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset import <source-path-or-url> --id <asset-id> [--license <id>] [--attribution <text>] [--variant name=#rrggbb] [--project <path>] [--json]\n              tn asset repair <path.glb|path.gltf> --strip-extensions [--no-backup] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--full] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <audio|buffer|model|texture> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]`,
   },
   actor: {
     description: "Apply reusable actor archetypes to structured source.",
@@ -71,6 +83,13 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     implemented: true,
     subcommands: ["add-sound", "create", "generate-sfx"],
     usage: "tn audio create <audio-doc-id> [--project <path>] [--json]\n              tn audio add-sound <audio-doc-id> <sound-id> --asset <asset-id-or-path> [--project <path>] [--json]\n              tn audio generate-sfx <asset-id> --prompt <text> [--audio-doc <id>] [--sound-id <id>] [--duration <seconds>] [--loop] [--prompt-influence <0..1>] [--model <id>] [--output-format <format>] [--out <path>] [--force] [--env-file <path>] [--project <path>] [--json]",
+  },
+  distribution: {
+    description: "Create and mutate durable distribution app and target source metadata.",
+    handler: distributionCommand,
+    implemented: true,
+    subcommands: ["set-app", "set-target"],
+    usage: "tn distribution set-app --app-id <reverse-dns-id> --display-name <name> [--version <semver>] [--build-number <n>] [--icons <path>] [--splash <path>] [--privacy-policy-url <url>] [--project <path>] [--json]\n              tn distribution set-target --platform <platform> --runtime <runtime> --formats <format,...> [--architecture <architecture>] [--capabilities <capability,...>] [--channel <channel>] [--minimum-os <version>] [--project <path>] [--json]",
   },
   animation: {
     description: "Add model animation clip and graph metadata to structured asset source.",
@@ -145,7 +164,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   generator: {
     description: "Record and run project-local generators for structured source outputs.",
     implemented: true,
-    usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]\n              tn generator run <generator-id> [--project <path>] [--json]",
+    usage: "tn generator record <generator-id> --module <path> --export <name> --outputs <path,path> [--overwrite-policy skip|replace|manual] [--input-hash <hash>] [--output-hash <hash>] [--project <path>] [--json]\n              tn generator record-blender <generator-id> --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]\n              tn generator run <generator-id> [--project <path>] [--json]",
   },
   game: {
     description: "Plan, score, QA, and release-check source-backed game production evidence.",
@@ -158,6 +177,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn world generate --biome <meadow|forest|desert|canyon|arctic> --seed <n> [--size <n>] [--flatten-radius <n>] [--project <path>] [--json]\n              tn world proof [--project <path>] [--json]",
   },
   "model-test": {
+    adapters: { mcp: MODEL_TEST_MCP_DESCRIPTOR },
     description: "Inspect a GLB/glTF model with an interactive preview, screenshot, or bounded turntable capture.",
     implemented: true,
     usage: "tn model-test <asset-path> --view [--angle <degrees>] [--out <dir>] [--json]\n              tn model-test <asset-path> --screenshot [--angle <degrees>] [--url <preview-url>] [--screenshot-out <file.png>] [--out <dir>] [--json]\n              tn model-test <asset-path> --angles <degrees,...> [--out <dir>] [--json]",
@@ -214,9 +234,10 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn editor dev --project <path> [--port <n>] [--json]\n              tn editor open --project <path> [--bundle <path>] [--json]\n              tn editor snapshot --bundle <path> [--out <path>] [--json]\n              tn editor inspect --bundle <path> [--out <path>] [--json]\n              tn editor set --bundle <path> --path <json-pointer> --value <json> [--json]\n              tn editor apply --snapshot <path> --bundle <path> [--json]",
   },
   package: {
-    description: "Create a local desktop package artifact from a bundle.",
+    description: "Plan and build registry-backed release artifacts.",
     implemented: true,
-    usage: "tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]",
+    subcommands: ["plan", "build", "verify", "inspect"],
+    usage: packageCommandUsage(),
   },
   parity: {
     description: "Run paired runtime parity proof helpers.",
@@ -276,6 +297,12 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     description: "Create and mutate structured target profile source documents.",
     implemented: true,
     usage: "tn target set <target-profile-id> --targets web,desktop [--budgets '<json-object>'] [--performance '<json-object>'] [--project <path>] [--json]",
+  },
+  tool: {
+    description: "Inspect, explicitly install, and remove optional authoring tools.",
+    implemented: true,
+    subcommands: ["status", "install", "remove"],
+    usage: "tn tool status blender [--json]\n              tn tool install blender --accept-download [--json]\n              tn tool remove blender [--json]",
   },
   types: {
     description: "Generate project-specific TypeScript context and id-union types for scripts.",
@@ -382,6 +409,10 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
 async function legacyDispatch(commandName: string, commandArgv: readonly string[], command: ICommandDefinition, normalizedArgv: readonly string[]): Promise<ICommandResult> {
   if (commandName === "create") {
     return createProject(commandArgv);
+  }
+
+  if (commandName === "tool") {
+    return toolCommand(commandArgv);
   }
 
   if (commandName === "asset") {

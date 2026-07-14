@@ -739,6 +739,7 @@ export function createSystemContext(
         load(slot) {
           const request = { slot };
           const result = persistence.load(slot, world);
+          if (result.accepted) Object.assign(world, cloneValue(result.world));
           services.push({ payload: { request, result }, service: "persistence.load" });
           return cloneValue(result) as ReturnType<IWebPersistenceService["load"]>;
         },

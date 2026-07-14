@@ -1,4 +1,4 @@
-import { access, mkdir, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, realpath } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "../documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
@@ -28,6 +28,17 @@ import {
   flowTriggerKeys,
   generatorDocumentKeys,
   generatorDocumentSchema,
+  blenderRecipeAnimationKeyframeKeys,
+  blenderRecipeAnimationKeys,
+  blenderRecipeAnimationTrackKeys,
+  blenderRecipeBudgetKeys,
+  blenderRecipeKeys,
+  blenderRecipeLimits,
+  blenderRecipeMaterialKeys,
+  blenderRecipeModifierKeys,
+  blenderRecipeOperationKeys,
+  blenderRecipePartKeys,
+  blenderRecipeSchema,
   inputAxisKeys,
   inputActionKeys,
   inputControlsSettingsKeys,
@@ -84,6 +95,14 @@ import {
   supportedColliderKinds,
   supportedComponentKinds,
   supportedGeneratorOverwritePolicies,
+  supportedGeneratorProviders,
+  supportedBlenderAnimationInterpolations,
+  supportedBlenderAnimationProperties,
+  supportedBlenderBooleanOperations,
+  supportedBlenderRecipeModifiers,
+  supportedBlenderRecipeOperations,
+  supportedBlenderRecipePrimitives,
+  supportedBlenderRecipeShading,
   supportedFlowActionKinds,
   supportedFlowTriggerKinds,
   supportedInputAxisSlots,
@@ -845,6 +864,10 @@ export async function validateAuthoringDocument(
         rootKeys: audioDocumentKeys,
         validateItem: (diagnostics, path, item) => validateGeneratedPathString(diagnostics, file, `${path}/asset`, item.asset, "audio asset must be a non-empty source path."),
       });
+    case "distribution":
+      // Distribution source is normalized and validated by its owning IR
+      // contract in the distribution authoring operations.
+      return [];
     case "input":
       return [
         ...(await validateDeclarationDocument(file, data, {
@@ -884,7 +907,7 @@ export async function validateAuthoringDocument(
     case "flow":
       return validateFlowDocument(file, data);
     case "generator":
-      return validateGeneratorDocument(file, data);
+      return validateGeneratorDocument(file, data, projectPath);
     case "material":
       return validateMaterialDocument(file, data, validateDeclarationDocument);
     case "mesh":
@@ -927,6 +950,10 @@ export async function validateAuthoringDocument(
     case "overlay":
       // Overlay documents use the versioned IR shape and are validated by the
       // compiler's overlay emitter, which owns that contract.
+      return [];
+    case "persistence":
+      // The local-data IR validator owns the persistence schema after compiler
+      // normalization, matching distribution source validation ownership.
       return [];
     case "prefab":
       return validatePrefabDocument(file, data);
@@ -987,7 +1014,7 @@ export async function validateAuthoringDocument(
   }
 }
 
-export async function validateGeneratorDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {
+export async function validateGeneratorDocument(file: string, data: unknown, projectPath?: string): Promise<IAuthoringDiagnostic[]> {
   const diagnostics: IAuthoringDiagnostic[] = [];
   if (!isRecord(data)) {
     return [typeDiagnostic(file, "", "Generator provenance source document must be a JSON object.", data)];
@@ -1005,9 +1032,29 @@ export async function validateGeneratorDocument(file: string, data: unknown): Pr
     );
   }
   validateLogicalId(diagnostics, file, "/id", data.id, "generator provenance document");
-  validateGeneratedPathString(diagnostics, file, "/module", data.module, "generator module must be a non-empty source path.");
-  validateOptionalString(diagnostics, file, "/export", data.export, "generator export must be a non-empty string.");
+  const provider = data.provider === undefined ? "typescript" : data.provider;
+  validateEnumString(diagnostics, file, "/provider", provider, supportedGeneratorProviders, "generator provider", "Use 'typescript' or 'blender'.");
+  if (provider === "typescript") {
+    validateGeneratedPathString(diagnostics, file, "/module", data.module, "generator module must be a non-empty source path.");
+    validateRequiredString(diagnostics, file, "/export", data.export, "generator export must be a non-empty string.");
+    for (const field of ["recipe", "providerVersion"] as const) {
+      if (data[field] !== undefined) {
+        diagnostics.push(generatorProviderFieldDiagnostic(file, `/${field}`, field, "typescript", ["module", "export"]));
+      }
+    }
+  } else if (provider === "blender") {
+    validateRequiredString(diagnostics, file, "/providerVersion", data.providerVersion, "Blender providerVersion must be a non-empty string.");
+    validateBlenderRecipePath(diagnostics, file, "/recipe", data.recipe);
+    for (const field of ["module", "export"] as const) {
+      if (data[field] !== undefined) {
+        diagnostics.push(generatorProviderFieldDiagnostic(file, `/${field}`, field, "blender", ["providerVersion", "recipe"]));
+      }
+    }
+  }
   validateStringList(diagnostics, file, "/outputs", data.outputs, "generator outputs must be an array of non-empty project-relative paths.");
+  if (provider === "blender" && Array.isArray(data.outputs)) {
+    data.outputs.forEach((output, index) => validateBlenderOutputPath(diagnostics, file, `/outputs/${index}`, output));
+  }
   if (data.overwritePolicy !== undefined) {
     validateEnumString(diagnostics, file, "/overwritePolicy", data.overwritePolicy, supportedGeneratorOverwritePolicies, "generator overwrite policy", "Use 'skip', 'replace', or 'manual'.");
   }
@@ -1016,7 +1063,353 @@ export async function validateGeneratorDocument(file: string, data: unknown): Pr
   if (data.lastRun !== undefined && !isRecord(data.lastRun)) {
     diagnostics.push(typeDiagnostic(file, "/lastRun", "generator lastRun must be an object when present.", data.lastRun));
   }
+  if (provider === "blender" && projectPath !== undefined && typeof data.recipe === "string" && diagnostics.every((diagnostic) => diagnostic.path !== "/recipe")) {
+    try {
+      const [projectRealPath, recipeRealPath] = await Promise.all([realpath(projectPath), realpath(resolve(projectPath, data.recipe))]);
+      const realRelativePath = normalizeRelativePath(relative(projectRealPath, recipeRealPath));
+      if (realRelativePath.startsWith("../") || realRelativePath === "..") {
+        diagnostics.push(blenderRecipeDiagnostic(data.recipe, "/recipe", "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", "Blender recipe path must not escape the project through a symbolic link.", data.recipe, ["content/generators/<generator-id>.recipe.json"]));
+        return sortAuthoringDiagnostics(diagnostics);
+      }
+      const recipe = JSON.parse(await readFile(recipeRealPath, "utf8")) as unknown;
+      diagnostics.push(...validateBlenderRecipe(data.recipe, recipe));
+      if (isRecord(recipe) && recipe.id !== data.id) diagnostics.push(blenderRecipeDiagnostic(data.recipe, "/id", "TN_AUTHORING_BLENDER_RECIPE_ID_MISMATCH", "Blender recipe id must match its generator provenance id.", recipe.id, [String(data.id)]));
+    } catch (error) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_READ_FAILED", file: data.recipe, message: `Could not read Blender recipe '${data.recipe}'.`, value: error instanceof Error ? error.message : String(error), fix: { instruction: "Restore the durable recipe file referenced by generator provenance.", allowed: [data.recipe] } }));
+    }
+  }
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDiagnostic[] {
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if (!isRecord(data)) {
+    return [typeDiagnostic(file, "", "Blender recipe must be a JSON object.", data)];
+  }
+  const recipeBytes = Buffer.byteLength(JSON.stringify(data), "utf8");
+  if (recipeBytes > 1024 * 1024) diagnostics.push(blenderBudgetDiagnostic(file, "", "serialized byte", recipeBytes, 1024 * 1024));
+  diagnostics.push(...unknownBlenderKeys(file, "", data, blenderRecipeKeys));
+  rejectUnsafeBlenderRecipeFields(diagnostics, file, data);
+  if (data.schema !== blenderRecipeSchema) {
+    diagnostics.push(blenderRecipeDiagnostic(file, "/schema", "TN_AUTHORING_BLENDER_RECIPE_SCHEMA_INVALID", `Blender recipe must use schema '${blenderRecipeSchema}'.`, data.schema, ["schema", "version", "id", "materials", "parts", "operations", "animations", "budgets"]));
+  }
+  if (data.version !== "0.1.0") {
+    diagnostics.push(blenderRecipeDiagnostic(file, "/version", "TN_AUTHORING_BLENDER_RECIPE_VERSION_INVALID", "Blender recipe version must be '0.1.0'.", data.version, ["0.1.0"]));
+  }
+  validateLogicalId(diagnostics, file, "/id", data.id, "Blender recipe");
+  const budgets = isRecord(data.budgets) ? data.budgets : {};
+
+  const materials = Array.isArray(data.materials) ? data.materials : [];
+  if (data.materials !== undefined && !Array.isArray(data.materials)) {
+    diagnostics.push(typeDiagnostic(file, "/materials", "Blender recipe materials must be an array.", data.materials));
+  }
+  const materialIds = new Set<string>();
+  materials.forEach((material, index) => {
+    const path = `/materials/${index}`;
+    if (!isRecord(material)) {
+      diagnostics.push(typeDiagnostic(file, path, "Blender recipe material must be an object.", material));
+      return;
+    }
+    diagnostics.push(...unknownBlenderKeys(file, path, material, blenderRecipeMaterialKeys));
+    const id = blenderLogicalId(diagnostics, file, `${path}/id`, material.id, "material");
+    if (id !== undefined && materialIds.has(id)) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Blender recipe material id '${id}' must be unique.`, id, ["unique material ids"]));
+    }
+    if (id !== undefined) materialIds.add(id);
+    validateBlenderColor(diagnostics, file, `${path}/baseColor`, material.baseColor, true);
+    validateBlenderUnitNumber(diagnostics, file, `${path}/metallic`, material.metallic, false);
+    validateBlenderUnitNumber(diagnostics, file, `${path}/roughness`, material.roughness, false);
+    validateBlenderColor(diagnostics, file, `${path}/emissive`, material.emissive, false);
+    if (material.alphaMode !== undefined) validateEnumString(diagnostics, file, `${path}/alphaMode`, material.alphaMode, new Set(["blend", "mask", "opaque"]), "material alpha mode", "Use 'blend', 'mask', or 'opaque'.");
+    validateOptionalBoolean(diagnostics, file, `${path}/doubleSided`, material.doubleSided, "material doubleSided must be a boolean.");
+  });
+
+  const parts = Array.isArray(data.parts) ? data.parts : [];
+  if (!Array.isArray(data.parts) || data.parts.length === 0) {
+    diagnostics.push(typeDiagnostic(file, "/parts", "Blender recipe parts must be a non-empty array.", data.parts));
+  }
+  const partIds = new Set<string>();
+  parts.forEach((part, index) => {
+    const path = `/parts/${index}`;
+    if (!isRecord(part)) {
+      diagnostics.push(typeDiagnostic(file, path, "Blender recipe part must be an object.", part));
+      return;
+    }
+    diagnostics.push(...unknownBlenderKeys(file, path, part, blenderRecipePartKeys));
+    const id = blenderLogicalId(diagnostics, file, `${path}/id`, part.id, "part");
+    if (id !== undefined && partIds.has(id)) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Blender recipe part id '${id}' must be unique.`, id, ["unique part ids"]));
+    }
+    validateEnumString(diagnostics, file, `${path}/primitive`, part.primitive, supportedBlenderRecipePrimitives, "Blender recipe primitive", `Use one of: ${[...supportedBlenderRecipePrimitives].join(", ")}.`);
+    if (part.material !== undefined && (typeof part.material !== "string" || !materialIds.has(part.material))) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/material`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Part material must reference a material declared earlier in the recipe.", part.material, [...materialIds]));
+    }
+    validateBlenderVec3(diagnostics, file, `${path}/position`, part.position, false, false);
+    validateBlenderVec3(diagnostics, file, `${path}/rotation`, part.rotation, false, false);
+    validateBlenderVec3(diagnostics, file, `${path}/scale`, part.scale, false, true);
+    const maxSegments = blenderRequestedLimit(budgets, "maxSegments");
+    validateBlenderBoundedInteger(diagnostics, file, `${path}/segments`, part.segments, 3, maxSegments, false);
+    validateBlenderBoundedInteger(diagnostics, file, `${path}/rings`, part.rings, 2, maxSegments, false);
+    if (part.shading !== undefined) validateEnumString(diagnostics, file, `${path}/shading`, part.shading, supportedBlenderRecipeShading, "Blender recipe shading", "Use 'flat' or 'smooth'.");
+    const modifiers = Array.isArray(part.modifiers) ? part.modifiers : [];
+    if (part.modifiers !== undefined && !Array.isArray(part.modifiers)) diagnostics.push(typeDiagnostic(file, `${path}/modifiers`, "Part modifiers must be an array.", part.modifiers));
+    const maxModifiers = blenderRequestedLimit(budgets, "maxModifiersPerPart");
+    if (modifiers.length > maxModifiers) diagnostics.push(blenderBudgetDiagnostic(file, `${path}/modifiers`, "modifiers per part", modifiers.length, maxModifiers));
+    modifiers.forEach((modifier, modifierIndex) => validateBlenderModifier(diagnostics, file, `${path}/modifiers/${modifierIndex}`, modifier, partIds, maxSegments));
+    if (id !== undefined) partIds.add(id);
+  });
+  const maxParts = blenderRequestedLimit(budgets, "maxParts");
+  const maxMaterials = blenderRequestedLimit(budgets, "maxMaterials");
+  if (parts.length > maxParts) diagnostics.push(blenderBudgetDiagnostic(file, "/parts", "parts", parts.length, maxParts));
+  if (materials.length > maxMaterials) diagnostics.push(blenderBudgetDiagnostic(file, "/materials", "materials", materials.length, maxMaterials));
+
+  const operationNodes = validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
+  validateBlenderAnimations(diagnostics, file, data.animations, operationNodes, budgets);
+  const estimatedPolygons = estimateBlenderRecipePolygons(parts);
+  const maxPolygons = blenderRequestedLimit(budgets, "maxPolygons");
+  if (estimatedPolygons > maxPolygons) diagnostics.push(blenderBudgetDiagnostic(file, "/budgets/maxPolygons", "estimated polygons", estimatedPolygons, maxPolygons));
+  validateBlenderBudgets(diagnostics, file, data.budgets);
+  return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateBlenderModifier(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, earlierPartIds: ReadonlySet<string>, maxSegments: number): void {
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, path, "Blender recipe modifier must be an object.", value));
+    return;
+  }
+  const kind = typeof value.kind === "string" ? value.kind : "";
+  const modifierKeys = kind === "bevel" ? new Set(["kind", "width", "segments"])
+    : kind === "array" ? new Set(["kind", "count", "offset"])
+      : kind === "mirror" ? new Set(["kind", "axis"])
+        : kind === "boolean" ? new Set(["kind", "target", "operation"])
+          : kind === "solidify" ? new Set(["kind", "thickness"])
+            : blenderRecipeModifierKeys;
+  diagnostics.push(...unknownBlenderKeys(file, path, value, modifierKeys));
+  validateEnumString(diagnostics, file, `${path}/kind`, value.kind, supportedBlenderRecipeModifiers, "Blender recipe modifier", `Use one of: ${[...supportedBlenderRecipeModifiers].join(", ")}.`);
+  if (kind === "bevel") {
+    validateBlenderPositiveNumber(diagnostics, file, `${path}/width`, value.width, true);
+    validateBlenderBoundedInteger(diagnostics, file, `${path}/segments`, value.segments, 1, maxSegments, false);
+  } else if (kind === "array") {
+    validateBlenderBoundedInteger(diagnostics, file, `${path}/count`, value.count, 2, 32, true);
+    validateBlenderVec3(diagnostics, file, `${path}/offset`, value.offset, true, false);
+  } else if (kind === "mirror") {
+    if (value.axis !== undefined) validateEnumString(diagnostics, file, `${path}/axis`, value.axis, new Set(["x", "y", "z"]), "mirror axis", "Use 'x', 'y', or 'z'.");
+  } else if (kind === "boolean") {
+    if (typeof value.target !== "string" || !earlierPartIds.has(value.target)) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/target`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_ORDER_INVALID", "Boolean target must reference a part declared earlier in the recipe.", value.target, [...earlierPartIds]));
+    validateEnumString(diagnostics, file, `${path}/operation`, value.operation, supportedBlenderBooleanOperations, "boolean operation", "Use 'difference', 'intersect', or 'union'.");
+  } else if (kind === "solidify") {
+    validateBlenderPositiveNumber(diagnostics, file, `${path}/thickness`, value.thickness, true);
+  }
+}
+
+function validateBlenderOperations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string>, budgets: Record<string, unknown>): ReadonlySet<string> {
+  if (value === undefined) return new Set(partIds);
+  if (!Array.isArray(value)) {
+    diagnostics.push(typeDiagnostic(file, "/operations", "Blender recipe operations must be an array.", value));
+    return new Set(partIds);
+  }
+  const maxOperations = blenderRequestedLimit(budgets, "maxOperations");
+  const maxJoinInputs = blenderRequestedLimit(budgets, "maxJoinInputs");
+  if (value.length > maxOperations) diagnostics.push(blenderBudgetDiagnostic(file, "/operations", "operations", value.length, maxOperations));
+  const resultIds = new Set(partIds);
+  const parentByChild = new Map<string, string>();
+  value.forEach((operation, index) => {
+    const path = `/operations/${index}`;
+    if (!isRecord(operation)) {
+      diagnostics.push(typeDiagnostic(file, path, "Blender recipe operation must be an object.", operation));
+      return;
+    }
+    if (typeof operation.kind !== "string" || !supportedBlenderRecipeOperations.has(operation.kind)) {
+      diagnostics.push(...unknownBlenderKeys(file, path, operation, blenderRecipeOperationKeys));
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/kind`, "TN_AUTHORING_BLENDER_RECIPE_OPERATION_UNSUPPORTED", `Blender recipe operation '${String(operation.kind)}' is not supported.`, operation.kind, [...supportedBlenderRecipeOperations]));
+      return;
+    }
+    diagnostics.push(...unknownBlenderKeys(file, path, operation, operation.kind === "join" ? new Set(["kind", "id", "inputs"]) : new Set(["kind", "parent", "child"])));
+    if (operation.kind === "join") {
+      const id = blenderLogicalId(diagnostics, file, `${path}/id`, operation.id, "join output");
+      const inputs = Array.isArray(operation.inputs) ? operation.inputs : [];
+      if (inputs.length < 2 || !inputs.every((input) => typeof input === "string" && resultIds.has(input))) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/inputs`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Join inputs must contain at least two previously declared part ids.", operation.inputs, [...resultIds]));
+      if (new Set(inputs).size !== inputs.length) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/inputs`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Join inputs must be unique.", operation.inputs, [...resultIds]));
+      if (inputs.length > maxJoinInputs) diagnostics.push(blenderBudgetDiagnostic(file, `${path}/inputs`, "join inputs", inputs.length, maxJoinInputs));
+      if (id !== undefined && resultIds.has(id)) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Join output id '${id}' must be unique.`, id, ["unique operation output ids"]));
+      if (id !== undefined && inputs.length >= 2 && inputs.every((input) => typeof input === "string" && resultIds.has(input))) {
+        for (const input of inputs) resultIds.delete(input as string);
+        resultIds.add(id);
+      }
+    } else {
+      for (const field of ["parent", "child"] as const) if (typeof operation[field] !== "string" || !resultIds.has(operation[field] as string)) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/${field}`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", `Parent operation ${field} must reference an existing node.`, operation[field], [...resultIds]));
+      if (operation.parent === operation.child && typeof operation.child === "string") diagnostics.push(blenderRecipeDiagnostic(file, `${path}/child`, "TN_AUTHORING_BLENDER_RECIPE_PARENT_CYCLE", "A node cannot be parented to itself.", operation.child, [...resultIds].filter((id) => id !== operation.child)));
+      if (typeof operation.parent === "string" && typeof operation.child === "string" && resultIds.has(operation.parent) && resultIds.has(operation.child)) {
+        let ancestor: string | undefined = operation.parent;
+        while (ancestor !== undefined) {
+          if (ancestor === operation.child) {
+            diagnostics.push(blenderRecipeDiagnostic(file, `${path}/parent`, "TN_AUTHORING_BLENDER_RECIPE_PARENT_CYCLE", "Parent operations must not create a hierarchy cycle.", operation.parent, [...resultIds]));
+            break;
+          }
+          ancestor = parentByChild.get(ancestor);
+        }
+        if (operation.parent !== operation.child) parentByChild.set(operation.child, operation.parent);
+      }
+    }
+  });
+  return resultIds;
+}
+
+function estimateBlenderRecipePolygons(parts: unknown[]): number {
+  let total = 0;
+  for (const value of parts) {
+    if (!isRecord(value) || typeof value.primitive !== "string") continue;
+    const segments = typeof value.segments === "number" && Number.isInteger(value.segments) ? value.segments : 32;
+    const rings = typeof value.rings === "number" && Number.isInteger(value.rings) ? value.rings : 16;
+    let polygons = value.primitive === "cube" ? 12
+      : value.primitive === "sphere" || value.primitive === "torus" ? segments * rings * 2
+        : value.primitive === "cylinder" ? segments * 4
+          : value.primitive === "cone" ? segments * 2
+            : 0;
+    for (const modifier of Array.isArray(value.modifiers) ? value.modifiers : []) {
+      if (!isRecord(modifier)) continue;
+      if (modifier.kind === "array" && typeof modifier.count === "number") polygons *= Math.max(1, modifier.count);
+      else if (modifier.kind === "mirror" || modifier.kind === "solidify") polygons *= 2;
+      else if (modifier.kind === "bevel") polygons *= Math.max(2, typeof modifier.segments === "number" ? modifier.segments + 1 : 2);
+    }
+    total += polygons;
+    if (!Number.isSafeInteger(total)) return Number.MAX_SAFE_INTEGER;
+  }
+  return total;
+}
+
+function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string>, budgets: Record<string, unknown>): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push(typeDiagnostic(file, "/animations", "Blender recipe animations must be an array.", value));
+    return;
+  }
+  const maxAnimations = blenderRequestedLimit(budgets, "maxAnimations");
+  const maxTracks = blenderRequestedLimit(budgets, "maxTracksPerAnimation");
+  const maxKeyframes = blenderRequestedLimit(budgets, "maxKeyframesPerTrack");
+  if (value.length > maxAnimations) diagnostics.push(blenderBudgetDiagnostic(file, "/animations", "animation clips", value.length, maxAnimations));
+  const clipIds = new Set<string>();
+  value.forEach((clip, clipIndex) => {
+    const path = `/animations/${clipIndex}`;
+    if (!isRecord(clip)) { diagnostics.push(typeDiagnostic(file, path, "Animation clip must be an object.", clip)); return; }
+    diagnostics.push(...unknownBlenderKeys(file, path, clip, blenderRecipeAnimationKeys));
+    const id = blenderLogicalId(diagnostics, file, `${path}/id`, clip.id, "animation clip");
+    if (id !== undefined && clipIds.has(id)) diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Animation clip id '${id}' must be unique.`, id, ["unique animation clip ids"]));
+    if (id !== undefined) clipIds.add(id);
+    validateBlenderPositiveNumber(diagnostics, file, `${path}/duration`, clip.duration, true);
+    validateOptionalBoolean(diagnostics, file, `${path}/loop`, clip.loop, "animation loop must be a boolean.");
+    const tracks = Array.isArray(clip.tracks) ? clip.tracks : [];
+    if (!Array.isArray(clip.tracks) || tracks.length === 0) diagnostics.push(typeDiagnostic(file, `${path}/tracks`, "Animation tracks must be a non-empty array.", clip.tracks));
+    if (tracks.length > maxTracks) diagnostics.push(blenderBudgetDiagnostic(file, `${path}/tracks`, "tracks per animation", tracks.length, maxTracks));
+    const trackKeys = new Set<string>();
+    tracks.forEach((track, trackIndex) => {
+      const trackPath = `${path}/tracks/${trackIndex}`;
+      if (!isRecord(track)) { diagnostics.push(typeDiagnostic(file, trackPath, "Animation track must be an object.", track)); return; }
+      diagnostics.push(...unknownBlenderKeys(file, trackPath, track, blenderRecipeAnimationTrackKeys));
+      if (typeof track.node !== "string" || !partIds.has(track.node)) diagnostics.push(blenderRecipeDiagnostic(file, `${trackPath}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Animation track node must reference a declared part.", track.node, [...partIds]));
+      validateEnumString(diagnostics, file, `${trackPath}/property`, track.property, supportedBlenderAnimationProperties, "animation property", "Use 'position', 'rotation', or 'scale'.");
+      const trackKey = `${String(track.node)}:${String(track.property)}`;
+      if (trackKeys.has(trackKey)) diagnostics.push(blenderRecipeDiagnostic(file, trackPath, "TN_AUTHORING_BLENDER_RECIPE_ANIMATION_TRACK_DUPLICATE", "Animation clip may contain only one track per node property.", trackKey, ["unique node/property tracks"]));
+      trackKeys.add(trackKey);
+      const keyframes = Array.isArray(track.keyframes) ? track.keyframes : [];
+      if (!Array.isArray(track.keyframes) || keyframes.length === 0) diagnostics.push(typeDiagnostic(file, `${trackPath}/keyframes`, "Animation keyframes must be a non-empty array.", track.keyframes));
+      if (keyframes.length > maxKeyframes) diagnostics.push(blenderBudgetDiagnostic(file, `${trackPath}/keyframes`, "keyframes per track", keyframes.length, maxKeyframes));
+      let priorTime = -1;
+      keyframes.forEach((keyframe, keyframeIndex) => {
+        const keyPath = `${trackPath}/keyframes/${keyframeIndex}`;
+        if (!isRecord(keyframe)) { diagnostics.push(typeDiagnostic(file, keyPath, "Animation keyframe must be an object.", keyframe)); return; }
+        diagnostics.push(...unknownBlenderKeys(file, keyPath, keyframe, blenderRecipeAnimationKeyframeKeys));
+        if (typeof keyframe.time !== "number" || !Number.isFinite(keyframe.time) || keyframe.time < 0 || keyframe.time <= priorTime || (typeof clip.duration === "number" && keyframe.time > clip.duration)) diagnostics.push(blenderRecipeDiagnostic(file, `${keyPath}/time`, "TN_AUTHORING_BLENDER_RECIPE_ANIMATION_TIME_INVALID", "Keyframe time must be finite, strictly increasing, non-negative, and within clip duration.", keyframe.time, ["0..duration in increasing order"]));
+        if (typeof keyframe.time === "number" && Number.isFinite(keyframe.time)) priorTime = keyframe.time;
+        validateBlenderVec3(diagnostics, file, `${keyPath}/value`, keyframe.value, true, track.property === "scale");
+        if (keyframe.interpolation !== undefined) validateEnumString(diagnostics, file, `${keyPath}/interpolation`, keyframe.interpolation, supportedBlenderAnimationInterpolations, "keyframe interpolation", "Use 'linear' or 'step'.");
+      });
+    });
+  });
+}
+
+function validateBlenderBudgets(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  if (!isRecord(value)) {
+    diagnostics.push(typeDiagnostic(file, "/budgets", "Blender recipe budgets must be an object with explicit maxPolygons and maxOutputBytes.", value));
+    return;
+  }
+  diagnostics.push(...unknownBlenderKeys(file, "/budgets", value, blenderRecipeBudgetKeys));
+  for (const [key, limit] of Object.entries(blenderRecipeLimits)) validateBlenderBoundedInteger(diagnostics, file, `/budgets/${key}`, value[key], 1, limit, key === "maxPolygons" || key === "maxOutputBytes");
+}
+
+function unknownBlenderKeys(file: string, path: string, value: Record<string, unknown>, allowed: ReadonlySet<string>): IAuthoringDiagnostic[] {
+  return Object.keys(value).filter((key) => !allowed.has(key)).sort().map((key) => blenderRecipeDiagnostic(file, `${path}/${escapeJsonPointer(key)}`, "TN_AUTHORING_BLENDER_RECIPE_FIELD_UNSUPPORTED", `Blender recipe field '${key}' is not supported.`, key, [...allowed]));
+}
+
+function rejectUnsafeBlenderRecipeFields(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, path = ""): void {
+  if (typeof value === "string" && /^(?:https?|ftp):\/\//i.test(value)) {
+    diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_REMOTE_URL_FORBIDDEN", "Blender recipes may reference only project-local structured data, not remote URLs.", value, ["project-local asset ids", "bounded recipe fields"]));
+    return;
+  }
+  if (Array.isArray(value)) { value.forEach((item, index) => rejectUnsafeBlenderRecipeFields(diagnostics, file, item, `${path}/${index}`)); return; }
+  if (!isRecord(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}/${escapeJsonPointer(key)}`;
+    if (/^(?:python|code|script|module|addon|add-on|operator|driver)$/i.test(key)) diagnostics.push(blenderRecipeDiagnostic(file, childPath, "TN_AUTHORING_BLENDER_RECIPE_CODE_FORBIDDEN", `Blender recipe field '${key}' would allow general code or add-on execution and is forbidden.`, key, ["parts", "materials", "operations", "animations", "budgets"]));
+    rejectUnsafeBlenderRecipeFields(diagnostics, file, child, childPath);
+  }
+}
+
+function validateBlenderRecipePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (typeof value !== "string" || !/^content\/generators\/[a-z][a-z0-9._-]*\.recipe\.json$/.test(value) || value.includes("..")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", "Blender recipe path must be contained under content/generators/ and end in .recipe.json.", value, ["content/generators/<generator-id>.recipe.json"]));
+}
+
+function validateBlenderOutputPath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (typeof value !== "string" || !/^assets\/generated\/[a-z][a-z0-9._-]*\.glb$/.test(value) || value.includes("..")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_OUTPUT_PATH_INVALID", "Blender output must be a project-local GLB under assets/generated/.", value, ["assets/generated/<asset-id>.glb"]));
+}
+
+function generatorProviderFieldDiagnostic(file: string, path: string, field: string, provider: string, allowed: string[]): IAuthoringDiagnostic {
+  return authoringDiagnostic({ code: "TN_AUTHORING_GENERATOR_PROVIDER_FIELD_INVALID", file, path, value: field, message: `Generator field '${field}' is not allowed for provider '${provider}'.`, fix: { instruction: `Remove '${field}' and use only fields allowed for the '${provider}' provider.`, allowed } });
+}
+
+function blenderRecipeDiagnostic(file: string, path: string, code: string, message: string, value: unknown, allowed: readonly string[]): IAuthoringDiagnostic {
+  return authoringDiagnostic({ code, file, path, value, message, fix: { instruction: "Replace or remove this value using the allowed bounded Blender recipe fields.", allowed } });
+}
+
+function blenderBudgetDiagnostic(file: string, path: string, kind: string, actual: number, max: number): IAuthoringDiagnostic {
+  return blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED", `Blender recipe ${kind} count ${actual} exceeds the limit of ${max}.`, actual, [`maximum ${max}`]);
+}
+
+function blenderLogicalId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {
+  if (typeof value !== "string" || value.length > 128 || !logicalIdPattern.test(value)) { diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_ID_INVALID", `Blender recipe ${kind} id must be a lowercase logical id of at most 128 characters.`, value, ["lowercase letters", "numbers", ".", "_", "-", "maximum 128 characters"])); return undefined; }
+  return value;
+}
+
+function validateBlenderColor(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, required: boolean): void {
+  if (!required && value === undefined) return;
+  if (!Array.isArray(value) || (value.length !== 3 && value.length !== 4) || !value.every((item) => typeof item === "number" && Number.isFinite(item) && item >= 0 && item <= 1)) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_COLOR_INVALID", "Blender recipe color must contain three or four finite values from 0 to 1.", value, ["[red, green, blue]", "[red, green, blue, alpha]"]));
+}
+
+function validateBlenderVec3(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, required: boolean, nonZero: boolean): void {
+  if (!required && value === undefined) return;
+  if (!Array.isArray(value) || value.length !== 3 || !value.every((item) => typeof item === "number" && Number.isFinite(item) && (!nonZero || item !== 0))) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_TRANSFORM_INVALID", `Blender recipe vector must contain three finite numbers${nonZero ? " and scale components cannot be zero" : ""}.`, value, ["[x, y, z]"]));
+}
+
+function validateBlenderUnitNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, required: boolean): void {
+  if (!required && value === undefined) return;
+  if (typeof value !== "number" || !Number.isFinite(value) || value < 0 || value > 1) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_NUMBER_INVALID", "Value must be a finite number from 0 to 1.", value, ["0..1"]));
+}
+
+function validateBlenderPositiveNumber(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, required: boolean): void {
+  if (!required && value === undefined) return;
+  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_NUMBER_INVALID", "Value must be a finite positive number.", value, ["number > 0"]));
+}
+
+function validateBlenderBoundedInteger(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, min: number, max: number, required: boolean): void {
+  if (!required && value === undefined) return;
+  if (!Number.isInteger(value) || (value as number) < min || (value as number) > max) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_BUDGET_INVALID", `Budget value must be an integer from ${min} to ${max}.`, value, [`${min}..${max}`]));
+}
+
+function blenderRequestedLimit(budgets: Record<string, unknown>, key: keyof typeof blenderRecipeLimits): number {
+  const requested = budgets[key];
+  return Number.isInteger(requested) && (requested as number) > 0 && (requested as number) <= blenderRecipeLimits[key]
+    ? requested as number
+    : blenderRecipeLimits[key];
 }
 
 export async function validateProjectDocument(file: string, data: unknown): Promise<IAuthoringDiagnostic[]> {

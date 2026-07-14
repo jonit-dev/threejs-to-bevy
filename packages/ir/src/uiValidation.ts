@@ -45,7 +45,7 @@ function validateUiNode(
   );
   validateUnsupportedUiRequests(raw, path, diagnostics);
   validateUiLayout(node.layout, `${path}/layout`, diagnostics);
-  validateUiResponsiveRules(node, `${path}/responsive`, diagnostics);
+  validateUiResponsiveRules(node, `${path}/responsive`, diagnostics, fontFamilies);
   validateUiVirtualRange(node, path, diagnostics);
   validateUiAttachment(node, path, diagnostics, entityIds);
   validateUiEffects(node, path, diagnostics);
@@ -730,7 +730,7 @@ function validateUiLayout(value: unknown, path: string, diagnostics: IIrDiagnost
   }
 }
 
-function validateUiResponsiveRules(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateUiResponsiveRules(node: IUiNodeIr, path: string, diagnostics: IIrDiagnostic[], fontFamilies: Set<string>): void {
   if (node.responsive === undefined) {
     return;
   }
@@ -746,7 +746,7 @@ function validateUiResponsiveRules(node: IUiNodeIr, path: string, diagnostics: I
       return;
     }
     for (const key of Object.keys(rule)) {
-      if (!["layout", "target"].includes(key)) {
+      if (!["layout", "style", "target"].includes(key)) {
         diagnostics.push({ code: "TN_IR_UI_RESPONSIVE_FIELD_UNSUPPORTED", message: `UI responsive rule uses unsupported field '${key}'.`, path: `${rulePath}/${key}` });
       }
     }
@@ -757,6 +757,7 @@ function validateUiResponsiveRules(node: IUiNodeIr, path: string, diagnostics: I
     }
     targets.add(String(rule.target));
     validateUiLayout(rule.layout, `${rulePath}/layout`, diagnostics);
+    validateUiStyle(rule.style, `${rulePath}/style`, diagnostics, fontFamilies);
   });
 }
 

@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, createWebResizeLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, uiTargetClassForViewport, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -200,6 +200,35 @@ test("should cancel pending animation frame on render lifecycle dispose", () => 
   lifecycle.dispose();
 
   assert.deepEqual(cancelled, [42]);
+});
+
+test("should resize the renderer on window surface changes and detach on dispose", () => {
+  const listeners = new Set<() => void>();
+  const sizes: Array<[number, number]> = [];
+  let currentSize: [number, number] = [800, 600];
+  const lifecycle = createWebResizeLifecycle({
+    addEventListener: (_type, listener) => listeners.add(listener),
+    currentSize: () => currentSize,
+    removeEventListener: (_type, listener) => listeners.delete(listener),
+    resize: (width, height) => sizes.push([width, height]),
+  });
+
+  assert.equal(listeners.size, 1);
+  currentSize = [1280, 720];
+  for (const listener of listeners) listener();
+  assert.deepEqual(sizes, [[1280, 720]]);
+  currentSize = [1024, 576];
+  lifecycle.sync();
+  lifecycle.sync();
+  assert.deepEqual(sizes, [[1280, 720], [1024, 576]]);
+  lifecycle.dispose();
+  assert.equal(listeners.size, 0);
+});
+
+test("should keep Android phone WebViews on the mobile UI target after a large surface resize", () => {
+  assert.equal(uiTargetClassForViewport("Mozilla/5.0 (Linux; Android 15; Mobile; wv)", 1280, 720), "mobile");
+  assert.equal(uiTargetClassForViewport("Mozilla/5.0 (Linux; Android 15; sdk_gphone64_x86_64; wv)", 1280, 720), "mobile");
+  assert.equal(uiTargetClassForViewport("Mozilla/5.0 (Linux; Android 15; Pixel Tablet; wv)", 1280, 800), "tablet");
 });
 
 test("should consume appended and replaced audio event queues exactly once", () => {
@@ -672,6 +701,9 @@ test("should collect runtime visibility, camera, bounds, and asset diagnostics",
   assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.clipping, "in-range");
   assert.deepEqual(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.finalScale, [1, 1, 1]);
   assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.material?.type, "MeshStandardMaterial");
+  assert.deepEqual(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.material?.baseColor, [1, 1, 1]);
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.material?.metallic, 0);
+  assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.visible")?.material?.roughness, 1);
   assert.equal(diagnostics.scene.renderedEntities.find((entity) => entity.id === "cube.hidden")?.visible, false);
   assert.deepEqual(diagnostics.scene.worldBounds?.center, [0, 0, 0]);
   assert.deepEqual(diagnostics.scene.worldBounds?.size, [1, 1, 1]);

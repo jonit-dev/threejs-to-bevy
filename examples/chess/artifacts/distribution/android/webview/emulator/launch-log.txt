@@ -1,0 +1,120 @@
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{e868bc8 com.android.systemui.emulation.pixel_4/10038} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{290a461 com.android.systemui.emulation.pixel_5/10071} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{db1bb86 com.android.systemui.emulation.pixel_6/10050} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{b73dc47 com.android.systemui.emulation.pixel_7/10032} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{35c9c74 com.android.systemui.emulation.pixel_8/10055} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{bd2259d com.android.systemui.emulation.pixel_9/10034} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ca8dc23 com.android.printspooler/10126} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{f07f5e3 com.google.android.connectivity.resources.goldfish.overlay/10085} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d0a9520 com.android.dreams.basic/10113} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{7b07e99 com.google.android.networkstack.tethering.emulator/10051} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{eb55e com.android.providers.settings.auto_generated_rro_product__/10083} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{db16ed9 com.google.android.as.oss/10133} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{47b060c com.android.traceur.auto_generated_rro_product__/10029} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d816b55 com.android.internal.emulation.pixel_9_pro_fold/10056} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{928809e com.google.android.devicelockcontroller/10187} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{5a3177f com.google.android.dialer/10129} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{6d876f8 com.android.internal.emulation.pixel_3/10017} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{a3a67d1 com.android.internal.emulation.pixel_4/10061} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{3261236 com.android.internal.emulation.pixel_5/10058} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{c866537 com.android.internal.emulation.pixel_6/10024} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{79a0aa4 com.android.internal.emulation.pixel_7/10016} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{aacb00d com.android.internal.emulation.pixel_8/10040} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{391bc2 com.android.internal.emulation.pixel_9/10059} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2d3e34c com.google.android.captiveportallogin/10120} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{abf2d10 android.auto_generated_characteristics_rro/10053} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{c411f95 com.google.android.appsearch.apk/10201} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{19808aa com.android.musicfx/10093} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ddbac9b com.google.android.apps.docs/10158} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{650374 com.google.android.apps.maps/10154} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{1e838 com.google.android.markup/10152} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{8e12011 com.google.android.rkpdapp/10186} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{dc60576 com.google.android.contacts/10161} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{455744b com.android.server.telecom.auto_generated_rro_product__/10037} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ed38e28 com.android.phone.auto_generated_characteristics_rro/10018} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{53e741 com.google.android.overlay.googleconfig/10079} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{23e7777 com.android.chrome/10145} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{8850a27 com.android.bips.auto_generated_rro_product__/10046} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{a094fe4 com.google.android.apps.customization.pixel/10149} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{aa6ac4d com.google.android.tag/10099} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{593f972 com.google.android.overlay.permissioncontroller/10060} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2050302 com.google.android.partnersetup/10131} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{8991413 com.google.android.apps.wallpaper.nexus/10159} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{6fd8650 com.google.android.apps.nexuslauncher/10179} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2a43abe com.android.theme.font.notoserifsource/10045} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{abec049 com.google.android.safetycenter.resources/10195} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{cca7a6c com.android.internal.display.cutout.emulation.waterfall/10026} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{f0b3835 com.android.internal.systemui.navbar.transparent/10069} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{3444d4e com.google.android.connectivity.resources/10204} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ad0063b com.android.providers.contacts.auto_generated_rro_product__/10012} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{bf6de6f com.google.android.feedback/10172} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{8bcb77c com.google.android.printservice.recommendation/10121} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{e2a1805 com.google.android.apps.photos/10168} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{e0682c8 com.google.android.calendar/10162} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{41bf05a com.google.android.documentsui/10096} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{717ab04 com.android.systemui.emulation.pixel_3a_xl/10081} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{44738ed com.android.systemui.emulation.pixel_6_pro/10035} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{9f9a322 com.android.systemui.emulation.pixel_7_pro/10063} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d4b01b3 com.android.systemui.emulation.pixel_8_pro/10078} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{6e67370 com.android.systemui.emulation.pixel_9_pro/10023} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{feb76e9 com.android.carrierconfig.auto_generated_rro_product__/10006} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{6b2cf6e com.android.devicediagnostics.auto_generated_rro_product__/10065} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2bcf28b com.android.providers.partnerbookmarks/10114} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{edbcf68 com.android.wallpaper.livepicker/10097} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{c7b98a5 com.android.providers.telephony.auto_generated_rro_product__/10033} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{dc0747a com.android.phone.auto_generated_rro_vendor__/10090} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{f392f81 com.android.imsserviceentitlement/10137} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{7114088 com.android.internal.emulation.pixel_9_pro_xl/10011} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{698b826 com.google.android.healthconnect.controller/10207} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d15e46 com.android.internal.emulation.pixel_2_xl/10000} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{402a807 com.android.internal.emulation.pixel_3_xl/10080} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{bddd34 com.android.internal.emulation.pixel_4_xl/10036} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{475375d com.android.internal.emulation.pixel_fold/10015} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{a862c67 com.android.bookmarkprovider/10112} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{e17bda3 com.google.android.overlay.pixelconfigcommon/10003} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{af598a0 com.android.systemui.accessibility.accessibilitymenu.auto_generated_rro_product__/10042} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ad2ec59 com.android.systemui.emulation.pixel_3a/10074} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{5a7f01e com.android.systemui.emulation.pixel_4a/10043} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{8de90ff com.android.systemui.emulation.pixel_6a/10076} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{b2b9ecc com.android.systemui.emulation.pixel_7a/10084} BLOCKED
+07-14 02:39:11.283 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{9bcf515 com.android.systemui.emulation.pixel_8a/10072} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{b527a14 com.google.android.settings.intelligence/10140} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{f9b0528 com.google.android.projection.gearhead/10135} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2c842bd com.google.android.uwb.resources/10193} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{5839241 com.android.cts.ctsshim/10185} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{ec830b2 com.google.android.wifi.resources/10188} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{5e72380 com.google.android.wifi.dialog/10190} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{53b4db9 com.android.wallpaper/10177} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{348db1 com.android.microdroid.empty_payload/10192} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{204a5fe com.google.android.apps.wallpaper/10176} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{702415f com.google.android.odad/10132} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{617b1cd com.android.settings.auto_generated_rro_product__/10062} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{1d15a82 com.android.systemui.emulation.pixel_9_pro_xl/10031} BLOCKED
+07-14 02:39:11.285 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{2435593 com.android.companiondevicemanager.auto_generated_characteristics_rro/10057} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d7069d0 com.android.internal.systemui.navbar.gestural/10014} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{a5af7ac com.google.android.apps.youtube.music/10157} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{b3a0c75 com.android.bluetoothmidiservice/10115} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{fc3b7ef com.android.storagemanager.auto_generated_rro_product__/10020} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{f01240a com.google.android.cellbroadcastreceiver/10205} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{b064d85 com.android.phone.auto_generated_rro_product__/10009} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{72bb7da com.android.systemui.emulation.pixel_9_pro_fold/10027} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{c3de40b android.auto_generated_rro_product__/10002} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{633947b com.google.android.inputmethod.latin/10150} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{9633d01 android.auto_generated_rro_vendor__/10089} BLOCKED
+07-14 02:39:11.286 I/AppsFilter(  599): interaction: PackageSetting{7695aed com.threenative.chess/10210} -> PackageSetting{d55e298 com.google.android.apps.restore/10139} BLOCKED
+07-14 02:39:11.319 D/nativeloader( 5532): Load /system/lib64/libwebviewchromium_plat_support.so using ns clns-9 from class loader (caller=/data/app/~~cxyCRwuxhcc8YEHh_Vq4Uw==/com.google.android.webview-enjARcRr7AU0UcMYS9AexA==/WebViewGoogle.apk): ok
+07-14 02:39:11.323 I/chromium( 5532): [0714/023911.323673:INFO:variations_seed_loader.cc(66)] Failed to open file for reading.: No such file or directory (2)
+07-14 02:39:11.325 I/cr_VariationsUtils( 5532): Failed reading seed file "/data/user/0/com.threenative.chess/app_webview/variations_seed_new"
+07-14 02:39:11.367 I/ActivityManager(  599): Start proc 5566:com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0/u0i5 for  {com.threenative.chess/org.chromium.content.app.SandboxedProcessService0:0}
+07-14 02:39:11.393 W/chromium( 5532): [WARNING:dns_config_service_android.cc(81)] Failed to read DnsConfig.
+07-14 02:39:11.413 W/ProcessStats(  599): Tracking association SourceState{fd13b9a com.threenative.chess/10210 BTop #8054} whose proc state 2 is better than process ProcessState{e0a1739 com.google.android.webview:webview_service/10151 pkg=com.google.android.webview} proc state 14 (30 skipped)
+07-14 02:39:11.413 I/cr_WebViewApkApp( 5566): Launched version=124.0.6367.219 minSdkVersion=29 isBundle=false processName=com.google.android.webview:sandboxed_process0:org.chromium.content.app.SandboxedProcessService0:0
+07-14 02:39:11.484 I/ImeTracker(  599): com.threenative.chess:d65fc336: onRequestHide at ORIGIN_SERVER reason HIDE_UNSPECIFIED_WINDOW fromUser false
+07-14 02:39:11.484 I/ImeTracker(  599): com.threenative.chess:d65fc336: onCancelled at PHASE_SERVER_SHOULD_HIDE
+07-14 02:39:11.487 I/GoogleInputMethodService( 1433): GoogleInputMethodService.onStartInput():1986 onStartInput(EditorInfo{EditorInfo{packageName=com.threenative.chess, inputType=0, inputTypeString=NULL, enableLearning=false, autoCorrection=false, autoComplete=false, imeOptions=0, privateImeOptions=null, actionName=UNSPECIFIED, actionLabel=null, initialSelStart=-1, initialSelEnd=-1, initialCapsMode=0, label=null, fieldId=0, fieldName=null, extras=null, hintText=null, hintLocales=[]}}, false)
+07-14 02:39:11.487 W/PackageConfigPersister(  599): App-specific configuration not found for packageName: com.threenative.chess and userId: 0
+07-14 02:39:11.494 W/chromium( 5566): [WARNING:runtime_features.cc(694)] SharedStorage for M118+ cannot be enabled in this configuration. Use --enable-features=SharedStorageAPI,SharedStorageAPIM118 in addition.
+07-14 02:39:11.642 D/CoreBackPreview(  599): Window{7a0d77d u0 Splash Screen com.threenative.chess EXITING}: Setting back callback null
+07-14 02:39:11.642 W/InputManager-JNI(  599): Input channel object '7a0d77d Splash Screen com.threenative.chess (client)' was disposed without first being removed with the input manager!
+07-14 02:39:11.770 W/Tauri/Console( 5532): File: http://tauri.localhost/assets/index-QN6rFN9E.js - Line 5758 - Msg: using deprecated parameters for the initialization function; pass a single object instead
+07-14 02:39:13.500 W/Tauri/Console( 5532): File: http://tauri.localhost/bundle/overlay/chess-side-select/dist/index.html - Line 0 - Msg: An iframe which has both allow-scripts and allow-same-origin for its sandbox attribute can escape its sandboxing.

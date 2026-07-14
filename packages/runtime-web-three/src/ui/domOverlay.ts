@@ -265,6 +265,7 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   if (element === undefined) {
     return;
   }
+  Object.assign(element.style, baseStyle(node));
 
   if (node.kind === "text") {
     updateRichTextElement(element, node);

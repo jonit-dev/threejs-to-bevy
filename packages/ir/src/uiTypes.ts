@@ -8,6 +8,7 @@ export type UiTargetProfileClass = "desktop" | "mobile" | "tablet";
 
 export interface IUiResponsiveRuleIr {
   layout?: IUiLayoutIr;
+  style?: IUiStyleIr;
   target: UiTargetProfileClass;
 }
 

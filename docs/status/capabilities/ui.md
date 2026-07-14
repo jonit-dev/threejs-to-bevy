@@ -6,7 +6,10 @@ separate bounded capability, not the default portable game UI model.
 Current support:
 
 - Retained UI documents, bindings, formatted resource values, components,
-  themes, screen/focus metadata, responsive fit, and accessibility validation.
+  themes, screen/focus metadata, responsive layout and visual-style overrides,
+  viewport resize reconciliation, and accessibility validation. Structured
+  responsive rules are compiler-lowered into UI IR rather than adapter-local
+  metadata.
 - Web retained UI overlay button, touch, text input, slider, and scrollbar
   actions drain into portable script-observable UI/input state; script
   `setDisabled`, `setValue`, and `activate` calls update the live rendered

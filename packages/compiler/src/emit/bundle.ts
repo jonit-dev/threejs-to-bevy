@@ -3,8 +3,12 @@ import {
   IR_DOCUMENTS,
   IR_SCHEMA_IDS,
   IR_VERSION,
+  normalizeDistribution,
+  validateDistribution,
+  validateDistributionProjectPaths,
   type IAssetsManifest,
   type IAnimationsIr,
+  type IDistributionSource,
   type IAudioIr,
   type IBundleManifest,
   type IGltfSceneMetadataIr,
@@ -40,10 +44,12 @@ import { sceneToWorld } from "./scene-to-world.js";
 import {
   readBundleRootAssets,
   readStructuredAssets,
+  readStructuredDistribution,
   readStructuredGameFlow,
   readStructuredInteractions,
   readStructuredMaterials,
   readStructuredMeshes,
+  readStructuredPersistence,
   readStructuredPrefabs,
   readStructuredRuntimeConfig,
   readStructuredSchemaFiles,
@@ -86,6 +92,7 @@ export interface IBundlePlanDocuments {
   animations?: IAnimationsIr;
   authoringProvenance?: ReturnType<typeof authoringProvenanceDocument>;
   componentSchemas?: IEcsEmitResult["componentSchemas"];
+  distribution?: IDistributionSource;
   environmentScene?: Awaited<ReturnType<typeof emitEnvironment>>["scene"];
   eventSchemas?: IEcsEmitResult["eventSchemas"];
   gameFlow?: ReturnType<typeof readStructuredGameFlow>;
@@ -130,7 +137,10 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const structuredAudio = readStructuredAudio(options.authoringDocuments);
   if (rootAudio !== undefined && structuredAudio !== undefined) throw new Error("TN_COMPILER_AUDIO_DUPLICATE: declare audio in either the TypeScript root or structured source, not both.");
   const audio = rootAudio ?? structuredAudio;
-  const localData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
+  const rootLocalData = bundleRoot.persistence === undefined ? undefined : emitPersistence(bundleRoot.persistence);
+  const structuredLocalData = readStructuredPersistence(options.authoringDocuments);
+  if (rootLocalData !== undefined && structuredLocalData !== undefined) throw new Error("TN_COMPILER_PERSISTENCE_DUPLICATE: declare persistence in either the TypeScript root or structured source, not both.");
+  const localData = rootLocalData ?? structuredLocalData;
   const animations = bundleRoot.animations === undefined ? undefined : emitAnimations(bundleRoot.animations);
   const authoredAssets = mergeById([
     ...readBundleRootAssets(bundleRoot.assets),
@@ -190,6 +200,19 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     ...(targetBudgets === undefined ? {} : { budgets: targetBudgets }),
     ...(targetPerformance === undefined ? {} : { performance: targetPerformance }),
   };
+  const distributionSource = readStructuredDistribution(options.authoringDocuments);
+  let distribution: IDistributionSource | undefined;
+  if (distributionSource !== undefined) {
+    const distributionDiagnostics = [
+      ...validateDistribution(distributionSource, "distribution.ir.json", targetProfile),
+      ...await validateDistributionProjectPaths(distributionSource, config.projectPath, "distribution.ir.json"),
+    ];
+    if (distributionDiagnostics.length > 0) {
+      const first = distributionDiagnostics[0]!;
+      throw new Error(`${first.code}: ${first.message} (${first.path})`);
+    }
+    distribution = normalizeDistribution(distributionSource);
+  }
   const manifest: IBundleManifest = {
     schema: IR_SCHEMA_IDS.bundle,
     version: IR_VERSION,
@@ -233,6 +256,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     },
     files: {
       assets: IR_DOCUMENTS.assets.fileName,
+      ...(distribution === undefined ? {} : { distribution: IR_DOCUMENTS.distribution.fileName }),
       ...(animations === undefined ? {} : { animations: IR_DOCUMENTS.animations.fileName }),
       ...(input === undefined ? {} : { input: IR_DOCUMENTS.input.fileName }),
       ...(localData === undefined ? {} : { localData: IR_DOCUMENTS.localData.fileName }),
@@ -253,6 +277,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
     ...(audio === undefined ? {} : { audio }),
     ...(animations === undefined ? {} : { animations }),
     ...(componentSchemas === undefined ? {} : { componentSchemas }),
+    ...(distribution === undefined ? {} : { distribution }),
     ...(environment === undefined ? {} : { environmentScene: environment.scene }),
     ...(eventSchemas === undefined ? {} : { eventSchemas }),
     ...(ecs === undefined ? {} : { systems: ecs.systems }),
@@ -565,10 +590,26 @@ function structuredUiNode(data: Record<string, unknown>): IUiNodeIr[] {
     ...(isRecord(data.minimap) ? { minimap: cloneRecord(data.minimap) as unknown as IUiNodeIr["minimap"] } : {}),
     ...(isRecord(data.navigation) ? { navigation: cloneRecord(data.navigation) as IUiNodeIr["navigation"] } : {}),
     ...(Array.isArray(data.spans) ? { spans: JSON.parse(JSON.stringify(data.spans)) as IUiNodeIr["spans"] } : {}),
+    ...structuredUiResponsive(data.responsive),
     ...(readRecordList(data.children).length === 0 ? {} : { children: readRecordList(data.children).flatMap((child) => structuredUiNode(child)) }),
     ...structuredUiLayout(data.layout),
     ...structuredUiStyle(data.style),
   }];
+}
+
+function structuredUiResponsive(value: unknown): Pick<IUiNodeIr, "responsive"> {
+  if (!Array.isArray(value)) return {};
+  const responsive = value.flatMap((candidate): NonNullable<IUiNodeIr["responsive"]>[number][] => {
+    if (!isRecord(candidate)) return [];
+    const target = readString(candidate.target);
+    if (target !== "desktop" && target !== "mobile" && target !== "tablet") return [];
+    return [{
+      target,
+      ...structuredUiLayout(candidate.layout),
+      ...structuredUiStyle(candidate.style),
+    }];
+  });
+  return responsive.length === 0 ? {} : { responsive };
 }
 
 function structuredUiKind(value: string | undefined): IUiNodeIr["kind"] {

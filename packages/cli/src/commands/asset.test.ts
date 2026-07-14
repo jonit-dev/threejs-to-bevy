@@ -8,10 +8,111 @@ import test from "node:test";
 import { pathToFileURL } from "node:url";
 
 import { findAssetSourceCatalogPath, resolveAssetSourceCatalogPath } from "../assetSourceCatalog/catalog.js";
-import { assetCommand } from "./asset.js";
+import { CLI_COMMAND_REGISTRY } from "../index.js";
+import { ASSET_GENERATE_BLENDER_DESCRIPTOR, assetCommand } from "./asset.js";
 
 const assetCatalogPath = resolveAssetSourceCatalogPath();
 const catalogTest = existsSync(assetCatalogPath) ? test : test.skip;
+
+test("should derive asset generate help from the Blender MCP descriptor owner", () => {
+  assert.equal(CLI_COMMAND_REGISTRY.asset.usage.split("\n", 1)[0], ASSET_GENERATE_BLENDER_DESCRIPTOR.usage);
+  const orderedFlags = ASSET_GENERATE_BLENDER_DESCRIPTOR.mcp.argv.arguments.flatMap((argument) => "flag" in argument ? [argument.flag] : []);
+  let cursor = -1;
+  for (const flag of orderedFlags) {
+    const next = ASSET_GENERATE_BLENDER_DESCRIPTOR.usage.indexOf(flag, cursor + 1);
+    assert.ok(next > cursor, `${flag} must remain represented in descriptor-derived help order`);
+    cursor = next;
+  }
+});
+
+test("should expose Poly Haven provider commands through registry help", async () => {
+  const text = await assetCommand(["provider", "help"]);
+  const json = await assetCommand(["provider", "help", "--json"]);
+  const payload = JSON.parse(json.stdout) as { providers: Array<{ features: Array<{ operation: string; usage: string }>; id: string; networkDefault: string }> };
+
+  assert.equal(text.exitCode, 0);
+  assert.match(text.stdout, /tn asset provider search poly-haven/);
+  assert.match(text.stdout, /tn asset provider import poly-haven/);
+  assert.equal(payload.providers[0]?.id, "poly-haven");
+  assert.equal(payload.providers[0]?.networkDefault, "offline");
+  assert.deepEqual(payload.providers[0]?.features.map((feature) => feature.operation), ["status", "categories", "search", "import"]);
+});
+
+test("should require an explicit live flag before calling Poly Haven API", async () => {
+  let calls = 0;
+  const offlineFetch = (async () => { calls += 1; throw new Error("unexpected network"); }) as typeof fetch;
+  const liveFetch = (async () => {
+    calls += 1;
+    return new Response(JSON.stringify({ rock_01: { authors: { Artist: "All" }, categories: ["rocks"], download_count: 2, name: "Rock", tags: ["rock"], type: 2 } }), { status: 200 });
+  }) as typeof fetch;
+  const offline = await assetCommand(["provider", "search", "poly-haven", "--query", "rock", "--type", "models", "--json"], { polyHavenDependencies: { fetch: offlineFetch } });
+  const live = await assetCommand(["provider", "search", "poly-haven", "--query", "rock", "--type", "models", "--live", "--json"], { polyHavenDependencies: { fetch: liveFetch } });
+
+  assert.equal(offline.exitCode, 0);
+  assert.equal((JSON.parse(offline.stdout) as { source: string }).source, "snapshot");
+  assert.equal(live.exitCode, 0);
+  assert.equal((JSON.parse(live.stdout) as { source: string }).source, "live");
+  assert.equal(calls, 1);
+});
+
+test("should expose Sketchfab provider commands through registry help", async () => {
+  const result = await assetCommand(["provider", "help", "--json"]);
+  const payload = JSON.parse(result.stdout) as { providers: Array<{ features: Array<{ operation: string; usage: string }>; id: string; networkDefault: string }> };
+  const sketchfab = payload.providers.find((provider) => provider.id === "sketchfab");
+  assert.equal(sketchfab?.networkDefault, "explicit");
+  assert.deepEqual(sketchfab?.features.map((feature) => feature.operation), ["status", "search", "preview", "import"]);
+  assert.match(sketchfab?.features.find((feature) => feature.operation === "import")?.usage ?? "", /--accept-license.*--target-size/);
+});
+
+test("should expose provider job flow through CLI and generic MCP descriptors", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-model-provider-cli-")); let calls = 0;
+  try {
+    const help = await assetCommand(["model-provider", "help", "--json"]);
+    const providers = (JSON.parse(help.stdout) as { providers: Array<{ id: string; status: string }> }).providers;
+    const missingAck = await assetCommand(["model-provider", "generate", "hyper3d", "--id", "crate-job", "--prompt", "beveled crate", "--project", root, "--json"], { hyper3dDependencies: { fetch: async () => { calls += 1; return new Response(); }, token: "secret" } });
+    assert.deepEqual(providers.map((provider) => provider.id), ["hyper3d", "hunyuan"]);
+    assert.match(CLI_COMMAND_REGISTRY.asset.usage, /--accept-cost --accept-provider-terms --confirm-input-rights/);
+    assert.match((JSON.parse(missingAck.stdout) as { message: string }).message, /0\.5-credit base cost.*Business subscription.*hyper3d\.ai\/pricing/);
+    assert.equal((JSON.parse(missingAck.stdout) as { code: string }).code, "TN_MODEL_PROVIDER_COST_ACK_REQUIRED");
+    assert.equal(calls, 0);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should report Hunyuan unsupported without submitting a request", async () => {
+  let calls = 0;
+  const result = await assetCommand(["model-provider", "status", "hunyuan", "--json"], { hyper3dDependencies: { fetch: async () => { calls += 1; return new Response(); } } });
+  const payload = JSON.parse(result.stdout) as { followUp: string; state: string };
+  assert.equal(payload.state, "unsupported");
+  assert.match(payload.followUp, /optional-headless-blender-asset-generation\.md#open-questions$/);
+  assert.equal(calls, 0);
+});
+
+test("should preserve Sketchfab provenance through inspect and asset add", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-sketchfab-cli-"));
+  const uid = "0123456789abcdef0123456789abcdef";
+  const gltf = Buffer.from(JSON.stringify({ accessors: [{ max: [2, 4, 1], min: [-2, 0, -1], type: "VEC3" }], asset: { version: "2.0" }, materials: [{ name: "Chair fabric" }], meshes: [{ primitives: [{ attributes: { POSITION: 0 } }] }], nodes: [{ mesh: 0 }], scene: 0, scenes: [{ nodes: [0] }] }));
+  const archive = makeStoredZip([{ bytes: gltf, name: "scene.gltf" }]);
+  const dependencies = { credential: "secret-cli-token", now: () => new Date("2026-07-14T00:00:00.000Z"), fetch: (async (input: string | URL | Request) => {
+    const url = String(input);
+    if (url.endsWith("/download")) return new Response(JSON.stringify({ gltf: { expires: 300, size: archive.byteLength, url: "https://sketchfab-prod-media.s3.amazonaws.com/model.zip?signature=secret" } }), { status: 200 });
+    if (url.startsWith("https://api.sketchfab.com/")) return new Response(JSON.stringify({ isDownloadable: true, license: { label: "CC Attribution", slug: "cc-by", url: "https://creativecommons.org/licenses/by/4.0/" }, name: "Chair", uid, user: { displayName: "Chair Artist", profileUrl: "https://sketchfab.com/chair-artist" }, viewerUrl: `https://sketchfab.com/3d-models/chair-${uid}` }), { status: 200 });
+    return new Response(archive, { headers: { "content-length": String(archive.byteLength), "content-type": "application/zip" }, status: 200 });
+  }) as typeof fetch };
+  try {
+    const result = await assetCommand(["provider", "import", "sketchfab", uid, "--accept-license", "cc-by", "--target-size", "1", "--id", "chair", "--project", root, "--json"], { sketchfabDependencies: dependencies });
+    const payload = JSON.parse(result.stdout) as { bounds: { size: number[] }; code: string; provenance: Record<string, unknown> };
+    const asset = JSON.parse(await readFile(join(root, "content/assets/chair.assets.json"), "utf8")) as { assets: Array<Record<string, unknown>> };
+    const provenance = await readFile(join(root, "assets/imported/sketchfab/chair/provenance.json"), "utf8");
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_SKETCHFAB_IMPORT_OK");
+    assert.ok(Math.abs(Math.max(...payload.bounds.size) - 1) < 0.001);
+    assert.equal(asset.assets[0]?.source, `sketchfab:${uid}`);
+    assert.equal(asset.assets[0]?.license, "cc-by");
+    assert.match(String(asset.assets[0]?.attribution), /Chair Artist/);
+    assert.equal(provenance.includes("secret-cli-token"), false);
+    assert.equal(provenance.includes("signature=secret"), false);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
 
 const fixtureGltf = {
   asset: { version: "2.0", generator: "asset-command-test" },
@@ -77,6 +178,32 @@ test("should inspect glTF bounds, dependencies, and scale calibration", async ()
     assert.deepEqual(payload.modular.pivotOffsetFromFootprintCenter, [1, -2]);
     assert.equal(payload.modular.snap.suggestedCellSize, 2);
     assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_ASSET_MODULAR_PIVOT_OFFSET"), true);
+  } finally {
+    restoreInitCwd(previousInitCwd);
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should inspect triangle counts named nodes and animation clips for generated quality review", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-inspect-animation-"));
+  const previousInitCwd = process.env.INIT_CWD;
+  try {
+    process.env.INIT_CWD = root;
+    const animated = {
+      asset: { version: "2.0" }, scene: 0, scenes: [{ nodes: [0] }],
+      nodes: [{ mesh: 0, name: "body" }, { name: "arm" }],
+      meshes: [{ primitives: [{ attributes: { POSITION: 0 }, indices: 1, mode: 4 }] }],
+      accessors: [{ count: 6, type: "VEC3", min: [-1, 0, -1], max: [1, 2, 1] }, { count: 6, type: "SCALAR" }],
+      animations: [{ name: "wave", channels: [{ sampler: 0, target: { node: 1, path: "rotation" } }], samplers: [{ input: 2, output: 3 }] }],
+    };
+    await writeFile(join(root, "robot.gltf"), `${JSON.stringify(animated, null, 2)}\n`);
+    const result = await assetCommand(["inspect", "robot.gltf", "--json"]);
+    const payload = JSON.parse(result.stdout) as { animationClips: unknown[]; counts: { animations: number; triangles: number }; namedNodes: string[] };
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(payload.namedNodes, ["arm", "body"]);
+    assert.deepEqual(payload.animationClips, [{ channels: 1, name: "wave", samplers: 1 }]);
+    assert.equal(payload.counts.animations, 1);
+    assert.equal(payload.counts.triangles, 2);
   } finally {
     restoreInitCwd(previousInitCwd);
     await rm(root, { force: true, recursive: true });
@@ -381,6 +508,135 @@ test("should add structured asset source document", async () => {
   }
 });
 
+test("should record run inspect and register through asset generate", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-"));
+  try {
+    const recipe = {
+      schema: "threenative.blender-recipe", version: "0.1.0", id: "robot",
+      budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 },
+      parts: [{ id: "body", primitive: "cube" }],
+      animations: [{ id: "wave", duration: 1, loop: true, tracks: [{ node: "body", property: "rotation", keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0, 30] }] }] }],
+    };
+    const result = await assetCommand([
+      "generate", "robot", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--overwrite-policy", "replace", "--project", root, "--json",
+    ], {
+      blenderDependencies: {
+        inspect: async (path) => ({ code: "TN_ASSET_INSPECT_OK", counts: { animations: 1, materials: 0, meshes: 1, triangles: 12 }, diagnostics: [], file: { byteSize: 3, path } }),
+        runnerPath: resolve(import.meta.dirname, "../blender/runner.py"),
+        toolStatus: async () => ({
+          artifact: { archive: "tar.xz", archiveFile: "blender.tar.xz", executablePath: "blender", expectedBytes: 1, host: "linux-x64", sha256: "0".repeat(64), url: "https://download.blender.org/blender.tar.xz" },
+          cachePath: "/managed", code: "TN_EXTERNAL_TOOL_READY", executablePath: "/managed/blender", id: "blender",
+          license: { name: "GPL", url: "https://developer.blender.org/docs/license/" }, ready: true, source: "managed", sourceUrl: "https://download.blender.org/source/", version: "4.5.11",
+        }),
+        runProcess: async (_executable, args) => {
+          const job = JSON.parse(await readFile(args.at(-1)!, "utf8")) as { outputPath: string; resultPath: string };
+          await writeFile(job.outputPath, "glb");
+          await writeFile(job.resultPath, `${JSON.stringify({ animations: ["wave"], nodes: ["body"], ok: true })}\n`);
+          return { exitCode: 0, stderr: "", stdout: "", timedOut: false };
+        },
+      },
+    });
+    const payload = JSON.parse(result.stdout) as { code: string; inspection: { counts: { animations: number } }; recordedFiles: string[] };
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.code, "TN_ASSET_GENERATE_OK");
+    assert.equal(payload.inspection.counts.animations, 1);
+    assert.deepEqual(payload.recordedFiles.sort(), ["content/generators/robot.generator.json", "content/generators/robot.recipe.json"]);
+    assert.equal((await readFile(join(root, "content/assets/robot.assets.json"), "utf8")).includes('"sourceClip": "wave"'), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should roll back Blender recipe and provenance when asset generation fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-rollback-"));
+  try {
+    const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
+    const priorRecipe = `${JSON.stringify({ ...recipe, parts: [{ id: "prior-body", primitive: "sphere" }] }, null, 2)}\n`;
+    const priorProvenance = `${JSON.stringify({ schema: "threenative.generator-provenance", version: "0.1.0", id: "crate", provider: "blender", providerVersion: "4.5.11", recipe: "content/generators/crate.recipe.json", outputs: ["assets/generated/crate.glb"], overwritePolicy: "manual" }, null, 2)}\n`;
+    await mkdir(join(root, "content/generators"), { recursive: true });
+    await writeFile(join(root, "content/generators/crate.recipe.json"), priorRecipe);
+    await writeFile(join(root, "content/generators/crate.generator.json"), priorProvenance);
+    const result = await assetCommand(["generate", "crate", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--project", root, "--json"], {
+      blenderDependencies: { toolStatus: async () => ({
+        artifact: { archive: "tar.xz", archiveFile: "blender.tar.xz", executablePath: "blender", expectedBytes: 1, host: "linux-x64", sha256: "0".repeat(64), url: "https://download.blender.org/blender.tar.xz" },
+        cachePath: "/missing", code: "TN_EXTERNAL_TOOL_MISSING", executablePath: "/missing/blender", id: "blender",
+        license: { name: "GPL", url: "https://developer.blender.org/docs/license/" }, ready: false, source: "missing", sourceUrl: "https://download.blender.org/source/", version: "4.5.11",
+      }) },
+    });
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; fix?: { snippet?: string } }> };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.diagnostics[0]?.code, "TN_EXTERNAL_TOOL_MISSING");
+    assert.equal(payload.diagnostics[0]?.fix?.snippet, "tn tool install blender --accept-download --json");
+    assert.equal(await readFile(join(root, "content/generators/crate.generator.json"), "utf8"), priorProvenance);
+    assert.equal(await readFile(join(root, "content/generators/crate.recipe.json"), "utf8"), priorRecipe);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should not replace a manually registered asset with generated source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-manual-conflict-"));
+  try {
+    const assetPath = join(root, "content/assets/crate.assets.json");
+    const manual = `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "crate", assets: [{ id: "crate", path: "assets/manual/crate.glb", source: "artist:manual", type: "model" }] }, null, 2)}\n`;
+    await mkdir(join(root, "content/assets"), { recursive: true });
+    await writeFile(assetPath, manual);
+    const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
+    const result = await assetCommand(["generate", "crate", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_ASSET_GENERATE_MANUAL_ASSET_CONFLICT");
+    assert.equal(await readFile(assetPath, "utf8"), manual);
+    await assert.rejects(readFile(join(root, "content/generators/crate.generator.json")));
+    await assert.rejects(readFile(join(root, "content/generators/crate.recipe.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid generated asset id before project or Blender access", async () => {
+  const parent = await mkdtemp(join(tmpdir(), "tn-asset-generate-invalid-id-"));
+  const projectPath = join(parent, "must-not-exist");
+  let toolStatusCalls = 0;
+  try {
+    const result = await assetCommand(["generate", "../crate", "--provider", "blender", "--recipe", "{}", "--project", projectPath, "--json"], {
+      blenderDependencies: { toolStatus: async () => { toolStatusCalls += 1; throw new Error("must not execute"); } },
+    });
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 2);
+    assert.equal(payload.code, "TN_ASSET_GENERATE_ASSET_ID_INVALID");
+    assert.equal(toolStatusCalls, 0);
+    await assert.rejects(readFile(projectPath));
+  } finally {
+    await rm(parent, { force: true, recursive: true });
+  }
+});
+
+test("should reject manual asset declaration with same id in non-default asset document", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-project-ownership-"));
+  const assetPath = join(root, "content/assets/characters/shared.assets.json");
+  const manual = `${JSON.stringify({ schema: "threenative.assets", version: "0.1.0", id: "shared", assets: [{ id: "crate", path: "assets/manual/crate.glb", source: "artist:manual", type: "model" }] }, null, 2)}\n`;
+  try {
+    await mkdir(join(root, "content/assets/characters"), { recursive: true });
+    await writeFile(assetPath, manual);
+    const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
+    const result = await assetCommand(["generate", "crate", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_ASSET_GENERATE_MANUAL_ASSET_CONFLICT");
+    assert.match(payload.message, /content\/assets\/characters\/shared\.assets\.json/);
+    assert.equal(await readFile(assetPath, "utf8"), manual);
+    await assert.rejects(readFile(join(root, "content/generators/crate.generator.json")));
+    await assert.rejects(readFile(join(root, "content/generators/crate.recipe.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject unsupported asset type at add time", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-asset-type-invalid-"));
   try {
@@ -662,6 +918,21 @@ function makeGlb(json: unknown, binaryChunk?: Buffer): Buffer {
   binHeader.writeUInt32LE(0x004e4942, 4);
   return Buffer.concat([header, jsonBuffer, binHeader, paddedBinary]);
 }
+
+function makeStoredZip(files: Array<{ bytes: Buffer; name: string }>): Buffer {
+  const locals: Buffer[] = []; const centrals: Buffer[] = []; let offset = 0;
+  for (const file of files) {
+    const name = Buffer.from(file.name); const local = Buffer.alloc(30); const crc = assetTestCrc32(file.bytes);
+    local.writeUInt32LE(0x04034b50, 0); local.writeUInt16LE(20, 4); local.writeUInt16LE(0x0800, 6); local.writeUInt32LE(crc, 14); local.writeUInt32LE(file.bytes.length, 18); local.writeUInt32LE(file.bytes.length, 22); local.writeUInt16LE(name.length, 26);
+    locals.push(local, name, file.bytes);
+    const central = Buffer.alloc(46); central.writeUInt32LE(0x02014b50, 0); central.writeUInt16LE(0x0314, 4); central.writeUInt16LE(20, 6); central.writeUInt16LE(0x0800, 8); central.writeUInt32LE(crc, 16); central.writeUInt32LE(file.bytes.length, 20); central.writeUInt32LE(file.bytes.length, 24); central.writeUInt16LE(name.length, 28); central.writeUInt32LE(offset, 42);
+    centrals.push(central, name); offset += local.length + name.length + file.bytes.length;
+  }
+  const directory = Buffer.concat(centrals); const end = Buffer.alloc(22); end.writeUInt32LE(0x06054b50, 0); end.writeUInt16LE(files.length, 8); end.writeUInt16LE(files.length, 10); end.writeUInt32LE(directory.length, 12); end.writeUInt32LE(offset, 16);
+  return Buffer.concat([...locals, directory, end]);
+}
+
+function assetTestCrc32(bytes: Uint8Array): number { let crc = 0xffffffff; for (const byte of bytes) { crc ^= byte; for (let bit = 0; bit < 8; bit += 1) crc = (crc >>> 1) ^ (crc & 1 ? 0xedb88320 : 0); } return (crc ^ 0xffffffff) >>> 0; }
 
 function makeRoadGlb(kind: "corner" | "straight"): Buffer {
   const grass = [[0, 0, -2], [2, 0, -2], [2, 0, 0], [0, 0, 0]];

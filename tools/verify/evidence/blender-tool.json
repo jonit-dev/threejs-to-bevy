@@ -1,0 +1,69 @@
+{
+  "schema": "threenative.blender-tool-evidence",
+  "version": "0.1.0",
+  "hosts": [
+    {
+      "host": "linux-x64",
+      "disposition": "promoted",
+      "archiveBytes": 377898640,
+      "cacheBytes": 1168335091,
+      "executableVersion": "4.5.11",
+      "installAcknowledged": true,
+      "sha256": "05ed7bd41bf3e61ae4f4a7cdc364c43088bf8b3fed702c2269c018fdf63a2188",
+      "sourceUrl": "https://download.blender.org/release/Blender4.5/blender-4.5.11-linux-x64.tar.xz",
+      "runnerSha256": "55be4753397b872c44ac8e6b91cae10b67c792649d6f914e62ee2f8320fc1409",
+      "hardenedArgv": ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python", "<owned-runner>", "--", "--job", "<owned-job>"],
+      "cleanup": { "noLocks": true, "noProcesses": true, "noStaging": true },
+      "recipes": [
+        { "id": "prop.barrier", "authoringValid": true, "buildPassed": true, "materials": 4, "meshes": 12, "triangles": 1584, "bounds": { "min": [-1.675000011920929, 0, -0.4749999940395355], "max": [1.675000011920929, 1.6299999803304672, 0.4749999940395355] } },
+        { "id": "prop.crate", "authoringValid": true, "buildPassed": true, "materials": 3, "meshes": 14, "triangles": 168, "bounds": { "min": [-0.8100000023841858, 0, -0.7550000138580799], "max": [0.8100000023841858, 1.297648043179041, 0.75] } },
+        { "id": "prop.pickup", "authoringValid": true, "buildPassed": true, "materials": 3, "meshes": 11, "triangles": 2398, "bounds": { "min": [-0.7000000338827698, 0, -0.8500000450959003], "max": [0.7000000338827698, 1.9450000884143757, 0.8500000450959003] } }
+      ]
+    },
+    { "host": "macos-x64", "disposition": "rejected", "cleanup": { "noLocks": true, "noProcesses": true, "noStaging": true }, "rejection": { "code": "TN_EXTERNAL_TOOL_HOST_UNPROVEN", "message": "Real install, execution, cleanup, and semantic generation evidence has not yet been retained for macOS x64." } },
+    { "host": "macos-arm64", "disposition": "rejected", "cleanup": { "noLocks": true, "noProcesses": true, "noStaging": true }, "rejection": { "code": "TN_EXTERNAL_TOOL_HOST_UNPROVEN", "message": "Real install, execution, cleanup, and semantic generation evidence has not yet been retained for macOS arm64." } },
+    { "host": "windows-x64", "disposition": "rejected", "cleanup": { "noLocks": true, "noProcesses": true, "noStaging": true }, "rejection": { "code": "TN_EXTERNAL_TOOL_HOST_UNPROVEN", "message": "Real install, execution, cleanup, and semantic generation evidence has not yet been retained for Windows x64." } }
+  ],
+  "negativeControls": [
+    { "id": "archive-hash", "passed": true, "cleanup": true, "diagnostic": "TN_EXTERNAL_TOOL_HASH_MISMATCH", "evidence": "packages/cli/src/externalTools/manager.test.ts" },
+    { "id": "archive-tar-traversal", "passed": true, "cleanup": true, "diagnostic": "TN_EXTERNAL_TOOL_EXTRACTION_FAILED", "evidence": "packages/cli/src/externalTools/manager.test.ts" },
+    { "id": "archive-zip-traversal", "passed": true, "cleanup": true, "diagnostic": "TN_EXTERNAL_TOOL_EXTRACTION_FAILED", "evidence": "packages/cli/src/externalTools/manager.test.ts" },
+    { "id": "download-interrupted", "passed": true, "cleanup": true, "diagnostic": "TN_EXTERNAL_TOOL_HTTP_FAILED", "evidence": "packages/cli/src/externalTools/manager.test.ts" },
+    { "id": "lock-stale", "passed": true, "cleanup": true, "diagnostic": "TN_EXTERNAL_TOOL_READY", "evidence": "packages/cli/src/externalTools/manager.test.ts" },
+    { "id": "process-timeout", "passed": true, "cleanup": true, "diagnostic": "TN_BLENDER_GENERATION_TIMEOUT", "evidence": "packages/cli/src/commands/generator.test.ts" },
+    { "id": "recipe-budget", "passed": true, "cleanup": true, "diagnostic": "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED", "evidence": "packages/authoring/src/operationRegistry.test.ts" },
+    { "id": "recipe-code-field", "passed": true, "cleanup": true, "diagnostic": "TN_AUTHORING_BLENDER_RECIPE_CODE_FORBIDDEN", "evidence": "packages/authoring/src/operationRegistry.test.ts" },
+    { "id": "recipe-path", "passed": true, "cleanup": true, "diagnostic": "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", "evidence": "packages/authoring/src/operationRegistry.test.ts" },
+    { "id": "output-malformed", "passed": true, "cleanup": true, "diagnostic": "TN_BLENDER_RESULT_INVALID", "evidence": "packages/cli/src/commands/generator.test.ts" },
+    { "id": "output-oversized", "passed": true, "cleanup": true, "diagnostic": "TN_BLENDER_OUTPUT_BUDGET_EXCEEDED", "evidence": "packages/cli/src/commands/generator.test.ts" }
+  ],
+  "coverage": [
+    { "id": 1, "upstreamTool": "get_scene_info", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.inspect", "owner": "asset-inspect" },
+    { "id": 2, "upstreamTool": "get_object_info", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.inspect", "owner": "asset-inspect" },
+    { "id": 3, "upstreamTool": "get_viewport_screenshot", "disposition": "equivalent", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.model_test", "owner": "model-test" },
+    { "id": 4, "upstreamTool": "execute_blender_code", "disposition": "safe-replacement", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.generate_blender", "owner": "blender-recipe" },
+    { "id": 5, "upstreamTool": "get_polyhaven_categories", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.polyhaven_categories", "owner": "poly-haven" },
+    { "id": 6, "upstreamTool": "search_polyhaven_assets", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.polyhaven_search", "owner": "poly-haven" },
+    { "id": 7, "upstreamTool": "download_polyhaven_asset", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.polyhaven_import", "owner": "poly-haven" },
+    { "id": 8, "upstreamTool": "set_texture", "disposition": "equivalent", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "material.set", "owner": "materials" },
+    { "id": 9, "upstreamTool": "get_polyhaven_status", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.polyhaven_status", "owner": "poly-haven" },
+    { "id": 10, "upstreamTool": "get_hyper3d_status", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hyper3d_status", "owner": "hyper3d" },
+    { "id": 11, "upstreamTool": "get_sketchfab_status", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.sketchfab_status", "owner": "sketchfab" },
+    { "id": 12, "upstreamTool": "search_sketchfab_models", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.sketchfab_search", "owner": "sketchfab" },
+    { "id": 13, "upstreamTool": "get_sketchfab_model_preview", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.sketchfab_preview", "owner": "sketchfab" },
+    { "id": 14, "upstreamTool": "download_sketchfab_model", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.sketchfab_import", "owner": "sketchfab" },
+    { "id": 15, "upstreamTool": "generate_hyper3d_model_via_text", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hyper3d_generate", "owner": "hyper3d" },
+    { "id": 16, "upstreamTool": "generate_hyper3d_model_via_images", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hyper3d_generate", "owner": "hyper3d" },
+    { "id": 17, "upstreamTool": "poll_rodin_job_status", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hyper3d_poll", "owner": "hyper3d" },
+    { "id": 18, "upstreamTool": "import_generated_asset", "disposition": "full", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hyper3d_import", "owner": "hyper3d" },
+    { "id": 19, "upstreamTool": "get_hunyuan3d_status", "disposition": "equivalent", "evidence": "packages/mcp-server/src/index.test.ts", "mcpTool": "asset.hunyuan_status", "owner": "model-provider-registry" },
+    { "id": 20, "upstreamTool": "generate_hunyuan3d_model", "disposition": "deferred", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md#inspected-upstream-surface", "owner": "follow-on:hunyuan-provider" },
+    { "id": 21, "upstreamTool": "poll_hunyuan_job_status", "disposition": "deferred", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md#inspected-upstream-surface", "owner": "follow-on:hunyuan-provider" },
+    { "id": 22, "upstreamTool": "import_generated_asset_hunyuan", "disposition": "deferred", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md#inspected-upstream-surface", "owner": "follow-on:hunyuan-provider" }
+  ],
+  "providers": [
+    { "id": "poly-haven", "status": "verified", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md", "offlineAfterAcquisition": true, "secretFree": true },
+    { "id": "sketchfab", "status": "pending", "pendingReason": "Authenticated OAuth download and offline rebuild require a user credential.", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md", "offlineAfterAcquisition": false, "secretFree": true },
+    { "id": "hyper3d", "status": "pending", "pendingReason": "A live paid generation job requires user authority, budget, and a provider credential.", "evidence": "docs/PRDs/other/optional-headless-blender-asset-generation.md", "offlineAfterAcquisition": false, "secretFree": true }
+  ]
+}

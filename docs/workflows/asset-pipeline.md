@@ -20,6 +20,7 @@ examples, starters, or visual fixtures, query the asset source catalog:
 ```bash
 tn asset source search --game-category underwater --format glb --direct-only --json
 tn asset source get babylon-grey-snapper-vert-color --json
+tn asset strategy --json
 ```
 
 Prefer direct records with `isDirectDownload: true`, a compatible
@@ -38,6 +39,81 @@ the downloaded model before placing it in a scene:
 tn asset inspect assets/model.glb --json
 tn model-test assets/model.glb --out artifacts/model-test --verify --json
 ```
+
+## Optional Providers And Bounded Blender Generation
+
+Poly Haven is CC0-first and snapshot-first. Live search is explicit; imported
+models, texture sets, and HDRIs are copied to bundle-local files with source,
+author, license, selection, hash, and derivation provenance:
+
+```bash
+tn asset provider search poly-haven --query brick --type textures --live --json
+tn asset provider import poly-haven brick_floor_001 --type textures --resolution 1k --format png --id material.brick --project . --json
+```
+
+Sketchfab search and previews are public, but download requires a personal
+OAuth Bearer token in `THREENATIVE_SKETCHFAB_OAUTH_TOKEN`, an explicit canonical
+license acknowledgement, and target meter size. Third-party applications need
+their own Sketchfab OAuth integration and applicable agreement.
+
+```bash
+tn asset provider search sketchfab --query chair --json
+tn asset provider preview sketchfab <model-uid> --json
+tn asset provider import sketchfab <model-uid> --accept-license cc-by --target-size 1 --id chair --project . --json
+```
+
+Hyper3D Rodin is experimental and opt-in. Status is offline unless `--live` is
+passed. Generation accepts exactly one prompt or project-local PNG/JPEG/WebP
+and requires separate cost, provider-terms, and input-rights acknowledgements.
+The documented Gen-2 base is 0.5 credit and requires a Business subscription;
+review current pricing and terms before every paid submission. Polling is one
+explicit request, never a daemon or recursive wait. Poll conservatively, honor
+HTTP 429 `Retry-After`, and re-check the provider's current API rate limit
+before scripting requests. Durable job records retain only non-secret hashes,
+state, expiry, and provider task IDs. The polling handle is isolated in a
+project-local mode-0600 `.secret.json` sidecar; stdout, source, bundles,
+provenance, and evidence omit credentials, polling handles, and signed URLs.
+Hunyuan status is visible and fail-closed; its job handlers are absent. The
+official-source review is recorded in
+[`docs/audits/hyper3d-provider-review-2026-07-14.md`](../audits/hyper3d-provider-review-2026-07-14.md).
+
+```bash
+tn asset model-provider status hyper3d --json
+tn asset model-provider generate hyper3d --id crate-job --prompt "beveled sci-fi crate" --accept-cost --accept-provider-terms --confirm-input-rights --project . --json
+tn asset model-provider poll hyper3d crate-job --project . --json
+tn asset model-provider import hyper3d crate-job --id crate.generated --target-size 1.2 --project . --json
+```
+
+Blender is an optional authoring-only tool, never a runtime dependency. The
+managed install is roughly 378-399 MB compressed depending on host and is only
+downloaded after `--accept-download`; source URL, expected size, SHA-256, and
+Blender 4.5.11 are pinned in the external-tool manifest. The cache defaults to
+the platform user cache under `threenative/tools`; `THREENATIVE_TOOL_CACHE`
+overrides it and `THREENATIVE_BLENDER_PATH` selects a reviewed existing binary.
+Normal proxy environment variables are honored by the Node download. Offline
+use works after installation; removal is explicit. Interrupted downloads,
+hash mismatch, stale locks, timeouts, traversal, recipe budgets, and malformed
+GLBs fail with stable `TN_*` diagnostics and cleanup staging/lock/process state.
+
+```bash
+tn tool status blender --json
+tn tool install blender --accept-download --json
+tn asset generate prop.crate --provider blender --recipe content/generators/prop.crate.recipe.json --project . --json
+tn asset inspect assets/generated/prop.crate.glb --json
+tn model-test assets/generated/prop.crate.glb --angles 0,45,90,180 --json
+tn tool remove blender --json
+```
+
+Recipes use a closed vocabulary: `cube`, `sphere`, `cylinder`, `cone`, and
+`torus` primitives; flat/smooth shading; `array`, `bevel`, `boolean`, `mirror`,
+and `solidify` modifiers; `join` and `parent` hierarchy operations;
+position/rotation/scale animation tracks; and linear/step interpolation. Raw
+Python, arbitrary Blender code/add-ons/operators/drivers/modules, remote
+recipes, GUI/Xvfb, arbitrary `.blend` import, rigs, and unbounded providerless
+text-to-3D are not supported. Linux x64 has retained real generation proof. macOS
+x64/arm64 and Windows x64 remain rejected with
+`TN_EXTERNAL_TOOL_HOST_UNPROVEN` until the opt-in matrix retains equivalent
+install, cleanup, generation, and visual evidence.
 
 ## Inspecting Model Scale and Dependencies
 

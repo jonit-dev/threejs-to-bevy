@@ -70,12 +70,14 @@ test("model-test should generate a one-model proof project", async () => {
     assert.equal(payload.files.some((file) => file.role === "image-dependency" && file.path.endsWith("assets/textures/kart.png")), true);
 
     const source = JSON.parse(await readFile(join(root, "proof", "content", "scenes", "model-test.scene.json"), "utf8")) as {
-      entities: Array<{ id: string }>;
+      entities: Array<{ id: string; transform?: { position?: number[]; scale?: number[] } }>;
       prefabs: Array<{ asset?: string; id: string }>;
     };
     assert.equal(source.prefabs.some((prefab) => prefab.id === "prefab.model-under-test" && prefab.asset === "assets/kart.gltf"), true);
     assert.equal(source.entities.some((entity) => entity.id === "scale.ruler.1m"), true);
     assert.equal(source.entities.some((entity) => entity.id === "model.bounds.reference"), true);
+    const boundsMarker = source.entities.find((entity) => entity.id === "model.bounds.reference")?.transform;
+    assert.equal((boundsMarker?.position?.[2] ?? 0) + (boundsMarker?.scale?.[2] ?? 0) / 2 < 0, true);
 
     const readme = await readFile(join(root, "proof", "README.md"), "utf8");
     assert.match(readme, /ThreeNative model test/);

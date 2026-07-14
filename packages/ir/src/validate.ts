@@ -56,6 +56,7 @@ import {
 } from "./validationPrimitives.js";
 import { validateUnsupportedFields } from "./validationDiagnostics.js";
 import { validateEntityTags } from "./tagValidation.js";
+import { validateDistribution } from "./distribution.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -113,6 +114,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     assets,
     audio,
     componentSchemas,
+    distribution,
     environmentScene,
     eventSchemas,
     gameFlow,
@@ -194,6 +196,13 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
     }
     await validateTargetBudgets(targetProfile, assets, bundlePath, manifest.files.targetProfile, diagnostics);
     diagnostics.push(...validatePerformanceProfile(targetProfile.performance, `${manifest.files.targetProfile}/performance`));
+  }
+  if (distribution !== undefined) {
+    diagnostics.push(...validateDistribution(
+      distribution,
+      manifest.files.distribution ?? IR_DOCUMENTS.distribution.fileName,
+      targetProfile,
+    ));
   }
   if (systems !== undefined) {
     validateSystems(

@@ -73,8 +73,9 @@ async function discoverJsonFiles(projectPath: string, absolutePath: string): Pro
     const child = resolve(absolutePath, entry.name);
     if (entry.isDirectory()) {
       files.push(...(await discoverJsonFiles(projectPath, child)));
-    } else if (entry.isFile() && classifyAuthoringDocumentPath(entry.name) !== "unknown") {
-      files.push(normalizeRelativePath(child.slice(projectPath.length + 1)));
+    } else if (entry.isFile()) {
+      const projectRelativeChild = normalizeRelativePath(child.slice(projectPath.length + 1));
+      if (classifyAuthoringDocumentPath(projectRelativeChild) !== "unknown") files.push(projectRelativeChild);
     }
   }
   return files;

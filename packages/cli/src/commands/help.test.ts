@@ -3,6 +3,8 @@ import test from "node:test";
 
 import { helpCommand } from "./help.js";
 import { defaultOverlayStyle, listOverlayStyles } from "../overlays/scaffoldRegistry.js";
+import { DISTRIBUTION_TARGET_REGISTRY } from "@threenative/ir";
+import { CLI_COMMAND_REGISTRY } from "../index.js";
 
 test("should list task-oriented help topics", async () => {
   const result = await helpCommand(["--json"]);
@@ -31,6 +33,17 @@ test("should derive overlay style choices from the scaffold registry", async () 
   const text = [...payload.commands, ...payload.examples].join("\n");
   for (const style of listOverlayStyles()) assert.match(text, new RegExp(`\\b${style}\\b`));
   assert.match(text, new RegExp(`default: ${defaultOverlayStyle()}`));
+});
+
+test("should derive package target help from registry metadata", () => {
+  const usage = CLI_COMMAND_REGISTRY.package.usage;
+  const platforms = [...new Set(DISTRIBUTION_TARGET_REGISTRY.map(({ platform }) => platform))];
+  const runtimes = [...new Set(DISTRIBUTION_TARGET_REGISTRY.map(({ runtime }) => runtime))];
+  const formats = [...new Set(DISTRIBUTION_TARGET_REGISTRY.flatMap(({ formats: rowFormats }) => rowFormats))];
+
+  for (const value of [...platforms, ...runtimes, ...formats]) assert.match(usage, new RegExp(`\\b${value}\\b`));
+  assert.match(usage, /tn package plan/);
+  assert.doesNotMatch(usage.split("\n")[1] ?? "", /desktop/);
 });
 
 test("should render known help topic with commands and docs", async () => {

@@ -6,7 +6,7 @@ import { formatAuthoringDocument } from "./format.js";
 import { isGeneratedBundleArtifactFile } from "./sourceKinds.js";
 import { expandRegistryDocumentPreset } from "./documentPresets.js";
 
-export type AuthoringDocumentKind = "asset" | "audio" | "environment" | "flow" | "generator" | "input" | "interaction" | "material" | "mesh" | "overlay" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
+export type AuthoringDocumentKind = "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "interaction" | "material" | "mesh" | "overlay" | "persistence" | "prefab" | "project" | "resources" | "runtime" | "scene" | "schema" | "sequence" | "systems" | "target" | "ui" | "unknown";
 
 export interface IAuthoringDocument {
   file: string;
@@ -98,6 +98,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "audio";
       case "threenative.environment-scene":
         return "environment";
+      case "threenative.distribution":
+        return "distribution";
       case "threenative.flow":
         return "flow";
       case "threenative.generator-provenance":
@@ -128,6 +130,8 @@ export function classifyAuthoringDocument(projectRelativePath: string, data: unk
         return "scene";
       case "threenative.overlays":
         return "overlay";
+      case "threenative.local-data":
+        return "persistence";
       case "threenative.sequence":
         return "sequence";
       case "threenative.systems":
@@ -154,6 +158,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".environment.json")) {
     return "environment";
+  }
+  if (projectRelativePath === "content/distribution.json") {
+    return "distribution";
   }
   if (projectRelativePath.endsWith(".flow.json")) {
     return "flow";
@@ -190,6 +197,9 @@ export function classifyAuthoringDocumentPath(projectRelativePath: string): Auth
   }
   if (projectRelativePath.endsWith(".overlays.json")) {
     return "overlay";
+  }
+  if (projectRelativePath.endsWith(".persistence.json")) {
+    return "persistence";
   }
   if (projectRelativePath.endsWith(".sequence.json")) {
     return "sequence";

@@ -6,6 +6,7 @@ export const IR_SCHEMA_IDS = {
   audio: "threenative.audio",
   bundle: "threenative.bundle",
   componentSchemas: "threenative.component-schemas",
+  distribution: "threenative.distribution",
   environmentScene: "threenative.environment-scene",
   eventSchemas: "threenative.event-schemas",
   gameFlow: "threenative.game-flow",
@@ -77,6 +78,16 @@ export const IR_DOCUMENTS = {
     fileName: "manifest.json",
     schema: IR_SCHEMA_IDS.bundle,
     schemaFile: "manifest.schema.json",
+  },
+  distribution: {
+    drift: {
+      typescript: { interfaceName: "IDistributionSource", source: "src/distribution.ts" },
+    },
+    fileName: "distribution.ir.json",
+    manifestKey: "distribution",
+    manifestSection: "files",
+    schema: IR_SCHEMA_IDS.distribution,
+    schemaFile: "distribution.schema.json",
   },
   animations: {
     fileName: "animations.ir.json",

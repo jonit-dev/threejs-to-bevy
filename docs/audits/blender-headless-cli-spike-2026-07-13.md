@@ -169,7 +169,7 @@ owned runner:
 | Common modifiers | Reimplement an explicit allowlist with budgets |
 | Viewport screenshots | Use existing `tn model-test`/proof flow after export |
 | Poly Haven/Sketchfab lookup | Keep in the existing catalog/provider boundary |
-| Third-party text-to-3D providers | Defer to provider-specific PRDs and credentials |
+| Third-party text-to-3D providers | Reimplement through separate explicit provider job adapters; v1 proves one |
 | MCP transport | Derive a thin adapter from the `tn` command descriptor |
 | TCP socket/GUI add-on | Do not adopt for headless generation |
 | Arbitrary Python execution | Explicitly prohibit |
@@ -243,6 +243,31 @@ These operations are the safe functional replacement for the upstream tool's
 most powerful feature and must be registry-owned so CLI, MCP schemas, runner
 dispatch, help, and coverage tests cannot drift.
 
+### Asset-Creation Strategy Prompt
+
+BlenderMCP also exposes one `@mcp.prompt()` named `asset_creation_strategy`.
+It is not part of the 22-tool denominator, but its orchestration policy is
+high-value and should be adapted into ThreeNative planning/cookbook guidance:
+
+- inspect current scene/project inventory before changes;
+- capture visual evidence before and after meaningful changes;
+- prefer existing reviewed assets over generation;
+- use Sketchfab for specific/realistic downloadable models and Poly Haven for
+  generic models, textures, and HDRIs;
+- use text/image model generation for a single unique item, not an entire
+  scene, ground, or separately generated fragments;
+- poll and import explicitly, then inspect world bounds and correct scale,
+  location, rotation, grounding, and clipping;
+- reuse an accepted generated asset instead of paying to generate it again;
+- fall back to procedural modeling only for simple primitives, basic materials,
+  unavailable assets, or failed providers;
+- finish with scene/object inspection and visual verification.
+
+ThreeNative should tighten this policy: start with its shipped SQLite catalog,
+require license/provenance before download, require explicit paid-provider
+acknowledgement, use existing model-test/build proof, and never recommend raw
+Python as the fallback.
+
 BlenderMCP is MIT-licensed, so a small algorithm may be ported when it is
 materially better than a clean implementation, provided attribution and license
 notices are retained. Default to documented Blender APIs and original bounded
@@ -269,6 +294,11 @@ editing is valuable. It must not become the CLI's headless worker.
 - Run `tn asset inspect` automatically and fail generation when the output is
   invalid or exceeds declared budgets.
 - Expose generation through MCP only after the CLI/core operation exists.
+- Reproduce Poly Haven and Sketchfab discovery/import through separate
+  provenance-first provider adapters and prove one explicit text/image model
+  job provider; do not put provider HTTP or credentials inside Blender.
+- Keep a fixed 22-row BlenderMCP coverage inventory, require at least 19 v1
+  outcomes, and adapt its catalog-first/verify-after-change strategy prompt.
 
 ## Spike Limitations
 
@@ -286,8 +316,10 @@ editing is valuable. It must not become the CLI's headless worker.
 
 ## Recommendation
 
-Proceed with the PRD's first three phases. The go/no-go criterion after those
-phases is practical: an agent must be able to create at least three visibly
-distinct, game-usable props from bounded recipes, rerun them without drift,
-and pass existing asset inspection/model-test evidence on Linux, macOS, and
-Windows. Keep BlenderMCP as a vocabulary/reference source, not a dependency.
+Proceed first with the PRD's tool, recipe, generation, and bounded MCP phases.
+The first go/no-go criterion is practical: an agent must create at least three
+visibly distinct, game-usable props, rerun them without drift, and pass asset
+inspection/model-test evidence on Linux, macOS, and Windows. Then promote the
+catalog/provider phases only with license, credential, cost, and secret-free
+evidence. V1 closes at 19/22 BlenderMCP outcomes plus the adapted strategy
+prompt. Keep BlenderMCP as a vocabulary/reference source, not a dependency.

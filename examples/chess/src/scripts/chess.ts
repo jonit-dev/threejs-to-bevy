@@ -24,6 +24,10 @@ type ChessContext = ScriptContext & {
   picking: {
     pointerRay(options: { aspect?: number; camera?: string; maxDistance?: number; pointer: [number, number] }): { hit: false } | { direction: [number, number, number]; hit: true; maxDistance: number; origin: [number, number, number] };
   };
+  persistence: {
+    load(slot: string): { accepted: boolean };
+    save(slot: string): { accepted: boolean };
+  };
   ui: {
     actions(): Array<{ action: string; node: string; value?: number | string }>;
     setDisabled(nodeId: string, disabled: boolean): unknown;
@@ -40,7 +44,7 @@ export const chessGame = defineBehavior(
     writes: ["ChessPiece", "Transform"],
     resourceReads: ["ChessGame"],
     resourceWrites: ["ChessGame"],
-    services: ["audio.play", "picking.pointerRay", "ui.actions", "ui.setDisabled"],
+    services: ["audio.play", "persistence.load", "persistence.save", "picking.pointerRay", "ui.actions", "ui.setDisabled"],
   },
   (rawContext: ScriptContext): void => {
     const boardSquareSize = 1.036;
@@ -67,10 +71,49 @@ export const chessGame = defineBehavior(
       lastToRank: -1,
       moveHistoryText: "",
       promotionIndex: 0,
+      persistenceLoaded: false,
       playerColor: "" as "" | Color,
+      savePending: false,
       selectedId: "",
       turn: "white" as Color,
     });
+    let restoredThisFrame = false;
+    if (!state.persistenceLoaded) {
+      const loaded = context.persistence.load("slot.auto");
+      state.persistenceLoaded = true;
+      if (loaded.accepted) {
+        const resource = context.resources.get<{ saveState?: unknown }>("ChessGame", {});
+        try {
+          const saved = typeof resource.saveState === "string" ? JSON.parse(resource.saveState) as unknown : undefined;
+          if (typeof saved === "object" && saved !== null && !Array.isArray(saved)) {
+            const value = saved as Record<string, unknown>;
+            const integer = (key: string, fallback: number, min: number, max: number): number => Number.isInteger(value[key]) && Number(value[key]) >= min && Number(value[key]) <= max ? Number(value[key]) : fallback;
+            state.playerColor = value.playerColor === "white" || value.playerColor === "black" ? value.playerColor : "";
+            state.turn = value.turn === "white" || value.turn === "black" ? value.turn : "white";
+            state.gameOver = typeof value.gameOver === "boolean" ? value.gameOver : false;
+            state.halfmove = integer("halfmove", 1, 1, 10000);
+            state.cursorFile = integer("cursorFile", 4, 0, 7);
+            state.cursorRank = integer("cursorRank", 1, 0, 7);
+            state.enPassantFile = integer("enPassantFile", -1, -1, 7);
+            state.enPassantRank = integer("enPassantRank", -1, -1, 7);
+            state.enPassantPawn = typeof value.enPassantPawn === "string" ? value.enPassantPawn : "";
+            state.lastFromFile = integer("lastFromFile", -1, -1, 7);
+            state.lastFromRank = integer("lastFromRank", -1, -1, 7);
+            state.lastToFile = integer("lastToFile", -1, -1, 7);
+            state.lastToRank = integer("lastToRank", -1, -1, 7);
+            state.moveHistoryText = typeof value.moveHistoryText === "string" ? value.moveHistoryText.slice(0, 4096) : "";
+            state.promotionIndex = integer("promotionIndex", 0, 0, 3);
+            restoredThisFrame = state.playerColor !== "";
+          }
+        } catch {
+          restoredThisFrame = false;
+        }
+      }
+    }
+    if (state.savePending) {
+      context.persistence.save("slot.auto");
+      state.savePending = false;
+    }
     const promotionKinds: Kind[] = ["queen", "rook", "bishop", "knight"];
     const allEntities = context.query();
     const pieceEntities = allEntities.filter((entity) => entity.id.startsWith("piece."));
@@ -208,6 +251,28 @@ export const chessGame = defineBehavior(
       moveHistoryText: state.moveHistoryText === "" ? "No moves yet" : state.moveHistoryText,
       ...value,
     });
+    const queuePersistence = (): void => {
+      patchHud({
+        saveState: JSON.stringify({
+          cursorFile: state.cursorFile,
+          cursorRank: state.cursorRank,
+          enPassantFile: state.enPassantFile,
+          enPassantPawn: state.enPassantPawn,
+          enPassantRank: state.enPassantRank,
+          gameOver: state.gameOver,
+          halfmove: state.halfmove,
+          lastFromFile: state.lastFromFile,
+          lastFromRank: state.lastFromRank,
+          lastToFile: state.lastToFile,
+          lastToRank: state.lastToRank,
+          moveHistoryText: state.moveHistoryText,
+          playerColor: state.playerColor,
+          promotionIndex: state.promotionIndex,
+          turn: state.turn,
+        }),
+      });
+      state.savePending = true;
+    };
     const publishCaptures = (): void => {
       const symbols: Record<Color, Record<Kind, string>> = {
         black: { bishop: "♝", king: "♚", knight: "♞", pawn: "♟", queen: "♛", rook: "♜" },
@@ -292,6 +357,7 @@ export const chessGame = defineBehavior(
       context.audio.play(move.captureId === undefined ? "sound.chess.move" : "sound.chess.capture", { volume: move.captureId === undefined ? 0.62 : 0.72 });
       if (checked) context.audio.play("sound.chess.check", { volume: 0.7 });
       if (move.captureId !== undefined) publishCaptures();
+      queuePersistence();
       return true;
     };
 
@@ -321,7 +387,30 @@ export const chessGame = defineBehavior(
         whiteChoiceText: "",
       });
       publishCaptures();
+      queuePersistence();
     };
+    if (restoredThisFrame && state.playerColor !== "") {
+      state.aiMoveAt = state.turn === state.playerColor ? 0 : context.time.elapsed + 0.75;
+      if (!state.ambienceStarted) {
+        context.audio.play("music.chess.ambience", { loop: true, volume: 0.2 });
+        state.ambienceStarted = true;
+      }
+      context.ui.setDisabled("choose-white", true);
+      context.ui.setDisabled("choose-black", true);
+      for (const piece of pieces) if (piece.alive) piece.entity?.transform().setPosition(worldPosition(piece.file, piece.rank, 0.07));
+      patchHud({
+        blackChoiceText: "",
+        helpText: "Click piece + destination | Drag + drop | Arrows + Enter | P promotion | R restart",
+        opponentSideText: enemy(state.playerColor).toUpperCase(),
+        playerSideText: state.playerColor.toUpperCase(),
+        promptText: "",
+        statusText: state.gameOver ? "Saved game complete · Press R" : state.turn === state.playerColor ? "Your move" : "AI is thinking…",
+        turnSubText: state.gameOver ? "" : `MOVE ${Math.ceil(state.halfmove / 2)}`,
+        turnText: state.gameOver ? "GAME OVER" : state.turn === state.playerColor ? "YOUR TURN" : "OPPONENT TURN",
+        whiteChoiceText: "",
+      });
+      publishCaptures();
+    }
     const uiActions = context.ui.actions();
     for (const action of uiActions) {
       if (state.playerColor === "" && action.action === "choose-white") chooseSide("white");
@@ -343,6 +432,7 @@ export const chessGame = defineBehavior(
       Object.assign(state, { aiMoveAt: state.playerColor === "black" ? context.time.elapsed + 0.75 : 0, animId: "", cursorFile: 4, cursorRank: 1, dragging: false, enPassantFile: -1, enPassantPawn: "", enPassantRank: -1, gameOver: false, halfmove: 1, hoveredId: "", lastFromFile: -1, lastFromRank: -1, lastToFile: -1, lastToRank: -1, moveHistoryText: "", selectedId: "", turn: "white" });
       patchHud({ moveText: "New game", statusText: state.playerColor === "black" ? "AI is thinking…" : "Your move", turnSubText: "MOVE 1", turnText: state.playerColor === "white" ? "YOUR TURN" : "OPPONENT TURN" });
       publishCaptures();
+      queuePersistence();
     }
     const humanTurn = !sideChosenThisFrame && state.playerColor !== "" && state.turn === state.playerColor && !state.gameOver && state.animId === "";
     if (humanTurn) {

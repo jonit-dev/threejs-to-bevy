@@ -1,6 +1,15 @@
 name: CI
 
 on:
+  schedule:
+    - cron: "17 8 1 * *"
+  workflow_dispatch:
+    inputs:
+      blender_tool_matrix:
+        description: Run the opt-in official Blender lifecycle matrix
+        required: false
+        type: boolean
+        default: false
   push:
     branches:
       - main
@@ -11,6 +20,44 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  blender-tool-matrix:
+    if: github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.blender_tool_matrix)
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-15-intel, macos-15, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.25.0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install pinned official Blender artifact with explicit consent
+        run: pnpm tn tool install blender --accept-download --json
+      - name: Exercise real Blender generation and semantic inspection
+        run: pnpm verify:blender-host
+      - name: Verify retained lifecycle and hardened generator contracts
+        run: pnpm verify:blender-tool
+      - name: Retain host smoke and bound lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: blender-host-smoke-${{ matrix.os }}
+          path: |
+            tools/verify/artifacts/blender-tool/host-smoke-report.json
+            tools/verify/artifacts/blender-tool/verification-report.json
+            tools/verify/artifacts/blender-tool/static-verification-report.json
+          if-no-files-found: error
+
   verify:
     runs-on: ubuntu-latest
     steps:

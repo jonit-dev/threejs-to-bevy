@@ -1,0 +1,9 @@
+      topResumedActivity=ActivityRecord{11f9a59 u0 com.google.android.apps.nexuslauncher/.NexusLauncherActivity t7}
+        source=ActivityRecord{6ac587d u0 com.threenative.chess/.MainActivity t10} SCREEN_ORIENTATION_LANDSCAPE
+Starting: Intent { cmp=com.threenative.chess/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: com.threenative.chess/.MainActivity
+TotalTime: 383
+WaitTime: 383
+Complete

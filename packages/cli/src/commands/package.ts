@@ -2,14 +2,29 @@ import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
 import { access, cp, chmod, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, resolve } from "node:path";
+import { basename, delimiter, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateBundle } from "@threenative/compiler";
-import { validateBundleRelativePath } from "@threenative/ir";
+import { loadProjectConfig, validateBundle } from "@threenative/compiler";
+import {
+  DISTRIBUTION_TARGET_REGISTRY,
+  validateBundleRelativePath,
+  validateDistribution,
+  type DistributionHost,
+  type DistributionFormat,
+  type DistributionPlatform,
+  type IDistributionSource,
+} from "@threenative/ir";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { buildAndroidTauriDistribution } from "../distribution/androidTauri.js";
+import { buildDesktopWebviewDistribution } from "../distribution/desktop.js";
+import { resolveCredentialHandle } from "../distribution/signing.js";
+import { generateTauriShell } from "../distribution/tauri.js";
+import { buildWebDistribution, type WebDistributionFormat } from "../distribution/web.js";
 
 export interface IPackageReport {
+  architecture?: string;
+  artifact?: { bytes: number; path: string; sha256: string };
   artifactDir: string;
   artifacts: {
     archivePath?: string;
@@ -24,14 +39,18 @@ export interface IPackageReport {
   };
   bundlePath: string;
   code: "TN_PACKAGE_OK";
+  diagnostics?: Array<{ code: "TN_PACKAGE_LEGACY_FLAGS_DEPRECATED"; message: string; severity: "warning"; suggestion: string }>;
   files: string[];
-  format: "appimage" | "archive" | "installer" | "portable";
+  format: DistributionFormat | "installer" | "portable";
   manifestPath: string;
   runtimeArgsPath: string;
   schema: "threenative.package-report";
   sourceBundlePath: string;
+  sourceHash?: string;
+  signing?: { status: "not-applicable" | "unsigned" };
+  toolchain?: { runtimeBuilder: "cargo-release" | "injected-binary"; platform: string };
   runtime: "bevy" | "webview";
-  target: "desktop";
+  target: DistributionPlatform | "desktop";
   version: "0.1.0";
   nativeOverlay?: ICefPackageReport;
 }
@@ -105,7 +124,43 @@ export interface IPackageCommandOptions {
   appImageBuilder?: AppImageBuilder;
   cefPayloadManifest?: ICefPayloadManifest;
   cefRuntimeDir?: string;
+  planHost?: Exclude<DistributionHost, "any">;
   runtimeBuilder?: DesktopRuntimeBuilder;
+  toolAvailability?: (tool: string) => boolean | Promise<boolean>;
+}
+
+export type PackagePlanStatus = "ready" | "missing-tool" | "missing-metadata" | "missing-credential" | "wrong-host" | "proof-required" | "unsupported";
+
+export interface IPackagePlanReport {
+  code: "TN_PACKAGE_PLAN_OK";
+  host: Exclude<DistributionHost, "any">;
+  matrix: "declared" | "release";
+  projectPath: string;
+  rows: Array<{
+    architectures: readonly string[];
+    credentialRef?: string;
+    declared: boolean;
+    eligibleHosts: readonly DistributionHost[];
+    formats: readonly string[];
+    missingTools: string[];
+    platform: string;
+    promotion: string;
+    proofRequirements: readonly string[];
+    requiredTools: readonly string[];
+    runtime: string;
+    signable: boolean;
+    status: PackagePlanStatus;
+  }>;
+  schema: "threenative.package-plan";
+  version: "0.1.0";
+}
+
+export function packageCommandUsage(): string {
+  const choices = <T extends string>(values: readonly T[]): string => [...new Set(values)].join("|");
+  const platforms = choices(DISTRIBUTION_TARGET_REGISTRY.map(({ platform }) => platform));
+  const runtimes = choices(DISTRIBUTION_TARGET_REGISTRY.map(({ runtime }) => runtime));
+  const formats = choices(DISTRIBUTION_TARGET_REGISTRY.flatMap(({ formats: rowFormats }) => rowFormats));
+  return `tn package plan --project <path> --matrix release|declared [--json]\n              tn package build --target <${platforms}> --runtime <${runtimes}> --format <${formats}> [--project <path>] [--json]\n              tn package --target desktop --bundle <path> [--runtime bevy|webview] [--format portable|archive|installer|appimage] [--out <path>] [--json]`;
 }
 
 class PackageDiagnosticError extends Error {
@@ -131,12 +186,214 @@ export async function packageCommand(
 ): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
-  const preflight = normalizedArgv.includes("--preflight");
-  const target = flagValue(normalizedArgv, "--target") ?? "desktop";
-  const format = flagValue(normalizedArgv, "--format") ?? "portable";
-  const runtime = flagValue(normalizedArgv, "--runtime") ?? "bevy";
-  const bundle = flagValue(normalizedArgv, "--bundle");
-  const outDir = flagValue(normalizedArgv, "--out") ?? flagValue(normalizedArgv, "--outDir") ?? "dist/package";
+  if (normalizedArgv[0] === "plan") {
+    return packagePlanCommand(normalizedArgv.slice(1), cwd, options, json);
+  }
+  const legacyFlatForm = normalizedArgv[0] !== "build";
+  const buildArgv = legacyFlatForm ? normalizedArgv : normalizedArgv.slice(1);
+  const invalidBuildArg = invalidArgument(buildArgv, ["--bundle", "--format", "--out", "--outDir", "--project", "--runtime", "--target"], ["--json", "--preflight", "--release", "--unsigned"]);
+  if (invalidBuildArg !== undefined) return packageUsageDiagnostic(invalidBuildArg, json);
+  const preflight = buildArgv.includes("--preflight");
+  const requestedTarget = flagValue(buildArgv, "--target") ?? "desktop";
+  const requestedFormat = flagValue(buildArgv, "--format") ?? "portable";
+  let target = requestedTarget;
+  let format = requestedFormat;
+  const runtime = flagValue(buildArgv, "--runtime") ?? "bevy";
+  let bundle = flagValue(buildArgv, "--bundle");
+  let outDir = flagValue(buildArgv, "--out") ?? flagValue(buildArgv, "--outDir") ?? "dist/package";
+
+  const registryPlatform = legacyFlatForm && requestedTarget === "desktop" ? currentDistributionHost() : requestedTarget;
+  const registryFormat = legacyFlatForm ? legacyRegistryFormat(currentDistributionHost(), requestedFormat) : requestedFormat;
+  const registryTarget = DISTRIBUTION_TARGET_REGISTRY.find((row) => row.platform === registryPlatform && row.runtime === runtime);
+  if (legacyFlatForm && requestedTarget === "desktop" && (registryTarget === undefined || registryFormat === undefined || !registryTarget.formats.includes(registryFormat as never))) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
+        message: `Legacy desktop package '${runtime}/${requestedFormat}' cannot map to the '${registryPlatform}' registry row.`,
+        severity: "error",
+        suggestion: "Run 'tn package plan --matrix release --json' and choose a registry-native target/runtime/format.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (!legacyFlatForm) {
+    if (registryTarget === undefined) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_TARGET_UNSUPPORTED",
+          message: `Package target/runtime '${target}/${runtime}' is not present in the distribution registry.`,
+          severity: "error",
+          suggestion: `Choose a registered target/runtime from: ${DISTRIBUTION_TARGET_REGISTRY.map((row) => `${row.platform}/${row.runtime}`).join(", ")}.`,
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+    if (!registryTarget.formats.includes(format as never)) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
+          message: `Package format '${format}' is not registered for '${target}/${runtime}'.`,
+          severity: "error",
+          suggestion: `Choose one of: ${registryTarget.formats.join(", ")}.`,
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+    const host = options.planHost ?? currentDistributionHost();
+    if (!registryTarget.eligibleHosts.includes("any") && !registryTarget.eligibleHosts.includes(host)) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_WRONG_HOST",
+          message: `Package target '${target}/${runtime}' cannot build on host '${host}'.`,
+          severity: "error",
+          suggestion: `Run this build on: ${registryTarget.eligibleHosts.join(", ")}.`,
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+    if (registryTarget.promotion === "planned") {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_ADAPTER_UNAVAILABLE",
+          message: `Package adapter '${target}/${runtime}' is planned but not implemented.`,
+          severity: "error",
+          suggestion: "Use 'tn package plan --matrix release --json' to inspect current lifecycle and host requirements.",
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+    if (target === "web" && runtime === "web") {
+      try {
+        const projectPath = resolve(cwd, flagValue(buildArgv, "--project") ?? ".");
+        const config = await loadProjectConfig(projectPath);
+        const bundlePath = bundle === undefined ? resolve(projectPath, config.outDir) : resolve(cwd, bundle);
+        const explicitOut = flagValue(buildArgv, "--out") ?? flagValue(buildArgv, "--outDir");
+        const outputPath = explicitOut === undefined
+          ? resolve(projectPath, "dist/package/web", format)
+          : resolve(cwd, explicitOut);
+        const report = await buildWebDistribution({ bundlePath, format: format as WebDistributionFormat, outputPath });
+        const payload = { ...report, artifactRoot: outputPath };
+        return {
+          exitCode: 0,
+          stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `Packaged web ${format} artifact at '${resolve(outputPath, "artifact")}'.\n`,
+        };
+      } catch (error) {
+        return diagnosticResult(
+          {
+            code: error instanceof Error && error.message.startsWith("TN_") ? (error.message.split(":", 1)[0] ?? "TN_PACKAGE_WEB_BUILD_FAILED") : "TN_PACKAGE_WEB_BUILD_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+            severity: "error",
+            suggestion: "Build and validate the project bundle, then rerun the web package command.",
+          },
+          { exitCode: 1, json, stderr: true },
+        );
+      }
+    }
+    if (target === "android" && runtime === "webview") {
+      try {
+        const projectPath = resolve(cwd, flagValue(buildArgv, "--project") ?? ".");
+        const config = await loadProjectConfig(projectPath);
+        const sourceBundlePath = bundle === undefined ? resolve(projectPath, config.outDir) : resolve(cwd, bundle);
+        const distribution = JSON.parse(await readFile(resolve(projectPath, "content/distribution.json"), "utf8")) as IDistributionSource;
+        const explicitOut = flagValue(buildArgv, "--out") ?? flagValue(buildArgv, "--outDir");
+        const outputPath = explicitOut === undefined
+          ? resolve(projectPath, "dist/package", target, runtime, format)
+          : resolve(cwd, explicitOut);
+        const webOutput = resolve(projectPath, ".threenative/cache/distribution/android-web-static");
+        await buildWebDistribution({ bundlePath: sourceBundlePath, format: "static", outputPath: webOutput });
+        const shell = await generateTauriShell({
+          distribution,
+          platform: "android",
+          projectPath,
+          webArtifactPath: resolve(webOutput, "artifact"),
+        });
+        const localTauriCli = resolve(projectPath, ".threenative/tools/tauri-cli/bin", process.platform === "win32" ? "cargo-tauri.exe" : "cargo-tauri");
+        const credentialRef = signingCredentialRef(distribution, target);
+        const credential = credentialRef === undefined ? undefined : resolveCredentialHandle(credentialRef);
+        const declaredTarget = distribution.targets.find((candidate) => candidate.platform === "android" && candidate.runtime === "webview");
+        const architecture = declaredTarget?.architecture === "arm64" || declaredTarget?.architecture === "x86_64"
+          ? declaredTarget.architecture
+          : format === "aab" ? "arm64" : "x86_64";
+        const report = await buildAndroidTauriDistribution({
+          architecture,
+          credential,
+          distribution,
+          env: {
+            ...process.env,
+            CARGO_TARGET_DIR: resolve(projectPath, ".threenative/cache/tauri-android-target"),
+          },
+          format: format as "aab" | "apk",
+          outputPath,
+          shellPath: shell.shellPath,
+          tauriCliPath: await pathExists(localTauriCli) ? localTauriCli : "cargo-tauri",
+        });
+        return { exitCode: 0, stdout: json ? `${JSON.stringify(report, null, 2)}\n` : `Packaged Android webview ${format} artifact at '${resolve(outputPath, report.artifact.path)}'.\n` };
+      } catch (error) {
+        return diagnosticResult(
+          {
+            code: error instanceof Error && error.message.startsWith("TN_") ? (error.message.split(":", 1)[0] ?? "TN_PACKAGE_ANDROID_BUILD_FAILED") : "TN_PACKAGE_ANDROID_BUILD_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+            severity: "error",
+            suggestion: "Install the registry-required Android/JDK/NDK/Rust toolchain and rerun the Android webview build.",
+          },
+          { exitCode: 1, json, stderr: true },
+        );
+      }
+    }
+    if (["linux", "macos", "windows"].includes(target) && runtime === "webview") {
+      try {
+        const projectPath = resolve(cwd, flagValue(buildArgv, "--project") ?? ".");
+        const config = await loadProjectConfig(projectPath);
+        const sourceBundlePath = bundle === undefined ? resolve(projectPath, config.outDir) : resolve(cwd, bundle);
+        const distribution = JSON.parse(await readFile(resolve(projectPath, "content/distribution.json"), "utf8")) as IDistributionSource;
+        const explicitOut = flagValue(buildArgv, "--out") ?? flagValue(buildArgv, "--outDir");
+        const outputPath = explicitOut === undefined
+          ? resolve(projectPath, "dist/package", target, runtime, format)
+          : resolve(cwd, explicitOut);
+        const localTauriCli = resolve(projectPath, ".threenative/tools/tauri-cli/bin", process.platform === "win32" ? "cargo-tauri.exe" : "cargo-tauri");
+        const credentialRef = signingCredentialRef(distribution, target);
+        const credential = credentialRef === undefined ? undefined : resolveCredentialHandle(credentialRef);
+        const report = await buildDesktopWebviewDistribution({
+          credential,
+          distribution,
+          format: format as "appimage" | "tar",
+          outputPath,
+          platform: target as "linux" | "macos" | "windows",
+          projectPath,
+          release: buildArgv.includes("--release"),
+          sourceBundlePath,
+          tauriCliPath: await pathExists(localTauriCli) ? localTauriCli : "cargo-tauri",
+          unsigned: buildArgv.includes("--unsigned"),
+        });
+        return { exitCode: 0, stdout: json ? `${JSON.stringify(report, null, 2)}\n` : `Packaged ${target} webview ${format} artifact at '${resolve(outputPath, report.artifact.path)}'.\n` };
+      } catch (error) {
+        return diagnosticResult(
+          {
+            code: error instanceof Error && error.message.startsWith("TN_") ? (error.message.split(":", 1)[0] ?? "TN_PACKAGE_DESKTOP_BUILD_FAILED") : "TN_PACKAGE_DESKTOP_BUILD_FAILED",
+            message: error instanceof Error ? error.message : String(error),
+            severity: "error",
+            suggestion: "Install the registry-required native toolchain and rerun the desktop webview build on its eligible host.",
+          },
+          { exitCode: 1, json, stderr: true },
+        );
+      }
+    }
+    if (["linux", "macos", "windows"].includes(target) && runtime === "bevy") {
+      const projectPath = resolve(cwd, flagValue(buildArgv, "--project") ?? ".");
+      if (bundle === undefined) {
+        const config = await loadProjectConfig(projectPath);
+        bundle = resolve(projectPath, config.outDir);
+      } else {
+        bundle = resolve(cwd, bundle);
+      }
+      const explicitOut = flagValue(buildArgv, "--out") ?? flagValue(buildArgv, "--outDir");
+      outDir = explicitOut === undefined
+        ? resolve(projectPath, "dist/package", target, runtime, format)
+        : resolve(cwd, explicitOut);
+    }
+    target = "desktop";
+    format = registryAdapterFormat(registryTarget.platform, requestedFormat);
+  }
 
   if (bundle === undefined) {
     return diagnosticResult(
@@ -231,6 +488,7 @@ export async function packageCommand(
     const packageDirName = runtime === "webview" ? "desktop-web" : "desktop";
     const packageRoot = resolve(artifactRoot, packageDirName);
     const packagedBundlePath = resolve(packageRoot, runtime === "webview" ? "app/bundle" : basename(bundlePath));
+    await rm(packageRoot, { force: true, recursive: true });
     await mkdir(packageRoot, { recursive: true });
     let builtRuntimePath: string;
     let files: string[];
@@ -257,7 +515,7 @@ export async function packageCommand(
     }
     const manifestPath = resolve(packageRoot, "package.manifest.json");
     const runtimeArgsPath = resolve(packageRoot, "runtime.args.json");
-    const packageReportPath = resolve(packageRoot, "package.report.json");
+    const packageReportPath = resolve(artifactRoot, "package-report.json");
     const webviewInspectionPath = runtime === "webview" ? resolve(packageRoot, "webview.inspection.json") : undefined;
     await chmod(builtRuntimePath, 0o755);
     await writeFile(
@@ -323,27 +581,44 @@ export async function packageCommand(
       });
     }
     const report: IPackageReport = {
+      architecture: distributionArchitecture(),
       artifactDir: packageRoot,
       artifacts: { appImagePath, archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath, webviewInspectionPath },
       bundlePath: packagedBundlePath,
       code: "TN_PACKAGE_OK",
+      ...(legacyFlatForm ? {
+        diagnostics: [{
+          code: "TN_PACKAGE_LEGACY_FLAGS_DEPRECATED" as const,
+          message: "The flat 'tn package --bundle ...' form is deprecated for one compatibility window.",
+          severity: "warning" as const,
+          suggestion: legacyReplacementSuggestion(registryTarget, registryFormat, runtime),
+        }],
+      } : {}),
       files,
-      format: format as IPackageReport["format"],
+      format: (legacyFlatForm ? format : requestedFormat) as IPackageReport["format"],
       manifestPath,
       runtime: runtime as IPackageReport["runtime"],
       runtimeArgsPath,
       schema: "threenative.package-report",
+      signing: { status: registryTarget?.signable === true ? "unsigned" : "not-applicable" },
       sourceBundlePath: bundlePath,
-      target,
+      sourceHash: await sha256Directory(bundlePath),
+      target: (legacyFlatForm ? "desktop" : requestedTarget) as IPackageReport["target"],
+      toolchain: {
+        platform: platformTag(),
+        runtimeBuilder: options.runtimeBuilder !== undefined || (process.env.THREENATIVE_RUNTIME_BINARY?.trim() ?? "") !== "" ? "injected-binary" : "cargo-release",
+      },
       version: "0.1.0",
       nativeOverlay,
     };
-    await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
+    let completedArtifactPath: string | undefined;
     if (archivePath !== undefined) {
       await createTarGz({ archivePath, cwd: artifactRoot, entry: packageDirName });
+      completedArtifactPath = archivePath;
     }
     if (format === "installer") {
       report.artifacts.installerPath = await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot, packageDirName, runtimeExecutableName: basename(builtRuntimePath) });
+      completedArtifactPath = report.artifacts.installerPath;
     }
     if (appImagePath !== undefined) {
       if (nativeOverlay === undefined) {
@@ -361,11 +636,21 @@ export async function packageCommand(
         path: report.artifacts.appImagePath,
         sha256: await sha256File(report.artifacts.appImagePath),
       };
-      await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
+      completedArtifactPath = report.artifacts.appImagePath;
     }
+    if (completedArtifactPath !== undefined) {
+      report.artifact = {
+        bytes: (await stat(completedArtifactPath)).size,
+        path: basename(completedArtifactPath),
+        sha256: await sha256File(completedArtifactPath),
+      };
+    }
+    await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
     return {
       exitCode: 0,
-      stdout: json ? `${JSON.stringify(report, null, 2)}\n` : packageMessage(report),
+      stdout: json
+        ? `${JSON.stringify(report, null, 2)}\n`
+        : `${legacyFlatForm ? "Warning TN_PACKAGE_LEGACY_FLAGS_DEPRECATED: use 'tn package build'.\n" : ""}${packageMessage(report)}`,
     };
   } catch (error) {
     if (error instanceof PackageDiagnosticError) {
@@ -374,6 +659,225 @@ export async function packageCommand(
     const message = error instanceof Error ? error.message : String(error);
     return diagnosticResult({ code: "TN_PACKAGE_FAILED", message, severity: "error" }, { exitCode: 1, json, stderr: true });
   }
+}
+
+async function packagePlanCommand(
+  argv: readonly string[],
+  cwd: string,
+  options: IPackageCommandOptions,
+  json: boolean,
+): Promise<ICommandResult> {
+  const invalid = invalidArgument(argv, ["--matrix", "--project"], ["--json"]);
+  if (invalid !== undefined) return packageUsageDiagnostic(invalid, json);
+  const matrix = flagValue(argv, "--matrix") ?? "release";
+  if (matrix !== "release" && matrix !== "declared") {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_MATRIX_UNSUPPORTED",
+        message: `Package plan matrix '${matrix}' is unsupported.`,
+        severity: "error",
+        suggestion: "Use '--matrix release' or '--matrix declared'.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+
+  const projectPath = resolve(cwd, flagValue(argv, "--project") ?? ".");
+  const sourcePath = resolve(projectPath, "content/distribution.json");
+  let source: IDistributionSource | undefined;
+  try {
+    source = JSON.parse(await readFile(sourcePath, "utf8")) as IDistributionSource;
+  } catch (error) {
+    if (!isMissingFileError(error)) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_DISTRIBUTION_INVALID",
+          message: `Distribution source '${sourcePath}' is not valid JSON.`,
+          path: sourcePath,
+          severity: "error",
+          suggestion: "Repair content/distribution.json and rerun the package plan.",
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+  }
+  if (source !== undefined) {
+    const diagnostics = validateDistribution(source, "content/distribution.json");
+    if (diagnostics.length > 0) {
+      return diagnosticResult(
+        {
+          code: "TN_PACKAGE_DISTRIBUTION_INVALID",
+          diagnostics,
+          message: `Distribution source validation failed with ${diagnostics.length} error(s).`,
+          path: sourcePath,
+          severity: "error",
+          suggestion: "Apply the structured fixes and rerun the package plan.",
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
+  }
+
+  const host = options.planHost ?? currentDistributionHost();
+  const declaredByKey = new Map((source?.targets ?? []).map((target) => [`${target.platform}/${target.runtime}`, target]));
+  const registryRows = matrix === "declared"
+    ? DISTRIBUTION_TARGET_REGISTRY.filter(({ platform, runtime }) => declaredByKey.has(`${platform}/${runtime}`))
+    : DISTRIBUTION_TARGET_REGISTRY;
+  const rows: IPackagePlanReport["rows"] = [];
+  for (const registry of registryRows) {
+    const key = `${registry.platform}/${registry.runtime}`;
+    const target = declaredByKey.get(key);
+    const missingTools: string[] = [];
+    for (const tool of registry.requiredTools) {
+      if (!await (options.toolAvailability ?? toolIsAvailable)(tool)) missingTools.push(tool);
+    }
+    const credentialRef = signingCredentialRef(source, registry.platform);
+    const eligibleHost = registry.eligibleHosts.includes("any") || registry.eligibleHosts.includes(host);
+    const status = resolvePackagePlanStatus({
+      credentialPresent: credentialRef !== undefined,
+      declared: source !== undefined && target !== undefined,
+      eligibleHost,
+      missingTools,
+      promotion: registry.promotion,
+      signable: registry.signable,
+    });
+    rows.push({
+      architectures: registry.architectures,
+      ...(credentialRef === undefined ? {} : { credentialRef }),
+      declared: target !== undefined,
+      eligibleHosts: registry.eligibleHosts,
+      formats: target?.formats ?? registry.formats,
+      missingTools,
+      platform: registry.platform,
+      promotion: registry.promotion,
+      proofRequirements: registry.proofRequirements,
+      requiredTools: registry.requiredTools,
+      runtime: registry.runtime,
+      signable: registry.signable,
+      status,
+    });
+  }
+  const report: IPackagePlanReport = {
+    code: "TN_PACKAGE_PLAN_OK",
+    host,
+    matrix,
+    projectPath,
+    rows,
+    schema: "threenative.package-plan",
+    version: "0.1.0",
+  };
+  return {
+    exitCode: 0,
+    stdout: json ? `${JSON.stringify(report)}\n` : renderPackagePlan(report),
+  };
+}
+
+export function resolvePackagePlanStatus(options: {
+  credentialPresent: boolean;
+  declared: boolean;
+  eligibleHost: boolean;
+  missingTools: readonly string[];
+  promotion: "planned" | "implemented" | "promoted";
+  signable: boolean;
+}): PackagePlanStatus {
+  if (!options.eligibleHost) return "wrong-host";
+  if (!options.declared) return "missing-metadata";
+  if (options.promotion === "planned") return "unsupported";
+  if (options.missingTools.length > 0) return "missing-tool";
+  if (options.signable && !options.credentialPresent) return "missing-credential";
+  return options.promotion === "implemented" ? "proof-required" : "ready";
+}
+
+function currentDistributionHost(): Exclude<DistributionHost, "any"> {
+  if (process.platform === "darwin") return "macos";
+  if (process.platform === "win32") return "windows";
+  return "linux";
+}
+
+function legacyRegistryFormat(host: Exclude<DistributionHost, "any">, format: string): DistributionFormat | undefined {
+  if (host === "linux") {
+    if (["archive", "installer", "portable"].includes(format)) return "tar";
+    return format === "appimage" ? "appimage" : undefined;
+  }
+  if (host === "windows") {
+    if (["archive", "portable"].includes(format)) return "archive";
+    return format === "installer" ? "nsis" : undefined;
+  }
+  if (["archive", "portable"].includes(format)) return "app";
+  return format === "installer" ? "dmg" : undefined;
+}
+
+function registryAdapterFormat(platform: DistributionPlatform, format: string): string {
+  if (platform === "linux" && format === "tar") return "archive";
+  return format;
+}
+
+function legacyReplacementSuggestion(
+  registry: (typeof DISTRIBUTION_TARGET_REGISTRY)[number] | undefined,
+  format: string | undefined,
+  runtime: string,
+): string {
+  if (registry === undefined || format === undefined || registry.promotion === "planned") {
+    return "No registry-native replacement is implemented for this compatibility artifact; inspect 'tn package plan --matrix release --json'.";
+  }
+  return `Use 'tn package build --target ${registry.platform} --runtime ${runtime} --format ${format} --bundle <path> --json'.`;
+}
+
+async function toolIsAvailable(tool: string): Promise<boolean> {
+  if (tool === "node") return true;
+  if (tool === "android-sdk") return Boolean(process.env.ANDROID_HOME ?? process.env.ANDROID_SDK_ROOT);
+  if (tool === "ndk") return Boolean(process.env.ANDROID_NDK_HOME ?? process.env.ANDROID_NDK_ROOT);
+  const executable = tool === "jdk" ? "java" : tool === "tauri" ? "cargo-tauri" : tool;
+  for (const pathEntry of (process.env.PATH ?? "").split(delimiter).filter(Boolean)) {
+    for (const suffix of process.platform === "win32" ? [".exe", ".cmd", ".bat", ""] : [""]) {
+      try {
+        await access(resolve(pathEntry, `${executable}${suffix}`));
+        return true;
+      } catch {
+        // Continue probing PATH without executing external toolchains.
+      }
+    }
+  }
+  return false;
+}
+
+function signingCredentialRef(source: IDistributionSource | undefined, platform: string): string | undefined {
+  if (platform === "android") return source?.signing?.android?.credentialRef;
+  if (platform === "ios" || platform === "macos") return source?.signing?.apple?.credentialRef;
+  if (platform === "windows") return source?.signing?.windows?.credentialRef;
+  return undefined;
+}
+
+function renderPackagePlan(report: IPackagePlanReport): string {
+  return report.rows.map((row) => `${row.platform}/${row.runtime}: ${row.status}`).join("\n") + "\n";
+}
+
+function isMissingFileError(error: unknown): boolean {
+  return error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
+}
+
+function invalidArgument(argv: readonly string[], valueFlags: readonly string[], booleanFlags: readonly string[]): string | undefined {
+  for (let index = 0; index < argv.length; index += 1) {
+    const argument = argv[index]!;
+    if (booleanFlags.includes(argument)) continue;
+    if (!valueFlags.includes(argument)) return argument;
+    const value = argv[index + 1];
+    if (value === undefined || value.startsWith("--")) return argument;
+    index += 1;
+  }
+  return undefined;
+}
+
+function packageUsageDiagnostic(argument: string, json: boolean): ICommandResult {
+  return diagnosticResult(
+    {
+      code: "TN_PACKAGE_USAGE",
+      message: `Unknown or incomplete package argument '${argument}'.`,
+      severity: "error",
+      suggestion: packageCommandUsage(),
+    },
+    { exitCode: 1, json, stderr: true },
+  );
 }
 
 async function writeWebviewInspectionReport(options: {
@@ -576,6 +1080,22 @@ async function listRelativeFiles(root: string, prefix = ""): Promise<string[]> {
     }),
   );
   return files.flat().sort();
+}
+
+async function sha256Directory(root: string): Promise<string> {
+  const hash = createHash("sha256");
+  for (const path of await listRelativeFiles(root)) {
+    hash.update(path);
+    hash.update("\0");
+    hash.update(await readFile(resolve(root, path)));
+    hash.update("\0");
+  }
+  return hash.digest("hex");
+}
+
+function distributionArchitecture(): string {
+  if (process.arch === "x64") return "x86_64";
+  return process.arch;
 }
 
 async function bundleRequiresCefOverlay(bundlePath: string): Promise<boolean> {
@@ -785,7 +1305,7 @@ function platformTag(): string {
 
 async function createTarGz(options: { archivePath: string; cwd: string; entry: string }): Promise<void> {
   await mkdir(dirname(options.archivePath), { recursive: true });
-  await runCommand("tar", ["-czf", options.archivePath, "-C", options.cwd, options.entry]);
+  await runCommand("tar", ["--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner", "-czf", options.archivePath, "-C", options.cwd, options.entry]);
 }
 
 async function createInstallerScript(options: { archivePath: string; bundleName: string; outputDir: string; packageDirName: string; runtimeExecutableName: string }): Promise<string> {

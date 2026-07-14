@@ -2,6 +2,7 @@ import {
   authoringDiagnostic,
   normalizeRelativePath,
   readAuthoringJsonDocument,
+  recordBlenderGenerator,
   recordGeneratorProvenance,
   writeAuthoringJsonDocument,
   type IAuthoringDiagnostic,
@@ -16,6 +17,7 @@ import { pathToFileURL } from "node:url";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 
 import { type ICommandResult } from "../diagnostics.js";
+import { runBlenderGenerator, type IBlenderGeneratorDependencies, type IBlenderGeneratorRunResult } from "../blender/runBlenderGenerator.js";
 import {
   normalizeArgv,
   readCsvFlag,
@@ -27,7 +29,11 @@ import {
   type ISourceCommandOptions,
 } from "./sourceCommandUtils.js";
 
-export async function generatorCommand(argv: readonly string[], options: ISourceCommandOptions = {}): Promise<ICommandResult> {
+export interface IGeneratorCommandOptions extends ISourceCommandOptions {
+  blenderDependencies?: Partial<IBlenderGeneratorDependencies>;
+}
+
+export async function generatorCommand(argv: readonly string[], options: IGeneratorCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = normalizeArgv(argv);
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
@@ -58,11 +64,34 @@ export async function generatorCommand(argv: readonly string[], options: ISource
     );
   }
 
+  if (subcommand === "record-blender") {
+    const recipeInput = readFlag(normalizedArgv, "--recipe");
+    if (generatorId === undefined || recipeInput === undefined) return renderUsage(json, "TN_GENERATOR_RECORD_BLENDER_ARGS_MISSING", generatorRecordBlenderUsage());
+    let recipe: Record<string, unknown> | undefined;
+    if (recipeInput.trimStart().startsWith("{")) {
+      try {
+        const parsed = JSON.parse(recipeInput) as unknown;
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("recipe JSON must be an object");
+        recipe = parsed as Record<string, unknown>;
+      } catch (error) {
+        return renderUsage(json, "TN_GENERATOR_RECORD_BLENDER_RECIPE_INVALID", `Invalid inline recipe: ${error instanceof Error ? error.message : String(error)}\n${generatorRecordBlenderUsage()}`);
+      }
+    }
+    return renderAuthoringResult("generator", await recordBlenderGenerator({
+      generatorId,
+      output: readFlag(normalizedArgv, "--out") ?? `assets/generated/${generatorId}.glb`,
+      overwritePolicy: readFlag(normalizedArgv, "--overwrite-policy") ?? "manual",
+      projectPath,
+      providerVersion: "4.5.11",
+      ...(recipe === undefined ? { recipePath: recipeInput } : { recipe }),
+    }), json, `Blender generator '${generatorId}' recorded.`);
+  }
+
   if (subcommand === "run") {
     if (generatorId === undefined) {
       return renderUsage(json, "TN_GENERATOR_RUN_ARGS_MISSING", generatorRunUsage());
     }
-    return runGenerator({ generatorId, json, projectPath });
+    return runGenerator({ blenderDependencies: options.blenderDependencies, generatorId, json, projectPath });
   }
 
   return renderUsage(json, "TN_GENERATOR_COMMAND_UNKNOWN", generatorUsage());
@@ -79,9 +108,21 @@ interface IGeneratorDocumentData {
   overwritePolicy?: string;
   schema: string;
   version: string;
+  provider?: "typescript";
+}
+
+interface IBlenderGeneratorDocumentData {
+  id: string;
+  outputs: string[];
+  provider: "blender";
+  providerVersion: string;
+  recipe: string;
+  schema: string;
+  version: string;
 }
 
 interface IRunGeneratorOptions {
+  blenderDependencies?: Partial<IBlenderGeneratorDependencies>;
   generatorId: string;
   json: boolean;
   projectPath: string;
@@ -114,6 +155,10 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
   }
 
   const generator = readResult.document.data as Partial<IGeneratorDocumentData>;
+  if ((generator as Partial<IBlenderGeneratorDocumentData>).provider === "blender") {
+    const blenderResult = await runBlenderGenerator({ generatorId: options.generatorId, projectPath: options.projectPath }, options.blenderDependencies);
+    return renderBlenderGeneratorRunResult(options.json, blenderResult);
+  }
   const generatorDiagnostics = validateGeneratorRunDocument(generator, generatorFile);
   if (generatorDiagnostics.length > 0) {
     return renderGeneratorRunResult(options.json, {
@@ -224,6 +269,18 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
   }
 }
 
+function renderBlenderGeneratorRunResult(json: boolean, payload: IBlenderGeneratorRunResult): ICommandResult {
+  const result = {
+    code: payload.ok ? "TN_GENERATOR_RUN_OK" : "TN_GENERATOR_RUN_FAILED",
+    message: payload.ok ? `Generator '${payload.generatorId}' ran.` : `Generator '${payload.generatorId}' failed.`,
+    ...payload,
+    nextCommands: payload.ok ? [`tn asset inspect ${payload.filesWritten.find((file) => file.endsWith(".glb")) ?? "<generated.glb>"} --json`, `tn model-test ${payload.filesWritten.find((file) => file.endsWith(".glb")) ?? "<generated.glb>"} --angles 0,90,180,270 --json`, "tn build"] : undefined,
+  };
+  if (json) return { exitCode: payload.ok ? 0 : 1, stdout: `${JSON.stringify(result, null, 2)}\n` };
+  if (payload.ok) return { exitCode: 0, stdout: `${result.message}\n` };
+  return { exitCode: 1, stderr: `${result.message}\n${payload.diagnostics.map((row) => `${row.code} ${row.file ?? ""}: ${row.message}`).join("\n")}\n`, stdout: "" };
+}
+
 function renderGeneratorRunResult(json: boolean, payload: IGeneratorRunPayload): ICommandResult {
   const result = {
     code: payload.ok ? "TN_GENERATOR_RUN_OK" : "TN_GENERATOR_RUN_FAILED",
@@ -248,8 +305,12 @@ function generatorRunUsage(): string {
   return "Usage: tn generator run <generator-id> [--project <path>] [--json]";
 }
 
+function generatorRecordBlenderUsage(): string {
+  return "Usage: tn generator record-blender <generator-id> --recipe <path-or-json> [--out <assets/generated/id.glb>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]";
+}
+
 function generatorUsage(): string {
-  return `${generatorRecordUsage()}\n       ${generatorRunUsage()}`;
+  return `${generatorRecordUsage()}\n       ${generatorRecordBlenderUsage()}\n       ${generatorRunUsage()}`;
 }
 
 function validateGeneratorRunDocument(data: Partial<IGeneratorDocumentData>, file: string): IAuthoringDiagnostic[] {

@@ -16,6 +16,7 @@ export const prefabDocumentSchema = "threenative.prefab";
 export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
+export const blenderRecipeSchema = "threenative.blender-recipe";
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "placementSets", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "components", "focusOrder", "screens", "recipes", "provenance"]);
@@ -34,7 +35,16 @@ export const sequenceDocumentKeys = new Set(["schema", "version", "id", "duratio
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
-export const generatorDocumentKeys = new Set(["schema", "version", "id", "module", "export", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
+export const generatorDocumentKeys = new Set(["schema", "version", "id", "provider", "providerVersion", "module", "export", "recipe", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
+export const blenderRecipeKeys = new Set(["schema", "version", "id", "materials", "parts", "operations", "animations", "budgets"]);
+export const blenderRecipeMaterialKeys = new Set(["id", "baseColor", "metallic", "roughness", "emissive", "alphaMode", "doubleSided"]);
+export const blenderRecipePartKeys = new Set(["id", "primitive", "material", "position", "rotation", "scale", "segments", "rings", "shading", "modifiers"]);
+export const blenderRecipeModifierKeys = new Set(["kind", "width", "segments", "axis", "count", "offset", "target", "operation", "thickness"]);
+export const blenderRecipeOperationKeys = new Set(["kind", "id", "inputs", "parent", "child"]);
+export const blenderRecipeAnimationKeys = new Set(["id", "duration", "loop", "tracks"]);
+export const blenderRecipeAnimationTrackKeys = new Set(["node", "property", "keyframes"]);
+export const blenderRecipeAnimationKeyframeKeys = new Set(["time", "value", "interpolation"]);
+export const blenderRecipeBudgetKeys = new Set(["maxParts", "maxMaterials", "maxModifiersPerPart", "maxSegments", "maxPolygons", "maxOutputBytes", "maxAnimations", "maxTracksPerAnimation", "maxKeyframesPerTrack", "maxOperations", "maxJoinInputs"]);
 export const entityKeys = new Set(["archetype", "id", "prefab", "tags", "transform", "components"]);
 export const instanceKeys = new Set(["id", "prefab", "tags", "transform", "components"]);
 export const placementSetKeys = new Set(["id", "kind", "prefab", "pattern", "idFormat", "idValues", "defaults", "indexBindings", "overrides"]);
@@ -134,6 +144,63 @@ export const inputPersistedBindingOverrideKeys = new Set(["actionOrAxisId", "axi
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "size", "storage"]);
 export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
+export const supportedGeneratorProviders = new Set(["typescript", "blender"]);
+export const supportedBlenderRecipePrimitives = new Set(["cube", "sphere", "cylinder", "cone", "torus"]);
+export const supportedBlenderRecipeModifiers = new Set(["array", "bevel", "boolean", "mirror", "solidify"]);
+export const supportedBlenderRecipeOperations = new Set(["join", "parent"]);
+export const supportedBlenderRecipeShading = new Set(["flat", "smooth"]);
+export const supportedBlenderBooleanOperations = new Set(["difference", "intersect", "union"]);
+export const supportedBlenderAnimationProperties = new Set(["position", "rotation", "scale"]);
+export const supportedBlenderAnimationInterpolations = new Set(["linear", "step"]);
+
+export const blenderRecipeLimits = {
+  maxAnimations: 16,
+  maxJoinInputs: 128,
+  maxKeyframesPerTrack: 256,
+  maxMaterials: 64,
+  maxModifiersPerPart: 16,
+  maxOperations: 256,
+  maxOutputBytes: 64 * 1024 * 1024,
+  maxParts: 128,
+  maxPolygons: 500_000,
+  maxSegments: 128,
+  maxTracksPerAnimation: 128,
+} as const;
+
+export interface IBlenderRecipe {
+  schema: typeof blenderRecipeSchema;
+  version: "0.1.0";
+  id: string;
+  materials?: unknown[];
+  parts: unknown[];
+  operations?: unknown[];
+  animations?: unknown[];
+  budgets: Record<string, unknown>;
+}
+
+export interface ITypescriptGeneratorProvenance {
+  schema: typeof generatorDocumentSchema;
+  version?: string;
+  id: string;
+  provider?: "typescript";
+  module: string;
+  export: string;
+  outputs: string[];
+  overwritePolicy?: "manual" | "replace" | "skip";
+}
+
+export interface IBlenderGeneratorProvenance {
+  schema: typeof generatorDocumentSchema;
+  version?: string;
+  id: string;
+  provider: "blender";
+  providerVersion: string;
+  recipe: string;
+  outputs: string[];
+  overwritePolicy?: "manual" | "replace" | "skip";
+}
+
+export type GeneratorProvenance = ITypescriptGeneratorProvenance | IBlenderGeneratorProvenance;
 export const supportedFlowTriggerKinds = new Set(["allCollected", "event", "resourceEquals", "timer"]);
 export const supportedFlowActionKinds = new Set(["activateUiScreen", "emitEvent", "playSequence", "sceneChange", "setResource", "setTimeScale", "spawnerEnable"]);
 export const supportedSequenceTrackKinds = new Set(["audio", "cameraPose", "event", "timeScale", "transform", "ui"]);
@@ -389,7 +456,7 @@ export interface ISceneUiNode {
   component?: ISceneUiComponentInstance;
   label?: string;
   layout?: Record<string, unknown>;
-  responsive?: Array<{ layout?: Record<string, unknown>; target: "desktop" | "mobile" | "tablet" }>;
+  responsive?: Array<{ layout?: Record<string, unknown>; style?: ISceneUiStyle; target: "desktop" | "mobile" | "tablet" }>;
   src?: string;
   style?: ISceneUiStyle;
   text?: string;

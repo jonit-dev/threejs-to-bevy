@@ -193,10 +193,10 @@ test("should emit structured source environment documents", async () => {
         schema: "threenative.environment-scene",
         version: "0.1.0",
         id: "arena-environment",
-        environmentMap: { asset: "tex.sky" },
+        environmentMap: { asset: "tex.bonus" },
         instances: [],
         path: { id: "path.main", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
-        skybox: { asset: "tex.sky", mode: "equirect" },
+        skybox: { asset: "tex.bonus", mode: "equirect" },
         terrain: { bounds: { min: [-4, 0, -4], max: [4, 0, 4] }, heightMode: "flat", id: "terrain.editor" },
         walkability: {
           blockers: [],
@@ -252,6 +252,8 @@ test("should emit structured source environment documents", async () => {
     );
     assert.equal(environment.terrain.id, "terrain.editor");
     assert.equal(environment.path.id, "path.main");
+    assert.deepEqual(environment.environmentMap, { asset: "tex.bonus", intent: "reflection-and-irradiance", mode: "equirect" });
+    assert.deepEqual(environment.skybox, { asset: "tex.bonus", mode: "equirect" });
     assert.equal(prefabs.prefabs[0].id, "prefab.crate");
     assert.equal(prefabs.prefabs[0].root, "crate.root");
     assert.deepEqual(prefabs.prefabs[0].entities[0].components.MeshRenderer, { material: "mat.player", mesh: "mesh.cube" });

@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -1506,6 +1506,111 @@ test("should emit structured target profile source documents", async () => {
   }
 });
 
+test("should emit normalized distribution IR into a fresh bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-source-distribution-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const distribution = {
+      app: {
+        buildNumber: 1,
+        displayName: "Chess",
+        icons: "assets/chess-game.png",
+        id: "com.threenative.chess",
+        version: "1.0.0",
+      },
+      schema: "threenative.distribution",
+      targets: [
+        { capabilities: ["storage", "network", "storage"], formats: ["zip", "static"], platform: "web", runtime: "web" },
+        { formats: ["apk", "aab"], platform: "android", runtime: "webview" },
+      ],
+      version: "0.1.0",
+    };
+    const authoringDocuments = [{
+      data: distribution,
+      file: join(root, "content/distribution.json"),
+      kind: "unknown" as const,
+      projectRelativePath: "content/distribution.json",
+    }];
+
+    const bundlePath = await emitBundle(config, { scene }, { authoringDocuments });
+    const firstBytes = await readFile(join(bundlePath, "distribution.ir.json"), "utf8");
+    const firstManifest = JSON.parse(await readFile(join(bundlePath, "manifest.json"), "utf8")) as { files: Record<string, string> };
+    const secondPath = await emitBundle({ ...config, outDir: "dist/second.bundle" }, { scene }, { authoringDocuments });
+    const secondBytes = await readFile(join(secondPath, "distribution.ir.json"), "utf8");
+
+    assert.equal(firstManifest.files.distribution, "distribution.ir.json");
+    assert.equal(firstBytes, secondBytes);
+    assert.deepEqual(JSON.parse(firstBytes), {
+      ...distribution,
+      targets: [
+        { capabilities: ["network", "storage"], formats: ["static", "zip"], platform: "web", runtime: "web" },
+        { formats: ["aab", "apk"], platform: "android", runtime: "webview" },
+      ],
+    });
+    assert.equal((await validateBundle(bundlePath)).ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject distribution targets incompatible with the emitted target profile", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-distribution-profile-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = { entry: "src/game.ts", outDir: "dist/game.bundle", projectPath: root, schema: "threenative.project" as const, version: "0.1.0" as const };
+    const authoringDocuments = [
+      {
+        data: { app: { buildNumber: 1, displayName: "Chess", icons: "assets/chess-game.png", id: "com.threenative.chess", version: "1.0.0" }, schema: "threenative.distribution", targets: [{ formats: ["aab"], platform: "android", runtime: "webview" }], version: "0.1.0" },
+        file: join(root, "content/distribution.json"), kind: "unknown" as const, projectRelativePath: "content/distribution.json",
+      },
+      {
+        data: { id: "web", schema: "threenative.target-profile", targets: ["web"], version: "0.1.0" },
+        file: join(root, "content/targets/web.target.json"), kind: "target" as const, projectRelativePath: "content/targets/web.target.json",
+      },
+    ];
+
+    await assert.rejects(
+      () => emitBundle(config, { scene }, { authoringDocuments }),
+      /TN_IR_DISTRIBUTION_TARGET_PROFILE_INCOMPATIBLE.*distribution\.ir\.json\/targets\/0\/platform/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject secret-bearing distribution source before emitting IR", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-emit-distribution-secret-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    const config = { entry: "src/game.ts", outDir: "dist/game.bundle", projectPath: root, schema: "threenative.project" as const, version: "0.1.0" as const };
+    const authoringDocuments = [{
+      data: {
+        apiKey: "TN_SECRET_CANARY",
+        app: { buildNumber: 1, displayName: "Chess", icons: "assets/chess-game.png", id: "com.threenative.chess", version: "1.0.0" },
+        schema: "threenative.distribution",
+        targets: [{ formats: ["static"], password: "TN_SECRET_CANARY", platform: "web", runtime: "web" }],
+        version: "0.1.0",
+      },
+      file: join(root, "content/distribution.json"), kind: "unknown" as const, projectRelativePath: "content/distribution.json",
+    }];
+
+    await assert.rejects(
+      () => emitBundle(config, { scene }, { authoringDocuments }),
+      /TN_IR_DISTRIBUTION_SIGNING_SECRET_FORBIDDEN.*distribution\.ir\.json\/apiKey/,
+    );
+    await assert.rejects(() => access(join(root, "dist/game.bundle/distribution.ir.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should emit structured mesh source documents into asset manifest", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-source-meshes-"));
   try {
@@ -1668,7 +1773,16 @@ test("should emit structured ui bindings from retained source documents", async 
             version: "0.1.0",
             id: "hud",
             nodes: [
-              { id: "score", type: "text", text: "Score 0" },
+              {
+                id: "score",
+                type: "text",
+                text: "Score 0",
+                responsive: [{
+                  target: "mobile",
+                  layout: { left: 12, top: 16, width: 280 },
+                  style: { fontSize: 18, opacity: 0.5 },
+                }],
+              },
               {
                 id: "panel",
                 type: "column",
@@ -1696,6 +1810,11 @@ test("should emit structured ui bindings from retained source documents", async 
     const panel = ui.root.children.find((node: { id: string }) => node.id === "panel");
 
     assert.deepEqual(score.binding, { field: "scoreText", kind: "resource", name: "GameState" });
+    assert.deepEqual(score.responsive, [{
+      layout: { inset: { left: 12, top: 16 }, position: "absolute", width: 280 },
+      style: { fontSize: 18, opacity: 0.5 },
+      target: "mobile",
+    }]);
     assert.deepEqual(panel.children[0].binding, { fields: ["coins", "total"], format: "Coins {coins}/{total}", kind: "resource", name: "GameState" });
   } finally {
     await rm(root, { force: true, recursive: true });

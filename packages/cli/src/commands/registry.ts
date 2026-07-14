@@ -1,16 +1,35 @@
 import type { ICommandResult } from "../diagnostics.js";
 
 export type CommandHandler = (argv: readonly string[]) => Promise<ICommandResult>;
-export type CommandMcpToolName = "cookbook_lookup";
+export type CommandMcpToolName = "asset.creation_strategy" | "asset.generate_blender" | "asset.hyper3d_generate" | "asset.hyper3d_import" | "asset.hyper3d_poll" | "asset.hyper3d_status" | "asset.hunyuan_status" | "asset.inspect" | "asset.model_test" | "asset.polyhaven_categories" | "asset.polyhaven_import" | "asset.polyhaven_search" | "asset.polyhaven_status" | "asset.sketchfab_import" | "asset.sketchfab_preview" | "asset.sketchfab_search" | "asset.sketchfab_status" | "cookbook_lookup";
+
+export interface ICommandMcpArgvArgumentDefinition {
+  boolean?: boolean;
+  encoding?: "json";
+  flag?: string;
+  name: string;
+  positional?: boolean;
+  resolveProjectPath?: boolean;
+}
+
+export interface ICommandMcpArgvDefinition {
+  arguments: readonly ICommandMcpArgvArgumentDefinition[];
+  fixed?: readonly string[];
+  prefix: readonly string[];
+  projectScoped?: boolean;
+  projectOutput?: { flag: string; path: string };
+}
 
 export interface ICommandMcpAdapterDefinition {
+  argv?: ICommandMcpArgvDefinition;
   description: string;
+  inputSchema?: Record<string, unknown>;
   name: CommandMcpToolName;
 }
 
 export interface ICommandDefinition {
   adapters?: {
-    mcp?: ICommandMcpAdapterDefinition;
+    mcp?: ICommandMcpAdapterDefinition | readonly ICommandMcpAdapterDefinition[];
   };
   description: string;
   handler?: CommandHandler;

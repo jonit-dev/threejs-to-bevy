@@ -5,6 +5,7 @@ import type { IAuthoringDocument } from "@threenative/authoring";
 import {
   readStructuredAssets,
   readStructuredMaterials,
+  readStructuredPersistence,
   readStructuredRuntimeConfig,
   readStructuredTargetProfile,
 } from "./structured-documents.js";
@@ -28,6 +29,14 @@ test("should parse valid structured documents", () => {
       targets: ["desktop", "web"],
       budgets: { drawCalls: 120 },
     }),
+    sourceDocument("persistence", {
+      schema: "threenative.local-data",
+      version: "0.1.0",
+      components: [{ id: "ChessPiece", schema: { fields: { file: { kind: "integer" } } } }],
+      resources: [{ id: "ChessGame", schema: { fields: { playerColor: { kind: "string" } } } }],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+      settings: [],
+    }),
   ];
 
   assert.deepEqual(readStructuredMaterials(documents), [
@@ -48,6 +57,14 @@ test("should parse valid structured documents", () => {
     version: "0.1.0",
     targets: ["desktop", "web"],
     budgets: { drawCalls: 120 },
+  });
+  assert.deepEqual(readStructuredPersistence(documents), {
+    schema: "threenative.local-data",
+    version: "0.1.0",
+    components: [{ id: "ChessPiece", schema: { fields: { file: { kind: "integer" } } } }],
+    resources: [{ id: "ChessGame", schema: { fields: { playerColor: { kind: "string" } } } }],
+    saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+    settings: [],
   });
 });
 

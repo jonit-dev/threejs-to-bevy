@@ -41,6 +41,7 @@ pub struct BundleFiles {
     pub animations: Option<String>,
     pub assets: String,
     pub component_schemas: Option<String>,
+    pub distribution: Option<String>,
     pub gltf_scene: Option<String>,
     pub input: Option<String>,
     pub local_data: Option<String>,

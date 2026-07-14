@@ -6,7 +6,14 @@ import * as THREE from "three";
 
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
-import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, sceneStartupDiagnostics, syncTransforms, traceEmissiveBloomContributions } from "./mapWorld.js";
+import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, preservesLoadedModelSourceMaterials, sceneStartupDiagnostics, syncTransforms, traceEmissiveBloomContributions } from "./mapWorld.js";
+
+test("model-test loaded GLB keeps authored source materials", () => {
+  assert.equal(preservesLoadedModelSourceMaterials("mat.model.under-test.instance"), true);
+  assert.equal(preservesLoadedModelSourceMaterials("mat.model"), true);
+  assert.equal(preservesLoadedModelSourceMaterials("mat.authored.override"), false);
+  assert.equal(preservesLoadedModelSourceMaterials(undefined), false);
+});
 
 test("mapWorld should map cube fixture to three scene", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"));

@@ -43,6 +43,7 @@ export interface IBundleManifest {
   };
   files: {
     assets: "assets.manifest.json";
+    distribution?: "distribution.ir.json";
     materials: "materials.ir.json";
     targetProfile: "target.profile.json";
     animations?: string;

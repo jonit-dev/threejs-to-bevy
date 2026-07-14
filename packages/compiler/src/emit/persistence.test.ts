@@ -52,3 +52,40 @@ test("should emit local data IR when resources and components are persisted", as
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("should emit local data IR from structured persistence source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-structured-persistence-bundle-"));
+  try {
+    const bundlePath = await emitBundle(
+      {
+        entry: "content/scenes/game.scene.json",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      },
+      { world: new World() },
+      {
+        authoringDocuments: [{
+          data: {
+            schema: "threenative.local-data",
+            version: "0.1.0",
+            components: [{ id: "ChessPiece", schema: { fields: { file: { kind: "integer" } } } }],
+            resources: [{ id: "ChessGame", schema: { fields: { playerColor: { kind: "string" } } } }],
+            saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+            settings: [],
+          },
+          file: join(root, "content/persistence/game.persistence.json"),
+          kind: "persistence",
+          projectRelativePath: "content/persistence/game.persistence.json",
+        }],
+      },
+    );
+
+    const localData = JSON.parse(await readFile(join(bundlePath, "local-data.ir.json"), "utf8"));
+    assert.deepEqual(localData.saveSlots, [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }]);
+    assert.equal((await validateBundle(bundlePath)).ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

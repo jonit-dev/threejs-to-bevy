@@ -1,0 +1,17 @@
+[package]
+name = "threenative_generated_shell"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[package.metadata.threenative]
+tauri-cli = "=2.11.4"
+
+[lib]
+crate-type = ["cdylib", "rlib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "=2.6.3", features = [] }
+
+[dependencies]
+tauri = { version = "=2.11.5", features = [] }

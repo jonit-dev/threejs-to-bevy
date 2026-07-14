@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.tauri-android-defaults",
+  "version": "0.1.0",
+  "compileSdk": 36,
+  "minSdk": 24,
+  "targetSdk": 36,
+  "orientation": "landscape",
+  "cleartextTraffic": false
+}

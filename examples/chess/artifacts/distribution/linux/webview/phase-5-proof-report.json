@@ -1,0 +1,55 @@
+{
+  "schema": "threenative.distribution-proof",
+  "version": "0.1.0",
+  "phase": 5,
+  "project": "examples/chess",
+  "platform": "linux",
+  "runtime": "webview",
+  "recordedAt": "2026-07-14T07:47:31Z",
+  "shell": {
+    "cacheKey": "98338bc366fd278bb2cfa73c6d2cae39ef840f8f6ecfb89f77a800e3948c0d94",
+    "frontendDist": "web",
+    "localhostServer": false,
+    "declaredCapabilities": [],
+    "capabilityPolicy": [],
+    "permissions": [
+      "core:default"
+    ],
+    "tauri": {
+      "build": "2.6.3",
+      "cliRequired": "2.11.4",
+      "cliObserved": "tauri-cli 2.11.4",
+      "runtime": "2.11.5"
+    }
+  },
+  "build": {
+    "cargoCheckLocked": "passed",
+    "cargoBuildLocked": "passed",
+    "binaryBytes": 197398560,
+    "binarySha256": "45c701562f59865632e77bb3087f46d4654f0432c852283e5a645d56ce4d2487",
+    "rustc": "1.96.0",
+    "cargo": "1.96.0",
+    "webkit2gtk": "2.52.4"
+  },
+  "manualProof": {
+    "display": "Xvfb 1280x720x24",
+    "launch": "passed",
+    "firstFrame": "passed",
+    "bundleLocalAssets": "passed",
+    "input": "passed",
+    "inputAction": "clicked Play White",
+    "inputResult": "side selection closed and playable YOUR TURN state appeared",
+    "launchScreenshot": {
+      "path": "tauri-chess-launch.png",
+      "sha256": "1fa5461b4fdf96b576859339d3a111fde939000ea30a6f28c70266acf1b1891f"
+    },
+    "inputScreenshot": {
+      "path": "tauri-chess-input.png",
+      "sha256": "5c82b810cc8b8bf6f77c9a2906cb3d3e61ca7ffaba8d2890dad8951bcedcdec2"
+    }
+  },
+  "boundaries": [
+    "development shell proof is not installer, signing, or promotion evidence",
+    "virtual-display proof does not replace native desktop-host release proof"
+  ]
+}

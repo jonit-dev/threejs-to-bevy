@@ -14,11 +14,11 @@ function relayPointer(event: ReactPointerEvent<HTMLElement>) {
 }
 
 function CapturedCard({ label, pieces, tone }: { label: string; pieces: string; tone: Side }) {
-  const position = label === "Opponent captured" ? "top-[218px] max-[760px]:top-[190px]" : "bottom-6 max-[760px]:bottom-4";
+  const position = label === "Opponent captured" ? "top-[218px] max-[900px]:top-2" : "bottom-6 max-[900px]:bottom-2";
   return (
-    <section className={`absolute left-6 min-h-28 w-[252px] rounded-lg border border-[#cda45b]/35 bg-[linear-gradient(145deg,rgba(17,14,10,.92),rgba(4,5,6,.84))] p-4 shadow-[0_12px_34px_rgba(0,0,0,.4),inset_0_1px_rgba(255,255,255,.05)] backdrop-blur-[9px] max-[760px]:left-3 max-[760px]:min-h-[82px] max-[760px]:w-[165px] max-[760px]:p-3 ${position}`} aria-label={`${label} captured pieces`}>
-      <p className="mb-4 mt-0 font-serif text-[15px] text-[#d9d2c6]">{label}</p>
-      <div className={`flex min-h-[38px] items-center font-serif text-[28px] tracking-[5px] ${tone === "white" ? "text-[#ead8b8]" : "text-[#70695f]"}`} aria-label={pieces === "" ? "No captured pieces" : `${pieces.length} captured pieces`}>
+    <section className={`absolute left-6 min-h-28 w-[252px] rounded-lg border border-[#cda45b]/35 bg-[linear-gradient(145deg,rgba(17,14,10,.92),rgba(4,5,6,.84))] p-4 shadow-[0_12px_34px_rgba(0,0,0,.4),inset_0_1px_rgba(255,255,255,.05)] backdrop-blur-[9px] max-[900px]:left-2 max-[900px]:min-h-[54px] max-[900px]:w-[120px] max-[900px]:p-2 ${position}`} aria-label={`${label} captured pieces`}>
+      <p className="mb-4 mt-0 font-serif text-[15px] text-[#d9d2c6] max-[900px]:mb-1 max-[900px]:text-[10px]">{label}</p>
+      <div className={`flex min-h-[38px] items-center font-serif text-[28px] tracking-[5px] max-[900px]:min-h-[16px] max-[900px]:text-[16px] max-[900px]:tracking-[2px] ${tone === "white" ? "text-[#ead8b8]" : "text-[#70695f]"}`} aria-label={pieces === "" ? "No captured pieces" : `${pieces.length} captured pieces`}>
         <span>{pieces || "—"}</span>
       </div>
     </section>
@@ -63,15 +63,15 @@ function GameHud({ captures, restart, setInput, side }: { captures: Record<Side,
     window.addEventListener("keydown", forwardKeyboard); window.addEventListener("keyup", forwardKeyboard);
     return () => { window.removeEventListener("keydown", forwardKeyboard); window.removeEventListener("keyup", forwardKeyboard); };
   }, []);
-  const actionButton = `group absolute right-6 flex h-[62px] w-[184px] cursor-pointer items-center gap-4 rounded-md border border-[#5b554d]/65 bg-[linear-gradient(180deg,rgba(37,38,36,.98),rgba(25,26,24,.98))] px-5 text-left text-[17px] font-medium text-[#f0ece5] shadow-[0_8px_22px_rgba(0,0,0,.38),inset_0_1px_rgba(255,255,255,.045)] transition duration-150 hover:-translate-y-px hover:border-[#81735c] hover:bg-[linear-gradient(180deg,rgba(47,47,43,.99),rgba(29,30,27,.99))] hover:shadow-[0_11px_28px_rgba(0,0,0,.5)] active:translate-y-0 active:bg-[#191a18] motion-reduce:transition-none max-[760px]:right-3 ${focusRing}`;
+  const actionButton = `group absolute right-6 flex h-[62px] w-[184px] cursor-pointer items-center gap-4 rounded-md border border-[#5b554d]/65 bg-[linear-gradient(180deg,rgba(37,38,36,.98),rgba(25,26,24,.98))] px-5 text-left text-[17px] font-medium text-[#f0ece5] shadow-[0_8px_22px_rgba(0,0,0,.38),inset_0_1px_rgba(255,255,255,.045)] transition duration-150 hover:-translate-y-px hover:border-[#81735c] hover:bg-[linear-gradient(180deg,rgba(47,47,43,.99),rgba(29,30,27,.99))] hover:shadow-[0_11px_28px_rgba(0,0,0,.5)] active:translate-y-0 active:bg-[#191a18] motion-reduce:transition-none max-[900px]:right-2 max-[900px]:h-10 max-[900px]:w-[112px] max-[900px]:gap-2 max-[900px]:px-3 max-[900px]:text-xs ${focusRing}`;
   return (
     <main className="relative min-h-dvh w-full p-[env(safe-area-inset-top)_env(safe-area-inset-right)_env(safe-area-inset-bottom)_env(safe-area-inset-left)]" onPointerDown={relayPointer} onPointerMove={relayPointer} onPointerUp={relayPointer}>
       <aside className="pointer-events-none absolute inset-0">
         <CapturedCard label="Opponent captured" pieces={captures[side]} tone={side} />
         <CapturedCard label="You captured" pieces={captures[opponent]} tone={opponent} />
       </aside>
-      <button data-threenative-interactive className={`${actionButton} bottom-[106px] max-[760px]:bottom-[90px]`} onClick={restart}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><RestartIcon /></span><span>New Game</span></button>
-      <button data-threenative-interactive className={`${actionButton} bottom-7 max-[760px]:bottom-4`} onClick={openSettings}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><SettingsIcon /></span><span>Settings</span></button>
+      <button data-threenative-interactive className={`${actionButton} bottom-[106px] max-[900px]:bottom-12`} onClick={restart}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><RestartIcon /></span><span>New Game</span></button>
+      <button data-threenative-interactive className={`${actionButton} bottom-7 max-[900px]:bottom-1`} onClick={openSettings}><span className="text-[#aaa79f] transition-colors group-hover:text-[#d8b15d]"><SettingsIcon /></span><span>Settings</span></button>
       {settingsOpen && <Settings close={closeSettings} />}
     </main>
   );

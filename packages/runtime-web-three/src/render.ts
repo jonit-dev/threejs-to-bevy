@@ -39,7 +39,7 @@ import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
 import type { ISystemModule } from "./systems/runner.js";
 import { createSystemEffectLog, type ISystemEffectLog } from "./systems/log.js";
-import { webSystemRuntimeStateFor, type IResourceObservation } from "./systems/context.js";
+import { webSystemRuntimeStateFor, type IQueuedServiceCall, type IResourceObservation } from "./systems/context.js";
 import { createUiDomOverlay } from "./ui/domOverlay.js";
 import { renderUi, type IRenderedUi, type IRenderedUiNode } from "./ui/renderUi.js";
 import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
@@ -200,6 +200,11 @@ export interface IWebRenderedEntityDiagnostics {
   finalScale: [number, number, number];
   id: string;
   material?: {
+    baseColor?: [number, number, number];
+    emissive?: [number, number, number];
+    metallic?: number;
+    name?: string;
+    roughness?: number;
     textureLoaded?: boolean;
     transparent?: boolean;
     type: string;
@@ -379,7 +384,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   );
   const colliderDebugOverlay = options.debugColliders === true ? createColliderDebugOverlay(mapped, bundle.world) : undefined;
   const canvas = renderer.domElement;
-  const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world);
+  const ui = bundle.ui === undefined ? undefined : renderUi(bundle.ui, bundle.world, { target: currentUiTargetClass() });
   const uiOverlay = ui === undefined ? undefined : createUiDomOverlay(ui, document, source);
   const overlayHost = bundle.overlays === undefined ? undefined : createWebOverlayHost(bundle.overlays, source);
   let overlayEventCursor = 0;
@@ -417,14 +422,28 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const audioRuntime = bundle.audio === undefined ? undefined : createWebAudioRuntime(bundle.audio, audioSink);
   const audioEventCursors = new Map<string, unknown[]>();
   let audioDiagnosticCursor = 0;
+  const flushAudioDiagnostics = () => {
+    if (audioSink === undefined) return;
+    mapped.diagnostics.push(...audioSink.diagnostics.slice(audioDiagnosticCursor));
+    audioDiagnosticCursor = audioSink.diagnostics.length;
+  };
   const consumeAudioEvents = () => {
     if (audioRuntime === undefined || audioSink === undefined) {
       return;
     }
     audioRuntime.handleEvents(newAudioEvents(bundle.world.events ?? {}, audioEventCursors));
-    mapped.diagnostics.push(...audioSink.diagnostics.slice(audioDiagnosticCursor));
-    audioDiagnosticCursor = audioSink.diagnostics.length;
+    flushAudioDiagnostics();
   };
+  const consumeAudioServices = (services: readonly IQueuedServiceCall[]) => {
+    if (audioSink === undefined || bundle.audio === undefined) return;
+    audioSink.handleServices(services, bundle.audio);
+    flushAudioDiagnostics();
+  };
+  const onAudioVisibilityChange = () => {
+    if (document.hidden) audioSink?.pauseLoops();
+    else audioSink?.resumeLoops();
+  };
+  document.addEventListener("visibilitychange", onAudioVisibilityChange);
   if (audioRuntime !== undefined) {
     audioRuntime.start();
     consumeAudioEvents();
@@ -439,6 +458,16 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
   const detachInputListeners = attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped, container);
+  const resizeLifecycle = createWebResizeLifecycle({
+    addEventListener: (type, listener) => window.addEventListener(type, listener),
+    currentSize: () => [Math.max(1, container.clientWidth || window.innerWidth || 800), Math.max(1, container.clientHeight || window.innerHeight || 600)],
+    removeEventListener: (type, listener) => window.removeEventListener(type, listener),
+    resize: () => {
+      resizeRenderer(renderer, pipeline, mapped, container);
+      ui?.setTarget(currentUiTargetClass());
+      uiOverlay?.update();
+    },
+  });
   const captureFrames = Math.max(1, Math.floor(options.captureFrames ?? 1));
   const captureTransformTrace = options.captureTraceEntityId === undefined
     ? undefined
@@ -448,6 +477,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     if (bundle.systems !== undefined) {
       await runGameFrame({
         assets: bundle.assets,
+        audio: bundle.audio,
         componentSchemas: bundle.componentSchemas,
         delta: 1 / 60,
         effectLog,
@@ -455,12 +485,15 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         gameFlow: bundle.gameFlow,
         input,
         interactions: bundle.interactions,
+        localData: bundle.localData,
         mapped,
         module: systemModule,
         prefabs: bundle.prefabs,
+        persistenceStorageKey: source,
         resourceObservations,
         runtimeState,
         runtimeConfig: bundle.runtimeConfig,
+        serviceObserver: consumeAudioServices,
         state: loopState,
         systems: bundle.systems,
         ui: bundle.ui,
@@ -491,6 +524,8 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return;
     }
     resourcesDisposed = true;
+    resizeLifecycle.dispose();
+    document.removeEventListener("visibilitychange", onAudioVisibilityChange);
     detachInputListeners();
     audioSink?.dispose();
     uiOverlay?.dispose();
@@ -510,6 +545,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         disposeRuntimeResources();
       },
       async frame(time: number) {
+        resizeLifecycle.sync();
         const timing = frameTimings.record(time);
         const delta = timing.deltaMs / 1000;
         if (bundle.systems !== undefined) {
@@ -517,6 +553,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
           drainUiActionsIntoInput(ui, input);
           await runGameFrame({
             assets: bundle.assets,
+            audio: bundle.audio,
             componentSchemas: bundle.componentSchemas,
             delta,
             effectLog,
@@ -524,12 +561,15 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
             gameFlow: bundle.gameFlow,
             input,
             interactions: bundle.interactions,
+            localData: bundle.localData,
             mapped,
             module: systemModule,
             prefabs: bundle.prefabs,
+            persistenceStorageKey: source,
             resourceObservations,
             runtimeState,
             runtimeConfig: bundle.runtimeConfig,
+            serviceObserver: consumeAudioServices,
             state: loopState,
             systems: bundle.systems,
             ui: bundle.ui,
@@ -629,6 +669,39 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
     },
   };
+}
+
+export function createWebResizeLifecycle(options: {
+  addEventListener(type: "resize", listener: () => void): void;
+  currentSize(): readonly [number, number];
+  removeEventListener(type: "resize", listener: () => void): void;
+  resize(width: number, height: number): void;
+}): { dispose(): void; sync(): void } {
+  let [lastWidth, lastHeight] = options.currentSize();
+  const sync = () => {
+    const [width, height] = options.currentSize();
+    if (width === lastWidth && height === lastHeight) return;
+    lastWidth = width;
+    lastHeight = height;
+    options.resize(width, height);
+  };
+  options.addEventListener("resize", sync);
+  return { dispose: () => options.removeEventListener("resize", sync), sync };
+}
+
+function currentUiTargetClass(): import("@threenative/ir").UiTargetProfileClass {
+  const width = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 800);
+  const height = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 600);
+  return uiTargetClassForViewport(navigator.userAgent, width, height);
+}
+
+export function uiTargetClassForViewport(userAgent: string, width: number, _height: number): import("@threenative/ir").UiTargetProfileClass {
+  if (/iPad/i.test(userAgent)) return "tablet";
+  if (/iPhone|iPod/i.test(userAgent)) return "mobile";
+  if (/Android/i.test(userAgent)) return /Mobile|gphone/i.test(userAgent) ? "mobile" : "tablet";
+  if (width < 768) return "mobile";
+  if (width < 1200) return "tablet";
+  return "desktop";
 }
 
 export function createWebCaptureTransformTrace(entityId: string, requestedFrame: number, fixedDeltaSeconds: number): ICaptureTransformTrace {
@@ -1132,12 +1205,12 @@ function renderedEntityDiagnostics(mapped: IThreeWorld): IWebRenderedEntityDiagn
 }
 
 function firstMesh(object: THREE.Object3D): THREE.Mesh | undefined {
-  if (object instanceof THREE.Mesh && !isContactShadowPrivateObject(object)) {
+  if (object instanceof THREE.Mesh && !isContactShadowPrivateObject(object) && object.geometry.getAttribute("position")?.count > 0) {
     return object;
   }
   let mesh: THREE.Mesh | undefined;
   object.traverse((child) => {
-    if (mesh === undefined && child instanceof THREE.Mesh && !isContactShadowPrivateObject(child)) {
+    if (mesh === undefined && child instanceof THREE.Mesh && !isContactShadowPrivateObject(child) && child.geometry.getAttribute("position")?.count > 0) {
       mesh = child;
     }
   });
@@ -1149,12 +1222,27 @@ function materialDiagnostics(material: THREE.Material | THREE.Material[]): IWebR
   if (first === undefined) {
     return undefined;
   }
-  const maybeTextured = first as THREE.Material & { map?: { image?: unknown } | null };
+  const maybeTextured = first as THREE.Material & {
+    color?: THREE.Color;
+    emissive?: THREE.Color;
+    map?: { image?: unknown } | null;
+    metalness?: number;
+    roughness?: number;
+  };
   return {
+    ...(maybeTextured.color === undefined ? {} : { baseColor: colorTuple(maybeTextured.color) }),
+    ...(maybeTextured.emissive === undefined ? {} : { emissive: colorTuple(maybeTextured.emissive) }),
+    ...(typeof maybeTextured.metalness !== "number" ? {} : { metallic: roundMetric(maybeTextured.metalness) }),
+    ...(first.name === "" ? {} : { name: first.name }),
+    ...(typeof maybeTextured.roughness !== "number" ? {} : { roughness: roundMetric(maybeTextured.roughness) }),
     ...(maybeTextured.map === undefined || maybeTextured.map === null ? {} : { textureLoaded: maybeTextured.map.image !== undefined }),
     transparent: first.transparent,
     type: first.type,
   };
+}
+
+function colorTuple(color: THREE.Color): [number, number, number] {
+  return [roundMetric(color.r), roundMetric(color.g), roundMetric(color.b)];
 }
 
 function projectedBounds(bounds: THREE.Box3, camera: THREE.Camera): IWebRenderedEntityDiagnostics["projectedBounds"] {

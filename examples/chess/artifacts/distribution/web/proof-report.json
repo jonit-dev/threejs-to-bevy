@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.distribution-proof",
+  "version": "0.1.0",
+  "project": "examples/chess",
+  "recordedAt": "2026-07-14T07:27:48Z",
+  "formats": {
+    "static": {
+      "artifactBytes": 14684526,
+      "contentSha256": "0cc57f1e6026d5c0e812e06f12a0fcbbc4f5eb41f0e9d689cfcd4af25ac29ad4",
+      "launch": "passed"
+    },
+    "zip": {
+      "artifactBytes": 14684526,
+      "contentSha256": "0cc57f1e6026d5c0e812e06f12a0fcbbc4f5eb41f0e9d689cfcd4af25ac29ad4",
+      "zipSha256": "241e1f8c3affd678fe7de98e821d2fe4ce2e40940d057ebfec8dc7af922cd566"
+    },
+    "pwa": {
+      "artifactBytes": 14686994,
+      "contentSha256": "7a899c72c0ec40592dba58df8cdb6ac73ed9ad2bfb52aa4d349e2e0027a28d69",
+      "subpath": "/pwa/artifact/",
+      "onlineLaunch": "passed",
+      "offlineReload": "passed",
+      "serviceWorkerControlled": true
+    }
+  },
+  "browser": {
+    "engine": "chromium",
+    "viewport": {
+      "width": 1280,
+      "height": 720
+    },
+    "canvasCount": 1,
+    "diagnosticCount": 0,
+    "consoleErrorCount": 0,
+    "pageErrorCount": 0,
+    "ready": true
+  },
+  "screenshot": {
+    "path": "packaged-chess.png",
+    "sha256": "54cc715237799c85bcbd3925be17875161477ffa2b285bf065e2f180adc2ceb2"
+  }
+}

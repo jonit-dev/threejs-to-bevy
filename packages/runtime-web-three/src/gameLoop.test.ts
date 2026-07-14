@@ -643,6 +643,45 @@ test("gameLoop should expose drained UI actions and values to scripts for one fr
   ]);
 });
 
+test("gameLoop should keep one persistence service and apply a loaded world", async () => {
+  const state = createGameLoopState();
+  const world = makeWorld();
+  world.resources = { Progress: { level: 4 } };
+  let frame = 0;
+  const persistenceSystem = system("persist", "update");
+  persistenceSystem.services = ["persistence.load", "persistence.save"];
+  const options = {
+    delta: 1 / 60,
+    localData: {
+      schema: "threenative.local-data" as const,
+      version: "0.1.0" as const,
+      components: [],
+      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+      settings: [],
+    },
+    mapped: makeMapped(),
+    module: {
+      systems: {
+        persist: (context: any) => {
+          if (frame === 0) context.persistence.save("slot.auto");
+          else context.persistence.load("slot.auto");
+          frame += 1;
+        },
+      },
+    },
+    state,
+    systems: makeSystems([persistenceSystem]),
+    world,
+  };
+
+  await runGameFrame(options);
+  world.resources = { Progress: { level: 0 } };
+  await runGameFrame(options);
+
+  assert.deepEqual(world.resources, { Progress: { level: 4 } });
+});
+
 function makeWorld(entities: Array<{ id: string; position: [number, number, number] }> = []): IWorldIr {
   return {
     schema: "threenative.world",

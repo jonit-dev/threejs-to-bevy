@@ -43,6 +43,41 @@ export interface GateDescriptorMigrationGap {
 
 const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
   {
+    artifact: { reportPath: "tools/verify/artifacts/distribution/android/webview/verification-report.json" },
+    command: {
+      commands: [
+        ["node", "--test", "scripts/verify-android-webview-distribution.test.mjs"],
+        ["node", "scripts/verify-android-webview-distribution.mjs", "--input", "examples/chess/artifacts/distribution/android/webview/phase-7-partial-proof-report.json", "--emulator-only"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Android embedded-webview artifact and lifecycle evidence gate.",
+    focused: { profile: "focused" },
+    name: "verify:android-webview-distribution",
+    owner: "distribution Android webview report collector",
+    protects: "Android permissions, signed release metadata, install/launch/input/lifecycle proof, and artifact hashes.",
+    reason: "Prevents Android webview advancement without hash-bound emulator proof; physical-device proof remains a promotion prerequisite.",
+    release: { enrolled: false, name: "verify Android webview distribution", timingCategory: "visual-native" },
+  },
+  {
+    artifact: { reportPath: "tools/verify/artifacts/distribution/desktop/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/ir", "build"],
+        ["node", "--test", "scripts/verify-desktop-distribution.test.mjs"],
+        ["node", "scripts/verify-desktop-distribution.mjs", "--input", "examples/chess/artifacts/distribution/desktop-proof-report.json", "--lifecycle", "implemented"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Registry-derived desktop distribution artifact and native-host launch evidence gate.",
+    focused: { profile: "focused" },
+    name: "verify:desktop-distribution",
+    owner: "distribution desktop report collector",
+    protects: "Implemented desktop Bevy and embedded-webview rows, artifact hashes, eligible hosts, and launch evidence.",
+    reason: "Prevents a desktop registry row from advancing without a real artifact and launch proof from its eligible native host.",
+    release: { enrolled: false, name: "verify desktop distribution", timingCategory: "visual-native" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/native-overlay-cef/verification-report.json" },
     command: {
       commands: [

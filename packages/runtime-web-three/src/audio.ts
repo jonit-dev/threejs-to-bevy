@@ -1,6 +1,6 @@
 import type { IAssetsManifest, IAudioIr, IRuntimeDiagnostic } from "@threenative/ir";
 import { resolveWebAssets } from "./assets.js";
-import type { IQueuedEvent } from "./systems/context.js";
+import type { IQueuedEvent, IQueuedServiceCall } from "./systems/context.js";
 
 export interface IWebAudioCommand {
   asset: string;
@@ -30,6 +30,9 @@ export interface IWebAudioElement {
 export interface IWebAudioElementSink extends IWebAudioSink {
   diagnostics: IRuntimeDiagnostic[];
   dispose(): void;
+  handleServices(services: readonly IQueuedServiceCall[], audio: IAudioIr): void;
+  pauseLoops(): void;
+  resumeLoops(): void;
 }
 
 export interface IWebAudioRuntime {
@@ -197,7 +200,48 @@ export function createWebAudioElementSink(
   const resolvedAssets = resolveWebAssets(source, assets);
   const diagnostics: IRuntimeDiagnostic[] = [];
   const loops = new Map<string, IWebAudioElement>();
+  const pausedLoops = new Set<string>();
+  const playbacks = new Map<string, IWebAudioElement>();
   const elements = new Set<IWebAudioElement>();
+
+  const playElement = (element: IWebAudioElement, id: string) => {
+    const result = element.play();
+    if (isPromiseLike(result)) {
+      void result.catch((error: unknown) => {
+        diagnostics.push({
+          code: "TN_AUDIO_PLAYBACK_REJECTED",
+          message: `Audio command '${id}' could not start playback: ${error instanceof Error ? error.message : String(error)}`,
+          path: `audio/${id}`,
+          severity: "warning",
+        });
+      });
+    }
+  };
+
+  const queue = (command: IWebAudioCommand) => {
+    const asset = resolvedAssets.get(command.asset);
+    if (asset?.asset.kind !== "audio") {
+      diagnostics.push({
+        code: "TN_AUDIO_ASSET_MISSING",
+        message: `Audio command '${command.id}' references missing or non-audio asset '${command.asset}'.`,
+        path: `audio/${command.id}/asset`,
+        severity: "error",
+      });
+      return;
+    }
+
+    const element = command.kind === "loop" ? loops.get(command.id) ?? createElement() : createElement();
+    elements.add(element);
+    playbacks.set(command.id, element);
+    element.src = asset.url;
+    element.loop = command.kind === "loop";
+    element.currentTime = 0;
+    element.volume = command.volume ?? 1;
+    if (command.kind === "loop") {
+      loops.set(command.id, element);
+    }
+    playElement(element, command.id);
+  };
 
   return {
     diagnostics,
@@ -208,41 +252,68 @@ export function createWebAudioElementSink(
       }
       elements.clear();
       loops.clear();
+      pausedLoops.clear();
+      playbacks.clear();
     },
-    queue(command) {
-      const asset = resolvedAssets.get(command.asset);
-      if (asset?.asset.kind !== "audio") {
-        diagnostics.push({
-          code: "TN_AUDIO_ASSET_MISSING",
-          message: `Audio command '${command.id}' references missing or non-audio asset '${command.asset}'.`,
-          path: `audio/${command.id}/asset`,
-          severity: "error",
-        });
-        return;
-      }
-
-      const element = command.kind === "loop" ? loops.get(command.id) ?? createElement() : createElement();
-      elements.add(element);
-      element.src = asset.url;
-      element.loop = command.kind === "loop";
-      element.currentTime = 0;
-      element.volume = command.volume ?? 1;
-      if (command.kind === "loop") {
-        loops.set(command.id, element);
-      }
-      const result = element.play();
-      if (isPromiseLike(result)) {
-        void result.catch((error: unknown) => {
+    handleServices(services, audio) {
+      for (const service of services) {
+        if (!isRecord(service.payload) || !isRecord(service.payload.result)) continue;
+        const result = service.payload.result;
+        const playbackId = readString(result.playbackId);
+        if (playbackId === undefined) continue;
+        if (service.service === "audio.stop") {
+          const element = playbacks.get(playbackId);
+          if (element !== undefined) {
+            element.pause();
+            element.currentTime = 0;
+            elements.delete(element);
+            playbacks.delete(playbackId);
+            loops.delete(playbackId);
+            pausedLoops.delete(playbackId);
+          }
+          continue;
+        }
+        if (service.service !== "audio.play" || result.accepted !== true || result.status !== "playing") continue;
+        const soundId = readString(result.soundId);
+        const asset = soundId === undefined ? undefined : scriptAudioAsset(audio, soundId);
+        if (soundId === undefined || asset === undefined) {
           diagnostics.push({
-            code: "TN_AUDIO_PLAYBACK_REJECTED",
-            message: `Audio command '${command.id}' could not start playback: ${error instanceof Error ? error.message : String(error)}`,
-            path: `audio/${command.id}`,
-            severity: "warning",
+            code: "TN_AUDIO_ASSET_MISSING",
+            message: `Script audio playback '${playbackId}' references undeclared or non-file sound '${soundId ?? ""}'.`,
+            path: `audio/${playbackId}/soundId`,
+            severity: "error",
           });
+          continue;
+        }
+        queue({
+          asset,
+          id: playbackId,
+          kind: result.loop === true ? "loop" : "oneShot",
+          ...(typeof result.pitch === "number" ? { pitch: result.pitch } : {}),
+          ...(typeof result.volume === "number" ? { volume: result.volume } : {}),
         });
+      }
+    },
+    pauseLoops() {
+      for (const [id, element] of loops) {
+        element.pause();
+        pausedLoops.add(id);
+      }
+    },
+    queue,
+    resumeLoops() {
+      for (const id of [...pausedLoops]) {
+        const element = loops.get(id);
+        if (element !== undefined) playElement(element, id);
+        pausedLoops.delete(id);
       }
     },
   };
+}
+
+function scriptAudioAsset(audio: IAudioIr, soundId: string): string | undefined {
+  return audio.music.find((item) => item.id === soundId)?.asset
+    ?? audio.oneShots.find((item) => item.id === soundId)?.asset;
 }
 
 function defaultAudioElement(): IWebAudioElement {
@@ -251,6 +322,14 @@ function defaultAudioElement(): IWebAudioElement {
 
 function isPromiseLike(value: unknown): value is Promise<void> {
   return typeof value === "object" && value !== null && "catch" in value;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readString(value: unknown): string | undefined {
+  return typeof value === "string" && value.length > 0 ? value : undefined;
 }
 
 export type ScriptAudioPlaybackKind = "loop" | "oneShot" | "tone";

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
 
 import {
@@ -12,6 +13,52 @@ import {
   listAuthoringOperationDescriptors,
   renderAuthoringOperationCliUsage,
 } from "./operationRegistry.js";
+import { validateAuthoringProject } from "./operations.js";
+import { recordBlenderGenerator } from "./operations/documents.js";
+import { loadAuthoringProject } from "./project.js";
+
+test("should update one distribution target without replacing siblings", async () => {
+  const root = await createRegistryProject();
+  try {
+    const app = await dispatchAuthoringOperation({
+      args: { appId: "com.threenative.chess", displayName: "Chess", icons: "assets/chess-game.png", version: "1.0.0" },
+      name: "distribution.set_app",
+      projectPath: root,
+    });
+    await dispatchAuthoringOperation({ args: { formats: ["aab", "apk"], platform: "android", runtime: "webview" }, name: "distribution.set_target", projectPath: root });
+    await dispatchAuthoringOperation({ args: { formats: ["aab", "apk"], platform: "android", runtime: "bevy" }, name: "distribution.set_target", projectPath: root });
+    const update = await dispatchAuthoringOperation({ args: { capabilities: ["storage"], formats: ["apk"], platform: "android", runtime: "webview" }, name: "distribution.set_target", projectPath: root });
+    const source = JSON.parse(await readFile(join(root, "content/distribution.json"), "utf8")) as { targets: Array<Record<string, unknown>> };
+
+    assert.equal(app.ok, true);
+    assert.equal(update.ok, true);
+    assert.deepEqual(source.targets, [
+      { formats: ["static", "zip", "pwa"], platform: "web", runtime: "web" },
+      { capabilities: ["storage"], formats: ["apk"], platform: "android", runtime: "webview" },
+      { formats: ["aab", "apk"], platform: "android", runtime: "bevy" },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should be idempotent when distribution metadata is unchanged", async () => {
+  const root = await createRegistryProject();
+  try {
+    const args = { appId: "com.threenative.chess", displayName: "Chess", icons: "assets/chess-game.png", version: "1.0.0" };
+    const first = await dispatchAuthoringOperation({ args, name: "distribution.set_app", projectPath: root });
+    const second = await dispatchAuthoringOperation({ args, name: "distribution.set_app", projectPath: root });
+    const loaded = await loadAuthoringProject({ projectPath: root });
+
+    assert.equal(first.changed, true);
+    assert.equal(second.ok, true);
+    assert.equal(second.changed, false);
+    assert.deepEqual(second.filesWritten, []);
+    assert.equal(loaded.documents.find((document) => document.projectRelativePath === "content/distribution.json")?.kind, "distribution");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
 
 test("should dispatch promoted editor-safe operations", async () => {
   const root = await createRegistryProject();
@@ -59,6 +106,340 @@ test("should dispatch actor archetype operations through the registry", async ()
     assert.equal(result.ok, true);
     assert.equal(descriptor?.sourceFamily, "archetype");
     assert.equal(scene.entities.find((entity) => entity.id === "hero")?.archetype?.id, "character");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve legacy TypeScript generator documents", async () => {
+  const root = await createRegistryProject();
+  try {
+    const result = await dispatchAuthoringOperation({
+      args: { exportName: "generateArena", generatorId: "arena.layout", modulePath: "src/generators/arena.ts", outputs: ["content/scenes/arena.scene.json"] },
+      name: "generator.record",
+      projectPath: root,
+    });
+    const document = JSON.parse(await readFile(join(root, "content/generators/arena.layout.generator.json"), "utf8")) as Record<string, unknown>;
+    assert.equal(result.ok, true);
+    assert.equal(document.provider, undefined);
+    assert.equal(document.module, "src/generators/arena.ts");
+    assert.equal(document.export, "generateArena");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should record normalized Blender recipe and provider provenance", async () => {
+  const root = await createRegistryProject();
+  try {
+    const result = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "prop.crate",
+        output: "assets/generated/prop.crate.glb",
+        providerVersion: "4.5.11",
+        recipe: validBlenderRecipe({
+          animations: [{ id: "idle", duration: 1, loop: true, tracks: [{ node: "body", property: "rotation", keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0.1, 0], interpolation: "linear" }] }] }],
+        }),
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    const recipe = JSON.parse(await readFile(join(root, "content/generators/prop.crate.recipe.json"), "utf8")) as Record<string, unknown>;
+    const provenance = JSON.parse(await readFile(join(root, "content/generators/prop.crate.generator.json"), "utf8")) as Record<string, unknown>;
+    const reloaded = await validateAuthoringProject({ projectPath: root });
+    assert.equal(result.ok, true);
+    assert.equal(reloaded.ok, true);
+    assert.deepEqual(result.filesWritten, ["content/generators/prop.crate.generator.json", "content/generators/prop.crate.recipe.json"]);
+    assert.equal(recipe.schema, "threenative.blender-recipe");
+    assert.equal(recipe.id, "prop.crate");
+    assert.deepEqual((recipe.budgets as Record<string, unknown>).maxParts, 128);
+    assert.deepEqual(provenance, {
+      id: "prop.crate",
+      outputs: ["assets/generated/prop.crate.glb"],
+      overwritePolicy: "manual",
+      provider: "blender",
+      providerVersion: "4.5.11",
+      recipe: "content/generators/prop.crate.recipe.json",
+      schema: "threenative.generator-provenance",
+      version: "0.1.0",
+    });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reload Blender recipe and provider provenance in a fresh process", async () => {
+  const root = await createRegistryProject();
+  try {
+    const recorded = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "prop.crate",
+        output: "assets/generated/prop.crate.glb",
+        recipe: validBlenderRecipe(),
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(recorded.ok, true, JSON.stringify(recorded.diagnostics));
+
+    const child = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      [
+        "const { validateAuthoringProject } = await import(process.env.TN_AUTHORING_OPERATIONS_URL);",
+        "const result = await validateAuthoringProject({ projectPath: process.env.TN_AUTHORING_PROJECT });",
+        "process.stdout.write(JSON.stringify({ diagnostics: result.diagnostics, ok: result.ok }));",
+      ].join("\n"),
+    ], {
+      encoding: "utf8",
+      env: {
+        ...process.env,
+        TN_AUTHORING_OPERATIONS_URL: new URL("./operations.js", import.meta.url).href,
+        TN_AUTHORING_PROJECT: root,
+      },
+    });
+    assert.equal(child.status, 0, child.stderr);
+    assert.deepEqual(JSON.parse(child.stdout), { diagnostics: [], ok: true });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unknown Blender recipe operation", async () => {
+  const root = await createRegistryProject();
+  try {
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipe: validBlenderRecipe({ operations: [{ kind: "execute" }] }) }, name: "generator.record_blender", projectPath: root });
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_OPERATION_UNSUPPORTED");
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.path, "/operations/0/kind");
+    assert.deepEqual(diagnostic?.fix?.allowed, ["join", "parent"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject traversal and generated bundle output paths", async () => {
+  const root = await createRegistryProject();
+  const outsideName = `${basename(root)}.recipe.json`;
+  const outsidePath = join(root, "..", outsideName);
+  try {
+    await writeFile(outsidePath, "not json", "utf8");
+    const traversal = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipePath: `../${outsideName}` }, name: "generator.record_blender", projectPath: root });
+    const generated = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "dist/game.bundle/prop.crate.glb", recipe: validBlenderRecipe() }, name: "generator.record_blender", projectPath: root });
+    assert.equal(traversal.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID"), true);
+    assert.equal(traversal.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_READ_FAILED"), false);
+    assert.equal(generated.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_OUTPUT_PATH_INVALID"), true);
+    await assert.rejects(readFile(join(root, "content/generators/prop.crate.generator.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+    await rm(outsidePath, { force: true });
+  }
+});
+
+test("should reject Blender recipe symlinks that escape the project", async () => {
+  const root = await createRegistryProject();
+  const outside = await mkdtemp(join(tmpdir(), "tn-blender-recipe-outside-"));
+  try {
+    await mkdir(join(root, "content/generators"), { recursive: true });
+    await writeFile(join(outside, "escaped.recipe.json"), `${JSON.stringify(validBlenderRecipe())}\n`);
+    await symlink(join(outside, "escaped.recipe.json"), join(root, "content/generators/prop.crate.recipe.json"));
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipePath: "content/generators/prop.crate.recipe.json" }, name: "generator.record_blender", projectPath: root });
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID"), true);
+    await assert.rejects(readFile(join(root, "content/generators/prop.crate.generator.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+    await rm(outside, { force: true, recursive: true });
+  }
+});
+
+test("should reject contradictory Blender recipe metadata and polygon estimates", async () => {
+  const root = await createRegistryProject();
+  try {
+    const metadata = await dispatchAuthoringOperation({
+      args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipe: validBlenderRecipe({ schema: "wrong.schema", version: "9.9.9", id: "other.asset" }) },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    const polygons = await dispatchAuthoringOperation({
+      args: { generatorId: "dense", output: "assets/generated/dense.glb", recipe: validBlenderRecipe({ id: "dense", budgets: { maxOutputBytes: 1024 * 1024, maxPolygons: 100 }, parts: [{ id: "body", primitive: "sphere", segments: 32, rings: 16 }] }) },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(metadata.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_SCHEMA_INVALID"), true);
+    assert.equal(metadata.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_VERSION_INVALID"), true);
+    assert.equal(metadata.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_ID_MISMATCH"), true);
+    assert.equal(polygons.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/budgets/maxPolygons"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should validate bounded articulated animation and post-operation references", async () => {
+  const root = await createRegistryProject();
+  try {
+    const generatorId = "robot.wave";
+    const accepted = await dispatchAuthoringOperation({
+      args: {
+        generatorId,
+        output: "assets/generated/robot.wave.glb",
+        recipe: validBlenderRecipe({
+          id: generatorId,
+          parts: [{ id: "torso", primitive: "cube" }, { id: "arm", primitive: "cube" }, { id: "hand", primitive: "sphere" }],
+          operations: [{ kind: "parent", parent: "torso", child: "arm" }, { kind: "parent", parent: "arm", child: "hand" }],
+          animations: [{ id: "wave", duration: 1, loop: true, tracks: [{ node: "arm", property: "rotation", keyframes: [{ time: 0, value: [0, 0, -0.5] }, { time: 0.5, value: [0, 0, 0.5] }, { time: 1, value: [0, 0, -0.5] }] }] }],
+        }),
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    const cycle = await dispatchAuthoringOperation({
+      args: { generatorId: "robot.cycle", output: "assets/generated/robot.cycle.glb", recipe: validBlenderRecipe({ id: "robot.cycle", parts: [{ id: "a", primitive: "cube" }, { id: "b", primitive: "cube" }], operations: [{ kind: "parent", parent: "a", child: "b" }, { kind: "parent", parent: "b", child: "a" }] }) },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    const consumed = await dispatchAuthoringOperation({
+      args: { generatorId: "robot.join", output: "assets/generated/robot.join.glb", recipe: validBlenderRecipe({ id: "robot.join", parts: [{ id: "a", primitive: "cube" }, { id: "b", primitive: "cube" }], operations: [{ kind: "join", id: "joined", inputs: ["a", "b"] }], animations: [{ id: "bad", duration: 1, tracks: [{ node: "a", property: "position", keyframes: [{ time: 0, value: [0, 0, 0] }] }] }] }) },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.diagnostics));
+    assert.equal(cycle.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_PARENT_CYCLE"), true);
+    assert.equal(consumed.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID" && item.path?.endsWith("/node")), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should roll back both Blender generator documents when the second write fails", async () => {
+  const root = await createRegistryProject();
+  const recipePath = join(root, "content/generators/robot.wave.recipe.json");
+  const provenancePath = join(root, "content/generators/robot.wave.generator.json");
+  try {
+    const initial = await recordBlenderGenerator({
+      generatorId: "robot.wave",
+      output: "assets/generated/robot.wave.glb",
+      projectPath: root,
+      providerVersion: "4.5.11",
+      recipe: validBlenderRecipe({ id: "robot.wave" }),
+    });
+    assert.equal(initial.ok, true, JSON.stringify(initial.diagnostics));
+    const beforeRecipe = await readFile(recipePath, "utf8");
+    const beforeProvenance = await readFile(provenancePath, "utf8");
+    let writes = 0;
+    const failed = await recordBlenderGenerator({
+      generatorId: "robot.wave",
+      output: "assets/generated/robot.changed.glb",
+      projectPath: root,
+      providerVersion: "4.5.11",
+      recipe: validBlenderRecipe({ id: "robot.wave", parts: [{ id: "changed", primitive: "sphere" }] }),
+    }, {
+      writeDocument: async ({ data, file }) => {
+        writes += 1;
+        if (writes === 2) throw new Error("injected provenance failure");
+        await writeFile(file, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+      },
+    });
+    assert.equal(failed.ok, false);
+    assert.equal(failed.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECORD_WRITE_FAILED"), true);
+    assert.equal(await readFile(recipePath, "utf8"), beforeRecipe);
+    assert.equal(await readFile(provenancePath, "utf8"), beforeProvenance);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject Python and remote recipe fields", async () => {
+  const root = await createRegistryProject();
+  try {
+    const recipe = validBlenderRecipe({ code: "import bpy", source: "https://example.com/model.glb" });
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipe }, name: "generator.record_blender", projectPath: root });
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_CODE_FORBIDDEN" && item.path === "/code"), true);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_REMOTE_URL_FORBIDDEN" && item.path === "/source"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should enforce part material modifier and segment budgets", async () => {
+  const root = await createRegistryProject();
+  try {
+    const recipe = validBlenderRecipe({
+      materials: Array.from({ length: 65 }, (_, index) => ({ id: `mat-${index}`, baseColor: [0.2, 0.3, 0.4, 1] })),
+      parts: Array.from({ length: 129 }, (_, index) => ({ id: `part-${index}`, primitive: "sphere", segments: 129, modifiers: Array.from({ length: 17 }, () => ({ kind: "mirror" })) })),
+    });
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.crate", output: "assets/generated/prop.crate.glb", recipe }, name: "generator.record_blender", projectPath: root });
+    const requested = await dispatchAuthoringOperation({ args: { generatorId: "prop.small", output: "assets/generated/prop.small.glb", requestedBudgets: { maxParts: 1 }, recipe: validBlenderRecipe({ parts: [{ id: "a", primitive: "cube" }, { id: "b", primitive: "cube" }] }) }, name: "generator.record_blender", projectPath: root });
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/parts"), true);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/materials"), true);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/parts/0/modifiers"), true);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_INVALID" && item.path === "/parts/0/segments"), true);
+    assert.equal(requested.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/parts"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should enforce operation join animation track and keyframe budgets", async () => {
+  const root = await createRegistryProject();
+  const run = (generatorId: string, recipe: Record<string, unknown>) => dispatchAuthoringOperation({
+    args: { generatorId, output: `assets/generated/${generatorId}.glb`, recipe },
+    name: "generator.record_blender",
+    projectPath: root,
+  });
+  try {
+    const operations = await run("limit.operations", validBlenderRecipe({ id: "limit.operations", operations: Array.from({ length: 257 }, () => ({ kind: "parent", child: "body", parent: "body" })) }));
+    const join = await run("limit.join", validBlenderRecipe({ id: "limit.join", operations: [{ kind: "join", id: "joined", inputs: Array.from({ length: 129 }, () => "body") }] }));
+    const animations = await run("limit.animations", validBlenderRecipe({ id: "limit.animations", animations: Array.from({ length: 17 }, (_, index) => ({ id: `clip-${index}`, duration: 1, tracks: [] })) }));
+    const tracks = await run("limit.tracks", validBlenderRecipe({ id: "limit.tracks", animations: [{ id: "clip", duration: 1, tracks: Array.from({ length: 129 }, () => ({ node: "body", property: "position", keyframes: [{ time: 0, value: [0, 0, 0] }] })) }] }));
+    const keyframes = await run("limit.keys", validBlenderRecipe({ id: "limit.keys", animations: [{ id: "clip", duration: 3, tracks: [{ node: "body", property: "position", keyframes: Array.from({ length: 257 }, (_, index) => ({ time: index / 100, value: [0, 0, 0] })) }] }] }));
+    assert.equal(operations.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/operations"), true);
+    assert.equal(join.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/operations/0/inputs"), true);
+    assert.equal(animations.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/animations"), true);
+    assert.equal(tracks.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/animations/0/tracks"), true);
+    assert.equal(keyframes.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_BUDGET_EXCEEDED" && item.path === "/animations/0/tracks/0/keyframes"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept every bounded Blender primitive and modifier at its boundary", async () => {
+  const root = await createRegistryProject();
+  const modifiers: Record<string, unknown>[] = [
+    { kind: "array", count: 32, offset: [1, 0, 0] },
+    { kind: "bevel", width: 0.01, segments: 128 },
+    { kind: "boolean", target: "target", operation: "difference" },
+    { kind: "mirror", axis: "z" },
+    { kind: "solidify", thickness: 0.01 },
+  ];
+  try {
+    for (const [index, primitive] of ["cube", "sphere", "cylinder", "cone", "torus"].entries()) {
+      const generatorId = `boundary-${index}`;
+      const result = await dispatchAuthoringOperation({
+        args: {
+          generatorId,
+          output: `assets/generated/boundary-${index}.glb`,
+          recipe: validBlenderRecipe({ id: generatorId, budgets: { maxOutputBytes: 64 * 1024 * 1024, maxPolygons: 500_000 }, parts: [{ id: "target", primitive: "cube" }, { id: "body", primitive, rings: 128, segments: 128 }] }),
+        },
+        name: "generator.record_blender",
+        projectPath: root,
+      });
+      assert.equal(result.ok, true, `${primitive}: ${JSON.stringify(result.diagnostics)}`);
+    }
+    for (const [index, modifier] of modifiers.entries()) {
+      const generatorId = `modifier-${index}`;
+      const result = await dispatchAuthoringOperation({
+        args: {
+          generatorId,
+          output: `assets/generated/modifier-${index}.glb`,
+          recipe: validBlenderRecipe({ id: generatorId, budgets: { maxOutputBytes: 64 * 1024 * 1024, maxPolygons: 500_000 }, parts: [{ id: "target", primitive: "cube" }, { id: "body", primitive: "cube", modifiers: [modifier] }] }),
+        },
+        name: "generator.record_blender",
+        projectPath: root,
+      });
+      assert.equal(result.ok, true, `${String(modifier.kind)}: ${JSON.stringify(result.diagnostics)}`);
+    }
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -359,6 +740,8 @@ test("should expose operation metadata and registry diagnostics", async () => {
   const unsupported = await dispatchAuthoringOperation({ args: {}, name: "scene.delete_entity", projectPath: "/project" });
 
   assert.deepEqual(AUTHORING_OPERATION_NAMES, [
+    "distribution.set_app",
+    "distribution.set_target",
     "archetype.apply",
     "archetype.update",
     "archetype.list",
@@ -375,6 +758,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.set_walkability",
     "environment.set_source_asset_lod",
     "generator.record",
+    "generator.record_blender",
     "scene.create",
     "scene.placement_add",
     "scene.placement_inspect",
@@ -510,4 +894,16 @@ async function createRegistryProject(): Promise<string> {
     )}\n`,
   );
   return root;
+}
+
+function validBlenderRecipe(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    schema: "threenative.blender-recipe",
+    version: "0.1.0",
+    id: "prop.crate",
+    budgets: { maxOutputBytes: 8 * 1024 * 1024, maxPolygons: 20_000 },
+    materials: [{ id: "paint", baseColor: [0.08, 0.32, 0.8, 1], metallic: 0.1, roughness: 0.42 }],
+    parts: [{ id: "body", primitive: "cube", material: "paint", scale: [1, 1, 1], modifiers: [{ kind: "bevel", width: 0.08, segments: 3 }] }],
+    ...overrides,
+  };
 }

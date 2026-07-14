@@ -11,6 +11,7 @@ const outputBevyRuntime = resolve(packageRoot, "dist", "runtime-bevy");
 const outputAiDocs = resolve(packageRoot, "dist", "ai");
 const outputCookbook = resolve(packageRoot, "dist", "data", "cookbook");
 const outputOverlayTemplates = resolve(packageRoot, "dist", "overlay-templates");
+const outputBlenderRunner = resolve(packageRoot, "dist", "blender", "runner.py");
 
 const cleanGeneratedDirectory = async (path) => {
   await rm(path, { force: true, maxRetries: 5, recursive: true, retryDelay: 100 });
@@ -48,3 +49,6 @@ await cp(resolve(repoRoot, "docs", "cookbook"), outputCookbook, { recursive: tru
 
 await cleanGeneratedDirectory(outputOverlayTemplates);
 await cp(resolve(packageRoot, "src", "overlays", "templates"), outputOverlayTemplates, { recursive: true });
+
+await mkdir(resolve(packageRoot, "dist", "blender"), { recursive: true });
+await cp(resolve(packageRoot, "src", "blender", "runner.py"), outputBlenderRunner);

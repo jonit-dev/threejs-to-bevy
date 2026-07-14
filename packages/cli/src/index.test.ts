@@ -111,10 +111,29 @@ test("should keep registry handlers and legacy compatibility path explicit", asy
   assert.deepEqual(registryNames, Object.keys(CLI_COMMAND_DEFINITIONS).sort(), "CLI command definitions must be registry-backed.");
   assert.equal(findCommand(CLI_COMMAND_REGISTRY, "build")?.handler, CLI_COMMAND_REGISTRY.build.handler, "Registry lookup must return the migrated command definition.");
   assert.equal(findCommand(CLI_COMMAND_REGISTRY, "missing"), undefined, "Registry lookup must fail closed for unknown commands.");
-  assert.deepEqual(migratedNames, ["actor", "bake", "build", "overlay", "parity", "proof"], "Registry-migrated command list changed without test review.");
+  assert.deepEqual(migratedNames, ["actor", "bake", "build", "distribution", "overlay", "parity", "proof"], "Registry-migrated command list changed without test review.");
   assert.deepEqual(uniqueLegacyNames, UNMIGRATED_COMMAND_FAMILIES, `Legacy compatibility path drift. Legacy=${uniqueLegacyNames.join(", ")} Unmigrated=${UNMIGRATED_COMMAND_FAMILIES.join(", ")}`);
   for (const name of migratedNames) {
     assert.equal(typeof registryByName[name]?.handler, "function", `Migrated command '${name}' must have a registry handler.`);
+  }
+});
+
+test("should mutate distribution source through the registry-backed CLI route", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-distribution-"));
+  try {
+    const app = await dispatch(["distribution", "set-app", "--app-id", "com.example.game", "--display-name", "Example Game", "--version", "1.2.3", "--project", root, "--json"]);
+    const target = await dispatch(["distribution", "set-target", "--platform", "linux", "--runtime", "bevy", "--formats", "tar", "--architecture", "x86_64", "--project", root, "--json"]);
+    const source = JSON.parse(await readFile(join(root, "content/distribution.json"), "utf8")) as { app: { id: string; version: string }; targets: { architecture?: string; formats: string[]; platform: string; runtime: string }[] };
+
+    assert.equal(app.exitCode, 0);
+    assert.equal(target.exitCode, 0);
+    assert.deepEqual(source.app, { buildNumber: 1, displayName: "Example Game", icons: "assets/distribution/icons", id: "com.example.game", version: "1.2.3" });
+    assert.deepEqual(source.targets, [
+      { formats: ["static", "zip", "pwa"], platform: "web", runtime: "web" },
+      { architecture: "x86_64", formats: ["tar"], platform: "linux", runtime: "bevy" },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });
 

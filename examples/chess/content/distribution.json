@@ -1,0 +1,102 @@
+{
+  "app": {
+    "buildNumber": 1,
+    "displayName": "ThreeNative Chess",
+    "icons": "assets/chess-game.png",
+    "id": "com.threenative.chess",
+    "version": "1.0.0"
+  },
+  "schema": "threenative.distribution",
+  "targets": [
+    {
+      "formats": [
+        "static",
+        "zip",
+        "pwa"
+      ],
+      "platform": "web",
+      "runtime": "web"
+    },
+    {
+      "formats": [
+        "archive",
+        "nsis"
+      ],
+      "platform": "windows",
+      "runtime": "bevy"
+    },
+    {
+      "formats": [
+        "archive",
+        "nsis"
+      ],
+      "platform": "windows",
+      "runtime": "webview"
+    },
+    {
+      "formats": [
+        "app",
+        "dmg"
+      ],
+      "platform": "macos",
+      "runtime": "bevy"
+    },
+    {
+      "formats": [
+        "app",
+        "dmg"
+      ],
+      "platform": "macos",
+      "runtime": "webview"
+    },
+    {
+      "formats": [
+        "tar",
+        "appimage"
+      ],
+      "platform": "linux",
+      "runtime": "bevy"
+    },
+    {
+      "formats": [
+        "tar",
+        "appimage"
+      ],
+      "platform": "linux",
+      "runtime": "webview"
+    },
+    {
+      "formats": [
+        "aab",
+        "apk"
+      ],
+      "platform": "android",
+      "runtime": "bevy"
+    },
+    {
+      "formats": [
+        "aab",
+        "apk"
+      ],
+      "platform": "android",
+      "runtime": "webview"
+    },
+    {
+      "formats": [
+        "xcarchive",
+        "ipa"
+      ],
+      "platform": "ios",
+      "runtime": "bevy"
+    },
+    {
+      "formats": [
+        "xcarchive",
+        "ipa"
+      ],
+      "platform": "ios",
+      "runtime": "webview"
+    }
+  ],
+  "version": "0.1.0"
+}

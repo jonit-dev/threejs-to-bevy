@@ -1,0 +1,22 @@
+{
+  "schema": "threenative.blender-recipe", "version": "0.1.0", "id": "prop.pickup",
+  "budgets": { "maxOutputBytes": 4194304, "maxPolygons": 30000 },
+  "materials": [
+    { "id": "shell.dark", "baseColor": [0.018, 0.035, 0.08, 1], "metallic": 0.82, "roughness": 0.2 },
+    { "id": "energy.cyan", "baseColor": [0.0, 0.55, 0.95, 1], "emissive": [0.0, 0.85, 1.0], "metallic": 0.05, "roughness": 0.14 },
+    { "id": "accent.gold", "baseColor": [0.95, 0.48, 0.04, 1], "metallic": 0.68, "roughness": 0.24 }
+  ],
+  "parts": [
+    { "id": "base", "primitive": "cylinder", "material": "shell.dark", "position": [0, 0.12, 0], "scale": [0.82, 0.24, 0.82], "segments": 28, "shading": "smooth", "modifiers": [{ "kind": "bevel", "width": 0.08, "segments": 3 }] },
+    { "id": "core", "primitive": "cylinder", "material": "energy.cyan", "position": [0, 0.82, 0], "scale": [0.45, 1.25, 0.45], "segments": 28, "shading": "smooth" },
+    { "id": "cap.top", "primitive": "cone", "material": "accent.gold", "position": [0, 1.58, 0], "scale": [0.65, 0.42, 0.65], "segments": 28, "shading": "smooth" },
+    { "id": "ring.low", "primitive": "torus", "material": "accent.gold", "position": [0, 0.42, 0], "rotation": [90, 0, 0], "scale": [0.95, 0.95, 0.35], "segments": 28, "rings": 10, "shading": "smooth" },
+    { "id": "ring.high", "primitive": "torus", "material": "accent.gold", "position": [0, 1.27, 0], "rotation": [90, 0, 0], "scale": [0.95, 0.95, 0.35], "segments": 28, "rings": 10, "shading": "smooth" },
+    { "id": "halo", "primitive": "torus", "material": "energy.cyan", "position": [0, 1.82, 0], "rotation": [90, 0, 0], "scale": [1.2, 1.2, 0.25], "segments": 28, "rings": 10, "shading": "smooth" },
+    { "id": "fin.front", "primitive": "cone", "material": "shell.dark", "position": [0, 0.85, -0.56], "rotation": [90, 0, 0], "scale": [0.28, 0.58, 0.18], "segments": 12 },
+    { "id": "fin.back", "primitive": "cone", "material": "shell.dark", "position": [0, 0.85, 0.56], "rotation": [-90, 0, 0], "scale": [0.28, 0.58, 0.18], "segments": 12 },
+    { "id": "fin.left", "primitive": "cone", "material": "shell.dark", "position": [-0.56, 0.85, 0], "rotation": [0, 90, 0], "scale": [0.18, 0.58, 0.28], "segments": 12 },
+    { "id": "fin.right", "primitive": "cone", "material": "shell.dark", "position": [0.56, 0.85, 0], "rotation": [0, -90, 0], "scale": [0.18, 0.58, 0.28], "segments": 12 },
+    { "id": "orb", "primitive": "sphere", "material": "energy.cyan", "position": [0, 1.82, 0], "scale": [0.25, 0.25, 0.25], "segments": 20, "rings": 10, "shading": "smooth" }
+  ]
+}

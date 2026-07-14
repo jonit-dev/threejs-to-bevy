@@ -21,6 +21,7 @@ import {
 } from "./contractDrift.js";
 import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION, schemaBackedDocuments, type IrEnumDriftMetadata } from "./documents.js";
 import { schemaUrls } from "./schemas.js";
+import { DISTRIBUTION_ARCHITECTURES, DISTRIBUTION_CAPABILITIES, DISTRIBUTION_CHANNELS, DISTRIBUTION_FORMATS, DISTRIBUTION_PLATFORMS, DISTRIBUTION_RUNTIMES } from "./distribution.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
@@ -57,6 +58,7 @@ const compilerEmitterDocumentCases = [
 test("contractDrift should list every registered IR document when checking contract drift", async () => {
   const expectedDocuments = [
     "manifest",
+    "distribution",
     "world",
     "materials",
     "assets",
@@ -84,6 +86,7 @@ test("contractDrift should list every registered IR document when checking contr
   assert.deepEqual(Object.keys(IR_DOCUMENTS).sort(), expectedDocuments.sort());
 
   assertManifestDocument("entry", "world", "world.ir.json");
+  assertManifestDocument("files", "distribution", "distribution.ir.json");
   assertManifestDocument("entry", "animations", "animations.ir.json");
   assertManifestDocument("entry", "audio", "audio.ir.json");
   assertManifestDocument("entry", "environmentScene", "environment.scene.json");
@@ -164,6 +167,26 @@ test("contractDrift should keep target profile target enum aligned", async () =>
 
   assert.deepEqual(schema.properties.targets.items.enum.sort(), ["desktop", "web"]);
   assert.deepEqual(targetLiterals, schema.properties.targets.items.enum.sort());
+});
+
+test("contractDrift should keep distribution schema enums aligned with the registry", async () => {
+  const schema = await readJson<{
+    $defs: {
+      capability: { enum: string[] };
+      architecture: { enum: string[] };
+      channel: { enum: string[] };
+      format: { enum: string[] };
+      platform: { enum: string[] };
+      runtime: { enum: string[] };
+    };
+  }>(resolve(packageRoot, "schemas/distribution.schema.json"));
+
+  assert.deepEqual(schema.$defs.platform.enum, [...DISTRIBUTION_PLATFORMS]);
+  assert.deepEqual(schema.$defs.runtime.enum, [...DISTRIBUTION_RUNTIMES]);
+  assert.deepEqual(schema.$defs.format.enum, [...DISTRIBUTION_FORMATS]);
+  assert.deepEqual(schema.$defs.capability.enum, [...DISTRIBUTION_CAPABILITIES]);
+  assert.deepEqual(schema.$defs.architecture.enum, [...DISTRIBUTION_ARCHITECTURES]);
+  assert.deepEqual(schema.$defs.channel.enum, [...DISTRIBUTION_CHANNELS]);
 });
 
 test("contractDrift should keep world component extension point explicit across schema TypeScript and Rust", async () => {

@@ -334,16 +334,16 @@ async function readStructuredEnvironmentDeclaration(projectPath: string): Promis
   const declaration = {
     assetNames: [],
     instances: readRecordArray(data.instances),
-    path: readRecord(data.path) ?? { id: "path.editor", points: [], width: 1 },
+    path: readRecord(data.path) ?? { id: "path.editor", points: [[0, 0, 0], [0, 0, 1]], width: 1 },
     sourceDir: ".",
     ...(readRecord(data.atmosphere) === undefined ? {} : { atmosphere: readRecord(data.atmosphere) }),
     ...(readRecordArray(data.bookmarks).length === 0 ? {} : { bookmarks: readRecordArray(data.bookmarks) }),
     ...(readRecord(data.controller) === undefined ? {} : { controller: readRecord(data.controller) }),
-    ...(readAssetBackedRecord(data.environmentMap) === undefined ? {} : { environmentMap: readAssetBackedRecord(data.environmentMap) }),
+    ...(readStructuredEnvironmentMap(data.environmentMap) === undefined ? {} : { environmentMap: readStructuredEnvironmentMap(data.environmentMap) }),
     ...(readRecordArray(data.exclusionZones).length === 0 ? {} : { exclusionZones: readRecordArray(data.exclusionZones) }),
     ...(readRecordArray(data.lightProbes).length === 0 ? {} : { lightProbes: readRecordArray(data.lightProbes) }),
     ...(readRecordArray(data.scatter).length === 0 ? {} : { scatter: readRecordArray(data.scatter) }),
-    ...(readAssetBackedRecord(data.skybox) === undefined ? {} : { skybox: readAssetBackedRecord(data.skybox) }),
+    ...(readStructuredSkybox(data.skybox) === undefined ? {} : { skybox: readStructuredSkybox(data.skybox) }),
     ...(readRecord(data.terrain) === undefined ? {} : { terrain: readRecord(data.terrain) }),
     ...(readRecord(data.walkability) === undefined ? {} : { walkability: readRecord(data.walkability) }),
   };
@@ -685,7 +685,17 @@ function cloneJson<T>(value: T): T {
 
 function readAssetBackedRecord(value: unknown): SceneRecord | undefined {
   const record = readRecord(value);
-  return Array.isArray(record?.assetRefs) ? record : undefined;
+  return typeof record?.asset === "string" || readRecord(record?.faces) !== undefined || Array.isArray(record?.assetRefs) ? record : undefined;
+}
+
+function readStructuredEnvironmentMap(value: unknown): SceneRecord | undefined {
+  const record = readAssetBackedRecord(value);
+  return record === undefined ? undefined : { ...record, intent: typeof record.intent === "string" ? record.intent : "reflection-and-irradiance", mode: typeof record.mode === "string" ? record.mode : "equirect" };
+}
+
+function readStructuredSkybox(value: unknown): SceneRecord | undefined {
+  const record = readAssetBackedRecord(value);
+  return record === undefined ? undefined : { ...record, mode: typeof record.mode === "string" ? record.mode : "equirect" };
 }
 
 function readRecordArray(value: unknown): SceneRecord[] {

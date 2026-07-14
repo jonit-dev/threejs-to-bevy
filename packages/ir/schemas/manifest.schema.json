@@ -37,6 +37,7 @@
       "additionalProperties": false,
       "properties": {
         "assets": { "const": "assets.manifest.json" },
+        "distribution": { "const": "distribution.ir.json" },
         "materials": { "const": "materials.ir.json" },
         "targetProfile": { "const": "target.profile.json" },
         "animations": { "type": "string" },

@@ -11,6 +11,13 @@ import { captureScreenshot } from "./visualProof.js";
 const MAX_TURNTABLE_ANGLES = 36;
 const modelTestUsage = "Usage: tn model-test <asset-path> [--view|--screenshot|--angles <degrees,...>] [--angle <degrees>] [--url <preview-url>] [--screenshot-out <file.png>] [--out <dir>] [--verify] [--json]";
 
+export const MODEL_TEST_MCP_DESCRIPTOR = {
+  argv: { arguments: [{ name: "assetPath", positional: true, resolveProjectPath: true }, { flag: "--angle", name: "angle" }], fixed: ["--screenshot"], prefix: ["model-test"], projectOutput: { flag: "--out", path: "artifacts/mcp-model-test" } },
+  description: "Build and capture a bounded project-local GLB/glTF model test, returning PNG image content and the structured CLI report.",
+  inputSchema: { additionalProperties: false, properties: { angle: { maximum: 360000, minimum: -360000, type: "number" }, assetPath: { pattern: "^(?:assets|content)/[^\\\\]+\\.(?:glb|gltf)$", type: "string" } }, required: ["assetPath"], type: "object" },
+  name: "asset.model_test",
+} as const;
+
 interface ModelTestFile {
   path: string;
   role: string;
@@ -35,12 +42,21 @@ interface ModelTestAnalysis {
 }
 
 type ScreenshotCaptureReport = Awaited<ReturnType<typeof captureScreenshot>>;
-type ModelTestScreenshot = ScreenshotCaptureReport & { status: "captured" };
+interface ModelTestPbrMaterialCheck {
+  baseColor?: unknown;
+  metallic?: number;
+  name?: string;
+  ok: boolean;
+  roughness?: number;
+  whitePrefabFallback: boolean;
+}
+type ModelTestChecks = ScreenshotCaptureReport["checks"] & { pbrMaterial?: ModelTestPbrMaterialCheck };
+type ModelTestScreenshot = Omit<ScreenshotCaptureReport, "checks"> & { checks: ModelTestChecks; status: "captured" };
 
 export interface IModelTestCapture {
   angleDegrees: number;
   byteSize: number;
-  checks: ScreenshotCaptureReport["checks"];
+  checks: ModelTestChecks;
   diagnostics?: ScreenshotCaptureReport["diagnostics"];
   outPath: string;
 }
@@ -286,7 +302,7 @@ async function captureSingleScreenshot(options: {
     }
 
     const captured = await captureScreenshot({ outPath: options.screenshotOutPath, url });
-    options.report.screenshot = { ...captured, status: "captured" };
+    options.report.screenshot = { ...captured, checks: modelTestChecks(captured), status: "captured" };
     if (hasCaptureErrors(captured)) {
       throw new ModelTestError(
         "TN_MODEL_TEST_CAPTURE_FAILED",
@@ -692,10 +708,43 @@ function captureRecord(angleDegrees: number, captured: ScreenshotCaptureReport):
   return {
     angleDegrees,
     byteSize: captured.byteSize,
-    checks: captured.checks,
+    checks: modelTestChecks(captured),
     ...(captured.diagnostics === undefined ? {} : { diagnostics: captured.diagnostics }),
     outPath: captured.outPath,
   };
+}
+
+function modelTestChecks(captured: ScreenshotCaptureReport): ModelTestChecks {
+  const root = recordValue(captured.runtimeReady);
+  const runtimeDiagnostics = recordValue(root?.runtimeDiagnostics);
+  const scene = recordValue(runtimeDiagnostics?.scene);
+  const entities = Array.isArray(scene?.renderedEntities) ? scene.renderedEntities : [];
+  const model = entities.map(recordValue).find((entity) => entity?.id === "model.under-test.instance");
+  const material = recordValue(model?.material);
+  if (material === undefined) return captured.checks;
+  const baseColor = material.baseColor;
+  const name = typeof material.name === "string" ? material.name : undefined;
+  const metallic = typeof material.metallic === "number" ? material.metallic : undefined;
+  const roughness = typeof material.roughness === "number" ? material.roughness : undefined;
+  const whitePrefabFallback = name === undefined
+    && Array.isArray(baseColor)
+    && baseColor.length >= 3
+    && baseColor.slice(0, 3).every((value) => typeof value === "number" && Math.abs(value - 1) < 0.000001);
+  return {
+    ...captured.checks,
+    pbrMaterial: {
+      ...(baseColor === undefined ? {} : { baseColor }),
+      ...(metallic === undefined ? {} : { metallic }),
+      ...(name === undefined ? {} : { name }),
+      ok: baseColor !== undefined && metallic !== undefined && roughness !== undefined && !whitePrefabFallback,
+      ...(roughness === undefined ? {} : { roughness }),
+      whitePrefabFallback,
+    },
+  };
+}
+
+function recordValue(value: unknown): Record<string, unknown> | undefined {
+  return typeof value === "object" && value !== null && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
 }
 
 function asModelTestError(error: unknown, code: string, message: string): ModelTestError {
@@ -735,13 +784,18 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
   const floorSize = round(Math.max(4, largest * 2));
   const targetScale = calibration?.fitScales?.targetHeight2m ?? calibration?.fitScales?.targetLength4m ?? 1;
   const scale = round(targetScale);
-  const cameraDistance = round(Math.max(calibration?.camera.recommendedDistance ?? largest * 2.5, 3));
+  const scaledBoundsRadius = Math.hypot(size[0] * scale, size[1] * scale, size[2] * scale) / 2;
+  const verticalHalfFovRadians = (50 * Math.PI) / 360;
+  const turntableFitDistance = scaledBoundsRadius * (1 + 1 / Math.tan(verticalHalfFovRadians)) * 1.05;
+  const cameraDistance = round(Math.max(calibration?.camera.recommendedDistance ?? largest * 2.5, turntableFitDistance, 3));
   const cameraHeight = round(Math.max(size[1] * scale * 0.6, 1.4));
   const cameraTargetHeight = round((size[1] * scale) / 2);
   const minY = bounds === undefined ? 0 : bounds.min[1];
   const yOffset = round(-minY);
   const yawRadians = round((options.yawDegrees * Math.PI) / 180);
-  const boundsMarkerDepthOffset = round(Math.max(size[2] * scale * 0.5, 0.08));
+  const boundsMarkerDepth = round(Math.max(size[2] * scale * 0.04, 0.02));
+  const yawFootprintRadius = Math.hypot(size[0] * scale, size[2] * scale) / 2;
+  const boundsMarkerDepthOffset = round(yawFootprintRadius + boundsMarkerDepth / 2 + 0.12);
   const cameraPitch = round(-Math.atan2(cameraHeight - cameraTargetHeight, cameraDistance));
 
   const scene = {
@@ -777,7 +831,7 @@ function renderSceneDocument(options: { assetFileName: string; inspection: Await
           scale: [
             round(Math.max(size[0] * scale, 0.05)),
             round(Math.max(size[1] * scale, 0.05)),
-            round(Math.max(size[2] * scale, 0.05)),
+            boundsMarkerDepth,
           ],
         },
       },

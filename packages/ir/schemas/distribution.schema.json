@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.threenative.local/v1/distribution.schema.json",
+  "type": "object",
+  "required": ["schema", "version", "app", "targets"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "threenative.distribution" },
+    "version": { "const": "0.1.0" },
+    "app": { "$ref": "#/$defs/app" },
+    "targets": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/target" }
+    },
+    "signing": { "$ref": "#/$defs/signing" }
+  },
+  "$defs": {
+    "platform": { "enum": ["web", "windows", "macos", "linux", "android", "ios"] },
+    "runtime": { "enum": ["web", "bevy", "webview"] },
+    "format": { "enum": ["static", "zip", "pwa", "archive", "nsis", "app", "dmg", "tar", "appimage", "aab", "apk", "xcarchive", "ipa"] },
+    "architecture": { "enum": ["x86_64", "arm64", "universal", "simulator"] },
+    "capability": { "enum": ["camera", "microphone", "network", "storage", "gamepad", "vibration"] },
+    "channel": { "enum": ["development", "direct", "store"] },
+    "app": {
+      "type": "object",
+      "required": ["id", "displayName", "version", "buildNumber", "icons"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-zA-Z][a-zA-Z0-9]*(\\.[a-zA-Z][a-zA-Z0-9-]*)+$" },
+        "displayName": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\\+[0-9A-Za-z.-]+)?$" },
+        "buildNumber": { "type": "integer", "minimum": 1 },
+        "icons": { "type": "string", "minLength": 1 },
+        "splash": { "type": "string", "minLength": 1 },
+        "privacyPolicyUrl": { "type": "string", "pattern": "^https://" }
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["platform", "runtime", "formats"],
+      "additionalProperties": false,
+      "properties": {
+        "platform": { "$ref": "#/$defs/platform" },
+        "runtime": { "$ref": "#/$defs/runtime" },
+        "formats": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/format" } },
+        "architecture": { "$ref": "#/$defs/architecture" },
+        "capabilities": { "type": "array", "items": { "$ref": "#/$defs/capability" } },
+        "channel": { "$ref": "#/$defs/channel" },
+        "minimumOs": { "type": "string", "minLength": 1 }
+      }
+    },
+    "credentialReference": {
+      "type": "object",
+      "required": ["credentialRef"],
+      "additionalProperties": false,
+      "properties": {
+        "credentialRef": { "type": "string", "pattern": "^(ci|env|keychain):[A-Za-z0-9][A-Za-z0-9._/-]*$" }
+      }
+    },
+    "signing": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "android": { "$ref": "#/$defs/credentialReference" },
+        "apple": { "$ref": "#/$defs/credentialReference" },
+        "windows": { "$ref": "#/$defs/credentialReference" }
+      }
+    }
+  }
+}

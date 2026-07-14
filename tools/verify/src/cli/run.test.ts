@@ -165,6 +165,7 @@ test("should list gates by profile", () => {
     "verify:generated-games",
     "verify:input-ui-polish",
     "verify:lighting-showcase",
+    "verify:native-overlay-cef",
     "verify:overlay-scaffold",
     "verify:persistence-reload",
     "verify:production-hardening",

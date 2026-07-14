@@ -1,0 +1,62 @@
+{
+  "artifact": {
+    "bytes": 134703938,
+    "format": "apk",
+    "path": "examples/chess/artifacts/distribution/android/webview/apk/ThreeNative-Chess_1.0.0_x86_64.apk",
+    "sha256": "487e73915cdf1bf4cf699eb48a82b17bba3914ada3761b230e41f2f8063343eb",
+    "signingStatus": "unsigned"
+  },
+  "devices": [
+    {
+      "api": "35",
+      "class": "emulator",
+      "evidence": {
+        "back": "examples/chess/artifacts/distribution/android/webview/emulator/back-navigation.txt",
+        "firstFrame": "examples/chess/artifacts/distribution/android/webview/emulator/first-frame.png",
+        "install": "examples/chess/artifacts/distribution/android/webview/emulator/launch-log.txt",
+        "launch": "examples/chess/artifacts/distribution/android/webview/emulator/launch-log.txt",
+        "localAssets": "examples/chess/artifacts/distribution/android/webview/emulator/first-frame.png",
+        "pauseResume": "examples/chess/artifacts/distribution/android/webview/emulator/pause-resume.png",
+        "persistence": "examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence.png",
+        "persistenceTrace": "examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence-trace.json",
+        "resizeOrientation": "examples/chess/artifacts/distribution/android/webview/emulator/resize-1280x720.png",
+        "safeArea": "examples/chess/artifacts/distribution/android/webview/emulator/first-frame.png",
+        "touch": "examples/chess/artifacts/distribution/android/webview/emulator/touch-play-white.png"
+      },
+      "gpu": "Android Emulator OpenGL ES Translator (Google SwiftShader), OpenGL ES 3.0",
+      "model": "Google sdk_gphone64_x86_64",
+      "os": "Android 15 (AE3A.240806.043)",
+      "proof": {
+        "audioLifecycle": "failed",
+        "back": "passed",
+        "firstFrame": "passed",
+        "install": "passed",
+        "launch": "passed",
+        "localAssets": "passed",
+        "pauseResume": "passed",
+        "persistence": "passed",
+        "resizeOrientation": "passed",
+        "safeArea": "passed",
+        "touch": "passed"
+      },
+      "screenshot": "examples/chess/artifacts/distribution/android/webview/emulator/first-frame.png",
+      "webviewVersion": "com.google.android.webview 124.0.6367.219"
+    }
+  ],
+  "findings": [
+    "The headless emulator has no audio output, so audio interruption/resume is unproved.",
+    "A physical arm64 device report is not available on this host."
+  ],
+  "releaseArtifact": {
+    "bytes": 16824728,
+    "credentialRef": "ci:android-disposable-proof",
+    "format": "aab",
+    "path": "examples/chess/artifacts/distribution/android/webview/aab/ThreeNative-Chess_1.0.0_arm64.aab",
+    "sha256": "85a7d0083737968799cfafd84fba66078f51ec60890e66e146a1564170cb8b1d",
+    "signingStatus": "signed-disposable-proof",
+    "signingVerification": "jarsigner"
+  },
+  "schema": "threenative.android-webview-proof",
+  "status": "partial",
+  "version": "0.1.0"
+}

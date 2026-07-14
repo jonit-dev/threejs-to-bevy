@@ -22,7 +22,22 @@ tn ui set-layout hud countdown --top 32 --width 390 --project . --json
 
 ## source-delta
 ```json
-{"content/ui/hud.ui.json":"countdown is constrained to a mobile-width layout budget."}
+{"content/ui/hud.ui.json":"countdown uses target-specific layout and visual style overrides for a mobile-width layout budget."}
+```
+
+```json
+{
+  "id": "countdown",
+  "type": "text",
+  "text": "Ready",
+  "responsive": [
+    {
+      "target": "mobile",
+      "layout": { "left": 12, "top": 16, "width": 280 },
+      "style": { "fontSize": 18, "opacity": 0.9 }
+    }
+  ]
+}
 ```
 
 ## script

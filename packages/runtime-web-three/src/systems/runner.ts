@@ -42,10 +42,12 @@ export async function runSchedule(options: {
   module: ISystemModule;
   mapped?: IThreeWorld;
   paused?: boolean;
+  persistence?: IWebPersistenceService;
   prefabs?: IPrefabsIr;
   resourceObservations?: IResourceObservation[];
   runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
   schedule: IrSystemSchedule;
+  serviceObserver?: (services: readonly import("./contextTypes.js").IQueuedServiceCall[]) => void;
   systems: ISystemsIr;
   systemFilter?: (system: IIrSystemDeclaration) => boolean;
   tick?: number;
@@ -59,7 +61,7 @@ export async function runSchedule(options: {
   const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule)
     .filter((system) => options.systemFilter?.(system) ?? true);
   const componentDiff = createComponentDiffCache();
-  const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
+  const persistence = options.persistence ?? (options.localData === undefined ? undefined : createWebPersistenceService(options.localData));
   const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
   runtimeState.lifecycle.beginTick(options.world, options.tick ?? 0);
   runtimeState.writeLedger.beginTick(options.tick ?? 0);
@@ -70,6 +72,9 @@ export async function runSchedule(options: {
     diagnostics.push(...result.diagnostics);
     entries.push(...result.entries);
     resourceObservations.push(...result.resourceObservations);
+    if (!result.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+      options.serviceObserver?.(result.services);
+    }
     if (options.mapped !== undefined && !result.diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
       enqueuePresentationEffects(options.world, options.mapped, runtimeState.presentation, result.commands, result.services);
     }

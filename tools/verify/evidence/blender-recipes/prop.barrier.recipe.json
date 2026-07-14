@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.blender-recipe", "version": "0.1.0", "id": "prop.barrier",
+  "budgets": { "maxOutputBytes": 4194304, "maxPolygons": 30000 },
+  "materials": [
+    { "id": "hazard.orange", "baseColor": [0.95, 0.22, 0.025, 1], "metallic": 0.18, "roughness": 0.34 },
+    { "id": "stripe.white", "baseColor": [0.82, 0.9, 0.95, 1], "metallic": 0.1, "roughness": 0.3 },
+    { "id": "rubber.dark", "baseColor": [0.025, 0.03, 0.04, 1], "metallic": 0.15, "roughness": 0.68 },
+    { "id": "lamp.amber", "baseColor": [1, 0.42, 0.02, 1], "emissive": [1, 0.2, 0], "metallic": 0.05, "roughness": 0.18 }
+  ],
+  "parts": [
+    { "id": "beam", "primitive": "cube", "material": "hazard.orange", "position": [0, 1.05, 0], "scale": [3.2, 0.48, 0.34], "modifiers": [{ "kind": "bevel", "width": 0.11, "segments": 4 }] },
+    { "id": "stripe.a", "primitive": "cube", "material": "stripe.white", "position": [-0.95, 1.05, -0.185], "rotation": [0, 0, -28], "scale": [0.36, 0.57, 0.035] },
+    { "id": "stripe.b", "primitive": "cube", "material": "stripe.white", "position": [0, 1.05, -0.185], "rotation": [0, 0, -28], "scale": [0.36, 0.57, 0.035] },
+    { "id": "stripe.c", "primitive": "cube", "material": "stripe.white", "position": [0.95, 1.05, -0.185], "rotation": [0, 0, -28], "scale": [0.36, 0.57, 0.035] },
+    { "id": "post.left", "primitive": "cylinder", "material": "hazard.orange", "position": [-1.25, 0.5, 0], "scale": [0.22, 1.0, 0.22], "segments": 20, "shading": "smooth" },
+    { "id": "post.right", "primitive": "cylinder", "material": "hazard.orange", "position": [1.25, 0.5, 0], "scale": [0.22, 1.0, 0.22], "segments": 20, "shading": "smooth" },
+    { "id": "base.left", "primitive": "cube", "material": "rubber.dark", "position": [-1.25, 0.12, 0], "scale": [0.85, 0.24, 0.95], "modifiers": [{ "kind": "bevel", "width": 0.1, "segments": 3 }] },
+    { "id": "base.right", "primitive": "cube", "material": "rubber.dark", "position": [1.25, 0.12, 0], "scale": [0.85, 0.24, 0.95], "modifiers": [{ "kind": "bevel", "width": 0.1, "segments": 3 }] },
+    { "id": "lamp.left", "primitive": "sphere", "material": "lamp.amber", "position": [-1.3, 1.52, 0], "scale": [0.22, 0.22, 0.22], "segments": 20, "rings": 10, "shading": "smooth" },
+    { "id": "lamp.right", "primitive": "sphere", "material": "lamp.amber", "position": [1.3, 1.52, 0], "scale": [0.22, 0.22, 0.22], "segments": 20, "rings": 10, "shading": "smooth" },
+    { "id": "lamp.guard.left", "primitive": "torus", "material": "rubber.dark", "position": [-1.3, 1.52, 0], "rotation": [90, 0, 0], "scale": [0.42, 0.42, 0.18], "segments": 20, "rings": 8, "shading": "smooth" },
+    { "id": "lamp.guard.right", "primitive": "torus", "material": "rubber.dark", "position": [1.3, 1.52, 0], "rotation": [90, 0, 0], "scale": [0.42, 0.42, 0.18], "segments": 20, "rings": 8, "shading": "smooth" }
+  ]
+}

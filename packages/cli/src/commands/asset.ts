@@ -1,15 +1,69 @@
-import { access, readFile, readdir, stat } from "node:fs/promises";
+import { access, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
-import { addAsset, type IAuthoringOperationResult } from "@threenative/authoring";
+import { addAsset, recordBlenderGenerator, type IAuthoringOperationResult } from "@threenative/authoring";
 import { extractGltfAssetMetadata } from "@threenative/compiler";
 import type { IGltfSceneAssetIr } from "@threenative/ir";
 
+import { importPolyHavenAsset, listPolyHavenCategories, polyHavenStatus, searchPolyHaven, type IPolyHavenDependencies, type PolyHavenAssetType } from "../assetProviders/polyHaven.js";
+import { assetProviderRegistry, findAssetProvider, renderAssetProviderHelp } from "../assetProviders/registry.js";
+import { fetchSketchfabPreview, importSketchfabModel, searchSketchfab, sketchfabStatus, type ISketchfabDependencies } from "../assetProviders/sketchfab.js";
 import { assetSourceRelevanceScore, exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
+import { hyper3dStatus, importHyper3dJob, pollHyper3dJob, submitHyper3dJob, type IHyper3dDependencies } from "../modelProviders/hyper3d.js";
+import { assetCreationStrategy, findModelProvider, modelProviderRegistry } from "../modelProviders/registry.js";
 import { formatVec, formatVec2, rotateXZ } from "./asset/vectorPresentation.js";
 import { assetImportCommand } from "./assetImport.js";
 import { assetRepairCommand } from "./assetRepair.js";
+import { generatorCommand, type IGeneratorCommandOptions } from "./sourceGeneratorCommand.js";
+
+export interface IAssetCommandOptions extends IGeneratorCommandOptions {
+  hyper3dDependencies?: IHyper3dDependencies;
+  polyHavenDependencies?: IPolyHavenDependencies;
+  sketchfabDependencies?: ISketchfabDependencies;
+}
+
+const assetGenerateBlenderIdPatternSource = "^[a-z][a-z0-9._-]*$";
+
+export const ASSET_GENERATE_BLENDER_DESCRIPTOR = {
+  assetIdPattern: assetGenerateBlenderIdPatternSource,
+  usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
+  mcp: {
+    argv: {
+      arguments: [
+        { name: "assetId", positional: true },
+        { encoding: "json", flag: "--recipe", name: "recipe" },
+        { flag: "--out", name: "out" },
+        { flag: "--overwrite-policy", name: "overwritePolicy" },
+      ],
+      fixed: ["--provider", "blender"],
+      prefix: ["asset", "generate"],
+      projectScoped: true,
+    },
+    description: "Generate and register a bounded Blender recipe through tn asset generate --json without installing tools or accepting code.",
+    inputSchema: {
+      additionalProperties: false,
+      properties: {
+        assetId: { pattern: assetGenerateBlenderIdPatternSource, type: "string" },
+        out: { pattern: "^assets/generated/[a-z][a-z0-9._-]*\\.glb$", type: "string" },
+        overwritePolicy: { enum: ["manual", "replace", "skip"], type: "string" },
+        recipe: { oneOf: [{ pattern: "^content/generators/[a-z][a-z0-9._-]*\\.recipe\\.json$", type: "string" }, { type: "object" }] },
+      },
+      required: ["assetId", "recipe"],
+      type: "object",
+    },
+    name: "asset.generate_blender",
+  },
+} as const;
+
+export const ASSET_INSPECT_MCP_DESCRIPTOR = {
+  argv: { arguments: [{ name: "assetPath", positional: true, resolveProjectPath: true }], prefix: ["asset", "inspect"] },
+  description: "Inspect one project-local GLB/glTF through the same CLI parser and structured report.",
+  inputSchema: { additionalProperties: false, properties: { assetPath: { pattern: "^(?:assets|content)/[^\\\\]+\\.(?:glb|gltf)$", type: "string" } }, required: ["assetPath"], type: "object" },
+  name: "asset.inspect",
+} as const;
+
+const assetGenerateBlenderIdPattern = new RegExp(ASSET_GENERATE_BLENDER_DESCRIPTOR.assetIdPattern, "u");
 
 type Severity = "info" | "warning" | "error";
 
@@ -21,6 +75,7 @@ type ConnectorPort = { direction: ConnectorDirection; interval: [number, number]
 
 interface GltfAsset {
   accessors?: Array<{ bufferView?: number; byteOffset?: number; componentType?: number; count?: number; min?: number[]; max?: number[]; type?: string }>;
+  animations?: Array<{ channels?: unknown[]; name?: string; samplers?: unknown[] }>;
   asset?: { version?: string; generator?: string };
   bufferViews?: Array<{ buffer?: number; byteLength?: number; byteOffset?: number; byteStride?: number }>;
   buffers?: Array<{ uri?: string; byteLength?: number }>;
@@ -145,11 +200,13 @@ interface ModularPlacementReport {
 }
 
 interface InspectReport {
+  animationClips?: Array<{ channels: number; name: string; samplers: number }>;
   bounds?: BoundsReport;
   calibration?: ScaleCalibration;
   code: "TN_ASSET_INSPECT_OK" | "TN_ASSET_INSPECT_FAILED";
   counts?: {
     accessors: number;
+    animations: number;
     buffers: number;
     images: number;
     materials: number;
@@ -157,6 +214,7 @@ interface InspectReport {
     nodes: number;
     scenes: number;
     textures: number;
+    triangles: number;
   };
   dependencies?: DependencyReport[];
   diagnostics: AssetDiagnostic[];
@@ -168,6 +226,7 @@ interface InspectReport {
   gltf?: IGltfSceneAssetIr;
   message: string;
   modular?: ModularPlacementReport;
+  namedNodes?: string[];
 }
 
 interface AssetCatalogReport {
@@ -188,14 +247,100 @@ interface AssetCatalogReport {
 
 const identity: Mat4 = [1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1];
 
-export async function assetCommand(argv: readonly string[]): Promise<ICommandResult> {
+export async function assetCommand(argv: readonly string[], options: IAssetCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const json = normalizedArgv.includes("--json");
   const positionals = normalizedArgv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(normalizedArgv[index - 1] ?? ""));
   const [subcommand] = positionals;
 
+  if (subcommand === "generate") {
+    const assetId = positionals[1];
+    const provider = readFlag(normalizedArgv, "--provider");
+    const recipeInput = readFlag(normalizedArgv, "--recipe");
+    if (assetId === undefined || provider !== "blender" || recipeInput === undefined) {
+      return diagnosticResult({
+        code: "TN_ASSET_GENERATE_ARGS_MISSING",
+        message: "Usage: tn asset generate <asset-id> --provider blender --recipe <project-path-or-json> [--out <assets/generated/id.glb>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json].",
+      }, { exitCode: 2, json, stderr: !json });
+    }
+    if (!assetGenerateBlenderIdPattern.test(assetId)) {
+      return diagnosticResult({
+        code: "TN_ASSET_GENERATE_ASSET_ID_INVALID",
+        message: `Asset generator id '${assetId}' must match ${ASSET_GENERATE_BLENDER_DESCRIPTOR.assetIdPattern}.`,
+      }, { exitCode: 2, json, stderr: !json });
+    }
+    let inlineRecipe: Record<string, unknown> | undefined;
+    if (recipeInput.trimStart().startsWith("{")) {
+      try {
+        const parsed = JSON.parse(recipeInput) as unknown;
+        if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("recipe JSON must be an object");
+        inlineRecipe = parsed as Record<string, unknown>;
+      } catch (error) {
+        return diagnosticResult({ code: "TN_ASSET_GENERATE_RECIPE_JSON_INVALID", message: `Invalid inline Blender recipe JSON: ${error instanceof Error ? error.message : String(error)}` }, { exitCode: 2, json, stderr: !json });
+      }
+    }
+    const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+    const output = readFlag(normalizedArgv, "--out") ?? `assets/generated/${assetId}.glb`;
+    const overwritePolicy = readFlag(normalizedArgv, "--overwrite-policy") ?? "manual";
+    const assetConflict = await findAssetRegistrationConflict(projectPath, assetId, output);
+    if (assetConflict !== undefined) {
+      return diagnosticResult({
+        code: "TN_ASSET_GENERATE_MANUAL_ASSET_CONFLICT",
+        message: `Asset '${assetId}' is already declared in '${assetConflict}'. Blender generation cannot take ownership of an existing declaration.`,
+      }, { exitCode: 1, json, stderr: !json });
+    }
+    const provenancePath = resolve(projectPath, "content/generators", `${assetId}.generator.json`);
+    const recipePath = inlineRecipe === undefined ? undefined : resolve(projectPath, "content/generators", `${assetId}.recipe.json`);
+    const [provenanceSnapshot, recipeSnapshot] = await Promise.all([snapshotAssetGenerateFile(provenancePath), recipePath === undefined ? undefined : snapshotAssetGenerateFile(recipePath)]);
+    let recorded: Awaited<ReturnType<typeof recordBlenderGenerator>>;
+    try {
+      recorded = await recordBlenderGenerator({
+        generatorId: assetId,
+        output,
+        overwritePolicy,
+        projectPath,
+        providerVersion: "4.5.11",
+        ...(inlineRecipe === undefined ? { recipePath: recipeInput } : { recipe: inlineRecipe }),
+      });
+    } catch {
+      await Promise.all([restoreAssetGenerateFile(provenancePath, provenanceSnapshot), recipePath === undefined ? Promise.resolve() : restoreAssetGenerateFile(recipePath, recipeSnapshot)]).catch(() => undefined);
+      return diagnosticResult({ code: "TN_ASSET_GENERATE_RECORD_FAILED", message: `Asset generator '${assetId}' could not be recorded; prior generator source was restored.` }, { exitCode: 1, json, stderr: !json });
+    }
+    if (!recorded.ok) {
+      await Promise.all([restoreAssetGenerateFile(provenancePath, provenanceSnapshot), recipePath === undefined ? Promise.resolve() : restoreAssetGenerateFile(recipePath, recipeSnapshot)]);
+      return renderAuthoringResult("asset", recorded, json, `Asset generator '${assetId}' recorded.`);
+    }
+    const run = await generatorCommand(["run", assetId, "--project", projectPath, ...(json ? ["--json"] : [])], options);
+    if (run.exitCode !== 0) {
+      try {
+        await Promise.all([restoreAssetGenerateFile(provenancePath, provenanceSnapshot), recipePath === undefined ? Promise.resolve() : restoreAssetGenerateFile(recipePath, recipeSnapshot)]);
+      } catch {
+        return diagnosticResult({
+          code: "TN_ASSET_GENERATE_ROLLBACK_FAILED",
+          message: `Asset generator '${assetId}' failed and its record step could not be fully restored. Inspect content/generators before retrying.`,
+        }, { exitCode: 1, json, stderr: !json });
+      }
+    }
+    if (!json || run.stdout.trim() === "") return run;
+    const payload = JSON.parse(run.stdout) as Record<string, unknown>;
+    return { ...run, stdout: `${JSON.stringify({ ...payload, code: run.exitCode === 0 ? "TN_ASSET_GENERATE_OK" : payload.code, command: "asset generate", recordedFiles: run.exitCode === 0 ? recorded.filesWritten : [] }, null, 2)}\n` };
+  }
+
   if (subcommand === "source") {
     return assetSourceCommand(normalizedArgv.slice(1), json);
+  }
+
+  if (subcommand === "provider") {
+    return assetProviderCommand(normalizedArgv.slice(1), json, options);
+  }
+
+  if (subcommand === "model-provider") {
+    return assetModelProviderCommand(normalizedArgv.slice(1), json, options);
+  }
+
+  if (subcommand === "strategy") {
+    const payload = { code: "TN_ASSET_CREATION_STRATEGY_OK", guidance: assetCreationStrategy, message: "Asset creation strategy loaded from the owning model-provider registry." };
+    return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${assetCreationStrategy.map((row, index) => `${index + 1}. ${row}`).join("\n")}\n` };
   }
 
   if (subcommand === "import") {
@@ -306,6 +451,48 @@ export async function assetCommand(argv: readonly string[]): Promise<ICommandRes
   };
 }
 
+async function findAssetRegistrationConflict(projectPath: string, assetId: string, output: string): Promise<string | undefined> {
+  const assetRoot = resolve(projectPath, "content/assets");
+  const defaultDocument = resolve(assetRoot, `${assetId}.assets.json`);
+  for (const path of await findAssetDeclarationFiles(assetRoot)) {
+    try {
+      const document = JSON.parse(await readFile(path, "utf8")) as { assets?: Array<{ id?: unknown; path?: unknown; source?: unknown }> };
+      const asset = Array.isArray(document.assets) ? document.assets.find((candidate) => candidate.id === assetId) : undefined;
+      if (asset !== undefined && (path !== defaultDocument || asset.source !== `generator:${assetId}` || asset.path !== output)) {
+        return path.slice(projectPath.length + 1).split("\\").join("/");
+      }
+    } catch {
+      // Authoring validation owns malformed-document diagnostics; unreadable rows cannot establish ownership.
+    }
+  }
+  return undefined;
+}
+
+async function findAssetDeclarationFiles(directory: string): Promise<string[]> {
+  let entries;
+  try { entries = await readdir(directory, { withFileTypes: true }); } catch { return []; }
+  const files: string[] = [];
+  for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await findAssetDeclarationFiles(path));
+    else if (entry.isFile() && entry.name.endsWith(".assets.json")) files.push(path);
+  }
+  return files;
+}
+
+async function snapshotAssetGenerateFile(path: string): Promise<Uint8Array | undefined> {
+  try { return await readFile(path); } catch { return undefined; }
+}
+
+async function restoreAssetGenerateFile(path: string, snapshot: Uint8Array | undefined): Promise<void> {
+  if (snapshot === undefined) {
+    await rm(path, { force: true });
+    return;
+  }
+  await mkdir(dirname(path), { recursive: true });
+  await writeFile(path, snapshot);
+}
+
 async function assetSourceCommand(argv: readonly string[], json: boolean): Promise<ICommandResult> {
   const positionals = argv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(argv[index - 1] ?? ""));
   const action = positionals[0];
@@ -398,6 +585,109 @@ async function assetSourceCommand(argv: readonly string[], json: boolean): Promi
   );
 }
 
+async function assetProviderCommand(argv: readonly string[], json: boolean, options: IAssetCommandOptions): Promise<ICommandResult> {
+  const positionals = argv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(argv[index - 1] ?? ""));
+  const action = positionals[0];
+  const providerId = positionals[1];
+  if (action === "help" || action === undefined) {
+    const payload = { code: "TN_ASSET_PROVIDER_HELP", message: "Asset provider commands are registry-owned.", providers: assetProviderRegistry };
+    return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${renderAssetProviderHelp()}\n` };
+  }
+  if (findAssetProvider(providerId ?? "") === undefined) {
+    return diagnosticResult({ code: "TN_ASSET_PROVIDER_UNKNOWN", message: `Unknown asset provider '${providerId ?? ""}'.\n${renderAssetProviderHelp()}` }, { exitCode: 2, json, stderr: !json });
+  }
+  try {
+    const live = argv.includes("--live");
+    if (providerId === "sketchfab") {
+      if (action === "status") return providerResult("TN_SKETCHFAB_STATUS_OK", await sketchfabStatus(live, options.sketchfabDependencies), json, "Sketchfab");
+      if (action === "search") return providerResult("TN_SKETCHFAB_SEARCH_OK", await searchSketchfab({ cursor: readFlag(argv, "--cursor"), limit: readLimitFlag(argv), query: readFlag(argv, "--query") }, options.sketchfabDependencies), json, "Sketchfab");
+      if (action === "preview") {
+        const modelUid = positionals[2];
+        if (modelUid === undefined) throw new Error(findAssetProvider("sketchfab")?.features.find((feature) => feature.operation === "preview")?.usage ?? "Sketchfab preview arguments are incomplete.");
+        const preview = await fetchSketchfabPreview(modelUid, options.sketchfabDependencies);
+        return providerResult("TN_SKETCHFAB_PREVIEW_OK", { image: { dataBase64: Buffer.from(preview.bytes).toString("base64"), mimeType: preview.mimeType, sha256: preview.sha256 }, uid: preview.uid }, json, "Sketchfab");
+      }
+      if (action === "import") {
+        const modelUid = positionals[2]; const acceptedLicense = readFlag(argv, "--accept-license"); const targetSize = readFinitePositiveFlag(argv, "--target-size"); const assetId = readFlag(argv, "--id");
+        if (modelUid === undefined || acceptedLicense === undefined || targetSize === undefined || assetId === undefined) throw new Error(findAssetProvider("sketchfab")?.features.find((feature) => feature.operation === "import")?.usage ?? "Sketchfab import arguments are incomplete.");
+        return providerResult("TN_SKETCHFAB_IMPORT_OK", await importSketchfabModel({ acceptedLicense, assetId, maxBytes: readPositiveIntegerFlag(argv, "--max-bytes"), modelUid, projectPath: resolveProjectPath(argv, options.cwd), targetSize }, options.sketchfabDependencies), json, "Sketchfab");
+      }
+    }
+    if (action === "status") return providerResult("TN_POLY_HAVEN_STATUS_OK", await polyHavenStatus(live, options.polyHavenDependencies), json);
+    if (action === "categories") {
+      const type = readFlag(argv, "--type") ?? "all";
+      return providerResult("TN_POLY_HAVEN_CATEGORIES_OK", await listPolyHavenCategories({ live, limit: readLimitFlag(argv), type: type as PolyHavenAssetType }, options.polyHavenDependencies), json);
+    }
+    if (action === "search") {
+      const type = readFlag(argv, "--type") ?? "all";
+      return providerResult("TN_POLY_HAVEN_SEARCH_OK", await searchPolyHaven({ live, limit: readLimitFlag(argv), page: readPositiveIntegerFlag(argv, "--page"), query: readFlag(argv, "--query"), type: type as PolyHavenAssetType }, options.polyHavenDependencies), json);
+    }
+    if (action === "import") {
+      const providerAssetId = positionals[2]; const type = readFlag(argv, "--type"); const resolution = readFlag(argv, "--resolution"); const format = readFlag(argv, "--format"); const assetId = readFlag(argv, "--id");
+      if (providerAssetId === undefined || (type !== "models" && type !== "textures" && type !== "hdris") || resolution === undefined || format === undefined || assetId === undefined) throw new Error(findAssetProvider("poly-haven")?.features.find((feature) => feature.operation === "import")?.usage ?? "Poly Haven import arguments are incomplete.");
+      return providerResult("TN_POLY_HAVEN_IMPORT_OK", await importPolyHavenAsset({ assetId, format, maxBytes: readPositiveIntegerFlag(argv, "--max-bytes"), projectPath: resolveProjectPath(argv, options.cwd), providerAssetId, resolution, type }, options.polyHavenDependencies), json);
+    }
+  } catch (error) {
+    return diagnosticResult({ code: providerId === "sketchfab" ? "TN_SKETCHFAB_FAILED" : "TN_POLY_HAVEN_FAILED", message: error instanceof Error ? error.message : String(error) }, { exitCode: 1, json, stderr: !json });
+  }
+  return diagnosticResult({ code: "TN_ASSET_PROVIDER_COMMAND_UNKNOWN", message: renderAssetProviderHelp() }, { exitCode: 2, json, stderr: !json });
+}
+
+async function assetModelProviderCommand(argv: readonly string[], json: boolean, options: IAssetCommandOptions): Promise<ICommandResult> {
+  const positionals = argv.filter((arg, index) => !arg.startsWith("-") && !assetFlagsWithValues.has(argv[index - 1] ?? ""));
+  const action = positionals[0];
+  const providerId = positionals[1];
+  if (action === "help" || action === undefined) {
+    return providerResult("TN_MODEL_PROVIDER_HELP", { providers: modelProviderRegistry }, json, "Model");
+  }
+  const provider = findModelProvider(providerId ?? "");
+  if (provider === undefined) return diagnosticResult({ code: "TN_MODEL_PROVIDER_UNKNOWN", message: `Unknown model provider '${providerId ?? ""}'.` }, { exitCode: 2, json, stderr: !json });
+  if (provider.status === "unsupported") {
+    return providerResult("TN_MODEL_PROVIDER_UNSUPPORTED", { followUp: provider.followUp, provider: provider.id, reason: provider.unsupportedReason, state: "unsupported" }, json, provider.displayName);
+  }
+  try {
+    if (action === "status") return providerResult("TN_MODEL_PROVIDER_STATUS_OK", await hyper3dStatus(argv.includes("--live"), options.hyper3dDependencies), json, provider.displayName);
+    if (action === "generate") {
+      const jobId = readFlag(argv, "--id");
+      if (jobId === undefined) throw new Error(provider.features.find((feature) => feature.operation === "generate")?.usage ?? "Hyper3D generate arguments are incomplete.");
+      const bboxText = readFlag(argv, "--bbox");
+      const bbox = bboxText === undefined ? undefined : bboxText.split(",").map(Number);
+      return providerResult("TN_MODEL_PROVIDER_JOB_SUBMITTED", await submitHyper3dJob({
+        acceptCost: argv.includes("--accept-cost"),
+        acceptTerms: argv.includes("--accept-provider-terms"),
+        bbox,
+        confirmInputRights: argv.includes("--confirm-input-rights"),
+        image: readFlag(argv, "--image"),
+        jobId,
+        projectPath: resolveProjectPath(argv, options.cwd),
+        prompt: readFlag(argv, "--prompt"),
+      }, options.hyper3dDependencies), json, provider.displayName);
+    }
+    if (action === "poll") {
+      const jobId = positionals[2];
+      if (jobId === undefined) throw new Error(provider.features.find((feature) => feature.operation === "poll")?.usage ?? "Hyper3D poll arguments are incomplete.");
+      return providerResult("TN_MODEL_PROVIDER_JOB_POLLED", await pollHyper3dJob({ jobId, projectPath: resolveProjectPath(argv, options.cwd) }, options.hyper3dDependencies), json, provider.displayName);
+    }
+    if (action === "import") {
+      const jobId = positionals[2]; const assetId = readFlag(argv, "--id");
+      if (jobId === undefined || assetId === undefined) throw new Error(provider.features.find((feature) => feature.operation === "import")?.usage ?? "Hyper3D import arguments are incomplete.");
+      const targetSizeText = readFlag(argv, "--target-size");
+      const targetSize = targetSizeText === undefined ? undefined : Number(targetSizeText);
+      return providerResult("TN_MODEL_PROVIDER_IMPORT_OK", await importHyper3dJob({ assetId, jobId, projectPath: resolveProjectPath(argv, options.cwd), targetSize }, options.hyper3dDependencies), json, provider.displayName);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code = /^(TN_[A-Z0-9_]+):/u.exec(message)?.[1] ?? "TN_MODEL_PROVIDER_FAILED";
+    return diagnosticResult({ code, message }, { exitCode: 1, json, stderr: !json });
+  }
+  return diagnosticResult({ code: "TN_MODEL_PROVIDER_COMMAND_UNKNOWN", message: `Model provider '${provider.id}' does not support '${action ?? ""}'.` }, { exitCode: 2, json, stderr: !json });
+}
+
+function providerResult(code: string, result: Record<string, unknown>, json: boolean, provider = "Poly Haven"): ICommandResult {
+  const payload = { code, message: `${provider} provider operation completed.`, ...result };
+  return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${JSON.stringify(payload, null, 2)}\n` };
+}
+
 function compactAssetSourceRecords(records: readonly IAssetSourceRecord[], query: string | undefined): Array<Record<string, unknown>> {
   return records.map((record) => ({
     direct: record.isDirectDownload,
@@ -417,6 +707,16 @@ function readLimitFlag(argv: readonly string[]): number | undefined {
   }
   const parsed = Number(limit);
   return Number.isFinite(parsed) ? parsed : undefined;
+}
+
+function readPositiveIntegerFlag(argv: readonly string[], flag: string): number | undefined {
+  const value = readFlag(argv, flag); if (value === undefined) return undefined;
+  const parsed = Number(value); return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
+function readFinitePositiveFlag(argv: readonly string[], flag: string): number | undefined {
+  const value = readFlag(argv, flag); if (value === undefined) return undefined;
+  const parsed = Number(value); return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
 }
 
 function renderAssetSourceSearch(records: IAssetSourceRecord[], emptyMessage: string): string {
@@ -484,7 +784,7 @@ function readNumberFlag(argv: readonly string[], flag: string): { diagnostic?: s
   return { value: parsed };
 }
 
-const assetFlagsWithValues = new Set(["--file-role", "--format", "--game-category", "--goal", "--height", "--license", "--limit", "--out", "--path", "--project", "--sample-count", "--tag", "--type", "--usage", "--width"]);
+const assetFlagsWithValues = new Set(["--accept-license", "--bbox", "--cursor", "--file-role", "--format", "--game-category", "--goal", "--height", "--id", "--image", "--license", "--limit", "--max-bytes", "--out", "--overwrite-policy", "--page", "--path", "--project", "--prompt", "--provider", "--query", "--recipe", "--resolution", "--sample-count", "--tag", "--target-size", "--type", "--usage", "--width"]);
 
 export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const extension = extname(assetPath).toLowerCase();
@@ -551,11 +851,17 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   diagnostics.push(...gltfMetadataDiagnostics(gltfMetadata));
 
   const report: InspectReport = {
+    animationClips: (gltf.animations ?? []).map((animation, index) => ({
+      channels: animation.channels?.length ?? 0,
+      name: animation.name ?? `animation-${index}`,
+      samplers: animation.samplers?.length ?? 0,
+    })),
     bounds,
     calibration,
     code: diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "TN_ASSET_INSPECT_FAILED" : "TN_ASSET_INSPECT_OK",
     counts: {
       accessors: gltf.accessors?.length ?? 0,
+      animations: gltf.animations?.length ?? 0,
       buffers: gltf.buffers?.length ?? 0,
       images: gltf.images?.length ?? 0,
       materials: gltf.materials?.length ?? 0,
@@ -563,6 +869,7 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
       nodes: gltf.nodes?.length ?? 0,
       scenes: gltf.scenes?.length ?? 0,
       textures: gltf.textures?.length ?? 0,
+      triangles: countTriangles(gltf),
     },
     dependencies,
     diagnostics,
@@ -570,9 +877,25 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
     gltf: gltfMetadata,
     message: "Asset inspection completed.",
     modular,
+    namedNodes: (gltf.nodes ?? []).map((node) => node.name).filter((name): name is string => typeof name === "string").sort(),
   };
 
   return report;
+}
+
+function countTriangles(gltf: GltfAsset): number {
+  let triangles = 0;
+  for (const mesh of gltf.meshes ?? []) {
+    for (const primitive of mesh.primitives ?? []) {
+      const mode = primitive.mode ?? 4;
+      const count = primitive.indices === undefined
+        ? gltf.accessors?.[primitive.attributes?.POSITION ?? -1]?.count ?? 0
+        : gltf.accessors?.[primitive.indices]?.count ?? 0;
+      if (mode === 4) triangles += Math.floor(count / 3);
+      else if (mode === 5 || mode === 6) triangles += Math.max(0, count - 2);
+    }
+  }
+  return triangles;
 }
 
 function assetIdForInspect(assetPath: string): string {

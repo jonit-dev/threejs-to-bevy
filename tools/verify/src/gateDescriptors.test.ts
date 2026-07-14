@@ -16,6 +16,8 @@ import {
 test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(validateGateDescriptors(), []);
   assert.deepEqual(GATE_DESCRIPTORS.map((descriptor) => descriptor.name), [
+    "verify:android-webview-distribution",
+    "verify:desktop-distribution",
     "verify:native-overlay-cef",
     "verify:overlay-scaffold",
     "verify:emitted-commands",
@@ -26,6 +28,8 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
   ]);
   assert.equal(GATE_DESCRIPTORS.find((descriptor) => descriptor.name === "verify:emitted-commands")?.release.enrolled, false);
   assert.deepEqual(GATE_DESCRIPTORS.filter((descriptor) => !descriptor.release.enrolled).map((descriptor) => descriptor.name), [
+    "verify:android-webview-distribution",
+    "verify:desktop-distribution",
     "verify:emitted-commands",
     "verify:portable-feedback",
   ]);

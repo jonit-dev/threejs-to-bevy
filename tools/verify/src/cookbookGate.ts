@@ -37,14 +37,14 @@ interface IParsedCookbookEntry {
   proofCommands: string[];
   script: string;
   scriptPath?: string;
-  providerBoundary?: "mock-only";
+  providerBoundary?: "installed-tool-opt-in" | "mock-only";
 }
 
-export async function runCookbookGate(options: { entriesDir?: string; root?: string; templateDir?: string } = {}): Promise<ICookbookGateReport> {
+export async function runCookbookGate(options: { entriesDir?: string; entryId?: string; externalTools?: boolean; root?: string; templateDir?: string } = {}): Promise<ICookbookGateReport> {
   const root = options.root ?? resolve(fileURLToPath(new URL("../../..", import.meta.url)));
   const entriesDir = options.entriesDir ?? resolve(root, "docs/cookbook");
   const templateDir = options.templateDir ?? resolve(root, "templates/structured-source-starter");
-  const files = (await readdir(entriesDir)).filter((file) => file.endsWith(".md") && file !== "FORMAT.md").sort();
+  const files = (await readdir(entriesDir)).filter((file) => file.endsWith(".md") && file !== "FORMAT.md" && (options.entryId === undefined || basename(file, ".md") === options.entryId)).sort();
   const entries: ICookbookGateEntryResult[] = [];
   const parsedEntries: IParsedCookbookEntry[] = [];
   for (const file of files) {
@@ -60,9 +60,9 @@ export async function runCookbookGate(options: { entriesDir?: string; root?: str
       continue;
     }
     parsedEntries.push(parsed);
-    entries.push(await verifyEntry({ entry: parsed, root, templateDir }));
+    entries.push(await verifyEntry({ entry: parsed, externalTools: options.externalTools === true, root, templateDir }));
   }
-  const diagnostics = validateCookbookCrossReferences(parsedEntries, entriesDir, entriesDir === resolve(root, "docs/cookbook"));
+  const diagnostics = validateCookbookCrossReferences(parsedEntries, entriesDir, entriesDir === resolve(root, "docs/cookbook") && options.entryId === undefined);
   const report = {
     diagnostics,
     entries,
@@ -74,7 +74,7 @@ export async function runCookbookGate(options: { entriesDir?: string; root?: str
   return report;
 }
 
-async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string; templateDir: string }): Promise<ICookbookGateEntryResult> {
+async function verifyEntry(options: { entry: IParsedCookbookEntry; externalTools: boolean; root: string; templateDir: string }): Promise<ICookbookGateEntryResult> {
   const projectPath = resolve(tmpdir(), `tn-cookbook-${options.entry.id}-${Date.now()}-${Math.random().toString(36).slice(2)}`);
   const commands: ICookbookGateCommandResult[] = [];
   const diagnostics: ICookbookGateEntryResult["diagnostics"] = [];
@@ -107,6 +107,16 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; root: string;
           severity: "error",
         });
         return { commands, diagnostics, entryId: options.entry.id, ok: false };
+      }
+    }
+    if (options.entry.providerBoundary === "installed-tool-opt-in" && options.externalTools) {
+      for (const command of options.entry.proofCommands) {
+        const result = runTnCommand(command, options.root, projectPath);
+        commands.push(result);
+        if (result.exitCode !== 0) {
+          diagnostics.push({ code: "TN_COOKBOOK_GATE_EXTERNAL_PROOF_FAILED", message: `Entry '${options.entry.id}' external proof failed: ${command}`, severity: "error" });
+          return { commands, diagnostics, entryId: options.entry.id, ok: false };
+        }
       }
     }
     const overlayIds = await readDeclaredOverlayIds(projectPath);
@@ -267,7 +277,7 @@ function parseEntry(source: string, file: string): IParsedCookbookEntry | undefi
   const proofCommands = section(source, "proof")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#") && line.startsWith("tn ")) ?? [];
   const script = section(source, "script") ?? "";
   const authoring = authoringValue === "typed-spec" ? authoringValue : undefined;
-  const providerBoundary = providerBoundaryValue === "mock-only" ? providerBoundaryValue : undefined;
+  const providerBoundary = providerBoundaryValue === "mock-only" || providerBoundaryValue === "installed-tool-opt-in" ? providerBoundaryValue : undefined;
   return id === undefined || commands === undefined ? undefined : { authoring, commands, id, proofCommands, providerBoundary, script, scriptPath };
 }
 
@@ -312,7 +322,7 @@ function validateCookbookCommand(entryId: string, command: string): Array<{ code
     return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command uses unregistered CLI command '${rootCommand ?? ""}': ${command}`, severity: "error" }];
   }
   if (definition.subcommands !== undefined) {
-    const subcommand = args.slice(2).find((arg) => !arg.startsWith("-"));
+    const subcommand = args[2]?.startsWith("-") === false ? args[2] : undefined;
     if (subcommand !== undefined && !definition.subcommands.includes(subcommand)) {
       return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command uses unregistered '${rootCommand}' subcommand '${subcommand}': ${command}`, severity: "error" }];
     }
@@ -360,7 +370,8 @@ function splitCommand(command: string): string[] {
 
 async function main(): Promise<void> {
   const root = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
-  const report = await runCookbookGate({ root });
+  const entryIndex = process.argv.indexOf("--entry");
+  const report = await runCookbookGate({ externalTools: process.argv.includes("--external-tools"), root, ...(entryIndex === -1 ? {} : { entryId: process.argv[entryIndex + 1] }) });
   const outPath = resolve(root, "tools/verify/artifacts/cookbook/verification-report.json");
   await mkdir(resolve(outPath, ".."), { recursive: true });
   await writeFile(outPath, `${JSON.stringify(report, null, 2)}\n`, "utf8");

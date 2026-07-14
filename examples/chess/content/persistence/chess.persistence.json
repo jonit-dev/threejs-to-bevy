@@ -1,0 +1,40 @@
+{
+  "components": [
+    {
+      "id": "ChessPiece",
+      "schema": {
+        "fields": {
+          "alive": { "kind": "boolean" },
+          "color": { "kind": "string" },
+          "file": { "kind": "integer" },
+          "initialFile": { "kind": "integer" },
+          "initialKind": { "kind": "string" },
+          "initialRank": { "kind": "integer" },
+          "kind": { "kind": "string" },
+          "moved": { "kind": "boolean" },
+          "rank": { "kind": "integer" }
+        }
+      }
+    }
+  ],
+  "resources": [
+    {
+      "id": "ChessGame",
+      "schema": {
+        "fields": {
+          "saveState": { "kind": "string" }
+        }
+      }
+    }
+  ],
+  "saveSlots": [
+    {
+      "appVersion": "1.0.0",
+      "id": "slot.auto",
+      "schemaVersion": 1
+    }
+  ],
+  "schema": "threenative.local-data",
+  "settings": [],
+  "version": "0.1.0"
+}

@@ -19,6 +19,7 @@ import type {
   IWorldIr,
 } from "./types.js";
 import type { IInputIr } from "./input.js";
+import type { IDistributionSource } from "./distribution.js";
 import type { ISystemsIr } from "./systems.js";
 import type { IInteractionsIr } from "./interactions.js";
 import type { IGltfSceneMetadataIr } from "./gltfScene.js";
@@ -30,6 +31,7 @@ export interface ILoadedBundleDocuments {
   assets?: IAssetsManifest;
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
+  distribution?: IDistributionSource;
   environmentScene?: IEnvironmentSceneIr;
   eventSchemas?: IIrSchemaFile;
   gameFlow?: IGameFlowIr;
@@ -87,6 +89,10 @@ export async function readBundleDocuments(
   const materials = await readJson<IMaterialsIr>(resolve(bundlePath, manifest.files.materials), diagnostics);
   const assets = await readJson<IAssetsManifest>(resolve(bundlePath, manifest.files.assets), diagnostics);
   const targetProfile = await readJson<ITargetProfile>(resolve(bundlePath, manifest.files.targetProfile), diagnostics);
+  const distribution =
+    manifest.files.distribution === undefined
+      ? undefined
+      : await readJson<IDistributionSource>(resolve(bundlePath, manifest.files.distribution), diagnostics);
   const systems =
     manifest.entry.systems === undefined
       ? undefined
@@ -139,6 +145,7 @@ export async function readBundleDocuments(
     assets,
     audio,
     componentSchemas,
+    distribution,
     environmentScene,
     eventSchemas,
     gameFlow,

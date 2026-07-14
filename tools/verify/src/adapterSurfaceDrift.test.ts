@@ -29,6 +29,7 @@ const DERIVED_SMOKE_GAP: Omit<IAdapterGap, "reason"> = {
 const EDITOR_OPERATION_GAPS = gapMap([
   "archetype.apply", "archetype.update", "archetype.list", "audio.create", "audio.add_sound",
   "environment.create", "generator.record", "scene.create", "input.set_controls", "input.set_override",
+  "distribution.set_app", "distribution.set_target", "generator.record_blender",
   "scene.placement_add", "scene.placement_inspect", "scene.placement_migrate", "scene.placement_apply",
   "material.create", "mesh.create_custom", "prefab.create", "prefab.add_component", "prefab.set_defaults",
   "resources.create", "resources.add", "resources.set", "flow.create", "flow.add_state",
@@ -47,6 +48,7 @@ const EDITOR_SMOKE_GAPS = gapMap([
   "archetype.apply", "archetype.update", "archetype.list", "asset.add", "audio.create",
   "audio.add_sound", "environment.create", "environment.set_skybox", "environment.set_map", "environment.set_volumetrics", "environment.set_light_probe",
   "environment.set_path", "environment.set_terrain", "environment.set_walkability", "environment.set_source_asset_lod", "generator.record",
+  "distribution.set_app", "distribution.set_target", "generator.record_blender",
   "scene.placement_add", "scene.placement_inspect", "scene.placement_migrate", "scene.placement_apply",
   "scene.create", "input.add_action", "input.add_axis", "input.set_controls", "input.set_override",
   "material.create", "material.set", "mesh.create_custom", "prefab.create", "prefab.add_component",

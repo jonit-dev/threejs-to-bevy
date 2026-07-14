@@ -145,7 +145,7 @@ test("should require starter scenario proof commands", async () => {
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
     await mkdir(join(templatePath, "docs"), { recursive: true });
     await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. Probe tn game providers, then use tn audio generate-sfx when available or a local/catalog/procedural offline fallback. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
 
     const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
@@ -240,12 +240,12 @@ test("accepts maintained starters with production scripts metadata and instructi
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release for the production loop.\n");
     await mkdir(join(templatePath, "docs"), { recursive: true });
     await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. Probe tn game providers, then use tn audio generate-sfx when available or a local/catalog/procedural offline fallback. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release before calling a game done.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), completeAgentGamePlan);
 
     const result = await runTemplateProductionGate({ root, templates: ["racing-kit-rally-starter"] });
 
-    assert.equal(result.ok, true);
+    assert.equal(result.ok, true, JSON.stringify(result.diagnostics, null, 2));
     assert.deepEqual(result.diagnostics, []);
   } finally {
     await rm(root, { force: true, recursive: true });

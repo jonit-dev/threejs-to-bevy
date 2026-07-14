@@ -558,6 +558,27 @@ input evidence for both promoted runtimes.
 physical arm64 device, complete the canonical playtest, background/foreground
 the app, rotate where allowed, and confirm persisted state.
 
+**Current checkpoint (2026-07-14):** `NEEDS CORRECTION`. The supported CLI
+produces and hashes a current x86-64 APK plus disposable-proof-signed arm64 AAB.
+Pinned Android 15 emulator evidence passes install, launch, first frame, touch,
+Back, pause/resume, surface resize, safe area, cold-relaunch persistence, and
+local assets. Audio interruption/resume is unproved because the available
+headless emulator has no audio output, and no physical arm64 device is attached.
+The proof report therefore remains fail-closed at `partial` and Phase 8 has not
+started. Fixes crossed the original five-file estimate because emulator proof
+exposed runtime persistence/viewport defects and generated Tauri lifecycle
+drift; the owning contract, compiler, runtime, game source, tests, and status
+documents were updated rather than hiding those defects in the proof harness.
+
+Evidence:
+
+- `examples/chess/artifacts/distribution/android/webview/phase-7-partial-proof-report.json`
+- `examples/chess/artifacts/distribution/android/webview/emulator/resize-1280x720.png`
+- `examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence.png`
+- `examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence-trace.json`
+- `examples/chess/artifacts/distribution/android/webview/apk/package-report.json`
+- `examples/chess/artifacts/distribution/android/webview/aab/package-report.json`
+
 ### Phase 8: iOS webview distribution - A Tauri-wrapped game installs and runs on iOS/iPadOS
 
 **Files (max 5):**

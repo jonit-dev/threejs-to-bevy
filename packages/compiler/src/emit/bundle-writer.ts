@@ -32,6 +32,9 @@ async function writeBundleOutput(projectPath: string, targetDir: string, plan: I
   await writeFile(resolve(targetDir, IR_DOCUMENTS.world.fileName), stableJson(documents.world));
   await writeFile(resolve(targetDir, IR_DOCUMENTS.materials.fileName), stableJson(documents.materials));
   await writeFile(resolve(targetDir, IR_DOCUMENTS.assets.fileName), stableJson(documents.assetsManifest));
+  if (documents.distribution !== undefined) {
+    await writeFile(resolve(targetDir, IR_DOCUMENTS.distribution.fileName), stableJson(documents.distribution));
+  }
   await writeFile(resolve(targetDir, IR_DOCUMENTS.targetProfile.fileName), stableJson(documents.targetProfile));
   if (documents.authoringProvenance !== undefined) {
     await writeFile(resolve(targetDir, AUTHORING_PROVENANCE_FILE), stableJson(documents.authoringProvenance));

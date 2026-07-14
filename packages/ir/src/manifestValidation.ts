@@ -77,6 +77,9 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
     validateManifestPath(files.assets, `${path}/files/assets`, IR_DOCUMENTS.assets.fileName, diagnostics);
     validateManifestPath(files.materials, `${path}/files/materials`, IR_DOCUMENTS.materials.fileName, diagnostics);
     validateManifestPath(files.targetProfile, `${path}/files/targetProfile`, IR_DOCUMENTS.targetProfile.fileName, diagnostics);
+    if (files.distribution !== undefined) {
+      validateManifestPath(files.distribution, `${path}/files/distribution`, IR_DOCUMENTS.distribution.fileName, diagnostics);
+    }
     for (const key of ["animations", "componentSchemas", "eventSchemas", "gltfScene", "input", "localData", "prefabs", "resourceSchemas", "runtimeConfig"] as const) {
       if (files[key] !== undefined) {
         validateManifestPath(files[key], `${path}/files/${key}`, undefined, diagnostics);
@@ -105,6 +108,7 @@ export function validateManifest(manifest: unknown, path: string, diagnostics: I
     (entry.prefabs === undefined || typeof entry.prefabs === "string") &&
     (entry.ui === undefined || typeof entry.ui === "string") &&
     (files.componentSchemas === undefined || typeof files.componentSchemas === "string") &&
+    (files.distribution === undefined || typeof files.distribution === "string") &&
     (files.animations === undefined || typeof files.animations === "string") &&
     (files.eventSchemas === undefined || typeof files.eventSchemas === "string") &&
     (files.gltfScene === undefined || typeof files.gltfScene === "string") &&

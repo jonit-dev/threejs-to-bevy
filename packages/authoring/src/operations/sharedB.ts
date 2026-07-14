@@ -1053,6 +1053,9 @@ export function validateUiResponsiveRules(diagnostics: IAuthoringDiagnostic[], f
     if (rule.layout !== undefined && !isRecord(rule.layout)) {
       diagnostics.push(typeDiagnostic(file, `${rulePath}/layout`, "UI responsive layout must be an object when present.", rule.layout));
     }
+    if (rule.style !== undefined && !isRecord(rule.style)) {
+      diagnostics.push(typeDiagnostic(file, `${rulePath}/style`, "UI responsive style must be an object when present.", rule.style));
+    }
   }
 }
 

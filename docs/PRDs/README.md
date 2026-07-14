@@ -140,7 +140,8 @@ evidence, not active backlog.
 - [Optional Headless Blender Asset Generation](other/optional-headless-blender-asset-generation.md):
   adds an explicit, checksum-verified optional Blender tool lifecycle and a
   bounded structured-recipe generator that emits normal inspected GLB assets,
-  reuses generator provenance, and exposes only a thin safe MCP adapter.
+  reuses generator provenance, targets 19/22 useful BlenderMCP outcomes through
+  safe CLI/MCP equivalents, and adapts its catalog-first verification strategy.
 - [Cross-Platform Distribution](other/cross-platform-distribution-2026-07-13.md):
   defines one registry-driven build, signing, and proof workflow for web,
   Windows, macOS, Linux, Android, and iOS/iPadOS, including both native Bevy

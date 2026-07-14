@@ -279,6 +279,43 @@ test("should run systems expose resources events and input context", async () =>
   assert.deepEqual(world.events.DamageEvent, [{ amount: 2 }, { amount: 0 }]);
 });
 
+test("should deliver validated script audio services to the runtime observer", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("update", "playMove");
+  systems.systems[0]!.services = ["audio.play"];
+  const observed: unknown[] = [];
+
+  await runSchedule({
+    audio: {
+      schema: "threenative.audio",
+      version: "0.1.0",
+      music: [],
+      oneShots: [{ asset: "move.sound", event: "MoveEvent", id: "sound.move" }],
+    },
+    module: {
+      systems: {
+        playMove(context: any) {
+          context.audio.play("sound.move", { volume: 0.6 });
+        },
+      },
+    },
+    schedule: "update",
+    serviceObserver(services) {
+      observed.push(...services);
+    },
+    systems,
+    world,
+  });
+
+  assert.deepEqual(observed, [{
+    payload: {
+      request: { options: { volume: 0.6 }, soundId: "sound.move" },
+      result: { accepted: true, kind: "oneShot", loop: false, playbackId: "sound.move#1", soundId: "sound.move", status: "playing", volume: 0.6 },
+    },
+    service: "audio.play",
+  }]);
+});
+
 test("should pass declared resource values into script context", async () => {
   const world = makeWorld();
   world.resources = { ProjectileVelocity: { z: 3 } };

@@ -1,5 +1,17 @@
-import { access, mkdir, readFile } from "node:fs/promises";
+import { access, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
+import {
+  normalizeDistribution,
+  validateDistribution,
+  validateDistributionProjectPaths,
+  type DistributionArchitecture,
+  type DistributionCapability,
+  type DistributionChannel,
+  type DistributionFormat,
+  type DistributionPlatform,
+  type DistributionRuntime,
+  type IDistributionSource,
+} from "@threenative/ir";
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "../documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
@@ -28,6 +40,8 @@ import {
   flowTriggerKeys,
   generatorDocumentKeys,
   generatorDocumentSchema,
+  blenderRecipeLimits,
+  blenderRecipeSchema,
   inputAxisKeys,
   inputActionKeys,
   inputControlsSettingsKeys,
@@ -246,6 +260,7 @@ import {
   validationContextForProject,
   validateAuthoringDocument,
   validateGeneratorDocument,
+  validateBlenderRecipe,
   validateProjectDocument,
   validateRuntimeDocument,
   validateRuntimeRenderLook,
@@ -756,6 +771,132 @@ export async function setTargetProfile(options: ISetTargetProfileOptions): Promi
   });
 }
 
+export interface ISetDistributionAppOptions extends IAuthoringOperationContext {
+  appId: string;
+  buildNumber?: number;
+  displayName: string;
+  icons?: string;
+  privacyPolicyUrl?: string;
+  splash?: string;
+  version?: string;
+}
+
+export interface ISetDistributionTargetOptions extends IAuthoringOperationContext {
+  architecture?: DistributionArchitecture;
+  capabilities?: DistributionCapability[];
+  channel?: DistributionChannel;
+  formats: DistributionFormat[];
+  minimumOs?: string;
+  platform: DistributionPlatform;
+  runtime: DistributionRuntime;
+}
+
+export async function setDistributionApp(options: ISetDistributionAppOptions): Promise<IAuthoringOperationResult> {
+  const current = await readDistributionSource(options.projectPath);
+  if (current.diagnostics.length > 0) return authoringOperationResult({ diagnostics: current.diagnostics, projectPath: options.projectPath });
+  const existing = current.source === undefined ? undefined : normalizeDistribution(current.source);
+  const next: IDistributionSource = {
+    app: {
+      buildNumber: options.buildNumber ?? existing?.app.buildNumber ?? 1,
+      displayName: options.displayName,
+      icons: options.icons ?? existing?.app.icons ?? "assets/distribution/icons",
+      id: options.appId,
+      version: options.version ?? existing?.app.version ?? "0.1.0",
+      ...(options.privacyPolicyUrl === undefined ? existing?.app.privacyPolicyUrl === undefined ? {} : { privacyPolicyUrl: existing.app.privacyPolicyUrl } : { privacyPolicyUrl: options.privacyPolicyUrl }),
+      ...(options.splash === undefined ? existing?.app.splash === undefined ? {} : { splash: existing.app.splash } : { splash: options.splash }),
+    },
+    schema: "threenative.distribution",
+    ...(existing?.signing === undefined ? {} : { signing: existing.signing }),
+    targets: existing?.targets ?? [{ formats: ["static", "zip", "pwa"], platform: "web", runtime: "web" }],
+    version: "0.1.0",
+  };
+  return writeDistributionSource(options.projectPath, next);
+}
+
+export async function setDistributionTarget(options: ISetDistributionTargetOptions): Promise<IAuthoringOperationResult> {
+  const current = await readDistributionSource(options.projectPath);
+  if (current.diagnostics.length > 0) return authoringOperationResult({ diagnostics: current.diagnostics, projectPath: options.projectPath });
+  if (current.source === undefined) {
+    return authoringOperationResult({
+      diagnostics: [authoringDiagnostic({
+        code: "TN_AUTHORING_DISTRIBUTION_APP_REQUIRED",
+        file: "content/distribution.json",
+        message: "Distribution app identity must be declared before adding targets.",
+        fix: { instruction: "Run distribution.set_app with a stable reverse-DNS app id and display name." },
+      })],
+      projectPath: options.projectPath,
+    });
+  }
+  const next = normalizeDistribution(current.source);
+  const target = {
+    architecture: options.architecture,
+    capabilities: options.capabilities,
+    channel: options.channel,
+    formats: options.formats,
+    minimumOs: options.minimumOs,
+    platform: options.platform,
+    runtime: options.runtime,
+  };
+  const index = next.targets.findIndex((candidate) => candidate.platform === options.platform && candidate.runtime === options.runtime);
+  const normalizedTarget = normalizeDistribution({ ...next, targets: [target] }).targets[0]!;
+  if (index === -1) next.targets.push(normalizedTarget);
+  else next.targets[index] = normalizedTarget;
+  return writeDistributionSource(options.projectPath, next);
+}
+
+async function readDistributionSource(projectPath: string): Promise<{ diagnostics: IAuthoringDiagnostic[]; source?: unknown }> {
+  const file = resolve(projectPath, "content/distribution.json");
+  try {
+    const source = JSON.parse(await readFile(file, "utf8")) as unknown;
+    const diagnostics = distributionAuthoringDiagnostics(validateDistribution(source));
+    diagnostics.push(...distributionAuthoringDiagnostics(await validateDistributionProjectPaths(source, projectPath)));
+    return { diagnostics, source };
+  } catch (error) {
+    if (typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT") return { diagnostics: [] };
+    return {
+      diagnostics: [authoringDiagnostic({
+        code: "TN_AUTHORING_DISTRIBUTION_READ_FAILED",
+        file: "content/distribution.json",
+        message: "Could not read distribution source as JSON.",
+        value: error instanceof Error ? error.message : String(error),
+        fix: { instruction: "Repair content/distribution.json or remove it and rerun distribution.set_app." },
+      })],
+    };
+  }
+}
+
+async function writeDistributionSource(projectPath: string, source: IDistributionSource): Promise<IAuthoringOperationResult> {
+  const normalized = normalizeDistribution(source);
+  const diagnostics = distributionAuthoringDiagnostics(validateDistribution(normalized));
+  diagnostics.push(...distributionAuthoringDiagnostics(await validateDistributionProjectPaths(normalized, projectPath)));
+  if (hasAuthoringErrors(diagnostics)) return authoringOperationResult({ diagnostics, projectPath });
+  const file = resolve(projectPath, "content/distribution.json");
+  let previous = "";
+  try {
+    previous = await readFile(file, "utf8");
+  } catch (error) {
+    if (!(typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT")) throw error;
+  }
+  const next = `${JSON.stringify(normalized, null, 2)}\n`;
+  if (previous === next) return authoringOperationResult({ changed: false, diagnostics, projectPath });
+  await mkdir(dirname(file), { recursive: true });
+  await writeAuthoringJsonDocument({ data: normalized, file, kind: "distribution", projectRelativePath: "content/distribution.json" });
+  return authoringOperationResult({ changed: true, diagnostics, filesWritten: ["content/distribution.json"], projectPath });
+}
+
+function distributionAuthoringDiagnostics(diagnostics: ReturnType<typeof validateDistribution>): IAuthoringDiagnostic[] {
+  return diagnostics.map((diagnostic) => authoringDiagnostic({
+    code: diagnostic.code,
+    file: "content/distribution.json",
+    fix: diagnostic.fix,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    severity: diagnostic.severity,
+    suggestion: diagnostic.suggestion,
+    value: diagnostic.value,
+  }));
+}
+
 export async function recordGeneratorProvenance(options: IRecordGeneratorProvenanceOptions): Promise<IAuthoringOperationResult> {
   return upsertSourceDocument({
     projectPath: options.projectPath,
@@ -778,4 +919,158 @@ export async function recordGeneratorProvenance(options: IRecordGeneratorProvena
       }
     },
   });
+}
+
+export interface IRecordBlenderGeneratorOptions extends IAuthoringOperationContext {
+  generatorId: string;
+  output: string;
+  overwritePolicy?: string;
+  projectPath: string;
+  providerVersion: string;
+  recipe?: Record<string, unknown>;
+  recipePath?: string;
+  requestedBudgets?: Record<string, unknown>;
+}
+
+export interface IRecordBlenderGeneratorDependencies {
+  writeDocument(options: Parameters<typeof writeAuthoringJsonDocument>[0]): ReturnType<typeof writeAuthoringJsonDocument>;
+}
+
+export async function recordBlenderGenerator(
+  options: IRecordBlenderGeneratorOptions,
+  dependencies: IRecordBlenderGeneratorDependencies = { writeDocument: writeAuthoringJsonDocument },
+): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const diagnostics = [...project.diagnostics];
+  const recipePath = options.recipePath ?? `content/generators/${options.generatorId}.recipe.json`;
+  const provenancePath = `content/generators/${options.generatorId}.generator.json`;
+  const recipeAbsolute = resolve(project.projectPath, recipePath);
+  const provenanceAbsolute = resolve(project.projectPath, provenancePath);
+  const normalizedRecipePath = normalizeRelativePath(relative(project.projectPath, recipeAbsolute));
+
+  if ((options.recipe === undefined) === (options.recipePath === undefined)) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_BLENDER_RECIPE_INPUT_INVALID",
+      message: "Record Blender generator requires exactly one of recipe or recipePath.",
+      path: "/recipe",
+      value: { recipe: options.recipe !== undefined, recipePath: options.recipePath !== undefined },
+      fix: { instruction: "Provide one inline recipe object or one project-local recipe path.", allowed: ["recipe", "recipePath"] },
+    }));
+  }
+  validateLogicalId(diagnostics, "", "/generatorId", options.generatorId, "generator");
+  const recipePathContained = normalizedRecipePath === recipePath
+    && normalizedRecipePath.startsWith("content/generators/")
+    && normalizedRecipePath.endsWith(".recipe.json");
+  if (!recipePathContained) {
+    diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", file: normalizedRecipePath, path: "/recipePath", value: options.recipePath, message: "Blender recipe path must remain inside content/generators/ and end in .recipe.json.", fix: { instruction: "Move the recipe to the durable generator source directory.", allowed: ["content/generators/<generator-id>.recipe.json"] } }));
+  }
+
+  let recipeData: unknown = options.recipe;
+  if (options.recipePath !== undefined && recipePathContained) {
+    try {
+      const [projectRealPath, recipeRealPath] = await Promise.all([realpath(project.projectPath), realpath(recipeAbsolute)]);
+      const realRelativePath = normalizeRelativePath(relative(projectRealPath, recipeRealPath));
+      if (realRelativePath.startsWith("../") || realRelativePath === "..") {
+        diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", file: normalizedRecipePath, path: "/recipePath", value: options.recipePath, message: "Blender recipe path must not escape the project through a symbolic link.", fix: { instruction: "Replace the symlink with a project-local recipe file.", allowed: ["content/generators/<generator-id>.recipe.json"] } }));
+      } else {
+        recipeData = JSON.parse(await readFile(recipeRealPath, "utf8")) as unknown;
+      }
+    } catch (error) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_READ_FAILED", file: normalizedRecipePath, message: `Could not read Blender recipe '${normalizedRecipePath}'.`, value: error instanceof Error ? error.message : String(error), fix: { instruction: "Create a valid JSON recipe at the project-local path or pass an inline recipe.", allowed: ["recipe", "recipePath"] } }));
+    }
+  } else if (isRecord(recipeData)) {
+    if (recipeData.schema !== undefined && recipeData.schema !== blenderRecipeSchema) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_SCHEMA_INVALID", file: normalizedRecipePath, path: "/schema", value: recipeData.schema, message: `Blender recipe must use schema '${blenderRecipeSchema}'.`, fix: { instruction: "Use the supported bounded recipe schema.", allowed: [blenderRecipeSchema] } }));
+    }
+    if (recipeData.version !== undefined && recipeData.version !== "0.1.0") {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_VERSION_INVALID", file: normalizedRecipePath, path: "/version", value: recipeData.version, message: "Blender recipe version must be '0.1.0'.", fix: { instruction: "Use the supported bounded recipe version.", allowed: ["0.1.0"] } }));
+    }
+    if (recipeData.id !== undefined && recipeData.id !== options.generatorId) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_ID_MISMATCH", file: normalizedRecipePath, path: "/id", value: recipeData.id, message: "Blender recipe id must match its generator id.", fix: { instruction: "Use the same stable logical id in the recipe and generator provenance.", allowed: [options.generatorId] } }));
+    }
+    const authoredBudgets = isRecord(recipeData.budgets) ? recipeData.budgets : {};
+    const requestedBudgets = options.requestedBudgets ?? {};
+    if (authoredBudgets.maxPolygons === undefined && requestedBudgets.maxPolygons === undefined) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_BUDGET_REQUIRED", file: normalizedRecipePath, path: "/budgets/maxPolygons", message: "Blender recipe must explicitly request a polygon budget.", fix: { instruction: "Set a conservative maximum polygon count.", allowed: [`1..${blenderRecipeLimits.maxPolygons}`] } }));
+    }
+    if (authoredBudgets.maxOutputBytes === undefined && requestedBudgets.maxOutputBytes === undefined) {
+      diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_BUDGET_REQUIRED", file: normalizedRecipePath, path: "/budgets/maxOutputBytes", message: "Blender recipe must explicitly request an output-size budget.", fix: { instruction: "Set a conservative maximum GLB byte size.", allowed: [`1..${blenderRecipeLimits.maxOutputBytes}`] } }));
+    }
+    recipeData = {
+      ...cloneJson(recipeData) as Record<string, unknown>,
+      budgets: { ...blenderRecipeLimits, ...authoredBudgets, ...requestedBudgets },
+      id: recipeData.id ?? options.generatorId,
+      schema: recipeData.schema ?? blenderRecipeSchema,
+      version: recipeData.version ?? "0.1.0",
+    };
+  }
+
+  diagnostics.push(...validateBlenderRecipe(normalizedRecipePath, recipeData));
+  if (isRecord(recipeData) && recipeData.id !== options.generatorId) {
+    diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_ID_MISMATCH", file: normalizedRecipePath, path: "/id", value: recipeData.id, message: "Blender recipe id must match its generator id.", fix: { instruction: "Use the same stable logical id in the recipe and generator provenance.", allowed: [options.generatorId] } }));
+  }
+  const provenanceData: Record<string, unknown> = {
+    schema: generatorDocumentSchema,
+    version: "0.1.0",
+    id: options.generatorId,
+    provider: "blender",
+    providerVersion: options.providerVersion,
+    recipe: normalizedRecipePath,
+    outputs: [options.output],
+    overwritePolicy: options.overwritePolicy ?? "manual",
+  };
+  diagnostics.push(...await validateGeneratorDocument(provenancePath, provenanceData));
+  if (hasAuthoringErrors(diagnostics)) return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+
+  const filesWritten = [provenancePath];
+  let previousRecipe: string | undefined;
+  let previousProvenance: string | undefined;
+  try {
+    await mkdir(dirname(provenanceAbsolute), { recursive: true });
+    previousRecipe = options.recipePath === undefined ? await readOptionalFile(recipeAbsolute) : undefined;
+    previousProvenance = await readOptionalFile(provenanceAbsolute);
+    if (options.recipePath === undefined) {
+      await dependencies.writeDocument({ data: recipeData, file: recipeAbsolute, kind: "unknown", projectRelativePath: normalizedRecipePath });
+      filesWritten.push(normalizedRecipePath);
+    }
+    await dependencies.writeDocument({ data: provenanceData, file: provenanceAbsolute, kind: "generator", projectRelativePath: provenancePath });
+  } catch (error) {
+    const restoreResults = await Promise.allSettled([
+      ...(options.recipePath === undefined ? [restoreOptionalFile(recipeAbsolute, previousRecipe)] : []),
+      restoreOptionalFile(provenanceAbsolute, previousProvenance),
+    ]);
+    const restoreFailures = restoreResults
+      .filter((result): result is PromiseRejectedResult => result.status === "rejected")
+      .map((result) => errorMessage(result.reason));
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_BLENDER_RECORD_WRITE_FAILED",
+      file: provenancePath,
+      message: `Could not atomically record Blender generator '${options.generatorId}'. Prior recipe and provenance files were restored.`,
+      value: { cause: errorMessage(error), restoreFailures },
+      fix: { instruction: "Check project file permissions and retry the bounded generator record operation.", allowed: [normalizedRecipePath, provenancePath] },
+    }));
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+  return authoringOperationResult({ changed: true, diagnostics, filesWritten: filesWritten.sort(), projectPath: project.projectPath });
+}
+
+async function readOptionalFile(path: string): Promise<string | undefined> {
+  try {
+    return await readFile(path, "utf8");
+  } catch (error) {
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return undefined;
+    throw error;
+  }
+}
+
+async function restoreOptionalFile(path: string, contents: string | undefined): Promise<void> {
+  if (contents === undefined) {
+    await rm(path, { force: true });
+    return;
+  }
+  await writeFile(path, contents, "utf8");
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

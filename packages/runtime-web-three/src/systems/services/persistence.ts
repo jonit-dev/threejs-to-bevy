@@ -35,17 +35,41 @@ export interface IWebPersistenceService {
   setSetting(key: string, value: boolean | number | string): boolean;
 }
 
-export function createWebPersistenceService(localData: ILocalDataIr): IWebPersistenceService {
+export interface IWebPersistenceStorage {
+  getItem(key: string): string | null;
+  removeItem(key: string): void;
+  setItem(key: string, value: string): void;
+}
+
+export interface IWebPersistenceServiceOptions {
+  storage?: IWebPersistenceStorage;
+  storageKey?: string;
+}
+
+export function createWebPersistenceService(localData: ILocalDataIr, options: IWebPersistenceServiceOptions = {}): IWebPersistenceService {
   const slots = new Map(localData.saveSlots.map((slot) => [slot.id, slot]));
   const saves = new Map<string, IPersistenceSaveRecord>();
   const settingSpecs = new Map(localData.settings.map((setting) => [setting.key, setting]));
   const settings = new Map<string, boolean | number | string>(localData.settings.map((setting) => [setting.key, setting.defaultValue]));
   const resourceIds = new Set(localData.resources.map((resource) => resource.id));
   const componentIds = new Set(localData.components.map((component) => component.id));
+  const storage = options.storage ?? defaultPersistenceStorage();
+  const storageKey = options.storageKey ?? "default";
+  for (const slot of slots.values()) {
+    const record = readStoredRecord(storage, persistedSlotKey(storageKey, slot.id), slot, resourceIds, componentIds);
+    if (record !== undefined) {
+      saves.set(slot.id, record);
+      for (const [key, value] of Object.entries(record.settings)) {
+        setSettingValue(settingSpecs, settings, key, value);
+      }
+    }
+  }
 
   return {
     delete(slot) {
-      return saves.delete(slot);
+      const deleted = saves.delete(slot);
+      if (deleted) safeStorageWrite(() => storage?.removeItem(persistedSlotKey(storageKey, slot)));
+      return deleted;
     },
     exportSettings() {
       return Object.fromEntries([...settings.entries()].sort(([left], [right]) => left.localeCompare(right)));
@@ -97,12 +121,67 @@ export function createWebPersistenceService(localData: ILocalDataIr): IWebPersis
         slot,
       };
       saves.set(slot, clone(record) as IPersistenceSaveRecord);
+      safeStorageWrite(() => storage?.setItem(persistedSlotKey(storageKey, slot), JSON.stringify(record)));
       return { accepted: true, record, slot, status: "saved" };
     },
     setSetting(key, value) {
       return setSettingValue(settingSpecs, settings, key, value);
     },
   };
+}
+
+function defaultPersistenceStorage(): IWebPersistenceStorage | undefined {
+  try {
+    return typeof globalThis.localStorage === "undefined" ? undefined : globalThis.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+function persistedSlotKey(namespace: string, slot: string): string {
+  return `threenative:persistence:${encodeURIComponent(namespace)}:${encodeURIComponent(slot)}`;
+}
+
+function readStoredRecord(
+  storage: IWebPersistenceStorage | undefined,
+  key: string,
+  slot: ILocalDataIr["saveSlots"][number],
+  resourceIds: ReadonlySet<string>,
+  componentIds: ReadonlySet<string>,
+): IPersistenceSaveRecord | undefined {
+  try {
+    const raw = storage?.getItem(key);
+    if (raw === undefined || raw === null) return undefined;
+    const candidate = JSON.parse(raw) as unknown;
+    if (!isRecord(candidate)
+      || candidate.slot !== slot.id
+      || candidate.appVersion !== slot.appVersion
+      || candidate.schemaVersion !== slot.schemaVersion
+      || !isRecord(candidate.resources)
+      || !isRecord(candidate.components)
+      || !isRecord(candidate.settings)) return undefined;
+    const resources = Object.fromEntries(Object.entries(candidate.resources).filter(([id]) => resourceIds.has(id)));
+    const components = Object.fromEntries(Object.entries(candidate.components).flatMap(([entity, value]) => {
+      if (!isRecord(value)) return [];
+      return [[entity, Object.fromEntries(Object.entries(value).filter(([id]) => componentIds.has(id)))]];
+    }));
+    const settings = Object.fromEntries(Object.entries(candidate.settings).filter(([, value]) => typeof value === "boolean" || typeof value === "number" || typeof value === "string")) as Record<string, boolean | number | string>;
+    return { appVersion: slot.appVersion, components, resources, schemaVersion: slot.schemaVersion, settings, slot: slot.id };
+  } catch {
+    return undefined;
+  }
+}
+
+function safeStorageWrite(write: () => void): void {
+  try {
+    write();
+  } catch {
+    // The in-memory save remains usable for this runtime session.
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function persistResources(world: IWorldIr, ids: ReadonlySet<string>): Record<string, unknown> {

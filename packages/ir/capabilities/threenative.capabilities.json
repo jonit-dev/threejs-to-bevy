@@ -55,6 +55,13 @@
       "$id": "https://schemas.threenative.local/v1/assets.schema.json"
     },
     {
+      "name": "distribution",
+      "packagePath": "schemas/distribution.schema.json",
+      "schema": "threenative.distribution",
+      "version": "0.1.0",
+      "$id": "https://schemas.threenative.local/v1/distribution.schema.json"
+    },
+    {
       "name": "game-flow",
       "packagePath": "schemas/game-flow.schema.json",
       "schema": "threenative.game-flow",
