@@ -716,20 +716,6 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
-                if input_snapshot
-                    .as_ref()
-                    .is_some_and(|input| input.pressed("pointer-select"))
-                {
-                    info!(
-                        "native chess pointer state: {}",
-                        runtime
-                            .bundle
-                            .world
-                            .resources
-                            .get("ChessGame")
-                            .map_or("null".to_owned(), serde_json::Value::to_string)
-                    );
-                }
                 if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
                     let overlays = bridge.overlays.clone();
                     bridge

@@ -359,13 +359,8 @@ export const chessGame = defineBehavior(
       if (context.input.getButtonDown("cursor-down")) state.cursorRank = Math.max(0, state.cursorRank - 1);
       if (context.input.getButtonDown("select")) { if (!commit(state.cursorFile, state.cursorRank)) selectAt(state.cursorFile, state.cursorRank); }
       if (context.input.getButtonDown("pointer-select") && hit !== undefined) {
-        const pointer = [context.input.getAxis("pointer-x"), context.input.getAxis("pointer-y")] as [number, number];
-        patchHud({ nativePointerDebug: { hit: hit.id, pointer, ray: context.picking.pointerRay({ aspect: 16 / 9, camera: "camera.main", maxDistance: 30, pointer }), square: hit.square } });
         if (!commit(hit.square[0], hit.square[1])) selectAt(hit.square[0], hit.square[1]);
         state.dragging = state.selectedId !== "";
-      } else if (context.input.getButtonDown("pointer-select")) {
-        const pointer = [context.input.getAxis("pointer-x"), context.input.getAxis("pointer-y")] as [number, number];
-        patchHud({ nativePointerDebug: { hit: null, pointer, ray: context.picking.pointerRay({ aspect: 16 / 9, camera: "camera.main", maxDistance: 30, pointer }) } });
       }
       if (context.input.getButtonUp("pointer-select")) {
         if (hit !== undefined) {

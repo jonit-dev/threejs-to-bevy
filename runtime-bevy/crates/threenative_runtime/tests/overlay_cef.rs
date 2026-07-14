@@ -1,3 +1,5 @@
+#![cfg(feature = "native-overlay-cef")]
+
 use threenative_runtime::overlay_cef::{
     CEF_DESKTOP_BLINK_SETTINGS, CefPaintFrame, CefPaintQueue, CefSpikeFrameProbe,
     CefSpikeFrameProbeConfig, apply_paint_to_image, build_cef_spike_frame_report,
