@@ -457,10 +457,7 @@ impl EntityComponents {
         macro_rules! push_component {
             ($field:ident, $name:literal) => {
                 if let Some(value) = self.$field.as_ref() {
-                    values.push((
-                        $name.to_owned(),
-                        serialized_component(value),
-                    ));
+                    values.push(($name.to_owned(), serialized_component(value)));
                 }
             };
         }
@@ -480,7 +477,11 @@ impl EntityComponents {
         push_component!(transform, "Transform");
         push_component!(visibility, "Visibility");
         push_component!(world_text, "WorldText");
-        values.extend(self.extra.iter().map(|(name, value)| (name.clone(), value.clone())));
+        values.extend(
+            self.extra
+                .iter()
+                .map(|(name, value)| (name.clone(), value.clone())),
+        );
         values.sort_by(|left, right| left.0.cmp(&right.0));
         values
     }
@@ -505,7 +506,10 @@ fn strip_absent_fields(value: &mut serde_json::Value) {
                 !value.is_null()
             });
         }
-        serde_json::Value::Null | serde_json::Value::Bool(_) | serde_json::Value::Number(_) | serde_json::Value::String(_) => {}
+        serde_json::Value::Null
+        | serde_json::Value::Bool(_)
+        | serde_json::Value::Number(_)
+        | serde_json::Value::String(_) => {}
     }
 }
 
@@ -1609,9 +1613,15 @@ pub enum InputBindingIr {
 pub struct RuntimeConfigIr {
     pub schema: String,
     pub version: String,
+    pub physics: Option<RuntimePhysicsConfig>,
     pub renderer: Option<RuntimeRendererConfig>,
     pub time: RuntimeTimeConfig,
     pub window: RuntimeWindowConfig,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct RuntimePhysicsConfig {
+    pub gravity: [f32; 3],
 }
 
 #[derive(Debug, Deserialize)]

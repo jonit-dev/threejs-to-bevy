@@ -211,6 +211,9 @@ export function sphereCollider(radius: number, options: { sensor?: ISensorDeclar
 export function capsuleCollider(radius: number, height: number, options: { sensor?: ISensorDeclaration; trigger?: boolean } & ColliderCenterOptions & IPhysicsFilterOptions & IPhysicsMaterialOptions = {}): IColliderDeclaration {
   assertPositiveNumber(radius, "TN_SDK_PHYSICS_COLLIDER_INVALID_RADIUS", "Collider.radius");
   assertPositiveNumber(height, "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height");
+  if (height < radius * 2) {
+    throw new SdkError("TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT", "Collider.height is the total capsule height and must be at least 2 * Collider.radius.");
+  }
   const sensor = normalizeSensor(options.sensor);
   return { ...normalizeColliderCenter(options), height, kind: "capsule", radius, ...(sensor === undefined ? {} : { sensor }), trigger: options.trigger, ...normalizeFilter(options), ...normalizeMaterial(options) };
 }
@@ -293,8 +296,8 @@ function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclarat
   if (options.layer !== undefined && !isPortableFilterName(options.layer)) {
     throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.layer must be a non-empty portable filter layer string.");
   }
-  if (options.mask?.some((entry) => !isPortableFilterName(entry))) {
-    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.mask entries must be non-empty portable filter layer strings.");
+  if (options.mask !== undefined && (options.mask.length > 32 || options.mask.some((entry) => !isPortableFilterName(entry)))) {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.mask must contain at most 32 non-empty portable filter layer strings.");
   }
   if (options.material !== undefined && !isPortableFilterName(options.material)) {
     throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.material must be a non-empty portable contact material string.");
@@ -309,8 +312,8 @@ function normalizeFilter(options: IPhysicsFilterOptions): Pick<IColliderDeclarat
 
 function normalizeContactFilter(value: IContactFilterDeclaration): IContactFilterDeclaration {
   const phases = value.phases === undefined ? undefined : [...value.phases];
-  if (phases?.some((phase) => phase !== "begin" && phase !== "stay" && phase !== "end")) {
-    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.contact.phases may include begin, stay, and end only.");
+  if (phases !== undefined && (phases.length === 0 || phases.some((phase) => phase !== "begin" && phase !== "stay" && phase !== "end"))) {
+    throw new SdkError("TN_SDK_PHYSICS_FILTER_INVALID", "Collider.contact.phases must be a non-empty array containing begin, stay, or end only.");
   }
   return phases === undefined ? {} : { phases };
 }
@@ -360,8 +363,8 @@ function normalizeSensor(sensor: ISensorDeclaration | undefined): ISensorDeclara
     throw new SdkError("TN_SDK_PHYSICS_SENSOR_INVALID", "Collider.sensor.occupantLimit must be an integer from 1 to 128.");
   }
   const phases = sensor.phases === undefined ? undefined : [...sensor.phases];
-  if (phases?.some((phase) => phase !== "enter" && phase !== "stay" && phase !== "exit")) {
-    throw new SdkError("TN_SDK_PHYSICS_SENSOR_INVALID", "Collider.sensor.phases may include enter, stay, and exit only.");
+  if (phases !== undefined && (phases.length === 0 || phases.some((phase) => phase !== "enter" && phase !== "stay" && phase !== "exit"))) {
+    throw new SdkError("TN_SDK_PHYSICS_SENSOR_INVALID", "Collider.sensor.phases must be a non-empty array containing enter, stay, or exit only.");
   }
   return {
     ...(sensor.interactionKind === undefined ? {} : { interactionKind: sensor.interactionKind }),

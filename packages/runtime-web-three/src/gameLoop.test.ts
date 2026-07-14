@@ -122,6 +122,88 @@ test("gameLoop should run fixed update at configured timestep", async () => {
   assert.ok(Math.abs(state.accumulator) < 1e-10);
 });
 
+test("gameLoop should consume fixed-update rigid-body writes in the same physics tick", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "box",
+      components: {
+        Collider: { kind: "box", size: [1, 1, 1] },
+        RigidBody: { gravityScale: 0, kind: "dynamic", velocity: [0, 0, 0] },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 0.25,
+    mapped: makeMapped(),
+    module: { systems: { accelerate: (context: any) => context.entity("box")?.patch("RigidBody", { velocity: [2, 0, 0] }) } },
+    runtimeConfig: {
+      schema: "threenative.runtime-config",
+      version: "0.1.0",
+      physics: { gravity: [0, 0, 0] },
+      time: { fixedDelta: 0.25, paused: false },
+      window: { height: 720, width: 1280 },
+    },
+    state,
+    systems: makeSystems([system("accelerate", "fixedUpdate", ["RigidBody"])]),
+    world,
+  });
+
+  assert.ok((world.entities[0]?.components.Transform?.position?.[0] ?? 0) > 0.49);
+});
+
+test("gameLoop should consume fixed-update impulses in the same physics tick", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "box",
+      components: {
+        Collider: { kind: "box", size: [1, 1, 1] },
+        RigidBody: { gravityScale: 0, kind: "dynamic", mass: 2, velocity: [0, 0, 0] },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+  const impulseSystem = system("impulse", "fixedUpdate");
+  impulseSystem.services = ["physics.applyImpulse"];
+
+  await runGameFrame({
+    delta: 0.25,
+    fixedDelta: 0.25,
+    mapped: makeMapped(),
+    module: { systems: { impulse: (context: any) => context.physics.applyImpulse("box", [2, 0, 0]) } },
+    runtimeConfig: {
+      schema: "threenative.runtime-config",
+      version: "0.1.0",
+      physics: { gravity: [0, 0, 0] },
+      time: { fixedDelta: 0.25, paused: false },
+      window: { height: 720, width: 1280 },
+    },
+    state,
+    systems: makeSystems([impulseSystem]),
+    world,
+  });
+
+  assert.ok((world.entities[0]?.components.Transform?.position?.[0] ?? 0) > 0.24);
+});
+
 test("gameLoop should skip gameplay schedules while paused", async () => {
   const state = createGameLoopState({
     schema: "threenative.runtime-config",

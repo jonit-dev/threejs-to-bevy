@@ -90,7 +90,7 @@ export async function runGameFrame(options: {
       state.accumulator += frameDelta;
       state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
-        runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
+        runtimeState.sensors.advance(options.world, { fixedDelta, phase: "startup", tick: state.tick });
         collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
       }
@@ -99,15 +99,13 @@ export async function runGameFrame(options: {
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
         stepPatrols(options.world, fixedDelta);
-        stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: state.tick, writeLedger: runtimeState.writeLedger });
+        collectSystemResult(options.mapped, await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: state.tick }));
+        stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: state.tick, writeLedger: runtimeState.writeLedger });
         stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
         const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         stepStateMachines(options.world, state.tick, sensorEvents);
         if (options.interactions !== undefined) collectInteractionResult(options.mapped, runInteractionFixedTick({ gameFlow: options.gameFlow, interactions: options.interactions, mapped: options.mapped, prefabs: options.prefabs, presentation: runtimeState.presentation, sensorEvents, state: state.interactions, systems: options.systems, tick: state.tick, world: options.world, writeLedger: runtimeState.writeLedger }));
-        collectSystemResult(
-          options.mapped,
-          await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", tick: state.tick }),
-        );
+        collectSystemResult(options.mapped, await runSchedule({ ...options, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", systemFilter: (system) => !isPrePhysicsSystem(system), tick: state.tick }));
         recordFixedTransformStep(state, beforeFixed, snapshotWorldTransforms(options.world));
         state.tick += 1;
         state.accumulator -= fixedDelta;
@@ -125,16 +123,17 @@ export async function runGameFrame(options: {
   } else {
     options.input?.beginFrame();
     runtimeState.writeLedger.beginTick(0);
-    runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
+    runtimeState.sensors.advance(options.world, { fixedDelta, phase: "startup", tick: 0 });
     collectSystemResult(options.mapped, await runSchedule({ ...options, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
     stepPatrols(options.world, fixedDelta);
-    stepPhysics(options.world, fixedDelta, options.environmentScene, { tick: 0, writeLedger: runtimeState.writeLedger });
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: 0 }));
+    stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: 0, writeLedger: runtimeState.writeLedger });
     stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
     const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     stepStateMachines(options.world, 0, sensorEvents);
     if (options.interactions !== undefined) collectInteractionResult(options.mapped, runInteractionFixedTick({ gameFlow: options.gameFlow, interactions: options.interactions, mapped: options.mapped, prefabs: options.prefabs, presentation: runtimeState.presentation, sensorEvents, state: createInteractionRuntimeState(), systems: options.systems, tick: 0, world: options.world, writeLedger: runtimeState.writeLedger }));
-    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", tick: 0 }));
+    collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", systemFilter: (system) => !isPrePhysicsSystem(system), tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "update", tick: 0 }));
     collectSystemResult(options.mapped, await runSchedule({ ...options, fixedDelta, frame: 0, runtimeState, schedule: "postUpdate", tick: 0 }));
   }
@@ -149,6 +148,22 @@ export async function runGameFrame(options: {
   }
   syncMeshRendererMaterials(options.world, options.mapped.objectsById);
   syncWorldText(options.world, options.mapped, frameDelta);
+}
+
+const PRE_PHYSICS_BODY_SERVICES = new Set([
+  "character.move",
+  "physics.addForce",
+  "physics.addTorque",
+  "physics.applyAngularImpulse",
+  "physics.applyImpulse",
+  "physics.setAngularVelocity",
+  "physics.setLinearVelocity",
+]);
+
+function isPrePhysicsSystem(system: ISystemsIr["systems"][number]): boolean {
+  return system.writes.includes("RigidBody")
+    || system.writes.includes("Transform")
+    || system.services.some((service) => PRE_PHYSICS_BODY_SERVICES.has(service));
 }
 
 function recordFixedTransformStep(

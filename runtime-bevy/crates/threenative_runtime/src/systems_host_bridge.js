@@ -78,8 +78,9 @@ function __tnInvokeSystem(options) {
   const colliderEntities = (data.entities || [])
     .filter((entity) => entity.components.Collider)
     .sort((left, right) => left.id.localeCompare(right.id));
-  const solidColliderEntities = colliderEntities.filter((entity) => entity.components.Collider.trigger !== true);
-  const sensorEntities = colliderEntities.filter((entity) => entity.components.Collider.sensor);
+  const isSensorCollider = (collider) => collider.trigger === true || collider.sensor != null;
+  const solidColliderEntities = colliderEntities.filter((entity) => !isSensorCollider(entity.components.Collider));
+  const sensorEntities = colliderEntities.filter((entity) => isSensorCollider(entity.components.Collider));
   const navigationRegions = data.resources.Navigation && Array.isArray(data.resources.Navigation.regions)
     ? [...data.resources.Navigation.regions].sort((left, right) => left.id.localeCompare(right.id))
     : [];
@@ -229,6 +230,7 @@ function __tnInvokeSystem(options) {
   };
     const readColliderSize = (collider) => {
       if (Array.isArray(collider?.size)) return readVec3(collider.size, [1, 1, 1]);
+      if (Array.isArray(collider?.mesh?.bounds?.size)) return readVec3(collider.mesh.bounds.size, [1, 1, 1]);
       if (typeof collider?.radius === "number") {
         const diameter = collider.radius * 2;
         return [diameter, typeof collider.height === "number" ? collider.height : diameter, diameter];
@@ -239,7 +241,26 @@ function __tnInvokeSystem(options) {
       const size = readColliderSize(collider);
       return [size[0] / 2, size[1] / 2, size[2] / 2];
     };
-    const colliderOffset = (collider) => readVec3(collider && collider.center, [0, 0, 0]);
+    const colliderOffset = (collider) => readVec3(collider && (collider.center || collider.mesh?.bounds?.center), [0, 0, 0]);
+    const colliderBounds = (entity) => {
+      const transform = entity.components.Transform || {};
+      const collider = entity.components.Collider || {};
+      const rotation = readQuat(transform.rotation, [0, 0, 0, 1]);
+      const position = readVec3(transform.position, [0, 0, 0]);
+      const offset = rotateVec3(colliderOffset(collider), rotation);
+      const halfExtents = readColliderHalfExtents(collider);
+      const xAxis = rotateVec3([halfExtents[0], 0, 0], rotation);
+      const yAxis = rotateVec3([0, halfExtents[1], 0], rotation);
+      const zAxis = rotateVec3([0, 0, halfExtents[2]], rotation);
+      return {
+        center: addVec3(position, offset),
+        halfExtents: [
+          Math.abs(xAxis[0]) + Math.abs(yAxis[0]) + Math.abs(zAxis[0]),
+          Math.abs(xAxis[1]) + Math.abs(yAxis[1]) + Math.abs(zAxis[1]),
+          Math.abs(xAxis[2]) + Math.abs(yAxis[2]) + Math.abs(zAxis[2])
+        ]
+      };
+    };
     const queryHalfExtents = (shape) => {
       if (shape && shape.kind === "sphere") return [Number(shape.radius || 0), Number(shape.radius || 0), Number(shape.radius || 0)];
       if (shape && shape.kind === "box" && Array.isArray(shape.halfExtents)) return readVec3(shape.halfExtents, [0.5, 0.5, 0.5]);
@@ -252,12 +273,17 @@ function __tnInvokeSystem(options) {
       if (request.layer && Array.isArray(collider.mask) && !collider.mask.includes(request.layer)) return false;
       return true;
     };
+    const maskAccepts = (mask, layer) => !Array.isArray(mask) || mask.length === 0 || (typeof layer === "string" && mask.includes(layer));
+    const collidersInteract = (left, right) => maskAccepts(left.mask, right.layer) && maskAccepts(right.mask, left.layer);
     const boundsOverlap = (left, right) => (
       Math.abs(left.center[0] - right.center[0]) <= left.halfExtents[0] + right.halfExtents[0] &&
       Math.abs(left.center[1] - right.center[1]) <= left.halfExtents[1] + right.halfExtents[1] &&
       Math.abs(left.center[2] - right.center[2]) <= left.halfExtents[2] + right.halfExtents[2]
     );
   const intersectAabb = (request, center, size) => {
+    const directionLength = Math.hypot(...request.direction);
+    if (!Number.isFinite(directionLength) || directionLength <= 0.000001) return { hit: false };
+    const normalizedDirection = request.direction.map((value) => value / directionLength);
     const half = size.map((value) => value / 2);
     const min = [center[0] - half[0], center[1] - half[1], center[2] - half[2]];
     const max = [center[0] + half[0], center[1] + half[1], center[2] + half[2]];
@@ -266,7 +292,7 @@ function __tnInvokeSystem(options) {
     let normal = [0, 0, 0];
     for (let axis = 0; axis < 3; axis += 1) {
       const origin = request.origin[axis] ?? 0;
-      const direction = request.direction[axis] ?? 0;
+      const direction = normalizedDirection[axis] ?? 0;
       if (Math.abs(direction) < 0.000001) {
         if (origin < min[axis] || origin > max[axis]) return { hit: false };
         continue;
@@ -291,9 +317,9 @@ function __tnInvokeSystem(options) {
       hit: true,
       normal,
       point: [
-        round6(request.origin[0] + request.direction[0] * distance),
-        round6(request.origin[1] + request.direction[1] * distance),
-        round6(request.origin[2] + request.direction[2] * distance)
+        round6(request.origin[0] + normalizedDirection[0] * distance),
+        round6(request.origin[1] + normalizedDirection[1] * distance),
+        round6(request.origin[2] + normalizedDirection[2] * distance)
       ]
     };
   };
@@ -306,7 +332,8 @@ function __tnInvokeSystem(options) {
         const collider = entity.components.Collider;
         if (!transform || !collider) continue;
         if (!passesFilter(collider, request)) continue;
-        const hit = intersectAabb(request, readVec3(transform.position, [0, 0, 0]), readColliderSize(collider));
+        const bounds = colliderBounds(entity);
+        const hit = intersectAabb(request, bounds.center, bounds.halfExtents.map((value) => value * 2));
         if (hit.hit && (!best.hit || hit.distance < best.distance)) {
           best = { ...hit, entity: entity.id };
         }
@@ -323,10 +350,7 @@ function __tnInvokeSystem(options) {
             const transform = entity.components.Transform;
             const collider = entity.components.Collider;
             if (!transform || !collider || !passesFilter(collider, request)) return false;
-            return boundsOverlap(queryBounds, {
-              center: readVec3(transform.position, [0, 0, 0]),
-              halfExtents: readColliderHalfExtents(collider)
-            });
+            return boundsOverlap(queryBounds, colliderBounds(entity));
           })
           .map((entity) => entity.id)
           .sort()
@@ -341,10 +365,11 @@ function __tnInvokeSystem(options) {
         const transform = entity.components.Transform;
         const collider = entity.components.Collider;
         if (!transform || !collider || !passesFilter(collider, request)) continue;
-        const size = readColliderSize(collider);
+        const bounds = colliderBounds(entity);
+        const size = bounds.halfExtents.map((value) => value * 2);
         const hit = intersectAabb(
           request,
-          readVec3(transform.position, [0, 0, 0]),
+          bounds.center,
           [size[0] + queryExtents[0] * 2, size[1] + queryExtents[1] * 2, size[2] + queryExtents[2] * 2]
         );
         if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id < best.entity))) {
@@ -365,12 +390,11 @@ function __tnInvokeSystem(options) {
       const collider = entity.components.Collider;
       if (!collider) return undefined;
       return {
-        center: addVec3(
-          readVec3(entity.components.Transform && entity.components.Transform.position, [0, 0, 0]),
-          colliderOffset(collider)
-        ),
-        halfExtents: readColliderHalfExtents(collider),
+        center: colliderBounds(entity).center,
+        halfExtents: colliderBounds(entity).halfExtents,
         id: entity.id,
+        layer: collider.layer,
+        mask: collider.mask,
         slope: collider.slope ? {
           angle: Math.atan2(Number(collider.slope.rise || 0), Number(collider.slope.run || 1)) * 180 / Math.PI,
           axis: collider.slope.axis,
@@ -430,14 +454,14 @@ function __tnInvokeSystem(options) {
         }
       };
     };
-    const resolveHorizontalContact = (characterId, start, desired, characterHalfExtents, blockers, stepOffset, slopeLimit, pushPolicy) => {
+    const resolveHorizontalContact = (characterId, characterCollider, start, desired, characterHalfExtents, blockers, stepOffset, slopeLimit, pushPolicy) => {
       let position = desired;
       let characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
       const movement = [desired[0] - start[0], 0, desired[2] - start[2]];
       for (const blocker of blockers) {
         if (blocker.id === characterId) continue;
         const bounds = entityBounds(blocker);
-        if (!bounds || !characterPenetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) continue;
+        if (!bounds || !collidersInteract(characterCollider, blocker.components.Collider) || !characterPenetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) continue;
         if (bounds.slope && canWalkSlope(position, bounds, slopeLimit)) {
           position = [position[0], surfaceTop(position, bounds) + characterHalfExtents[1], position[2]];
           characterBounds = { center: position, halfExtents: characterHalfExtents, id: characterId };
@@ -459,13 +483,13 @@ function __tnInvokeSystem(options) {
       }
       return { position };
     };
-    const groundPosition = (characterId, position, characterHalfExtents, blockers, fixedDelta, slopeLimit) => {
+    const groundPosition = (characterId, characterCollider, position, characterHalfExtents, blockers, fixedDelta, slopeLimit) => {
       let ground;
       let groundTop;
       for (const blocker of blockers) {
         if (blocker.id === characterId) continue;
         const bounds = entityBounds(blocker);
-        if (!bounds || !coversXZ(position, bounds) || !canWalkSlope(position, bounds, slopeLimit)) continue;
+        if (!bounds || !collidersInteract(characterCollider, blocker.components.Collider) || !coversXZ(position, bounds) || !canWalkSlope(position, bounds, slopeLimit)) continue;
         const top = surfaceTop(position, bounds);
         const foot = position[1] - characterHalfExtents[1];
         if (top <= foot + 0.02 && (groundTop === undefined || top > groundTop)) {
@@ -502,10 +526,10 @@ function __tnInvokeSystem(options) {
       const halfExtents = readColliderHalfExtents(collider);
       const slopeLimit = Number(controller.slopeLimit ?? 45);
       const horizontal = controller.blocking === true
-        ? resolveHorizontalContact(entity.id, addVec3(start, offset), addVec3(desired, offset), halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit, controller.pushPolicy)
+        ? resolveHorizontalContact(entity.id, collider, addVec3(start, offset), addVec3(desired, offset), halfExtents, blockers, Number(controller.stepOffset ?? 0), slopeLimit, controller.pushPolicy)
         : { position: addVec3(desired, offset) };
       const ground = controller.grounding === "raycast"
-        ? groundPosition(entity.id, horizontal.position, halfExtents, blockers, fixedDelta, slopeLimit)
+        ? groundPosition(entity.id, collider, horizontal.position, halfExtents, blockers, fixedDelta, slopeLimit)
         : { position: horizontal.position };
       return {
         ...(horizontal.blockedBy === undefined ? {} : { blockedBy: horizontal.blockedBy }),
@@ -627,6 +651,30 @@ function __tnInvokeSystem(options) {
     };
     const animations = {};
     const normalizeEntityRef = (entity) => typeof entity === "string" ? entity : entity.id;
+    const physicsBodyCommand = (service, entity, value) => {
+      const entityId = normalizeEntityRef(entity);
+      const target = entityIndex.get(entityId);
+      const validVector = Array.isArray(value) && value.length === 3 && value.every((part) => Number.isFinite(part));
+      const result = !target
+        ? { accepted: false, entity: entityId, status: "missing" }
+        : !validVector
+          ? { accepted: false, entity: entityId, status: "invalid-vector" }
+          : target.components.RigidBody?.kind !== "dynamic"
+            ? { accepted: false, entity: entityId, status: "invalid-body" }
+            : { accepted: true, entity: entityId, status: "applied" };
+      effects.services.push({
+        service,
+        payload: {
+          request: {
+            entity: entityId,
+            fixedDelta: finiteNumber(data.time.fixedDelta, finiteNumber(data.time.fixedDt, 0.016)),
+            value: clone(value)
+          },
+          result
+        }
+      });
+      return clone(result);
+    };
     const roundScalar = (value) => Number(Number(value).toFixed(6));
     const positiveRuntimeNumber = (value, fallback) => Number.isFinite(Number(value)) && Number(value) > 0 ? Number(value) : fallback;
     const nonNegativeRuntimeNumber = (value, fallback) => Number.isFinite(Number(value)) && Number(value) >= 0 ? Number(value) : fallback;
@@ -992,7 +1040,7 @@ function __tnInvokeSystem(options) {
       return readVec3(source.components.Transform && source.components.Transform.position, [0, 0, 0]);
     },
     set position(position) {
-      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]) } });
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]) } });
     },
     positionOr(fallback) {
       return readVec3(source.components.Transform && source.components.Transform.position, fallback);
@@ -1001,13 +1049,13 @@ function __tnInvokeSystem(options) {
       return yawFromQuat(source.components.Transform && source.components.Transform.rotation, fallback);
     },
     setPosition(position) {
-      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]) } });
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]) } });
     },
     setRotation(rotation) {
-      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { rotation: readQuat(rotation, [0, 0, 0, 1]) } });
     },
     setPose(position, rotation) {
-      effects.patches.push({ entity: source.id, component: "Transform", value: { ...(source.components.Transform || {}), position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
     }
   });
   const createEntityView = (source) => ({
@@ -1025,10 +1073,10 @@ function __tnInvokeSystem(options) {
     },
     patch(component, value) {
       const name = normalize(component);
-      effects.patches.push({ entity: source.id, component: name, value: { ...(source.components[name] || {}), ...clone(value) } });
+      effects.patches.push({ entity: source.id, component: name, operation: "patch", value: clone(value) });
     },
     set(component, value) {
-      effects.patches.push({ entity: source.id, component: normalize(component), value: clone(value) });
+      effects.patches.push({ entity: source.id, component: normalize(component), operation: "set", value: clone(value) });
     },
     tags: Array.isArray(source.tags) ? [...source.tags] : [],
     transform() {
@@ -1384,6 +1432,18 @@ function __tnInvokeSystem(options) {
       }
       },
       physics: {
+        addForce(entity, force) {
+          return physicsBodyCommand("physics.addForce", entity, force);
+        },
+        addTorque(entity, torque) {
+          return physicsBodyCommand("physics.addTorque", entity, torque);
+        },
+        applyAngularImpulse(entity, impulse) {
+          return physicsBodyCommand("physics.applyAngularImpulse", entity, impulse);
+        },
+        applyImpulse(entity, impulse) {
+          return physicsBodyCommand("physics.applyImpulse", entity, impulse);
+        },
         overlap(payload) {
           const request = clone(payload);
           const result = overlap(request);
@@ -1407,6 +1467,12 @@ function __tnInvokeSystem(options) {
           const result = sensorSnapshot(request);
           effects.services.push({ service: "physics.sensor", payload: { request, result } });
           return result;
+        },
+        setAngularVelocity(entity, velocity) {
+          return physicsBodyCommand("physics.setAngularVelocity", entity, velocity);
+        },
+        setLinearVelocity(entity, velocity) {
+          return physicsBodyCommand("physics.setLinearVelocity", entity, velocity);
         }
       },
     navigation: {

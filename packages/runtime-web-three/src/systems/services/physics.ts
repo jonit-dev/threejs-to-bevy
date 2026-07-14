@@ -62,8 +62,7 @@ export function raycastPrimitive(world: IWorldIr, request: IRaycastRequest): IRa
     if (!passesFilter(collider, request)) {
       continue;
     }
-    const center = readVec3(transform.position, [0, 0, 0]);
-    const size = readColliderSize(collider);
+    const { center, size } = colliderBounds(transform, collider);
     const hit = intersectAabb(request, center, size);
     if (hit.hit && hit.distance > 0.000001 && (!best.hit || hit.distance < best.distance)) {
       best = { ...hit, entity: entity.id };
@@ -87,8 +86,8 @@ export function overlapPrimitive(world: IWorldIr, request: IOverlapRequest): IOv
         return false;
       }
       return boundsOverlap(queryBounds, {
-        center: readVec3(transform.position, [0, 0, 0]),
-        halfExtents: readColliderHalfExtents(collider),
+        center: colliderBounds(transform, collider).center,
+        halfExtents: colliderBounds(transform, collider).size.map((value) => value / 2) as [number, number, number],
       });
     })
     .map((entity) => entity.id)
@@ -109,8 +108,7 @@ export function shapeCastPrimitive(world: IWorldIr, request: IShapeCastRequest):
     if (!isRecord(transform) || !isRecord(collider) || !passesFilter(collider, request)) {
       continue;
     }
-    const center = readVec3(transform.position, [0, 0, 0]);
-    const targetSize = readColliderSize(collider);
+    const { center, size: targetSize } = colliderBounds(transform, collider);
     const expandedSize: [number, number, number] = [
       targetSize[0] + queryExtents[0] * 2,
       targetSize[1] + queryExtents[1] * 2,
@@ -129,6 +127,11 @@ function intersectAabb(
   center: [number, number, number],
   size: [number, number, number],
 ): Omit<Extract<IRaycastResult, { hit: true }>, "entity"> | { hit: false } {
+  const directionLength = Math.hypot(...request.direction);
+  if (!Number.isFinite(directionLength) || directionLength <= 0.000001) {
+    return { hit: false };
+  }
+  const direction = request.direction.map((value) => value / directionLength) as [number, number, number];
   const half = size.map((value) => value / 2) as [number, number, number];
   const min: [number, number, number] = [center[0] - half[0], center[1] - half[1], center[2] - half[2]];
   const max: [number, number, number] = [center[0] + half[0], center[1] + half[1], center[2] + half[2]];
@@ -138,20 +141,20 @@ function intersectAabb(
 
   for (let axis = 0; axis < 3; axis += 1) {
     const origin = tupleAt(request.origin, axis);
-    const direction = tupleAt(request.direction, axis);
+    const axisDirection = tupleAt(direction, axis);
     const axisMin = tupleAt(min, axis);
     const axisMax = tupleAt(max, axis);
-    if (Math.abs(direction) < 0.000001) {
+    if (Math.abs(axisDirection) < 0.000001) {
       if (origin < axisMin || origin > axisMax) {
         return { hit: false };
       }
       continue;
     }
 
-    const inv = 1 / direction;
+    const inv = 1 / axisDirection;
     let near = (axisMin - origin) * inv;
     let far = (axisMax - origin) * inv;
-    let axisNormal = normalForAxis(axis, direction > 0 ? -1 : 1);
+    let axisNormal = normalForAxis(axis, axisDirection > 0 ? -1 : 1);
     if (near > far) {
       [near, far] = [far, near];
     }
@@ -171,9 +174,9 @@ function intersectAabb(
     hit: true,
     normal,
     point: [
-      Number((request.origin[0] + request.direction[0] * distance).toFixed(6)),
-      Number((request.origin[1] + request.direction[1] * distance).toFixed(6)),
-      Number((request.origin[2] + request.direction[2] * distance).toFixed(6)),
+      Number((request.origin[0] + direction[0] * distance).toFixed(6)),
+      Number((request.origin[1] + direction[1] * distance).toFixed(6)),
+      Number((request.origin[2] + direction[2] * distance).toFixed(6)),
     ],
   };
 }
@@ -186,12 +189,53 @@ function readColliderSize(collider: Record<string, unknown>): [number, number, n
     const diameter = collider.radius * 2;
     return [diameter, typeof collider.height === "number" ? collider.height : diameter, diameter];
   }
+  if (isRecord(collider.mesh) && isRecord(collider.mesh.bounds) && Array.isArray(collider.mesh.bounds.size)) {
+    return readVec3(collider.mesh.bounds.size, [1, 1, 1]);
+  }
   return [1, 1, 1];
 }
 
 function readColliderHalfExtents(collider: Record<string, unknown>): [number, number, number] {
   const size = readColliderSize(collider);
   return [size[0] / 2, size[1] / 2, size[2] / 2];
+}
+
+function colliderBounds(transform: Record<string, unknown>, collider: Record<string, unknown>): { center: [number, number, number]; size: [number, number, number] } {
+  const position = readVec3(transform.position, [0, 0, 0]);
+  const rotation = readQuat(transform.rotation);
+  const meshCenter = isRecord(collider.mesh) && isRecord(collider.mesh.bounds) ? collider.mesh.bounds.center : undefined;
+  const offset = rotate(readVec3(collider.center ?? meshCenter, [0, 0, 0]), rotation);
+  const halfExtents = readColliderHalfExtents(collider);
+  const xAxis = rotate([halfExtents[0], 0, 0], rotation);
+  const yAxis = rotate([0, halfExtents[1], 0], rotation);
+  const zAxis = rotate([0, 0, halfExtents[2]], rotation);
+  return {
+    center: [position[0] + offset[0], position[1] + offset[1], position[2] + offset[2]],
+    size: [
+      2 * (Math.abs(xAxis[0]) + Math.abs(yAxis[0]) + Math.abs(zAxis[0])),
+      2 * (Math.abs(xAxis[1]) + Math.abs(yAxis[1]) + Math.abs(zAxis[1])),
+      2 * (Math.abs(xAxis[2]) + Math.abs(yAxis[2]) + Math.abs(zAxis[2])),
+    ],
+  };
+}
+
+function readQuat(value: unknown): [number, number, number, number] {
+  if (!Array.isArray(value)) {
+    return [0, 0, 0, 1];
+  }
+  return [numberAt(value, 0, 0), numberAt(value, 1, 0), numberAt(value, 2, 0), numberAt(value, 3, 1)];
+}
+
+function rotate([x, y, z]: [number, number, number], [qx, qy, qz, qw]: [number, number, number, number]): [number, number, number] {
+  const ix = qw * x + qy * z - qz * y;
+  const iy = qw * y + qz * x - qx * z;
+  const iz = qw * z + qx * y - qy * x;
+  const iw = -qx * x - qy * y - qz * z;
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ];
 }
 
 function queryHalfExtents(shape: IQueryShape): [number, number, number] {

@@ -492,7 +492,7 @@ export interface IColliderComponent {
   };
   friction?: number;
   height?: number;
-  kind: "box" | "capsule" | "cylinder" | "mesh" | "sphere";
+  kind: "box" | "capsule" | "mesh" | "sphere";
   layer?: string;
   mask?: readonly string[];
   material?: string;

@@ -4,6 +4,7 @@ import test from "node:test";
 import { boxCollider, BoxGeometry, capsuleCollider, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, rigidBody, Scene, sphereCollider } from "@threenative/sdk";
 
 import { sceneToWorld } from "./scene-to-world.js";
+import { deriveRequiredCapabilities } from "./capabilities.js";
 
 test("physics should emit player collider and kinematic body", () => {
   const scene = new Scene({ id: "scene" });
@@ -24,6 +25,67 @@ test("physics should emit player collider and kinematic body", () => {
 
   assert.deepEqual(entity?.components.RigidBody, { damping: 0.2, gravityScale: 0, kind: "kinematic", velocity: [1, 0, 0] });
   assert.deepEqual(entity?.components.Collider, { friction: 0.6, kind: "box", layer: "player", mask: ["world"], restitution: 0.1, size: [1, 2, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } });
+});
+
+test("physics should losslessly emit every SDK collider field and enroll sensor capabilities", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(
+    new Mesh({
+      geometry: new BoxGeometry(),
+      id: "sensor",
+      material: new MeshStandardMaterial(),
+      physics: physics({
+        collider: boxCollider([2, 3, 4], {
+          center: [0.25, 0.5, -0.25],
+          contact: { phases: ["begin", "stay", "end"] },
+          friction: 0.4,
+          layer: "sensor",
+          mask: ["player"],
+          material: "checkpoint",
+          restitution: 0.2,
+          sensor: {
+            interactionKind: "checkpoint",
+            occupantLimit: 4,
+            phases: ["enter", "stay", "exit"],
+            trackOccupants: true,
+          },
+          slope: { axis: "z", direction: -1, rise: 1, run: 3 },
+          trigger: true,
+        }),
+      }),
+    }),
+  );
+
+  const emitted = sceneToWorld(scene);
+  const collider = emitted.world.entities.find((item) => item.id === "sensor")?.components.Collider;
+
+  assert.deepEqual(collider, {
+    center: [0.25, 0.5, -0.25],
+    contact: { phases: ["begin", "stay", "end"] },
+    friction: 0.4,
+    kind: "box",
+    layer: "sensor",
+    mask: ["player"],
+    material: "checkpoint",
+    restitution: 0.2,
+    sensor: {
+      interactionKind: "checkpoint",
+      occupantLimit: 4,
+      phases: ["enter", "stay", "exit"],
+      trackOccupants: true,
+    },
+    size: [2, 3, 4],
+    slope: { axis: "z", direction: -1, rise: 1, run: 3 },
+    trigger: true,
+  });
+
+  const capabilities = deriveRequiredCapabilities({
+    assets: { assets: [], schema: "threenative.assets", version: "0.1.0" },
+    materials: { materials: [], schema: "threenative.materials", version: "0.1.0" },
+    world: emitted.world,
+  });
+  assert.ok(capabilities.physics?.includes("sensors"));
+  assert.ok(capabilities.physics?.includes("interaction-volumes"));
 });
 
 test("should emit solver material and sleep metadata when authored", () => {

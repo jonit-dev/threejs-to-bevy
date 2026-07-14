@@ -323,6 +323,41 @@ test("should log v7 physics query service calls", () => {
   });
 });
 
+test("should validate and queue physics body commands", () => {
+  const world = makeWorld();
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(player);
+  player.components.RigidBody = { kind: "dynamic", mass: 2 };
+  const { context, services } = createSystemContext(world, { delta: 0.25, fixedDelta: 0.25 });
+
+  assert.deepEqual(context.physics.applyImpulse("player", [2, 0, 0]), {
+    accepted: true,
+    entity: "player",
+    status: "applied",
+  });
+  assert.deepEqual(context.physics.addForce("missing", [1, 0, 0]), {
+    accepted: false,
+    entity: "missing",
+    status: "missing",
+  });
+  assert.deepEqual(services, [
+    {
+      payload: {
+        request: { entity: "player", fixedDelta: 0.25, value: [2, 0, 0] },
+        result: { accepted: true, entity: "player", status: "applied" },
+      },
+      service: "physics.applyImpulse",
+    },
+    {
+      payload: {
+        request: { entity: "missing", fixedDelta: 0.25, value: [1, 0, 0] },
+        result: { accepted: false, entity: "missing", status: "missing" },
+      },
+      service: "physics.addForce",
+    },
+  ]);
+});
+
 test("should log mesh picking service call", () => {
   const { context, services } = createSystemContext(makeWorld(), { assets: makeAssets(), delta: 0.016, fixedDelta: 0.016 });
 

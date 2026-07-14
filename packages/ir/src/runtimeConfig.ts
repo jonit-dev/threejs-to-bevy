@@ -231,6 +231,9 @@ export function resolveRenderLookProfile(
 export interface IRuntimeConfigIr {
   schema: "threenative.runtime-config";
   version: SchemaVersion;
+  physics?: {
+    gravity: readonly [number, number, number];
+  };
   renderer?: {
     antialias: RendererAntialiasMode;
     bloom?: {

@@ -3,6 +3,9 @@ import { SdkError, assertPositiveNumber } from "./errors.js";
 export type RendererAntialiasMode = "none" | "msaa2" | "msaa4" | "msaa8" | "fxaa" | "taa" | "smaa";
 
 export interface IRuntimeConfigDeclaration {
+  physics?: {
+    gravity: readonly [number, number, number];
+  };
   renderer: {
     antialias: RendererAntialiasMode;
     bloom?: {
@@ -41,6 +44,7 @@ export interface IRuntimeConfigDeclaration {
 export function defineRuntimeConfig(options: {
   fixedDelta?: number;
   paused?: boolean;
+  physics?: { gravity?: readonly [number, number, number] };
   renderer?: {
     antialias?: RendererAntialiasMode;
     bloom?: { enabled?: boolean; intensity?: number; threshold?: number };
@@ -70,6 +74,7 @@ export function defineRuntimeConfig(options: {
   const windowHeight = options.window?.height ?? 720;
   const windowWidth = options.window?.width ?? 1280;
   const windowTitle = options.window?.title;
+  const gravity = options.physics?.gravity ?? [0, -9.81, 0];
 
   assertPositiveNumber(fixedDelta, "TN_SDK_RUNTIME_FIXED_DELTA_INVALID", "Runtime fixedDelta");
   assertPositiveNumber(windowHeight, "TN_SDK_RUNTIME_WINDOW_INVALID", "Runtime window height");
@@ -79,6 +84,9 @@ export function defineRuntimeConfig(options: {
   assertNonNegativeFinite(dofAperture, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField aperture");
   assertPositiveNumber(dofFocusDistance, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField focusDistance");
   assertNonNegativeFinite(dofMaxBlur, "TN_SDK_RUNTIME_DOF_INVALID", "Runtime depthOfField maxBlur");
+  if (gravity.length !== 3 || gravity.some((value) => !Number.isFinite(value))) {
+    throw new SdkError("TN_SDK_RUNTIME_PHYSICS_GRAVITY_INVALID", "Runtime physics gravity must contain three finite numbers.");
+  }
   if (colorGrading?.exposure !== undefined) {
     assertPositiveNumber(colorGrading.exposure, "TN_SDK_RUNTIME_COLOR_GRADING_INVALID", "Runtime color grading exposure");
   }
@@ -102,6 +110,7 @@ export function defineRuntimeConfig(options: {
   }
 
   return {
+    ...(options.physics === undefined ? {} : { physics: { gravity: [...gravity] as [number, number, number] } }),
     renderer: {
       antialias: options.renderer?.antialias ?? "msaa4",
       ...(bloom === undefined

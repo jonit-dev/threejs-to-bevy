@@ -95,6 +95,119 @@ fn character_trace_should_stop_before_blocking_collider() {
 }
 
 #[test]
+fn character_trace_should_not_block_on_declared_sensors() {
+    let root = write_character_bundle();
+    let mut bundle = load_bundle(&root).expect("character bundle should load");
+    let wall = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("wall should exist");
+    wall.components
+        .collider
+        .as_mut()
+        .expect("wall collider should exist")
+        .sensor = Some(serde_json::json!({ "interactionKind": "zone" }));
+
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].resolved, [2.0, 1.05, 0.0]);
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn character_trace_should_apply_collision_masks_symmetrically() {
+    let root = write_character_bundle();
+    let mut bundle = load_bundle(&root).expect("character bundle should load");
+    for entity in &mut bundle.world.entities {
+        let collider = entity
+            .components
+            .collider
+            .as_mut()
+            .expect("fixture entities should have colliders");
+        match entity.id.as_str() {
+            "player" => {
+                collider.layer = Some("player".to_owned());
+                collider.mask = Some(vec!["terrain".to_owned(), "obstacle".to_owned()]);
+            }
+            "floor" => {
+                collider.layer = Some("terrain".to_owned());
+                collider.mask = Some(vec!["player".to_owned()]);
+            }
+            "wall" => {
+                collider.layer = Some("obstacle".to_owned());
+                collider.mask = Some(vec!["npc".to_owned()]);
+            }
+            _ => {}
+        }
+    }
+
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace[0].blocked_by, None);
+    assert_eq!(trace[0].ground_entity, Some("floor".to_owned()));
+    assert_eq!(trace[0].resolved, [2.0, 1.05, 0.0]);
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn character_trace_should_use_authored_mesh_collider_bounds() {
+    let root = write_character_bundle();
+    let mut bundle = load_bundle(&root).expect("character bundle should load");
+    let wall = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("wall should exist");
+    wall.components.collider = Some(
+        serde_json::from_value(serde_json::json!({
+            "kind": "mesh",
+            "mesh": {
+                "bounds": { "size": [4.0, 2.0, 1.0] },
+                "source": "mesh.wall",
+                "triangleCount": 12
+            }
+        }))
+        .expect("mesh collider should deserialize"),
+    );
+    wall.components
+        .transform
+        .as_mut()
+        .expect("wall transform should exist")
+        .position = Some([4.0, 1.0, 0.0]);
+
+    let trace = trace_character_controllers(
+        &bundle,
+        &[CharacterTraceAxis {
+            id: "MoveX",
+            value: 1.0,
+        }],
+        1.0,
+    );
+
+    assert_eq!(trace[0].blocked_by, Some("wall".to_owned()));
+    assert_eq!(trace[0].resolved, [0.0, 1.05, 0.0]);
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn character_trace_should_step_onto_low_blockers() {
     let root = write_character_bundle();
     write(

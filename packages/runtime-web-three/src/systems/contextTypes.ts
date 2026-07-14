@@ -1,5 +1,5 @@
 import type { IComponentReflectionRegistry, IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSystemQuery, IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult, IUiIr, IWorldEntity, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
+import type { IAssetsManifest, IIrSystemQuery, IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult, IUiIr, IWorldEntity, IrSystemService, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
 import type { IScriptAudioPlayOptions } from "../audio.js";
 import type { ICharacterTraceObservation } from "../character.js";
 import type { IUiActionEvent } from "../ui/inputBridge.js";
@@ -186,10 +186,16 @@ export interface ISystemContext {
     list(): ITaskDeclarationView[];
   };
   physics: {
+    addForce(entity: string, force: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    addTorque(entity: string, torque: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    applyImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
     overlap(options: IOverlapRequest): IOverlapResult;
     raycast(options: IRaycastRequest): IRaycastResult;
     sensor(options?: IPhysicsSensorRequest): IPhysicsSensorResult;
     shapeCast(options: IShapeCastRequest): IShapeCastResult;
+    setAngularVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    setLinearVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
   };
   navigation: {
     path(options: INavigationPathRequest): INavigationPathResult;
@@ -210,6 +216,12 @@ export interface ISystemContext {
     time: number;
   };
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
+}
+
+export interface IPhysicsBodyCommandResult {
+  accepted: boolean;
+  entity: string;
+  status: "applied" | "invalid-body" | "invalid-vector" | "missing";
 }
 
 export interface IScheduleAfterTicksOptions {
@@ -305,7 +317,7 @@ export interface IQueuedResourceWrite {
 
 export interface IQueuedServiceCall {
   payload: unknown;
-  service: "animation.play" | "animation.query" | "animation.stop" | "audio.play" | "audio.query" | "audio.stop" | "assets.load" | "camera.shake" | "character.move" | "effects.play" | "navigation.path" | "particles.burst" | "particles.clear" | "particles.emit" | "particles.play" | "particles.reset" | "particles.start" | "particles.stop" | "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" | "picking.mesh" | "picking.pointerRay" | "persistence.delete" | "persistence.listSlots" | "persistence.load" | "persistence.save" | "scene.change" | "scene.current" | "scene.loadAdditive" | "scene.pop" | "scene.push" | "scene.unload" | "sequences.play" | "sequences.query" | "sequences.stop" | "settings.export" | "settings.get" | "settings.import" | "settings.set" | "ui.actions" | "ui.activate" | "ui.focus" | "ui.read" | "ui.setDisabled" | "ui.setValue";
+  service: IrSystemService;
 }
 
 export interface ITweenCommandOptions {

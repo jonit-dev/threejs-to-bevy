@@ -802,6 +802,12 @@ type RaycastHit =
 Rules:
 
 - Query APIs are declared as service permissions such as `physics.raycast`.
+- Dynamic-body mutations are declared service permissions:
+  `physics.addForce`, `physics.addTorque`, `physics.applyImpulse`,
+  `physics.applyAngularImpulse`, `physics.setLinearVelocity`, and
+  `physics.setAngularVelocity`. They run before the current fixed solver step,
+  reject missing/non-dynamic bodies and non-finite vectors with stable result
+  statuses, and keep backend body handles private.
 - V7 query permissions add `physics.overlap` and `physics.shapeCast` for
   backend-neutral overlap and swept-shape checks. Query filters use portable
   layer names and masks, not backend bitsets or handles.

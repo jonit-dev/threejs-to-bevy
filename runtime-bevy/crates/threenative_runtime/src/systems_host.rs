@@ -322,6 +322,12 @@ impl NativeGameLoopState {
     }
 }
 
+impl Drop for NativeGameLoopState {
+    fn drop(&mut self) {
+        crate::physics::dispose_native_physics_runtime(&self.script_posed_entities);
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct NativeDelayedCommand {
     pub cancel_policy: String,
@@ -498,13 +504,11 @@ pub fn run_native_systems_frame_with_input(
             if state.write_audit_enabled {
                 record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
             }
-            frame_sensor_events =
-                sensor_event_values(&state.sensor_state.advance(bundle, state.tick));
             let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
             let startup_run = run_native_system_schedules_with_state(
                 bundle,
                 &["startup"],
-                time,
+                time.clone(),
                 options.input,
                 state.frame as u32,
                 state.tick,
@@ -549,6 +553,37 @@ pub fn run_native_systems_frame_with_input(
                     .iter()
                     .map(|observation| observation.entity.clone()),
             );
+            let time = loop_time_snapshot(
+                options.fixed_delta,
+                state.elapsed,
+                options.fixed_delta,
+                state.paused,
+            );
+            let fixed_run = run_native_system_schedules_with_state_filtered(
+                bundle,
+                &["fixedUpdate"],
+                time.clone(),
+                options.input,
+                state.frame as u32,
+                state.tick,
+                &frame_sensor_events,
+                state.write_audit_enabled.then_some(&mut state.write_ledger),
+                Some((
+                    &mut state.delayed_commands,
+                    &mut state.delayed_command_observations,
+                )),
+                Some(&mut state.lifecycle),
+                false,
+                Some(is_pre_physics_system),
+                false,
+            )?;
+            state
+                .script_posed_entities
+                .extend(fixed_run.transform_patches.iter().cloned());
+            run.transform_patches
+                .extend(fixed_run.transform_patches.iter().cloned());
+            merge_emitted_events(&mut run.emitted_events, fixed_run.emitted_events);
+            run.logs.extend(fixed_run.logs);
             let before_physics = snapshot_bundle_transforms(bundle);
             step_physics(bundle, options.fixed_delta, &state.script_posed_entities);
             if state.write_audit_enabled {
@@ -583,13 +618,7 @@ pub fn run_native_systems_frame_with_input(
                 Some(&mut state.presentation),
                 state.write_audit_enabled.then_some(&mut state.write_ledger),
             );
-            let time = loop_time_snapshot(
-                options.fixed_delta,
-                state.elapsed,
-                options.fixed_delta,
-                state.paused,
-            );
-            let fixed_run = run_native_system_schedules_with_state(
+            let post_physics_run = run_native_system_schedules_with_state_filtered(
                 bundle,
                 &["fixedUpdate"],
                 time,
@@ -604,14 +633,16 @@ pub fn run_native_systems_frame_with_input(
                 )),
                 Some(&mut state.lifecycle),
                 false,
+                Some(is_post_physics_system),
+                true,
             )?;
             state
                 .script_posed_entities
-                .extend(fixed_run.transform_patches.iter().cloned());
+                .extend(post_physics_run.transform_patches.iter().cloned());
             run.transform_patches
-                .extend(fixed_run.transform_patches.iter().cloned());
-            merge_emitted_events(&mut run.emitted_events, fixed_run.emitted_events);
-            run.logs.extend(fixed_run.logs);
+                .extend(post_physics_run.transform_patches.iter().cloned());
+            merge_emitted_events(&mut run.emitted_events, post_physics_run.emitted_events);
+            run.logs.extend(post_physics_run.logs);
             record_fixed_transform_step(state, before_fixed, snapshot_bundle_transforms(bundle));
             state.tick += 1;
             state.accumulator -= options.fixed_delta;
@@ -893,7 +924,65 @@ fn run_native_system_schedules(
     )
 }
 
+const PRE_PHYSICS_BODY_SERVICES: &[&str] = &[
+    "character.move",
+    "physics.addForce",
+    "physics.addTorque",
+    "physics.applyAngularImpulse",
+    "physics.applyImpulse",
+    "physics.setAngularVelocity",
+    "physics.setLinearVelocity",
+];
+
+fn is_pre_physics_system(system: &SystemIr) -> bool {
+    system
+        .writes
+        .iter()
+        .any(|component| component == "RigidBody" || component == "Transform")
+        || system
+            .services
+            .iter()
+            .any(|service| PRE_PHYSICS_BODY_SERVICES.contains(&service.as_str()))
+}
+
+fn is_post_physics_system(system: &SystemIr) -> bool {
+    !is_pre_physics_system(system)
+}
+
 fn run_native_system_schedules_with_state(
+    bundle: &mut LoadedBundle,
+    schedules: &[&str],
+    time: NativeSystemTimeSnapshot,
+    input: Option<&NativeInputState>,
+    frame: u32,
+    tick: u64,
+    sensor_events: &[Value],
+    write_ledger: Option<&mut NativeRuntimeWriteLedger>,
+    delayed_state: Option<(
+        &mut Vec<NativeDelayedCommand>,
+        &mut Vec<NativeDelayedCommandObservation>,
+    )>,
+    lifecycle_state: Option<&mut NativeEntityLifecycleRuntimeState>,
+    capture_write_audit: bool,
+) -> Result<NativeSystemsHostRun, SystemsHostError> {
+    run_native_system_schedules_with_state_filtered(
+        bundle,
+        schedules,
+        time,
+        input,
+        frame,
+        tick,
+        sensor_events,
+        write_ledger,
+        delayed_state,
+        lifecycle_state,
+        capture_write_audit,
+        None,
+        true,
+    )
+}
+
+fn run_native_system_schedules_with_state_filtered(
     bundle: &mut LoadedBundle,
     schedules: &[&str],
     time: NativeSystemTimeSnapshot,
@@ -908,6 +997,8 @@ fn run_native_system_schedules_with_state(
     )>,
     mut lifecycle_state: Option<&mut NativeEntityLifecycleRuntimeState>,
     capture_write_audit: bool,
+    system_filter: Option<fn(&SystemIr) -> bool>,
+    complete_fixed_schedule: bool,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
@@ -948,7 +1039,10 @@ fn run_native_system_schedules_with_state(
 
     with_script_host(&script_path, |context| {
         for schedule in schedules {
-            let scheduled_systems = ordered_systems_for_schedule(&systems, schedule);
+            let scheduled_systems = ordered_systems_for_schedule(&systems, schedule)
+                .into_iter()
+                .filter(|system| system_filter.is_none_or(|filter| filter(system)))
+                .collect::<Vec<_>>();
             let tracked_components = scheduled_systems
                 .iter()
                 .flat_map(|system| system.queries.iter())
@@ -999,7 +1093,8 @@ fn run_native_system_schedules_with_state(
                 resource_observations.extend(system_observations);
                 transform_patches.extend(applied.transform_patches);
             }
-            if *schedule == "fixedUpdate"
+            if complete_fixed_schedule
+                && *schedule == "fixedUpdate"
                 && let Some((pending, observations)) = delayed_state.as_mut()
             {
                 let ready = advance_native_delayed_commands(bundle, pending, observations, tick);

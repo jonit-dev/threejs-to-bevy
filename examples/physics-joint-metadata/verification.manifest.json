@@ -1,0 +1,5 @@
+{
+  "bundle": "packages/ir/fixtures/conformance/physics-joint-metadata/game.bundle",
+  "gate": "physics-self-verification",
+  "scene": "physics-joint-metadata"
+}

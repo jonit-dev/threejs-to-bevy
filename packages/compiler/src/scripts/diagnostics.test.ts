@@ -221,6 +221,22 @@ test("should reject undeclared v7 physics and picking query services", () => {
   );
 });
 
+test("should derive physics sensor diagnostics from the promoted service registry", () => {
+  const missing = diagnosePortableSystem({
+    services: [],
+    source: "(ctx) => ctx.physics.sensor({ sensor: 'checkpoint' })",
+    systemName: "missingSensorService",
+  });
+  assert.deepEqual(missing.map((diagnostic) => diagnostic.path), ["systems/missingSensorService/services/physics.sensor"]);
+
+  const declared = diagnosePortableSystem({
+    services: ["physics.sensor"],
+    source: "(ctx) => ctx.physics.sensor({ sensor: 'checkpoint' })",
+    systemName: "declaredSensorService",
+  });
+  assert.deepEqual(declared, []);
+});
+
 test("should reject undeclared asset load service while allowing metadata lookup", () => {
   const diagnostics = diagnosePortableSystem({
     services: [],

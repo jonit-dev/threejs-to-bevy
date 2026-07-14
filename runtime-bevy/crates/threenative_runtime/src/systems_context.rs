@@ -930,19 +930,10 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
                 "size": camera.size,
             })
         }),
-        "Collider" => components.collider.as_ref().map(|collider| {
-            json!({
-                "center": collider.center,
-                "kind": collider.kind,
-                "height": collider.height,
-                "layer": collider.layer,
-                "mask": collider.mask,
-                "radius": collider.radius,
-                "sensor": collider.sensor,
-                "size": collider.size,
-                "trigger": collider.trigger,
-            })
-        }),
+        "Collider" => components
+            .collider
+            .as_ref()
+            .and_then(|collider| serde_json::to_value(collider).ok()),
         "Hierarchy" => components
             .hierarchy
             .as_ref()
@@ -983,15 +974,10 @@ pub fn component_value(components: &EntityComponents, component: &str) -> Option
                 "visible": renderer.visible,
             })
         }),
-        "RigidBody" => components.rigid_body.as_ref().map(|rigid_body| {
-            json!({
-                "damping": rigid_body.damping,
-                "gravityScale": rigid_body.gravity_scale,
-                "kind": rigid_body.kind,
-                "mass": rigid_body.mass,
-                "velocity": rigid_body.velocity,
-            })
-        }),
+        "RigidBody" => components
+            .rigid_body
+            .as_ref()
+            .and_then(|rigid_body| serde_json::to_value(rigid_body).ok()),
         "Transform" => components.transform.as_ref().map(transform_value),
         "StateMachine" => components.state_machine.as_ref().map(|machine| {
             json!({
@@ -1073,6 +1059,16 @@ fn service_readable_components(service: &str) -> Vec<String> {
             "Transform".to_owned(),
         ],
         "physics.overlap" | "physics.raycast" | "physics.sensor" | "physics.shapeCast" => vec![
+            "Collider".to_owned(),
+            "RigidBody".to_owned(),
+            "Transform".to_owned(),
+        ],
+        "physics.addForce"
+        | "physics.addTorque"
+        | "physics.applyAngularImpulse"
+        | "physics.applyImpulse"
+        | "physics.setAngularVelocity"
+        | "physics.setLinearVelocity" => vec![
             "Collider".to_owned(),
             "RigidBody".to_owned(),
             "Transform".to_owned(),

@@ -49,9 +49,15 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `persistence.listSlots` | `ctx.persistence.listSlots` | implemented | implemented | Save-slot listing. |
 | `persistence.load` | `ctx.persistence.load` | implemented | implemented | Declared save-slot load. |
 | `persistence.save` | `ctx.persistence.save` | implemented | implemented | Declared save-slot save. |
+| `physics.addForce` | `ctx.physics.addForce` | implemented | implemented | Add a force to a dynamic body for the current fixed tick. |
+| `physics.addTorque` | `ctx.physics.addTorque` | implemented | implemented | Add torque to a dynamic body for the current fixed tick. |
+| `physics.applyAngularImpulse` | `ctx.physics.applyAngularImpulse` | implemented | implemented | Apply an angular impulse to a dynamic body. |
+| `physics.applyImpulse` | `ctx.physics.applyImpulse` | implemented | implemented | Apply an impulse to a dynamic body. |
 | `physics.overlap` | `ctx.physics.overlap` | implemented | implemented | Primitive overlap query. |
 | `physics.raycast` | `ctx.physics.raycast` | implemented | implemented | Primitive raycast query. |
 | `physics.sensor` | `ctx.physics.sensor` | implemented | implemented | Primitive sensor snapshot. |
+| `physics.setAngularVelocity` | `ctx.physics.setAngularVelocity` | implemented | implemented | Set a dynamic body's angular velocity. |
+| `physics.setLinearVelocity` | `ctx.physics.setLinearVelocity` | implemented | implemented | Set a dynamic body's linear velocity. |
 | `physics.shapeCast` | `ctx.physics.shapeCast` | implemented | implemented | Primitive shape cast query. |
 | `picking.mesh` | `ctx.picking.mesh` | implemented | implemented | Mesh picking query. |
 | `picking.pointerRay` | `ctx.picking.pointerRay` | implemented | implemented | Pointer ray construction. |

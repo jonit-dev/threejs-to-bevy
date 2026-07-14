@@ -976,10 +976,8 @@ function colliderDebugMesh(
     return new THREE.Mesh(new THREE.SphereGeometry(collider.radius ?? 0.5, 24, 12), material);
   }
   if (collider.kind === "capsule") {
-    return new THREE.Mesh(new THREE.CapsuleGeometry(collider.radius ?? 0.5, collider.height ?? 1, 8, 16), material);
-  }
-  if (collider.kind === "cylinder") {
-    return new THREE.Mesh(new THREE.CylinderGeometry(collider.radius ?? 0.5, collider.radius ?? 0.5, collider.height ?? 1, 24), material);
+    const radius = collider.radius ?? 0.5;
+    return new THREE.Mesh(new THREE.CapsuleGeometry(radius, Math.max(0, (collider.height ?? 1) - radius * 2), 8, 16), material);
   }
   if (collider.kind === "mesh" && collider.mesh !== undefined) {
     const [x, y, z] = collider.mesh.bounds.size;

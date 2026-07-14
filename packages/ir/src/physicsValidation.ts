@@ -24,8 +24,10 @@ const V9_MAX_SENSOR_OCCUPANTS = 128;
 const V9_MAX_CHARACTER_PUSH_MASS = 1_000_000;
 const V9_MAX_CHARACTER_PUSH_IMPULSE = 1000;
 const PORTABLE_FILTER_NAME = /^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/;
+const COLLIDER_FIELDS = new Set(["center", "contact", "friction", "height", "kind", "layer", "mask", "material", "mesh", "radius", "restitution", "sensor", "size", "slope", "trigger"]);
+const RIGID_BODY_FIELDS = new Set(["angularVelocity", "ccd", "damping", "enabledRotations", "enabledTranslations", "gravityScale", "inverseMass", "kind", "mass", "sleepThreshold", "solverIterations", "velocity"]);
 
-export function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, entityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+export function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, entityIds: Set<string>, rigidBodyEntityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
   const collider = entity.components.Collider as unknown;
   const body = entity.components.RigidBody as unknown;
   const joint = entity.components.PhysicsJoint as unknown;
@@ -60,6 +62,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const jointRecord = isRecord(joint) ? joint : undefined;
 
   if (colliderRecord !== undefined) {
+    validatePhysicsObjectFields(colliderRecord, COLLIDER_FIELDS, "Collider", `${path}/components/Collider`, "TN_IR_PHYSICS_COLLIDER_FIELD_UNSUPPORTED", diagnostics);
     if (!["box", "capsule", "mesh", "sphere"].includes(colliderRecord.kind as string)) {
       diagnostics.push({
         code: "TN_IR_PHYSICS_COLLIDER_UNSUPPORTED",
@@ -112,6 +115,20 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
     if (colliderRecord.kind === "capsule") {
       validatePositiveFinite(colliderRecord.radius, `${path}/components/Collider/radius`, "TN_IR_PHYSICS_COLLIDER_RADIUS_INVALID", diagnostics);
       validatePositiveFinite(colliderRecord.height, `${path}/components/Collider/height`, "TN_IR_PHYSICS_COLLIDER_HEIGHT_INVALID", diagnostics);
+      if (
+        typeof colliderRecord.radius === "number"
+        && Number.isFinite(colliderRecord.radius)
+        && typeof colliderRecord.height === "number"
+        && Number.isFinite(colliderRecord.height)
+        && colliderRecord.height < colliderRecord.radius * 2
+      ) {
+        diagnostics.push({
+          code: "TN_IR_PHYSICS_COLLIDER_HEIGHT_INVALID",
+          message: "Collider.height is the total capsule height and must be at least 2 * Collider.radius.",
+          path: `${path}/components/Collider/height`,
+          severity: "error",
+        });
+      }
       validateCharacterCapsuleCenter(entity, colliderRecord, `${path}/components/Collider`, diagnostics);
     }
     if (colliderRecord.kind === "mesh" && colliderRecord.trigger === true) {
@@ -150,6 +167,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
     });
   }
   if (bodyRecord !== undefined) {
+    validatePhysicsObjectFields(bodyRecord, RIGID_BODY_FIELDS, "RigidBody", `${path}/components/RigidBody`, "TN_IR_PHYSICS_BODY_FIELD_UNSUPPORTED", diagnostics);
     validateUnsupportedPhysicsSolverFields(bodyRecord, `${path}/components/RigidBody`, diagnostics);
     validateCcd(bodyRecord.ccd, `${path}/components/RigidBody/ccd`, diagnostics);
   }
@@ -199,9 +217,64 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
       path: `${path}/components/Collider`,
     });
   }
-  if (jointRecord !== undefined) {
-    validatePhysicsJoint(jointRecord, `${path}/components/PhysicsJoint`, entity.id, entityIds, diagnostics);
+  if ((bodyRecord !== undefined || colliderRecord !== undefined) && entity.components.Transform === undefined) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_TRANSFORM_MISSING",
+      message: `Physics entity '${entity.id}' must have a Transform with a finite pose.`,
+      path: `${path}/components/Transform`,
+      severity: "error",
+      suggestion: "Add a Transform component with a finite position and optional rotation/scale.",
+    });
   }
+  if (jointRecord !== undefined) {
+    validatePhysicsJoint(jointRecord, `${path}/components/PhysicsJoint`, entity.id, entityIds, rigidBodyEntityIds, diagnostics);
+  }
+}
+
+function validatePhysicsObjectFields(
+  value: Record<string, unknown>,
+  allowed: ReadonlySet<string>,
+  component: "Collider" | "RigidBody",
+  path: string,
+  code: "TN_IR_PHYSICS_BODY_FIELD_UNSUPPORTED" | "TN_IR_PHYSICS_COLLIDER_FIELD_UNSUPPORTED",
+  diagnostics: IIrDiagnostic[],
+): void {
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key) && !isPhysicsFieldHandledBySpecificDiagnostic(component, key)) {
+      diagnostics.push({
+        code,
+        message: `${component} uses unsupported field '${key}'.`,
+        path: `${path}/${key}`,
+        severity: "error",
+        suggestion: `Remove '${key}' or use a documented ${component} field.`,
+      });
+    }
+  }
+}
+
+function isPhysicsFieldHandledBySpecificDiagnostic(component: "Collider" | "RigidBody", key: string): boolean {
+  if (/(?:rapier|bevy|native|engine).*(?:handle|body|collider)|(?:handle|rawHandle)$/i.test(key)) {
+    return true;
+  }
+  if (component === "RigidBody") {
+    return ["backendSolver", "constraint", "constraints", "joint", "joints", "nondeterministic", "randomSeed", "solverRandomSeed"].includes(key);
+  }
+  return [
+    "backendCallback",
+    "bevyCollisionGroups",
+    "collisionGroup",
+    "collisionGroups",
+    "collisionMask",
+    "contactCallback",
+    "contactGroups",
+    "filterCallback",
+    "groupBits",
+    "maskBits",
+    "onCollision",
+    "onContact",
+    "onTrigger",
+    "rapierCollisionGroups",
+  ].includes(key);
 }
 
 function validateCharacterCapsuleCenter(entity: IWorldIr["entities"][number], collider: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -286,7 +359,7 @@ function validateCcd(value: unknown, path: string, diagnostics: IIrDiagnostic[])
   }
 }
 
-function validatePhysicsJoint(joint: Record<string, unknown>, path: string, entityId: string, entityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+function validatePhysicsJoint(joint: Record<string, unknown>, path: string, entityId: string, entityIds: Set<string>, rigidBodyEntityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
   for (const key of Object.keys(joint)) {
     if (!["anchor", "axis", "connectedEntity", "damping", "kind", "limits", "stiffness", "travel"].includes(key)) {
       diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_FIELD_UNSUPPORTED", message: `PhysicsJoint uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
@@ -302,6 +375,14 @@ function validatePhysicsJoint(joint: Record<string, unknown>, path: string, enti
       path: `${path}/connectedEntity`,
       severity: "error",
       suggestion: "Connect suspension, hinge, or slider joints to another rigid-body entity in the same world.",
+    });
+  } else if (!rigidBodyEntityIds.has(joint.connectedEntity)) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_JOINT_TARGET_BODY_MISSING",
+      message: "PhysicsJoint.connectedEntity must reference an entity with a RigidBody.",
+      path: `${path}/connectedEntity`,
+      severity: "error",
+      suggestion: "Add a RigidBody to the connected entity or select another rigid-body entity.",
     });
   }
   if (joint.anchor !== undefined) {

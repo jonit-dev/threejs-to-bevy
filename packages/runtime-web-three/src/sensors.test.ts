@@ -28,6 +28,46 @@ test("physics sensor runtime should emit enter once and stay on later ticks", ()
   assert.deepEqual(runtime.advance(world, { fixedDelta: 1, tick: 3 }).map((event) => event.phase), ["exit"]);
 });
 
+test("physics sensors should ignore transform-only occupants", () => {
+  const world = sensorWorld();
+  world.entities.push({ id: "camera", components: { Transform: { position: [0, 0, 0] } } });
+
+  const events = tracePhysicsSensors(world, { fixedDelta: 0, steps: 1 });
+
+  assert.deepEqual(events.flatMap((event) => event.occupants), ["player"]);
+});
+
+test("physics sensors should apply rotated local collider centers", () => {
+  const world = sensorWorld();
+  const zone = world.entities.find((entity) => entity.id === "zone");
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(zone?.components.Collider);
+  assert.ok(zone.components.Transform);
+  assert.ok(player?.components.Transform);
+  zone.components.Collider.center = [1, 0, 0];
+  zone.components.Collider.size = [0.5, 0.5, 0.5];
+  zone.components.Transform.rotation = [0, 0, Math.SQRT1_2, Math.SQRT1_2];
+  player.components.RigidBody = { kind: "kinematic" };
+  player.components.Transform.position = [0, 1, 0];
+
+  const events = tracePhysicsSensors(world, { fixedDelta: 0, steps: 1 });
+
+  assert.deepEqual(events.map((event) => [event.phase, event.occupants]), [["enter", ["player"]]]);
+});
+
+test("physics sensor startup sampling should not reuse the fixed tick cache", () => {
+  const world = sensorWorld();
+  const runtime = createPhysicsSensorRuntimeState();
+  const player = world.entities.find((entity) => entity.id === "player");
+  assert.ok(player?.components.Transform);
+  player.components.Transform.position = [3, 0, 0];
+  assert.deepEqual(runtime.advance(world, { phase: "startup", tick: 0 }), []);
+
+  player.components.Transform.position = [0, 0, 0];
+
+  assert.deepEqual(runtime.advance(world, { phase: "fixed", tick: 0 }).map((event) => event.phase), ["enter"]);
+});
+
 function sensorWorld(): IWorldIr {
   return {
     schema: "threenative.world" as const,

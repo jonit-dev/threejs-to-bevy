@@ -26,6 +26,7 @@ fn systems_effects_should_apply_declared_transform_patch() {
         patches: vec![NativeSystemPatchEffect {
             entity: "player".to_owned(),
             component: "Transform".to_owned(),
+            operation: None,
             value: json!({ "position": [2, 3, 4] }),
         }],
         ..Default::default()
@@ -59,6 +60,7 @@ fn systems_effects_should_report_transform_patch_entities() {
         patches: vec![NativeSystemPatchEffect {
             entity: "player".to_owned(),
             component: "Transform".to_owned(),
+            operation: None,
             value: json!({ "position": [2, 3, 4] }),
         }],
         ..Default::default()
@@ -85,6 +87,7 @@ fn systems_effects_should_reject_undeclared_write() {
         patches: vec![NativeSystemPatchEffect {
             entity: "player".to_owned(),
             component: "Health".to_owned(),
+            operation: None,
             value: json!({ "value": 99 }),
         }],
         ..Default::default()
@@ -113,6 +116,7 @@ fn systems_effects_should_apply_declared_custom_component_patch() {
         patches: vec![NativeSystemPatchEffect {
             entity: "player".to_owned(),
             component: "Health".to_owned(),
+            operation: None,
             value: json!({ "value": 75, "max": 100 }),
         }],
         ..Default::default()
@@ -149,16 +153,19 @@ fn systems_effects_should_patch_builtin_components_into_typed_fields() {
             NativeSystemPatchEffect {
                 entity: "player".to_owned(),
                 component: "Collider".to_owned(),
+                operation: None,
                 value: json!({ "kind": "box", "size": [1, 2, 3] }),
             },
             NativeSystemPatchEffect {
                 entity: "player".to_owned(),
                 component: "RigidBody".to_owned(),
+                operation: None,
                 value: json!({ "kind": "kinematic", "velocity": [4, 0, 0] }),
             },
             NativeSystemPatchEffect {
                 entity: "player".to_owned(),
                 component: "Visibility".to_owned(),
+                operation: None,
                 value: json!({ "visible": false }),
             },
         ],
@@ -193,6 +200,144 @@ fn systems_effects_should_patch_builtin_components_into_typed_fields() {
 }
 
 #[test]
+fn systems_effects_should_preserve_lossless_physics_patches_and_replace_on_set() {
+    let root = write_bundle("lossless-physics-set-patch");
+    let mut bundle = load_bundle(&root).expect("bundle should load");
+    let mut system = bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0]
+        .clone();
+    system.writes.push("Collider".to_owned());
+    system.writes.push("RigidBody".to_owned());
+    let entity = &mut bundle.world.entities[0];
+    entity.components.collider = serde_json::from_value(json!({
+        "center": [0, 0.9, 0],
+        "contact": { "phases": ["begin", "stay", "end"] },
+        "friction": 0.4,
+        "height": 1.8,
+        "kind": "capsule",
+        "layer": "player",
+        "mask": ["world"],
+        "material": "boots",
+        "radius": 0.25,
+        "restitution": 0.2,
+        "sensor": { "interactionKind": "zone", "trackOccupants": true },
+        "slope": { "axis": "x", "direction": 1, "rise": 1, "run": 2 },
+        "trigger": false
+    }))
+    .expect("collider fixture should deserialize");
+    entity.components.rigid_body = serde_json::from_value(json!({
+        "angularVelocity": [0, 1, 0],
+        "ccd": { "enabled": true, "maxSubsteps": 4, "mode": "linear" },
+        "damping": 0.1,
+        "enabledRotations": [false, true, false],
+        "enabledTranslations": [true, false, true],
+        "gravityScale": 0.5,
+        "inverseMass": 0.5,
+        "kind": "dynamic",
+        "mass": 2,
+        "sleepThreshold": 0.02,
+        "solverIterations": 12,
+        "velocity": [1, 2, 3]
+    }))
+    .expect("body fixture should deserialize");
+    let original_collider =
+        serde_json::to_value(entity.components.collider.as_ref().unwrap()).unwrap();
+    let original_body =
+        serde_json::to_value(entity.components.rigid_body.as_ref().unwrap()).unwrap();
+
+    let patch_effects = NativeSystemEffects {
+        patches: vec![
+            NativeSystemPatchEffect {
+                component: "Collider".to_owned(),
+                entity: "player".to_owned(),
+                operation: Some("patch".to_owned()),
+                value: json!({ "friction": 0.8 }),
+            },
+            NativeSystemPatchEffect {
+                component: "RigidBody".to_owned(),
+                entity: "player".to_owned(),
+                operation: Some("patch".to_owned()),
+                value: json!({ "velocity": [4, 5, 6] }),
+            },
+        ],
+        ..Default::default()
+    };
+    apply_system_effects(&mut bundle, &system, &patch_effects, 1, 1)
+        .expect("physics patches should apply");
+
+    let collider = bundle.world.entities[0]
+        .components
+        .collider
+        .as_ref()
+        .unwrap();
+    let body = bundle.world.entities[0]
+        .components
+        .rigid_body
+        .as_ref()
+        .unwrap();
+    assert!((collider.friction.unwrap() - 0.8).abs() < 0.000001);
+    assert_eq!(body.velocity, Some([4.0, 5.0, 6.0]));
+    let mut actual_collider = serde_json::to_value(collider).unwrap();
+    let mut unchanged_collider = original_collider;
+    actual_collider.as_object_mut().unwrap().remove("friction");
+    unchanged_collider
+        .as_object_mut()
+        .unwrap()
+        .remove("friction");
+    assert_eq!(actual_collider, unchanged_collider);
+    let mut actual_body = serde_json::to_value(body).unwrap();
+    let mut unchanged_body = original_body;
+    actual_body.as_object_mut().unwrap().remove("velocity");
+    unchanged_body.as_object_mut().unwrap().remove("velocity");
+    assert_eq!(actual_body, unchanged_body);
+
+    let set_effects = NativeSystemEffects {
+        patches: vec![
+            NativeSystemPatchEffect {
+                component: "Collider".to_owned(),
+                entity: "player".to_owned(),
+                operation: Some("set".to_owned()),
+                value: json!({ "kind": "sphere", "radius": 1 }),
+            },
+            NativeSystemPatchEffect {
+                component: "RigidBody".to_owned(),
+                entity: "player".to_owned(),
+                operation: Some("set".to_owned()),
+                value: json!({ "kind": "dynamic" }),
+            },
+        ],
+        ..Default::default()
+    };
+    apply_system_effects(&mut bundle, &system, &set_effects, 2, 2)
+        .expect("physics replacements should apply");
+
+    let collider = bundle.world.entities[0]
+        .components
+        .collider
+        .as_ref()
+        .unwrap();
+    let body = bundle.world.entities[0]
+        .components
+        .rigid_body
+        .as_ref()
+        .unwrap();
+    assert_eq!(collider.kind, "sphere");
+    assert_eq!(collider.radius, Some(1.0));
+    assert!(collider.contact.is_none());
+    assert!(collider.material.is_none());
+    assert!(collider.sensor.is_none());
+    assert_eq!(body.kind, "dynamic");
+    assert_eq!(body.angular_velocity, None);
+    assert!(body.ccd.is_none());
+    assert_eq!(body.enabled_rotations, None);
+    assert_eq!(body.inverse_mass, None);
+    assert_eq!(body.solver_iterations, None);
+}
+
+#[test]
 fn systems_effects_should_merge_partial_mesh_renderer_patches() {
     let root = write_bundle("apply-mesh-renderer-partial");
     let mut bundle = load_bundle(&root).expect("bundle should load");
@@ -215,6 +360,7 @@ fn systems_effects_should_merge_partial_mesh_renderer_patches() {
         patches: vec![NativeSystemPatchEffect {
             entity: "player".to_owned(),
             component: "MeshRenderer".to_owned(),
+            operation: None,
             value: json!({ "visible": false }),
         }],
         ..Default::default()

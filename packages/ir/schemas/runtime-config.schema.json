@@ -7,6 +7,19 @@
   "properties": {
     "schema": { "const": "threenative.runtime-config" },
     "version": { "const": "0.1.0" },
+    "physics": {
+      "type": "object",
+      "required": ["gravity"],
+      "additionalProperties": false,
+      "properties": {
+        "gravity": {
+          "type": "array",
+          "items": { "type": "number" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      }
+    },
     "renderer": {
       "type": "object",
       "required": ["antialias"],

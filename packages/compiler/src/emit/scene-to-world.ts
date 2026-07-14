@@ -328,40 +328,18 @@ function emitCameraComponent(child: IObjectLike, kind: "orthographic" | "perspec
 
 function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Record<string, unknown>): void {
   if (physics?.body !== undefined) {
-    components.RigidBody = {
-      kind: physics.body.kind,
-      ...(physics.body.angularVelocity === undefined ? {} : { angularVelocity: physics.body.angularVelocity }),
-      ...(physics.body.ccd === undefined ? {} : { ccd: physics.body.ccd }),
-      ...(physics.body.damping === undefined ? {} : { damping: physics.body.damping }),
-      ...(physics.body.enabledRotations === undefined ? {} : { enabledRotations: physics.body.enabledRotations }),
-      ...(physics.body.enabledTranslations === undefined ? {} : { enabledTranslations: physics.body.enabledTranslations }),
-      ...(physics.body.gravityScale === undefined ? {} : { gravityScale: physics.body.gravityScale }),
-      ...(physics.body.inverseMass === undefined ? {} : { inverseMass: physics.body.inverseMass }),
-      ...(physics.body.mass === undefined ? {} : { mass: physics.body.mass }),
-      ...(physics.body.sleepThreshold === undefined ? {} : { sleepThreshold: physics.body.sleepThreshold }),
-      ...(physics.body.solverIterations === undefined ? {} : { solverIterations: physics.body.solverIterations }),
-      ...(physics.body.velocity === undefined ? {} : { velocity: physics.body.velocity }),
-    };
+    components.RigidBody = definedFields(physics.body);
   }
   if (physics?.collider !== undefined) {
-    components.Collider = {
-      kind: physics.collider.kind,
-      ...(physics.collider.center === undefined ? {} : { center: physics.collider.center }),
-      ...(physics.collider.size === undefined ? {} : { size: physics.collider.size }),
-      ...(physics.collider.radius === undefined ? {} : { radius: physics.collider.radius }),
-      ...(physics.collider.height === undefined ? {} : { height: physics.collider.height }),
-      ...(physics.collider.layer === undefined ? {} : { layer: physics.collider.layer }),
-      ...(physics.collider.mask === undefined ? {} : { mask: physics.collider.mask }),
-      ...(physics.collider.mesh === undefined ? {} : { mesh: physics.collider.mesh }),
-      ...(physics.collider.friction === undefined ? {} : { friction: physics.collider.friction }),
-      ...(physics.collider.restitution === undefined ? {} : { restitution: physics.collider.restitution }),
-      ...(physics.collider.slope === undefined ? {} : { slope: physics.collider.slope }),
-      ...(physics.collider.trigger === undefined ? {} : { trigger: physics.collider.trigger }),
-    };
+    components.Collider = definedFields(physics.collider);
   }
   if (physics?.joint !== undefined) {
-    components.PhysicsJoint = physics.joint;
+    components.PhysicsJoint = definedFields(physics.joint);
   }
+}
+
+function definedFields<T extends object>(value: T): Partial<T> {
+  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as Partial<T>;
 }
 
 function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly number[] | undefined {

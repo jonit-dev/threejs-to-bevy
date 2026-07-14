@@ -208,6 +208,55 @@ test("physics should reject invalid primitive collider dimensions", async () => 
   }
 });
 
+test("physics should reject capsule totals shorter than their diameter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-capsule-total-height-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "world.ir.json", physicsWorld([
+      { Collider: { height: 1, kind: "capsule", radius: 0.6 }, RigidBody: { kind: "dynamic" } },
+    ]));
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_PHYSICS_COLLIDER_HEIGHT_INVALID")?.path, "world.ir.json/entities/0/components/Collider/height");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("physics should reject unknown body and collider fields and a missing Transform", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-closed-components-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    const world = physicsWorld([
+      {
+        Collider: { kind: "box", sensr: {}, size: [1, 1, 1] },
+        RigidBody: { ccd: { enabled: true, maxSubstep: 2, mode: "linear" }, gravityscale: 1, kind: "dynamic" },
+      },
+    ]) as { entities: Array<{ components: Record<string, unknown> }> };
+    delete world.entities[0]?.components.Transform;
+    await writeJson(root, "world.ir.json", world);
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics
+        .filter((diagnostic) => diagnostic.code.endsWith("FIELD_UNSUPPORTED") || diagnostic.code === "TN_IR_PHYSICS_TRANSFORM_MISSING")
+        .map((diagnostic) => ({ code: diagnostic.code, path: diagnostic.path })),
+      [
+        { code: "TN_IR_PHYSICS_COLLIDER_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/Collider/sensr" },
+        { code: "TN_IR_PHYSICS_BODY_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/RigidBody/gravityscale" },
+        { code: "TN_IR_PHYSICS_CCD_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/RigidBody/ccd/maxSubstep" },
+        { code: "TN_IR_PHYSICS_TRANSFORM_MISSING", path: "world.ir.json/entities/0/components/Transform" },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("physics should accept portable v7 collider filters and box slopes", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-physics-v7-filters-"));
   try {

@@ -79,7 +79,7 @@ export function traceCharacterControllers(world: IWorldIr, input: ICharacterTrac
   const fixedDelta = input.fixedDelta ?? 1;
   const axes = input.axes ?? {};
   const blockers = world.entities
-    .filter((entity) => entity.components.Collider !== undefined && entity.components.Collider.trigger !== true)
+    .filter((entity) => entity.components.Collider !== undefined && !isSensor(entity.components.Collider))
     .sort((left, right) => left.id.localeCompare(right.id));
 
   return world.entities
@@ -168,7 +168,7 @@ function resolveHorizontalContact(
       continue;
     }
     const bounds = entityBounds(blocker);
-    if (bounds === undefined || !penetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) {
+    if (bounds === undefined || !collidersInteract(characterBoundsInfo, bounds) || !penetrates(characterBounds, bounds) || !isSideBlocker(position, characterHalfExtents, bounds)) {
       continue;
     }
     if (bounds.slope !== undefined && isWalkableSlope(bounds, slopeLimit)) {
@@ -256,7 +256,7 @@ function groundPosition(
       continue;
     }
     const bounds = entityBounds(blocker);
-    if (bounds === undefined || !coversXZ(position, bounds)) {
+    if (bounds === undefined || !collidersInteract(characterBoundsInfo, bounds) || !coversXZ(position, bounds)) {
       continue;
     }
     if (!canWalkSlope(position, bounds, slopeLimit)) {
@@ -315,11 +315,30 @@ function halfExtents(collider: IColliderComponent): Vec3 {
     const radius = collider.radius ?? 0.5;
     return [radius, radius, radius];
   }
-  if (collider.kind === "capsule" || collider.kind === "cylinder") {
+  if (collider.kind === "capsule") {
     const radius = collider.radius ?? 0.5;
     return [radius, (collider.height ?? 1) / 2, radius];
   }
+  if (collider.kind === "mesh" && collider.mesh !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.size;
+    return [x / 2, y / 2, z / 2];
+  }
   return [0.5, 0.5, 0.5];
+}
+
+function isSensor(collider: IColliderComponent): boolean {
+  return collider.trigger === true || collider.sensor !== undefined;
+}
+
+function collidersInteract(left: IBounds | undefined, right: IBounds): boolean {
+  if (left === undefined) {
+    return true;
+  }
+  return maskAccepts(left.mask, right.layer) && maskAccepts(right.mask, left.layer);
+}
+
+function maskAccepts(mask: readonly string[] | undefined, layer: string | undefined): boolean {
+  return mask === undefined || mask.length === 0 || (layer !== undefined && mask.includes(layer));
 }
 
 function penetrates(left: IBounds, right: IBounds): boolean {

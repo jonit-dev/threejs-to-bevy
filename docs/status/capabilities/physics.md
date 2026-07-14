@@ -28,13 +28,30 @@ Current support:
   rotation-axis constraints, and sensor-only collider semantics. The web
   adapter retains its Rapier world across unchanged fixed steps and explicitly
   frees it with the runtime lifecycle; focused coverage guards topology reuse.
+- Compiler emission and native script mutations preserve the complete accepted
+  Collider, RigidBody, and PhysicsJoint contract. Collider-only entities become
+  adapter-private fixed bodies, authored mass/inverse mass and capsule total
+  height map consistently, and native live contacts publish enter/stay/exit.
+- Portable runtime gravity and live hinge, slider, and suspension constraints
+  are consumed by both Rapier adapters. Joint targets must resolve to another
+  rigid-body entity before bundle acceptance.
+- Fixed-update scripts execute before physics and may declare bounded dynamic
+  body services for force, torque, linear/angular impulse, and linear/angular
+  velocity. Authored mutations wake native sleeping bodies and affect the
+  current solver tick.
+- Sensor, character, and query snapshots share local/mesh center, rotation,
+  symmetric filter, deterministic 16-layer, and normalized-direction rules.
+  Query geometry remains a conservative snapshot implementation rather than a
+  retained Rapier query-pipeline claim; proof-solver differential depth is also
+  a current hardening boundary.
 - `pnpm verify:focused verify:feature-parity-physics-native` aggregates the
   existing physics self-verification and animation/physics residual gates. It
   requires matching web/native material, stack, character-contact, query, and
   bounded mesh traces with compact stable-order sidecars, plus sloped grounding,
-  bounded rebake, off-mesh-link, and small-crowd evidence. Full constraint
-  solving, vehicles, tire/drivetrain models, soft bodies, ragdolls, arbitrary
-  triangle narrow phase, and public backend handles remain explicit boundaries.
+  bounded rebake, off-mesh-link, and small-crowd evidence. Constraints beyond
+  the promoted hinge/slider/suspension slice, vehicles, tire/drivetrain models,
+  soft bodies, ragdolls, arbitrary triangle narrow phase, compound colliders,
+  and public backend handles remain explicit boundaries.
 
 Verification:
 

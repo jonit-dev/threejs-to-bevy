@@ -51,13 +51,100 @@ fn systems_services_should_raycast_primitive_floor() {
         })
     );
     assert_eq!(
-        serde_json::to_value(result).expect("raycast result should serialize"),
+        serde_json::to_value(&result).expect("raycast result should serialize"),
         json!({
             "distance": 0.95,
             "entity": "floor",
             "hit": true,
             "normal": [0.0, 1.0, 0.0],
             "point": [0.0, 0.05, 0.0],
+        })
+    );
+
+    let non_unit = raycast_primitive(
+        &snapshot,
+        &NativeRaycastRequest {
+            direction: [0.0, -2.0, 0.0],
+            ignore: vec!["player".to_owned()],
+            layer: None,
+            layers: Vec::new(),
+            mask: Vec::new(),
+            max_distance: 2.0,
+            origin: [0.0, 1.0, 0.0],
+        },
+    );
+    assert_eq!(non_unit, result);
+    assert_eq!(
+        raycast_primitive(
+            &snapshot,
+            &NativeRaycastRequest {
+                direction: [0.0, 0.0, 0.0],
+                ignore: Vec::new(),
+                layer: None,
+                layers: Vec::new(),
+                mask: Vec::new(),
+                max_distance: 2.0,
+                origin: [0.0, 1.0, 0.0],
+            },
+        ),
+        NativeRaycastResult::Miss(threenative_runtime::systems_services::NativeRaycastMiss {
+            hit: false,
+        })
+    );
+}
+
+#[test]
+fn systems_services_should_query_mesh_bounds_and_local_centers() {
+    let root = write_bundle("mesh-collider-bounds");
+    let bundle = load_bundle(&root).expect("bundle should load");
+    let system = &bundle
+        .systems
+        .as_ref()
+        .expect("systems should load")
+        .systems[0];
+    let mut snapshot = build_system_context_snapshot(&bundle, system, time());
+    let crate_entity = snapshot
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "crate")
+        .expect("crate should exist");
+    crate_entity.components.insert(
+        "Collider".to_owned(),
+        json!({
+            "kind": "mesh",
+            "mesh": {
+                "bounds": { "center": [2.0, 0.0, 0.0], "size": [4.0, 2.0, 2.0] },
+                "source": "mesh.crate",
+                "triangleCount": 12
+            }
+        }),
+    );
+    crate_entity.components.insert(
+        "Transform".to_owned(),
+        json!({ "position": [10.0, 0.0, 0.0], "rotation": [0.0, 0.0, 0.0, 1.0] }),
+    );
+
+    let result = raycast_primitive(
+        &snapshot,
+        &NativeRaycastRequest {
+            direction: [2.0, 0.0, 0.0],
+            ignore: vec!["floor".to_owned(), "player".to_owned()],
+            layer: None,
+            layers: Vec::new(),
+            mask: Vec::new(),
+            max_distance: 11.0,
+            origin: [0.0, 0.0, 0.0],
+        },
+    );
+
+    assert_eq!(
+        result,
+        NativeRaycastResult::Hit(NativeRaycastHit {
+            distance: 10.0,
+            entity: "crate".to_owned(),
+            hit: true,
+            normal: [-1.0, 0.0, 0.0],
+            point: [10.0, 0.0, 0.0],
         })
     );
 }

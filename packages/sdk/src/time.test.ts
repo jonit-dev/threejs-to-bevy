@@ -10,6 +10,13 @@ test("defineRuntimeConfig should reject invalid time and window values", () => {
   assert.throws(() => defineRuntimeConfig({ window: { height: 0 } }), SdkError);
   assert.throws(() => defineRuntimeConfig({ window: { width: Number.POSITIVE_INFINITY } }), SdkError);
   assert.throws(() => defineRuntimeConfig({ window: { title: "" } }), SdkError);
+  assert.throws(() => defineRuntimeConfig({ physics: { gravity: [0, Number.NaN, 0] } }), SdkError);
+});
+
+test("defineRuntimeConfig should preserve portable world gravity", () => {
+  assert.deepEqual(defineRuntimeConfig({ physics: { gravity: [0, -3.71, 1] } }).physics, {
+    gravity: [0, -3.71, 1],
+  });
 });
 
 test("defineRuntimeConfig should reject invalid bloom values", () => {

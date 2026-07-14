@@ -1446,6 +1446,42 @@ test("should reject render layers beyond the shared 32-layer capacity", async ()
   }
 });
 
+test("should reject physics layers beyond the shared 16-layer capacity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-layer-capacity-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{
+        id: "layered-collider",
+        components: {
+          Collider: {
+            kind: "box",
+            layer: "layer-00",
+            mask: Array.from({ length: 16 }, (_, index) => `layer-${String(index + 1).padStart(2, "0")}`),
+            size: [1, 1, 1],
+          },
+          Transform: { position: [0, 0, 0] },
+        },
+      }],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_PHYSICS_LAYER_CAPACITY_EXCEEDED").map((diagnostic) => diagnostic.message),
+      ["World declares 17 physics layers, exceeding the portable limit of 16."],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject invalid light shadow bias values", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-light-shadow-bias-invalid-"));
   try {
@@ -1688,6 +1724,37 @@ test("should reject unbounded dynamic mesh collider and invalid joint metadata",
     ]) {
       assert.equal(diagnostics.some(([code, path]) => code === expected[0] && path === expected[1]), true);
     }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject a physics joint connected to an entity without a rigid body", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-joint-target-body-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "anchor", components: { Transform: { position: [0, 0, 0] } } },
+        {
+          id: "door",
+          components: {
+            Collider: { kind: "box", size: [1, 2, 0.2] },
+            PhysicsJoint: { connectedEntity: "anchor", kind: "hinge" },
+            RigidBody: { kind: "dynamic" },
+            Transform: { position: [0, 1, 0] },
+          },
+        },
+      ],
+      resources: {},
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_PHYSICS_JOINT_TARGET_BODY_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

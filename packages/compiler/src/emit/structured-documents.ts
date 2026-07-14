@@ -36,6 +36,7 @@ export function readStructuredRuntimeConfig(documents: readonly IAuthoringDocume
   return {
     schema: IR_SCHEMA_IDS.runtimeConfig,
     version: IR_VERSION,
+    ...(isRecord(data.physics) ? { physics: cloneRecord(data.physics) as unknown as IRuntimeConfigIr["physics"] } : {}),
     ...(isRecord(data.renderer) ? { renderer: cloneRecord(data.renderer) as IRuntimeConfigIr["renderer"] } : {}),
     time: cloneRecord(data.time) as IRuntimeConfigIr["time"],
     window: cloneRecord(data.window) as IRuntimeConfigIr["window"],

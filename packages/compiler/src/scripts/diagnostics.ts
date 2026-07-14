@@ -1,4 +1,5 @@
 import { prescriptiveFixForCode } from "@threenative/authoring";
+import { SCRIPT_HOST_SERVICE_MATRIX, type IrSystemService } from "@threenative/ir";
 
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { maskStringAndCommentText } from "./lexical.js";
@@ -247,18 +248,7 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
     }
   }
 
-  for (const service of [
-    ...uniqueMatches(source.source, /\bphysics\.overlap\s*\(/g).map(() => "physics.overlap"),
-    ...uniqueMatches(source.source, /\bphysics\.raycast\s*\(/g).map(() => "physics.raycast"),
-    ...uniqueMatches(source.source, /\bphysics\.shapeCast\s*\(/g).map(() => "physics.shapeCast"),
-    ...uniqueMatches(source.source, /\bpicking\.mesh\s*\(/g).map(() => "picking.mesh"),
-    ...uniqueMatches(source.source, /\bpicking\.pointerRay\s*\(/g).map(() => "picking.pointerRay"),
-    ...uniqueMatches(source.source, /\banimation\.play\s*\(/g).map(() => "animation.play"),
-    ...uniqueMatches(source.source, /\banimation\.query\s*\(/g).map(() => "animation.query"),
-    ...uniqueMatches(source.source, /\banimation\.stop\s*\(/g).map(() => "animation.stop"),
-    ...uniqueMatches(source.source, /\bassets\.load\s*\(/g).map(() => "assets.load"),
-    ...uniqueMatches(source.source, /\bcharacter\.move\s*\(/g).map(() => "character.move"),
-  ]) {
+  for (const service of usedScriptServices(source.source)) {
     if (!services.has(service)) {
       diagnostics.push({
         code: "TN_SCRIPT_SERVICE_UNDECLARED",
@@ -285,6 +275,22 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
   }
 
   return diagnostics;
+}
+
+function usedScriptServices(source: string): IrSystemService[] {
+  const used = new Set<IrSystemService>();
+  for (const entry of SCRIPT_HOST_SERVICE_MATRIX) {
+    const contextCall = entry.context.replace(/^ctx\./, "");
+    const pattern = new RegExp(`\\b${escapeRegExp(contextCall)}\\s*\\(`);
+    if (pattern.test(source)) {
+      used.add(entry.service);
+    }
+  }
+  return [...used].sort((left, right) => left.localeCompare(right));
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function uniqueMatches(source: string, pattern: RegExp): string[] {

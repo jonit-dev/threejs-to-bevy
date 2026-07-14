@@ -99,6 +99,9 @@ test("physics should create primitive solver material and body metadata", () => 
 test("physics should reject invalid portable filter names", () => {
   assertSdkCode(() => boxCollider([1, 1, 1], { layer: "" }), "TN_SDK_PHYSICS_FILTER_INVALID");
   assertSdkCode(() => boxCollider([1, 1, 1], { mask: ["world", ""] }), "TN_SDK_PHYSICS_FILTER_INVALID");
+  assertSdkCode(() => boxCollider([1, 1, 1], { mask: Array.from({ length: 33 }, (_, index) => `layer.${index}`) }), "TN_SDK_PHYSICS_FILTER_INVALID");
+  assertSdkCode(() => boxCollider([1, 1, 1], { contact: { phases: [] } }), "TN_SDK_PHYSICS_FILTER_INVALID");
+  assertSdkCode(() => boxCollider([1, 1, 1], { sensor: { phases: [] } }), "TN_SDK_PHYSICS_SENSOR_INVALID");
   assertSdkCode(() => boxCollider([1, 1, 1], { slope: { axis: "y" as "x", direction: 1, rise: 1, run: 1 } }), "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID");
   assertSdkCode(() => boxCollider([1, 1, 1], { slope: { axis: "x", direction: 0 as 1, rise: 1, run: 1 } }), "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID");
   assertSdkCode(() => boxCollider([1, 1, 1], { slope: { axis: "x", direction: 1, rise: 0, run: 1 } }), "TN_SDK_PHYSICS_COLLIDER_SLOPE_INVALID");
@@ -114,6 +117,7 @@ test("physics should reject invalid primitive solver metadata", () => {
   assertSdkCode(() => rigidBody("dynamic", { solverIterations: 65 }), "TN_SDK_PHYSICS_BODY_INVALID_SOLVER_ITERATIONS");
   assertSdkCode(() => boxCollider([1, 1, 1], { friction: -1 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_FRICTION");
   assertSdkCode(() => boxCollider([1, 1, 1], { restitution: 1.5 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_RESTITUTION");
+  assertSdkCode(() => capsuleCollider(0.6, 1), "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT");
 });
 
 function assertSdkCode(fn: () => unknown, code: string): void {

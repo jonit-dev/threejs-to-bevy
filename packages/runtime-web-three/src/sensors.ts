@@ -17,6 +17,7 @@ export interface IPhysicsSensorEvent {
 
 export interface IPhysicsSensorAdvanceOptions {
   fixedDelta?: number;
+  phase?: "fixed" | "startup";
   tick: number;
 }
 
@@ -61,17 +62,15 @@ export function tracePhysicsSensors(world: IWorldIr, input: IPhysicsSensorTraceI
 
 export function createPhysicsSensorRuntimeState(): IPhysicsSensorRuntimeState {
   const occupancy = new Map<string, string[]>();
-  let lastTick: number | undefined;
+  let lastKey: string | undefined;
   let lastEvents: IPhysicsSensorEvent[] = [];
 
   return {
     advance(world, options) {
       const tick = Number.isFinite(options.tick) ? Math.max(0, Math.floor(options.tick)) : 0;
-      if (lastTick === tick) {
+      const key = `${options.phase ?? "fixed"}:${tick}`;
+      if (lastKey === key) {
         return cloneEvents(lastEvents);
-      }
-      if (lastTick !== undefined && tick < lastTick) {
-        occupancy.clear();
       }
 
       const entities = world.entities.map(cloneEntity);
@@ -94,7 +93,7 @@ export function createPhysicsSensorRuntimeState(): IPhysicsSensorRuntimeState {
         occupancy.set(sensor.id, current.occupants);
       }
 
-      lastTick = tick;
+      lastKey = key;
       lastEvents = events.sort((left, right) => left.sensor.localeCompare(right.sensor) || left.phase.localeCompare(right.phase));
       return cloneEvents(lastEvents);
     },
@@ -103,7 +102,7 @@ export function createPhysicsSensorRuntimeState(): IPhysicsSensorRuntimeState {
     },
     reset() {
       occupancy.clear();
-      lastTick = undefined;
+      lastKey = undefined;
       lastEvents = [];
     },
   };
@@ -120,7 +119,7 @@ function occupantsFor(sensor: IBounds, entities: readonly IWorldEntity[]): { fil
     if (bounds === undefined || !overlaps(sensor, bounds)) {
       continue;
     }
-    if (!passesFilter(sensor, bounds)) {
+    if (!passesFilter(sensor, bounds) || !passesFilter(bounds, sensor)) {
       filteredOut.push(entity.id);
       continue;
     }
@@ -181,8 +180,8 @@ function entityBounds(entity: IWorldEntity): IBounds | undefined {
     return undefined;
   }
   return {
-    center: vector(entity.components.Transform?.position),
-    halfExtents: halfExtents(collider),
+    center: add(vector(entity.components.Transform?.position), rotate(colliderOffset(collider), entity.components.Transform?.rotation)),
+    halfExtents: rotatedHalfExtents(halfExtents(collider), entity.components.Transform?.rotation),
     id: entity.id,
     layer: collider.layer,
     mask: collider.mask ?? [],
@@ -199,8 +198,51 @@ function halfExtents(collider: IColliderComponent): Vec3 {
     const radius = collider.radius ?? 0.5;
     return [radius, radius, radius];
   }
+  if (collider.kind === "mesh" && collider.mesh !== undefined) {
+    const [x, y, z] = collider.mesh.bounds.size;
+    return [x / 2, y / 2, z / 2];
+  }
   const radius = collider.radius ?? 0.5;
   return [radius, (collider.height ?? 1) / 2, radius];
+}
+
+function colliderOffset(collider: IColliderComponent): Vec3 {
+  return vector(collider.center ?? (collider.kind === "mesh" ? collider.mesh?.bounds.center : undefined));
+}
+
+function rotatedHalfExtents(halfExtents: Vec3, rotation: readonly number[] | undefined): Vec3 {
+  if (rotation === undefined) {
+    return halfExtents;
+  }
+  const xAxis = rotate([halfExtents[0], 0, 0], rotation);
+  const yAxis = rotate([0, halfExtents[1], 0], rotation);
+  const zAxis = rotate([0, 0, halfExtents[2]], rotation);
+  return [
+    Math.abs(xAxis[0]) + Math.abs(yAxis[0]) + Math.abs(zAxis[0]),
+    Math.abs(xAxis[1]) + Math.abs(yAxis[1]) + Math.abs(zAxis[1]),
+    Math.abs(xAxis[2]) + Math.abs(yAxis[2]) + Math.abs(zAxis[2]),
+  ];
+}
+
+function rotate(value: Vec3, rotation: readonly number[] | undefined): Vec3 {
+  if (rotation === undefined) {
+    return value;
+  }
+  const [x, y, z] = value;
+  const [qx = 0, qy = 0, qz = 0, qw = 1] = rotation;
+  const ix = qw * x + qy * z - qz * y;
+  const iy = qw * y + qz * x - qx * z;
+  const iz = qw * z + qx * y - qy * x;
+  const iw = -qx * x - qy * y - qz * z;
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ];
+}
+
+function add(left: Vec3, right: Vec3): Vec3 {
+  return [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
 }
 
 function overlaps(left: IBounds, right: IBounds): boolean {

@@ -169,7 +169,7 @@ pub fn trace_character_controllers_with_input(
                 .components
                 .collider
                 .as_ref()
-                .is_some_and(|collider| !collider.trigger.unwrap_or(false))
+                .is_some_and(|collider| !is_sensor(collider))
         })
         .collect::<Vec<_>>();
     blockers.sort_by(|left, right| left.id.cmp(&right.id));
@@ -329,7 +329,8 @@ fn resolve_horizontal_contact(
         let Some(bounds) = entity_bounds(blocker) else {
             continue;
         };
-        if !penetrates(&character_bounds, &bounds)
+        if !colliders_interact(character_bounds_info, &bounds)
+            || !penetrates(&character_bounds, &bounds)
             || !is_side_blocker(position, character_half_extents, &bounds)
         {
             continue;
@@ -481,7 +482,7 @@ fn ground_position(
         let Some(bounds) = entity_bounds(blocker) else {
             continue;
         };
-        if !covers_xz(position, &bounds) {
+        if !colliders_interact(character_bounds_info, &bounds) || !covers_xz(position, &bounds) {
             continue;
         }
         if !can_walk_slope(position, &bounds, slope_limit) {
@@ -577,12 +578,31 @@ fn half_extents(collider: &ColliderComponent) -> [f32; 3] {
             let radius = collider.radius.unwrap_or(0.5);
             [radius, radius, radius]
         }
-        "capsule" | "cylinder" => {
+        "capsule" => {
             let radius = collider.radius.unwrap_or(0.5);
             [radius, collider.height.unwrap_or(1.0) / 2.0, radius]
         }
+        "mesh" => collider.mesh.as_ref().map_or([0.5, 0.5, 0.5], |mesh| {
+            let size = mesh.bounds.size;
+            [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0]
+        }),
         _ => [0.5, 0.5, 0.5],
     }
+}
+
+fn is_sensor(collider: &ColliderComponent) -> bool {
+    collider.trigger.unwrap_or(false) || collider.sensor.is_some()
+}
+
+fn colliders_interact(left: Option<&Bounds>, right: &Bounds) -> bool {
+    left.is_none_or(|left| {
+        mask_accepts(&left.mask, right.layer.as_deref())
+            && mask_accepts(&right.mask, left.layer.as_deref())
+    })
+}
+
+fn mask_accepts(mask: &[String], layer: Option<&str>) -> bool {
+    mask.is_empty() || layer.is_some_and(|layer| mask.iter().any(|candidate| candidate == layer))
 }
 
 fn penetrates(left: &Bounds, right: &Bounds) -> bool {

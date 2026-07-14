@@ -56,6 +56,25 @@ export function validateRuntimeConfig(config: unknown, path: string, diagnostics
   if (isRecord(renderer)) {
     validateUnsupportedRendererFields(renderer, `${path}/renderer`, diagnostics);
   }
+
+  const physics = config.physics;
+  if (physics !== undefined) {
+    if (!isRecord(physics)) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_PHYSICS_INVALID",
+        message: "Runtime physics config must be an object.",
+        path: `${path}/physics`,
+        severity: "error",
+      });
+    } else if (!Array.isArray(physics.gravity) || physics.gravity.length !== 3 || physics.gravity.some((value) => typeof value !== "number" || !Number.isFinite(value))) {
+      diagnostics.push({
+        code: "TN_IR_RUNTIME_PHYSICS_GRAVITY_INVALID",
+        message: "Runtime physics gravity must contain three finite numbers.",
+        path: `${path}/physics/gravity`,
+        severity: "error",
+      });
+    }
+  }
   if (isRecord(renderer) && !["none", "msaa2", "msaa4", "msaa8", "fxaa", "taa", "smaa"].includes(renderer.antialias as string)) {
     diagnostics.push({
       code: "TN_IR_RUNTIME_RENDERER_ANTIALIAS_INVALID",

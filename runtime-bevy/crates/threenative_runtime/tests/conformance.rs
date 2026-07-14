@@ -270,6 +270,7 @@ fn should_report_promoted_render_look_profile() {
     fixture.bundle.runtime_config = Some(RuntimeConfigIr {
         schema: "threenative.runtime-config".to_owned(),
         version: "0.1.0".to_owned(),
+        physics: None,
         renderer: Some(RuntimeRendererConfig {
             antialias: "msaa4".to_owned(),
             ambient_occlusion: Some(RuntimeRendererAmbientOcclusionConfig {

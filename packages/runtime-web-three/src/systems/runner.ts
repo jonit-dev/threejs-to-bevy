@@ -47,6 +47,7 @@ export async function runSchedule(options: {
   runtimeState?: ReturnType<typeof webSystemRuntimeStateFor>;
   schedule: IrSystemSchedule;
   systems: ISystemsIr;
+  systemFilter?: (system: IIrSystemDeclaration) => boolean;
   tick?: number;
   ui?: IUiIr;
   uiState?: IRenderedUi;
@@ -55,7 +56,8 @@ export async function runSchedule(options: {
   const diagnostics: IRuntimeDiagnostic[] = [];
   const entries: ISystemEffectLogEntry[] = [];
   const resourceObservations: IResourceObservation[] = [];
-  const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule);
+  const scheduledSystems = orderedSystemsForSchedule(options.systems.systems, options.schedule)
+    .filter((system) => options.systemFilter?.(system) ?? true);
   const componentDiff = createComponentDiffCache();
   const persistence = options.localData === undefined ? undefined : createWebPersistenceService(options.localData);
   const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });

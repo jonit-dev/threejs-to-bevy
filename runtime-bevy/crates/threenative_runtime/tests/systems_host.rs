@@ -9,6 +9,7 @@ use threenative_loader::{
 };
 use threenative_runtime::{
     input::{NativeInputState, map_keyboard_event},
+    physics::step_bundle_physics_with_script_poses,
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
         NativeEntityLifecycleRuntimeState, NativeGameLoopRunOptions, NativeGameLoopState,
@@ -17,6 +18,67 @@ use threenative_runtime::{
         run_native_systems_once_with_input, unsupported_native_system_host_diagnostic,
     },
 };
+
+#[test]
+fn systems_host_game_loop_should_publish_live_rapier_collision_phases() {
+    let root = write_live_collision_bundle("live-collision-events");
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    for expected_phase in ["enter", "stay"] {
+        run_native_systems_frame_with_input(
+            &mut bundle,
+            &mut state,
+            loop_options(0.1, 0.1, false),
+            step_bundle_physics_with_script_poses,
+        )
+        .expect("physics frame should run");
+        assert_eq!(
+            bundle.world.events["CollisionEvent"][0]["phase"],
+            serde_json::json!(expected_phase),
+            "collision queue: {:?}",
+            bundle.world.events
+        );
+        assert_eq!(
+            bundle.world.events["TriggerEvent"][0]["phase"],
+            serde_json::json!(expected_phase)
+        );
+    }
+
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "mover")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("mover transform should exist")
+        .position = Some([4.0, 0.55, 0.0]);
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "visitor")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("visitor transform should exist")
+        .position = Some([12.0, 0.0, 0.0]);
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.1, 0.1, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("separation frame should run");
+
+    assert_eq!(
+        bundle.world.events["CollisionEvent"][0]["phase"],
+        serde_json::json!("exit")
+    );
+    assert_eq!(
+        bundle.world.events["TriggerEvent"][0]["phase"],
+        serde_json::json!("exit")
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
 
 #[test]
 fn systems_host_should_call_quickjs_system_export() {
@@ -557,7 +619,7 @@ fn systems_host_should_expose_physics_raycast_service() {
         })
         .expect("physics raycast service call should be logged");
     let expected_request = serde_json::json!({
-        "direction": [0, 0, -1],
+        "direction": [0, 0, -2],
         "ignore": ["player"],
         "mask": ["world"],
         "maxDistance": 10,
@@ -1056,6 +1118,48 @@ fn systems_host_should_run_fixed_update_once_per_accumulated_fixed_tick() {
 }
 
 #[test]
+fn systems_host_should_consume_fixed_update_body_writes_in_the_same_physics_tick() {
+    let root = write_fixed_physics_command_bundle("loop-fixed-physics-command");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0, 1.0, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("fixed physics frame should run");
+
+    assert!(
+        entity_position(&bundle, "box").unwrap()[0] > 1.9,
+        "fixed-update velocity must affect the current solver step"
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn systems_host_should_consume_fixed_update_impulses_in_the_same_physics_tick() {
+    let root = write_fixed_physics_impulse_bundle("loop-fixed-physics-impulse");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("fixed physics frame should run");
+
+    assert!(
+        entity_position(&bundle, "box").unwrap()[0] > 0.24,
+        "fixed-update impulse must affect the current solver step"
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn systems_host_should_clamp_fixed_update_catchup_steps() {
     let root = write_loop_state_bundle("loop-fixed-clamp");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1393,6 +1497,116 @@ export const systems = Object.freeze({
   "system_update": system_update,
   "system_post": system_post
 });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_fixed_physics_command_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "box",
+    "components": {
+      "Collider": { "kind": "box", "size": [1, 1, 1] },
+      "RigidBody": { "gravityScale": 0, "kind": "dynamic", "velocity": [0, 0, 0] },
+      "Transform": { "position": [0, 0, 0] }
+    }
+  }],
+  "resources": {}
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [{
+    "name": "accelerate",
+    "schedule": "fixedUpdate",
+    "reads": [],
+    "writes": ["RigidBody"],
+    "queries": [],
+    "commands": [],
+    "eventReads": [],
+    "eventWrites": [],
+    "resourceReads": [],
+    "resourceWrites": [],
+    "services": [],
+    "script": { "bundle": "scripts.bundle.js", "exportName": "system_accelerate" }
+  }]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_accelerate = (ctx) => {
+  ctx.entity("box").patch("RigidBody", { velocity: [2, 0, 0] });
+};
+export const systemIds = Object.freeze({ "system_accelerate": "accelerate" });
+export const systems = Object.freeze({ "system_accelerate": system_accelerate });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_fixed_physics_impulse_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "box",
+    "components": {
+      "Collider": { "kind": "box", "size": [1, 1, 1] },
+      "RigidBody": { "gravityScale": 0, "kind": "dynamic", "mass": 2, "velocity": [0, 0, 0] },
+      "Transform": { "position": [0, 0, 0] }
+    }
+  }],
+  "resources": {}
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [{
+    "name": "impulse",
+    "schedule": "fixedUpdate",
+    "reads": [],
+    "writes": [],
+    "queries": [],
+    "commands": [],
+    "eventReads": [],
+    "eventWrites": [],
+    "resourceReads": [],
+    "resourceWrites": [],
+    "services": ["physics.applyImpulse"],
+    "script": { "bundle": "scripts.bundle.js", "exportName": "system_impulse" }
+  }]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_impulse = (ctx) => {
+  ctx.physics.applyImpulse("box", [2, 0, 0]);
+};
+export const systemIds = Object.freeze({ "system_impulse": "impulse" });
+export const systems = Object.freeze({ "system_impulse": system_impulse });
 "#,
     )
     .expect("script bundle should be written");
@@ -2195,7 +2409,7 @@ fn write_physics_raycast_service_bundle(name: &str) -> PathBuf {
         root.join("scripts.bundle.js"),
         r#"const system_raycastPhysics = (ctx) => {
   const result = ctx.physics.raycast({
-    direction: [0, 0, -1],
+    direction: [0, 0, -2],
     ignore: ["player"],
     mask: ["world"],
     maxDistance: 10,
@@ -3433,6 +3647,55 @@ fn write_bundle_without_scripts(name: &str) -> PathBuf {
         "world.ir.json",
         r#"{"schema":"threenative.world","version":"0.1.0","entities":[]}"#,
     );
+    root
+}
+
+fn write_live_collision_bundle(name: &str) -> PathBuf {
+    let root = write_bundle_without_scripts(name);
+    fs::write(
+        root.join("world.ir.json"),
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "wall",
+      "components": {
+        "Collider": { "kind": "box", "size": [4, 0.1, 4] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "mover",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "dynamic" },
+        "Transform": { "position": [0, 0.55, 0] }
+      }
+    },
+    {
+      "id": "trigger",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1], "trigger": true },
+        "Transform": { "position": [8, 0, 0] }
+      }
+    },
+    {
+      "id": "visitor",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 1, 1] },
+        "RigidBody": { "kind": "kinematic" },
+        "Transform": { "position": [8.25, 0, 0] }
+      }
+    }
+  ],
+  "resources": {},
+  "events": { "CollisionEvent": [], "TriggerEvent": [] },
+  "prefabs": []
+}"#,
+    )
+    .expect("live collision world should be written");
     root
 }
 

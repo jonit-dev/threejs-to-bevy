@@ -39,6 +39,7 @@ import type {
   IFeedbackPlayOptions,
   IFeedbackPlayResult,
   IObserverPropagationStep,
+  IPhysicsBodyCommandResult,
   IPhysicsSensorRequest,
   IPhysicsSensorResult,
   IPluginDeclarationView,
@@ -315,6 +316,29 @@ export function createSystemContext(
   const findEntity = (id: string): ISystemEntityView | undefined => {
     const entity = world.entities.find((candidate) => candidate.id === id);
     return entity === undefined ? undefined : createEntityView(entity, commands);
+  };
+  const queuePhysicsBodyCommand = (
+    service: "physics.addForce" | "physics.addTorque" | "physics.applyAngularImpulse" | "physics.applyImpulse" | "physics.setAngularVelocity" | "physics.setLinearVelocity",
+    entity: string,
+    value: readonly [number, number, number],
+  ): IPhysicsBodyCommandResult => {
+    const target = world.entities.find((candidate) => candidate.id === entity);
+    const validVector = value.length === 3 && value.every(Number.isFinite);
+    const result: IPhysicsBodyCommandResult = target === undefined
+      ? { accepted: false, entity, status: "missing" }
+      : !validVector
+        ? { accepted: false, entity, status: "invalid-vector" }
+        : target.components.RigidBody?.kind !== "dynamic"
+          ? { accepted: false, entity, status: "invalid-body" }
+          : { accepted: true, entity, status: "applied" };
+    services.push({
+      payload: {
+        request: { entity, fixedDelta: options.fixedDelta, value: cloneValue(value) },
+        result,
+      },
+      service,
+    });
+    return cloneValue(result) as IPhysicsBodyCommandResult;
   };
   return {
     commands,
@@ -874,6 +898,18 @@ export function createSystemContext(
         },
       },
       physics: {
+        addForce(entity, force) {
+          return queuePhysicsBodyCommand("physics.addForce", entity, force);
+        },
+        addTorque(entity, torque) {
+          return queuePhysicsBodyCommand("physics.addTorque", entity, torque);
+        },
+        applyAngularImpulse(entity, impulse) {
+          return queuePhysicsBodyCommand("physics.applyAngularImpulse", entity, impulse);
+        },
+        applyImpulse(entity, impulse) {
+          return queuePhysicsBodyCommand("physics.applyImpulse", entity, impulse);
+        },
         overlap(serviceOptions) {
           const request = cloneValue(serviceOptions);
           const result = overlapPrimitive(world, request);
@@ -901,6 +937,12 @@ export function createSystemContext(
           const result = shapeCastPrimitive(world, request);
           services.push({ payload: { request, result }, service: "physics.shapeCast" });
           return result;
+        },
+        setAngularVelocity(entity, velocity) {
+          return queuePhysicsBodyCommand("physics.setAngularVelocity", entity, velocity);
+        },
+        setLinearVelocity(entity, velocity) {
+          return queuePhysicsBodyCommand("physics.setLinearVelocity", entity, velocity);
         },
       },
       navigation: {

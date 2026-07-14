@@ -33,6 +33,8 @@ pub struct NativeSystemEffects {
 pub struct NativeSystemPatchEffect {
     pub component: String,
     pub entity: String,
+    #[serde(default)]
+    pub operation: Option<String>,
     pub value: Value,
 }
 
@@ -532,6 +534,9 @@ pub fn apply_system_effects_with_report_and_ledger_and_writer(
     }
     for resource in &effects.resources {
         apply_resource(bundle, resource);
+    }
+    for service in &effects.services {
+        apply_physics_body_service(bundle, service);
     }
 
     Ok(NativeSystemEffectsApplied {
@@ -1043,6 +1048,15 @@ fn apply_patch(bundle: &mut LoadedBundle, patch: &NativeSystemPatchEffect) {
         return;
     };
 
+    if patch.operation.as_deref() == Some("set") {
+        apply_component_value(
+            &mut entity.components,
+            &patch.component,
+            patch.value.clone(),
+        );
+        return;
+    }
+
     if patch.component == "Transform" {
         let existing = entity
             .components
@@ -1258,27 +1272,130 @@ fn apply_resource(bundle: &mut LoadedBundle, resource: &NativeSystemResourceEffe
         .insert(resource.resource.clone(), resource.value.clone());
 }
 
+fn apply_physics_body_service(bundle: &mut LoadedBundle, service: &NativeSystemServiceEffect) {
+    if !matches!(
+        service.service.as_str(),
+        "physics.addForce"
+            | "physics.addTorque"
+            | "physics.applyAngularImpulse"
+            | "physics.applyImpulse"
+            | "physics.setAngularVelocity"
+            | "physics.setLinearVelocity"
+    ) {
+        return;
+    }
+    let Some(request) = service.payload.get("request") else {
+        return;
+    };
+    let Some(entity_id) = request.get("entity").and_then(Value::as_str) else {
+        return;
+    };
+    let Some(value) = request.get("value").and_then(physics_service_vector) else {
+        return;
+    };
+    let fixed_delta = request
+        .get("fixedDelta")
+        .and_then(Value::as_f64)
+        .filter(|value| value.is_finite() && *value > 0.0)
+        .map(|value| value as f32)
+        .unwrap_or(1.0 / 60.0);
+    let Some(entity) = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|candidate| candidate.id == entity_id)
+    else {
+        return;
+    };
+    let collider = entity.components.collider.clone();
+    let Some(body) = entity.components.rigid_body.as_mut() else {
+        return;
+    };
+    if body.kind != "dynamic" {
+        return;
+    }
+    let mass = body
+        .mass
+        .or_else(|| {
+            body.inverse_mass
+                .filter(|value| *value > 0.0)
+                .map(|value| 1.0 / value)
+        })
+        .unwrap_or(1.0)
+        .max(0.000_001);
+    match service.service.as_str() {
+        "physics.setLinearVelocity" => body.velocity = Some(value),
+        "physics.applyImpulse" => {
+            body.velocity = Some(add_scaled_vector(body.velocity, value, 1.0 / mass));
+        }
+        "physics.addForce" => {
+            body.velocity = Some(add_scaled_vector(body.velocity, value, fixed_delta / mass));
+        }
+        "physics.setAngularVelocity" => body.angular_velocity = Some(value),
+        "physics.applyAngularImpulse" | "physics.addTorque" => {
+            let inertia = physics_angular_inertia(collider.as_ref(), mass);
+            let scale = if service.service == "physics.addTorque" {
+                fixed_delta
+            } else {
+                1.0
+            };
+            let current = body.angular_velocity.unwrap_or([0.0; 3]);
+            body.angular_velocity = Some([
+                current[0] + value[0] * scale / inertia[0],
+                current[1] + value[1] * scale / inertia[1],
+                current[2] + value[2] * scale / inertia[2],
+            ]);
+        }
+        _ => {}
+    }
+}
+
+fn physics_service_vector(value: &Value) -> Option<[f32; 3]> {
+    let values = value.as_array()?;
+    if values.len() != 3 {
+        return None;
+    }
+    let values = values
+        .iter()
+        .map(Value::as_f64)
+        .collect::<Option<Vec<_>>>()?;
+    if !values.iter().all(|value| value.is_finite()) {
+        return None;
+    }
+    Some([values[0] as f32, values[1] as f32, values[2] as f32])
+}
+
+fn add_scaled_vector(current: Option<[f32; 3]>, value: [f32; 3], scale: f32) -> [f32; 3] {
+    let current = current.unwrap_or([0.0; 3]);
+    [
+        current[0] + value[0] * scale,
+        current[1] + value[1] * scale,
+        current[2] + value[2] * scale,
+    ]
+}
+
+fn physics_angular_inertia(collider: Option<&ColliderComponent>, mass: f32) -> [f32; 3] {
+    if let Some(ColliderComponent {
+        kind,
+        size: Some([x, y, z]),
+        ..
+    }) = collider
+        && kind == "box"
+    {
+        return [
+            (mass * (y * y + z * z) / 12.0).max(0.000_001),
+            (mass * (x * x + z * z) / 12.0).max(0.000_001),
+            (mass * (x * x + y * y) / 12.0).max(0.000_001),
+        ];
+    }
+    let radius = collider.and_then(|collider| collider.radius).unwrap_or(0.5);
+    let inertia = (0.4 * mass * radius * radius).max(0.000_001);
+    [inertia; 3]
+}
+
 fn apply_component_value(components: &mut EntityComponents, component: &str, value: Value) {
     if component == "Transform" {
-        let patch = NativeSystemPatchEffect {
-            component: component.to_owned(),
-            entity: String::new(),
-            value,
-        };
-        let existing = components.transform.get_or_insert(TransformComponent {
-            position: None,
-            rotation: None,
-            scale: None,
-        });
-        if let Some(position) = read_vec3(&patch.value, "position") {
-            existing.position = Some(position);
-        }
-        if let Some(rotation) = read_vec4(&patch.value, "rotation") {
-            existing.rotation = Some(rotation);
-        }
-        if let Some(scale) = read_vec3(&patch.value, "scale") {
-            existing.scale = Some(scale);
-        }
+        components.transform = serde_json::from_value::<TransformComponent>(value).ok();
         return;
     }
 
@@ -1547,6 +1664,63 @@ mod tests {
     use super::*;
 
     #[test]
+    fn applies_physics_body_commands_with_mass_and_inertia() {
+        let mut bundle = load_runtime_gameplay_host_bundle();
+        let player = bundle
+            .world
+            .entities
+            .iter_mut()
+            .find(|entity| entity.id == "player")
+            .expect("fixture should include player");
+        player.components.collider = serde_json::from_value(json!({
+            "kind": "box",
+            "size": [2, 2, 2]
+        }))
+        .ok();
+        player.components.rigid_body = serde_json::from_value(json!({
+            "angularVelocity": [0, 0, 0],
+            "kind": "dynamic",
+            "mass": 2,
+            "velocity": [0, 0, 0]
+        }))
+        .ok();
+
+        for (service, value) in [
+            ("physics.addForce", json!([2, 0, 0])),
+            ("physics.applyImpulse", json!([2, 0, 0])),
+            ("physics.addTorque", json!([0, 2, 0])),
+            ("physics.applyAngularImpulse", json!([0, 0, 2])),
+            ("physics.setLinearVelocity", json!([4, 5, 6])),
+            ("physics.setAngularVelocity", json!([1, 2, 3])),
+        ] {
+            apply_physics_body_service(
+                &mut bundle,
+                &NativeSystemServiceEffect {
+                    payload: json!({
+                        "request": {
+                            "entity": "player",
+                            "fixedDelta": 0.25,
+                            "value": value
+                        },
+                        "result": {}
+                    }),
+                    service: service.to_owned(),
+                },
+            );
+        }
+
+        let body = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == "player")
+            .and_then(|entity| entity.components.rigid_body.as_ref())
+            .expect("body should remain present");
+        assert_eq!(body.velocity, Some([4.0, 5.0, 6.0]));
+        assert_eq!(body.angular_velocity, Some([1.0, 2.0, 3.0]));
+    }
+
+    #[test]
     fn rejects_undeclared_mixed_effects_before_applying_any_mutation() {
         let mut bundle = load_runtime_gameplay_host_bundle();
         let system = system_by_name(&bundle, "spawnRenderable");
@@ -1569,6 +1743,7 @@ mod tests {
                 patches: vec![NativeSystemPatchEffect {
                     component: "Visibility".to_owned(),
                     entity: "player".to_owned(),
+                    operation: None,
                     value: json!({ "visible": false }),
                 }],
                 resources: vec![NativeSystemResourceEffect {
@@ -1651,6 +1826,7 @@ mod tests {
                 patches: vec![NativeSystemPatchEffect {
                     component: "Transform".to_owned(),
                     entity: "player".to_owned(),
+                    operation: None,
                     value: json!({ "position": [1, 0, 0] }),
                 }],
                 resources: vec![NativeSystemResourceEffect {

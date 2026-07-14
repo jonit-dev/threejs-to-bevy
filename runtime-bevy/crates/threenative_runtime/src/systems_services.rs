@@ -134,8 +134,7 @@ pub fn raycast_primitive(
         if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
             continue;
         }
-        let center = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
-        let size = read_collider_size(collider);
+        let (center, size) = collider_bounds(transform, collider);
         let Some(hit) = intersect_aabb(request, center, size) else {
             continue;
         };
@@ -186,11 +185,12 @@ pub fn overlap_primitive(
         if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
             continue;
         }
+        let (center, size) = collider_bounds(transform, collider);
         if bounds_overlap(
             &query_bounds,
             &QueryBounds {
-                center: read_vec3(transform.get("position"), [0.0, 0.0, 0.0]),
-                half_extents: read_collider_half_extents(collider),
+                center,
+                half_extents: [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0],
             },
         ) {
             entities.push(entity.id.clone());
@@ -232,8 +232,7 @@ pub fn shape_cast_primitive(
         if !passes_filter(collider, &request.layer, &request.layers, &request.mask) {
             continue;
         }
-        let center = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
-        let size = read_collider_size(collider);
+        let (center, size) = collider_bounds(transform, collider);
         let expanded_size = [
             size[0] + query_extents[0] * 2.0,
             size[1] + query_extents[1] * 2.0,
@@ -458,6 +457,16 @@ fn intersect_aabb(
     center: [f64; 3],
     size: [f64; 3],
 ) -> Option<RayHit> {
+    let direction_length = request
+        .direction
+        .iter()
+        .map(|value| value * value)
+        .sum::<f64>()
+        .sqrt();
+    if !direction_length.is_finite() || direction_length <= 0.000001 {
+        return None;
+    }
+    let direction = request.direction.map(|value| value / direction_length);
     let half = [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0];
     let min = [
         center[0] - half[0],
@@ -475,18 +484,18 @@ fn intersect_aabb(
 
     for axis in 0..3 {
         let origin = request.origin[axis];
-        let direction = request.direction[axis];
-        if direction.abs() < 0.000001 {
+        let axis_direction = direction[axis];
+        if axis_direction.abs() < 0.000001 {
             if origin < min[axis] || origin > max[axis] {
                 return None;
             }
             continue;
         }
 
-        let inv = 1.0 / direction;
+        let inv = 1.0 / axis_direction;
         let mut near = (min[axis] - origin) * inv;
         let mut far = (max[axis] - origin) * inv;
-        let axis_normal = normal_for_axis(axis, if direction > 0.0 { -1.0 } else { 1.0 });
+        let axis_normal = normal_for_axis(axis, if axis_direction > 0.0 { -1.0 } else { 1.0 });
         if near > far {
             std::mem::swap(&mut near, &mut far);
         }
@@ -505,9 +514,9 @@ fn intersect_aabb(
         distance,
         normal,
         point: [
-            round6(request.origin[0] + request.direction[0] * distance),
-            round6(request.origin[1] + request.direction[1] * distance),
-            round6(request.origin[2] + request.direction[2] * distance),
+            round6(request.origin[0] + direction[0] * distance),
+            round6(request.origin[1] + direction[1] * distance),
+            round6(request.origin[2] + direction[2] * distance),
         ],
     })
 }
@@ -527,12 +536,79 @@ fn read_collider_size(collider: &serde_json::Map<String, Value>) -> [f64; 3] {
             diameter,
         ];
     }
+    if let Some(size) = collider
+        .get("mesh")
+        .and_then(Value::as_object)
+        .and_then(|mesh| mesh.get("bounds"))
+        .and_then(Value::as_object)
+        .and_then(|bounds| bounds.get("size"))
+    {
+        return read_vec3(Some(size), [1.0, 1.0, 1.0]);
+    }
     [1.0, 1.0, 1.0]
 }
 
 fn read_collider_half_extents(collider: &serde_json::Map<String, Value>) -> [f64; 3] {
     let size = read_collider_size(collider);
     [size[0] / 2.0, size[1] / 2.0, size[2] / 2.0]
+}
+
+fn collider_bounds(
+    transform: &serde_json::Map<String, Value>,
+    collider: &serde_json::Map<String, Value>,
+) -> ([f64; 3], [f64; 3]) {
+    let position = read_vec3(transform.get("position"), [0.0, 0.0, 0.0]);
+    let rotation = read_collider_quat(transform.get("rotation"));
+    let mesh_center = collider
+        .get("mesh")
+        .and_then(Value::as_object)
+        .and_then(|mesh| mesh.get("bounds"))
+        .and_then(Value::as_object)
+        .and_then(|bounds| bounds.get("center"));
+    let offset = rotate(
+        read_vec3(collider.get("center").or(mesh_center), [0.0, 0.0, 0.0]),
+        rotation,
+    );
+    let half_extents = read_collider_half_extents(collider);
+    let x_axis = rotate([half_extents[0], 0.0, 0.0], rotation);
+    let y_axis = rotate([0.0, half_extents[1], 0.0], rotation);
+    let z_axis = rotate([0.0, 0.0, half_extents[2]], rotation);
+    (
+        [
+            position[0] + offset[0],
+            position[1] + offset[1],
+            position[2] + offset[2],
+        ],
+        [
+            2.0 * (x_axis[0].abs() + y_axis[0].abs() + z_axis[0].abs()),
+            2.0 * (x_axis[1].abs() + y_axis[1].abs() + z_axis[1].abs()),
+            2.0 * (x_axis[2].abs() + y_axis[2].abs() + z_axis[2].abs()),
+        ],
+    )
+}
+
+fn read_collider_quat(value: Option<&Value>) -> [f64; 4] {
+    let Some(values) = value.and_then(Value::as_array) else {
+        return [0.0, 0.0, 0.0, 1.0];
+    };
+    [
+        values.first().and_then(Value::as_f64).unwrap_or(0.0),
+        values.get(1).and_then(Value::as_f64).unwrap_or(0.0),
+        values.get(2).and_then(Value::as_f64).unwrap_or(0.0),
+        values.get(3).and_then(Value::as_f64).unwrap_or(1.0),
+    ]
+}
+
+fn rotate([x, y, z]: [f64; 3], [qx, qy, qz, qw]: [f64; 4]) -> [f64; 3] {
+    let ix = qw * x + qy * z - qz * y;
+    let iy = qw * y + qz * x - qx * z;
+    let iz = qw * z + qx * y - qy * x;
+    let iw = -qx * x - qy * y - qz * z;
+    [
+        ix * qw + iw * -qx + iy * -qz - iz * -qy,
+        iy * qw + iw * -qy + iz * -qx - ix * -qz,
+        iz * qw + iw * -qz + ix * -qy - iy * -qx,
+    ]
 }
 
 fn query_half_extents(shape: &NativeQueryShape) -> [f64; 3] {

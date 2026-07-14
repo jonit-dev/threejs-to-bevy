@@ -26,7 +26,7 @@ test("scripting host matrix should match SDK IR web Bevy and docs surfaces", asy
 
   assert.deepEqual(extractTypeUnion(sdkSystem, "SystemService"), services);
   assert.deepEqual(extractTypeUnion(irSystems, "IrSystemService"), services);
-  assert.deepEqual(extractQueuedWebServices(webContext), services);
+  assert.deepEqual(extractQueuedWebServices(webContext, irSystems), services);
   assert.deepEqual(extractRustServices(bevyMatrix), services);
   for (const service of services) {
     assert.match(docsMatrix, new RegExp(`\\| \`${escapeRegExp(service)}\` \\|`), `docs matrix should document ${service}`);
@@ -43,8 +43,11 @@ function extractTypeUnion(source: string, typeName: string): string[] {
   return extractServices(body);
 }
 
-function extractQueuedWebServices(source: string): string[] {
+function extractQueuedWebServices(source: string, irSystems: string): string[] {
   const body = /export interface IQueuedServiceCall \{[\s\S]*?service:([\s\S]*?);[\s\S]*?\}/.exec(source)?.[1] ?? "";
+  if (/\bIrSystemService\b/.test(body)) {
+    return extractTypeUnion(irSystems, "IrSystemService");
+  }
   return extractServices(body);
 }
 

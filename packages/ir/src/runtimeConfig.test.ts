@@ -1,6 +1,7 @@
 import { strict as assert } from "node:assert";
 import test from "node:test";
 import { RENDER_LOOK_PROFILE_PRESETS, resolveRenderLookProfile, resolveRenderLookShadowProfile, resolveRenderLookSsgiQualityLimit } from "./runtimeConfig.js";
+import { validateRuntimeConfig } from "./runtimeConfigValidation.js";
 
 test("should resolve cinematic profile per target profile", () => {
   const desktop = resolveRenderLookProfile("cinematic", "desktop-web");
@@ -35,6 +36,16 @@ test("runtime config should resolve bounded shadow quality profiles", () => {
   assert.deepEqual(resolveRenderLookShadowProfile("high"), {
     cascadeCount: 4, enabled: true, filter: "pcf-soft", mapSize: 2048, quality: "high",
   });
+});
+
+test("runtime config should validate portable world gravity", () => {
+  const valid: import("./validate.js").IIrDiagnostic[] = [];
+  validateRuntimeConfig({ schema: "threenative.runtime-config", version: "0.1.0", physics: { gravity: [0, -3.71, 1] }, time: { fixedDelta: 1 / 60, paused: false }, window: { height: 720, width: 1280 } }, "runtime.config.json", valid);
+  assert.deepEqual(valid, []);
+
+  const invalid: import("./validate.js").IIrDiagnostic[] = [];
+  validateRuntimeConfig({ schema: "threenative.runtime-config", version: "0.1.0", physics: { gravity: [0, Number.NaN] }, time: { fixedDelta: 1 / 60, paused: false }, window: { height: 720, width: 1280 } }, "runtime.config.json", invalid);
+  assert.equal(invalid[0]?.code, "TN_IR_RUNTIME_PHYSICS_GRAVITY_INVALID");
 });
 
 test("should preserve authored render look overrides over profile values", () => {

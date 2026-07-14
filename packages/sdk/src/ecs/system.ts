@@ -24,9 +24,15 @@ export type SystemService =
   | "particles.reset"
   | "particles.start"
   | "particles.stop"
+  | "physics.addForce"
+  | "physics.addTorque"
+  | "physics.applyAngularImpulse"
+  | "physics.applyImpulse"
   | "physics.overlap"
   | "physics.raycast"
   | "physics.sensor"
+  | "physics.setAngularVelocity"
+  | "physics.setLinearVelocity"
   | "physics.shapeCast"
   | "picking.mesh"
   | "picking.pointerRay"
@@ -189,17 +195,32 @@ export interface ISystemContext {
       entity: ISystemEntity | string,
       options?: {
         axes?: Record<string, number>;
+        direction?: readonly [number, number];
         fixedDelta?: number;
+        speed?: number;
       },
     ): {
       blockedBy?: string;
+      contacts?: Array<{
+        material?: string;
+        normal?: [number, number, number];
+        other: string;
+        phase: "begin" | "end" | "stay";
+        point?: [number, number, number];
+        pointIndex: number;
+        self: string;
+      }>;
       desired: [number, number, number];
       entity: string;
       groundEntity?: string;
       grounded: boolean;
       platformDelta?: [number, number, number];
+      pushed?: { entity: string; impulse: [number, number, number]; position: [number, number, number] };
+      pushes?: Array<{ entity: string; impulse: [number, number, number]; position: [number, number, number] }>;
       resolved: [number, number, number];
+      slope?: { angle: number; axis: "x" | "z"; direction: -1 | 1; entity: string; rise: number; run: number; walkable: boolean };
       start: [number, number, number];
+      tooHeavy?: string;
     } | null;
   };
   commands: {
@@ -252,8 +273,14 @@ export interface ISystemContext {
     setValue(nodeId: string, value: boolean | number | string): { accepted: boolean; node: string; status: "missing" | "updated"; value: boolean | number | string };
   };
   physics: {
+    addForce(entity: string, force: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
+    addTorque(entity: string, torque: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
+    applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
+    applyImpulse(entity: string, impulse: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
     overlap(options: {
+      ignore?: string[];
       layer?: string;
+      layers?: string[];
       mask?: string[];
       position: [number, number, number];
       shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
@@ -272,7 +299,6 @@ export interface ISystemContext {
           distance: number;
           entity: string;
           hit: true;
-          material?: string;
           normal: [number, number, number];
           point: [number, number, number];
         };
@@ -280,6 +306,7 @@ export interface ISystemContext {
       direction: [number, number, number];
       ignore?: string[];
       layer?: string;
+      layers?: string[];
       mask?: string[];
       maxDistance: number;
       origin: [number, number, number];
@@ -298,11 +325,16 @@ export interface ISystemContext {
       sensor?: string;
     }): {
       events: Array<{
+        filteredOut: string[];
+        interactionKind?: string;
         occupants: string[];
         phase: "enter" | "exit" | "stay";
         sensor: string;
+        step: number;
       }>;
     };
+    setAngularVelocity(entity: string, velocity: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
+    setLinearVelocity(entity: string, velocity: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
   };
   navigation: {
     path(options: {

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IEnvironmentSceneIr, IWorldIr } from "@threenative/ir";
 
-import { disposePhysicsRuntime, initializePhysicsRuntime, physicsRuntimeStats, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
+import { disposePhysicsRuntime, initializePhysicsRuntime, markScriptAuthoredTransform, physicsBodyMass, physicsBodySleeping, physicsRuntimeCcdSubsteps, physicsRuntimeStats, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -197,6 +197,33 @@ test("physics should report portable suspension joint metadata", () => {
   assert.deepEqual(tracePhysicsJoints(world), [{ axis: [0, 1, 0], connectedEntity: "car", entity: "wheel.fl", kind: "suspension" }]);
 });
 
+test("physics should solve hinge slider and suspension joints in Rapier", async () => {
+  await initializePhysicsRuntime();
+  const hinge = makeLiveJointWorld("hinge");
+  const slider = makeLiveJointWorld("slider");
+  const suspension = makeLiveJointWorld("suspension");
+
+  for (let step = 0; step < 120; step += 1) {
+    stepPhysics(hinge, 1 / 60);
+    stepPhysics(slider, 1 / 60);
+    stepPhysics(suspension, 1 / 60);
+  }
+
+  const hingePosition = hinge.entities.find((entity) => entity.id === "body")?.components.Transform?.position;
+  const sliderPosition = slider.entities.find((entity) => entity.id === "body")?.components.Transform?.position;
+  const suspensionPosition = suspension.entities.find((entity) => entity.id === "body")?.components.Transform?.position;
+  assert.ok(hingePosition);
+  assert.ok(sliderPosition);
+  assert.ok(suspensionPosition);
+  assert.ok(Math.abs(Math.hypot(...hingePosition) - 1) < 0.05, `hinge anchor drifted to ${hingePosition.join(",")}`);
+  assert.ok(sliderPosition[0] <= 1.05 && sliderPosition[0] >= 0.9, `slider limit resolved to ${sliderPosition[0]}`);
+  assert.ok(Math.abs(suspensionPosition[1]) <= 0.3, `suspension travel resolved to ${suspensionPosition[1]}`);
+
+  disposePhysicsRuntime(hinge);
+  disposePhysicsRuntime(slider);
+  disposePhysicsRuntime(suspension);
+});
+
 test("physics should reuse the Rapier world while topology is unchanged", async () => {
   await initializePhysicsRuntime();
   const world = makeFallingBoxWorld();
@@ -217,6 +244,163 @@ test("physics should reuse the Rapier world while topology is unchanged", async 
   assert.deepEqual(physicsRuntimeStats(world), { rebuilds: 2 });
   disposePhysicsRuntime(world);
 });
+
+test("physics should treat collider-only entities as static Rapier bodies", async () => {
+  await initializePhysicsRuntime();
+  const world = makeColliderOnlyFloorWorld();
+
+  for (let step = 0; step < 180; step += 1) {
+    stepPhysics(world, 1 / 60);
+  }
+
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  const boxY = world.entities.find((entity) => entity.id === "box")?.components.Transform?.position?.[1];
+  assert.equal(floor?.components.RigidBody, undefined);
+  assert.ok(boxY !== undefined && boxY > 0.55 && boxY < 0.7, `box should rest on collider-only floor, got y=${String(boxY)}`);
+  disposePhysicsRuntime(world);
+});
+
+test("physics should map authored mass and inverseMass to exact Rapier body mass", async () => {
+  await initializePhysicsRuntime();
+  const world = makeColliderOnlyFloorWorld();
+  const box = world.entities.find((entity) => entity.id === "box");
+  if (box?.components.RigidBody !== undefined) {
+    box.components.RigidBody.mass = 10;
+  }
+  world.entities.push({
+    id: "inverse-mass-box",
+    components: {
+      Collider: { kind: "box", size: [2, 2, 2] },
+      RigidBody: { inverseMass: 1, kind: "dynamic" },
+      Transform: { position: [4, 3, 0] },
+    },
+  });
+
+  stepPhysics(world, 1 / 60);
+
+  assert.ok(Math.abs((physicsBodyMass(world, "box") ?? 0) - 10) < 0.000001);
+  assert.ok(Math.abs((physicsBodyMass(world, "inverse-mass-box") ?? 0) - 1) < 0.000001);
+  disposePhysicsRuntime(world);
+});
+
+test("physics should apply configured gravity and CCD substeps and honor disabled sleep", async () => {
+  await initializePhysicsRuntime();
+  const world = makeColliderOnlyFloorWorld();
+  const box = world.entities.find((entity) => entity.id === "box");
+  assert.ok(box?.components.RigidBody);
+  box.components.RigidBody.ccd = { enabled: true, maxSubsteps: 7, mode: "linear" };
+  box.components.RigidBody.gravityScale = 1;
+  box.components.RigidBody.sleepThreshold = 0;
+  box.components.RigidBody.velocity = [0, 0, 0];
+  box.components.Transform!.position = [0, 3, 0];
+
+  for (let step = 0; step < 180; step += 1) {
+    stepPhysics(world, 1 / 60, undefined, { gravity: [1, 0, 0] });
+  }
+
+  assert.ok((box.components.Transform?.position?.[0] ?? 0) > 1);
+  assert.equal(physicsRuntimeCcdSubsteps(world), 7);
+  assert.equal(physicsBodySleeping(world, "box"), false);
+  disposePhysicsRuntime(world);
+});
+
+test("physics should derive contact velocity from script-posed kinematic motion", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "platform",
+        components: {
+          Collider: { friction: 1, kind: "box", size: [4, 0.5, 4] },
+          RigidBody: { kind: "kinematic" },
+          Transform: { position: [0, 0, 0] },
+        },
+      },
+      {
+        id: "box",
+        components: {
+          Collider: { friction: 1, kind: "box", size: [1, 1, 1] },
+          RigidBody: { kind: "dynamic" },
+          Transform: { position: [0, 0.75, 0] },
+        },
+      },
+    ],
+  };
+  for (let step = 0; step < 60; step += 1) {
+    stepPhysics(world, 1 / 60);
+  }
+  world.entities[0]!.components.Transform!.position = [0.1, 0, 0];
+  markScriptAuthoredTransform(world, "platform");
+  stepPhysics(world, 1 / 60);
+
+  assert.ok((world.entities[1]?.components.Transform?.position?.[0] ?? 0) > 0.001);
+  assert.deepEqual(world.entities[0]?.components.Transform?.position, [0.1, 0, 0]);
+  disposePhysicsRuntime(world);
+});
+
+function makeLiveJointWorld(kind: "hinge" | "slider" | "suspension"): IWorldIr {
+  const hinge = kind === "hinge";
+  return {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "anchor",
+        components: {
+          Collider: { kind: "sphere", radius: 0.1, trigger: true },
+          RigidBody: { kind: "static" },
+          Transform: { position: [0, 0, 0] },
+        },
+      },
+      {
+        id: "body",
+        components: {
+          Collider: { kind: "sphere", radius: 0.1 },
+          PhysicsJoint: {
+            anchor: hinge ? [-1, 0, 0] : [0, 0, 0],
+            axis: hinge ? [0, 0, 1] : kind === "slider" ? [1, 0, 0] : [0, 1, 0],
+            connectedEntity: "anchor",
+            ...(kind === "slider" ? { limits: { max: 1, min: -1 } } : {}),
+            ...(kind === "suspension" ? { damping: 8, stiffness: 40, travel: 0.25 } : {}),
+            kind,
+          },
+          RigidBody: {
+            gravityScale: hinge ? 1 : 0,
+            kind: "dynamic",
+            velocity: kind === "slider" ? [10, 0, 0] : kind === "suspension" ? [0, 5, 0] : [0, 0, 0],
+          },
+          Transform: { position: hinge ? [1, 0, 0] : [0, 0, 0] },
+        },
+      },
+    ],
+  };
+}
+
+function makeColliderOnlyFloorWorld(): IWorldIr {
+  return {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "floor",
+        components: {
+          Collider: { kind: "box", size: [10, 0.2, 10] },
+          Transform: { position: [0, 0, 0] },
+        },
+      },
+      {
+        id: "box",
+        components: {
+          Collider: { kind: "box", size: [1, 1, 1] },
+          RigidBody: { kind: "dynamic" },
+          Transform: { position: [0, 3, 0] },
+        },
+      },
+    ],
+  };
+}
 
 function makePhysicsWorld(): IWorldIr {
   return {

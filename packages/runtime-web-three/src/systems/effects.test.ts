@@ -183,6 +183,33 @@ test("should log declared asset load service", () => {
   assert.equal(result.entries[0]?.service, "assets.load");
 });
 
+test("should apply declared physics body commands with mass and inertia", () => {
+  const world = makeWorld();
+  const player = world.entities[0];
+  assert.ok(player);
+  player.components.Collider = { kind: "box", size: [2, 2, 2] };
+  player.components.RigidBody = { angularVelocity: [0, 0, 0], kind: "dynamic", mass: 2, velocity: [0, 0, 0] };
+  const services = [
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [2, 0, 0] }, result: {} }, service: "physics.addForce" as const },
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [2, 0, 0] }, result: {} }, service: "physics.applyImpulse" as const },
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [0, 2, 0] }, result: {} }, service: "physics.addTorque" as const },
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [0, 0, 2] }, result: {} }, service: "physics.applyAngularImpulse" as const },
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [4, 5, 6] }, result: {} }, service: "physics.setLinearVelocity" as const },
+    { payload: { request: { entity: "player", fixedDelta: 0.25, value: [1, 2, 3] }, result: {} }, service: "physics.setAngularVelocity" as const },
+  ];
+
+  const result = applySystemEffects(
+    world,
+    makeSystem({ services: services.map((service) => service.service) }),
+    { commands: [], events: [], resources: [], services },
+    { frame: 1, tick: 2 },
+  );
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(player.components.RigidBody?.velocity, [4, 5, 6]);
+  assert.deepEqual(player.components.RigidBody?.angularVelocity, [1, 2, 3]);
+});
+
 test("should log declared scene service", () => {
   const world = makeWorld();
   const result = applySystemEffects(

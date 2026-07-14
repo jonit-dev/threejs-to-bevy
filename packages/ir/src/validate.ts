@@ -778,12 +778,15 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   world.entities.forEach((entity, index) => validateSpawnerComponent(entity, `${path}/entities/${index}`, diagnostics));
   world.entities.forEach((entity, index) => validateRenderComponents(entity, `${path}/entities/${index}`, diagnostics));
   validatePortableRenderLayerCapacity(world, path, diagnostics);
+  validatePortablePhysicsLayerCapacity(world, path, diagnostics);
   const entityIds = new Set(world.entities.map((entity) => entity.id));
-  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, diagnostics));
+  const rigidBodyEntityIds = new Set(world.entities.filter((entity) => entity.components.RigidBody !== undefined).map((entity) => entity.id));
+  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, rigidBodyEntityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
 }
 
 const PORTABLE_RENDER_LAYER_CAPACITY = 32;
+const PORTABLE_PHYSICS_LAYER_CAPACITY = 16;
 
 function validatePortableRenderLayerCapacity(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
   const names = new Set<string>(["default"]);
@@ -806,6 +809,30 @@ function validatePortableRenderLayerCapacity(world: IWorldIr, path: string, diag
       path: `${path}/entities`,
       severity: "error",
       suggestion: `Use at most ${PORTABLE_RENDER_LAYER_CAPACITY} unique render layer names including 'default'.`,
+    });
+  }
+}
+
+function validatePortablePhysicsLayerCapacity(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const names = new Set<string>();
+  for (const entity of world.entities) {
+    const collider = entity.components.Collider;
+    if (typeof collider?.layer === "string") {
+      names.add(collider.layer);
+    }
+    for (const name of collider?.mask ?? []) {
+      if (typeof name === "string") {
+        names.add(name);
+      }
+    }
+  }
+  if (names.size > PORTABLE_PHYSICS_LAYER_CAPACITY) {
+    diagnostics.push({
+      code: "TN_IR_PHYSICS_LAYER_CAPACITY_EXCEEDED",
+      message: `World declares ${names.size} physics layers, exceeding the portable limit of ${PORTABLE_PHYSICS_LAYER_CAPACITY}.`,
+      path: `${path}/entities`,
+      severity: "error",
+      suggestion: `Use at most ${PORTABLE_PHYSICS_LAYER_CAPACITY} unique Collider.layer and Collider.mask names.`,
     });
   }
 }

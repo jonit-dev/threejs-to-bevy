@@ -37,9 +37,67 @@ export function applySystemEffects(
   applyEvents(world, effects.events);
   applyResourceWrites(world, effects.resources);
   applyCommands(world, effects.commands, options.prefabs);
+  applyPhysicsBodyServices(world, effects.services);
   markScriptAuthoredTransformWrites(world, effects.commands);
   options.lifecycleObserver?.(before);
   return { diagnostics, entries };
+}
+
+function applyPhysicsBodyServices(world: IWorldIr, services: ReadonlyArray<IQueuedServiceCall>): void {
+  for (const service of services) {
+    if (!service.service.startsWith("physics.") || !isRecord(service.payload) || !isRecord(service.payload.request)) {
+      continue;
+    }
+    const request = service.payload.request;
+    const entityId = typeof request.entity === "string" ? request.entity : undefined;
+    const value = physicsVector(request.value);
+    const entity = entityId === undefined ? undefined : world.entities.find((candidate) => candidate.id === entityId);
+    const body = entity?.components.RigidBody;
+    if (entity === undefined || body?.kind !== "dynamic" || value === undefined) {
+      continue;
+    }
+    const mass = body.mass ?? (body.inverseMass !== undefined && body.inverseMass > 0 ? 1 / body.inverseMass : 1);
+    const fixedDelta = typeof request.fixedDelta === "number" && Number.isFinite(request.fixedDelta) && request.fixedDelta > 0 ? request.fixedDelta : 1 / 60;
+    if (service.service === "physics.setLinearVelocity") {
+      body.velocity = value;
+    } else if (service.service === "physics.applyImpulse") {
+      body.velocity = addPhysicsVector(body.velocity, value, 1 / mass);
+    } else if (service.service === "physics.addForce") {
+      body.velocity = addPhysicsVector(body.velocity, value, fixedDelta / mass);
+    } else if (service.service === "physics.setAngularVelocity") {
+      body.angularVelocity = value;
+    } else if (service.service === "physics.applyAngularImpulse" || service.service === "physics.addTorque") {
+      const inertia = physicsAngularInertia(entity.components.Collider, mass);
+      const scale = service.service === "physics.addTorque" ? fixedDelta : 1;
+      const current = body.angularVelocity ?? [0, 0, 0];
+      body.angularVelocity = [
+        current[0] + value[0] * scale / inertia[0],
+        current[1] + value[1] * scale / inertia[1],
+        current[2] + value[2] * scale / inertia[2],
+      ];
+    }
+  }
+}
+
+function physicsVector(value: unknown): [number, number, number] | undefined {
+  return Array.isArray(value) && value.length === 3 && value.every((part) => typeof part === "number" && Number.isFinite(part))
+    ? [value[0] as number, value[1] as number, value[2] as number]
+    : undefined;
+}
+
+function addPhysicsVector(current: readonly [number, number, number] | undefined, value: readonly [number, number, number], scale: number): [number, number, number] {
+  const source = current ?? [0, 0, 0];
+  return [source[0] + value[0] * scale, source[1] + value[1] * scale, source[2] + value[2] * scale];
+}
+
+function physicsAngularInertia(collider: IWorldIr["entities"][number]["components"]["Collider"], mass: number): [number, number, number] {
+  if (collider?.kind === "box") {
+    const [x = 1, y = 1, z = 1] = collider.size ?? [];
+    return [mass * (y * y + z * z) / 12, mass * (x * x + z * z) / 12, mass * (x * x + y * y) / 12].map((value) => Math.max(value, 0.000001)) as [number, number, number];
+  }
+  const radius = collider?.radius ?? 0.5;
+  const inertia = Math.max(0.4 * mass * radius * radius, 0.000001);
+  return [inertia, inertia, inertia];
 }
 
 function recordSystemWrites(

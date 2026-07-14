@@ -114,6 +114,61 @@ test("character trace should stop before a blocking collider", () => {
   ]);
 });
 
+test("character trace should not block on declared sensors", () => {
+  const world = makeCharacterWorld();
+  const wall = world.entities.find((entity) => entity.id === "wall");
+  if (wall?.components.Collider !== undefined) {
+    wall.components.Collider.sensor = { interactionKind: "zone" };
+  }
+
+  const [trace] = traceCharacterControllers(world, { axes: { MoveX: 1 }, fixedDelta: 1 });
+
+  assert.equal(trace?.blockedBy, undefined);
+  assert.deepEqual(trace?.resolved, [2, 1.05, 0]);
+});
+
+test("character trace should apply collision masks symmetrically", () => {
+  const world = makeCharacterWorld();
+  const player = world.entities.find((entity) => entity.id === "player");
+  const floor = world.entities.find((entity) => entity.id === "floor");
+  const wall = world.entities.find((entity) => entity.id === "wall");
+  if (player?.components.Collider !== undefined) {
+    player.components.Collider.layer = "player";
+    player.components.Collider.mask = ["terrain", "obstacle"];
+  }
+  if (floor?.components.Collider !== undefined) {
+    floor.components.Collider.layer = "terrain";
+    floor.components.Collider.mask = ["player"];
+  }
+  if (wall?.components.Collider !== undefined) {
+    wall.components.Collider.layer = "obstacle";
+    wall.components.Collider.mask = ["npc"];
+  }
+
+  const [trace] = traceCharacterControllers(world, { axes: { MoveX: 1 }, fixedDelta: 1 });
+
+  assert.equal(trace?.blockedBy, undefined);
+  assert.equal(trace?.groundEntity, "floor");
+  assert.deepEqual(trace?.resolved, [2, 1.05, 0]);
+});
+
+test("character trace should use authored mesh collider bounds", () => {
+  const world = makeCharacterWorld();
+  const wall = world.entities.find((entity) => entity.id === "wall");
+  if (wall !== undefined) {
+    wall.components.Collider = {
+      kind: "mesh",
+      mesh: { bounds: { size: [4, 2, 1] }, source: "mesh.wall", triangleCount: 12 },
+    };
+    wall.components.Transform = { position: [4, 1, 0] };
+  }
+
+  const [trace] = traceCharacterControllers(world, { axes: { MoveX: 1 }, fixedDelta: 1 });
+
+  assert.equal(trace?.blockedBy, "wall");
+  assert.deepEqual(trace?.resolved, [0, 1.05, 0]);
+});
+
 test("character trace should step onto low blockers within step offset", () => {
   const world = makeCharacterWorld();
   const wall = world.entities.find((entity) => entity.id === "wall");
