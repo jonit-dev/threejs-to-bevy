@@ -16,18 +16,20 @@ test("scripting host matrix should be sorted and unique", () => {
 
 test("scripting host matrix should match SDK IR web Bevy and docs surfaces", async () => {
   const services = [...PROMOTED_SCRIPT_SERVICES].sort();
-  const [sdkSystem, irSystems, webContext, bevyMatrix, docsMatrix] = await Promise.all([
+  const [sdkSystem, irSystems, webContext, bevyBridge, docsMatrix] = await Promise.all([
     readRepo("packages/sdk/src/ecs/system.ts"),
     readRepo("packages/ir/src/systems.ts"),
     readRepo("packages/runtime-web-three/src/systems/contextTypes.ts"),
-    readRepo("runtime-bevy/crates/threenative_runtime/src/scripting_host_matrix.rs"),
+    readRepo("runtime-bevy/crates/threenative_runtime/src/systems_host_bridge.js"),
     readRepo("docs/contracts/scripting-host-matrix.md"),
   ]);
 
   assert.deepEqual(extractTypeUnion(sdkSystem, "SystemService"), services);
   assert.deepEqual(extractTypeUnion(irSystems, "IrSystemService"), services);
   assert.deepEqual(extractQueuedWebServices(webContext, irSystems), services);
-  assert.deepEqual(extractRustServices(bevyMatrix), services);
+  const nativeContexts = SCRIPT_HOST_SERVICE_MATRIX.map((entry) => entry.context.slice("ctx.".length)).sort();
+  assert.deepEqual(extractNativeContextMethods(bevyBridge).filter((context) => nativeContexts.includes(context)), nativeContexts);
+  assert.deepEqual(extractNativeServiceEffects(bevyBridge), services);
   for (const service of services) {
     assert.match(docsMatrix, new RegExp(`\\| \`${escapeRegExp(service)}\` \\|`), `docs matrix should document ${service}`);
   }
@@ -51,8 +53,27 @@ function extractQueuedWebServices(source: string, irSystems: string): string[] {
   return extractServices(body);
 }
 
-function extractRustServices(source: string): string[] {
-  return extractServices(source);
+function extractNativeContextMethods(source: string): string[] {
+  const context = source.slice(source.indexOf("  const context = {"));
+  const roots = [...new Set(SCRIPT_HOST_SERVICE_MATRIX.map((entry) => entry.context.split(".")[1] ?? ""))];
+  return roots.flatMap((root) => {
+    const rootMatch = new RegExp(`^( {4,6})${escapeRegExp(root)}: \\{$`, "m").exec(context);
+    assert.ok(rootMatch, `native context should implement ${root}`);
+    const start = rootMatch.index;
+    const rootIndent = rootMatch[1]?.length ?? 4;
+    const tail = context.slice(start);
+    const firstLineEnd = tail.indexOf("\n") + 1;
+    const nextRootOffset = tail.slice(firstLineEnd).search(/^ {4,6}[a-zA-Z][a-zA-Z0-9]*: \{$/m);
+    const body = nextRootOffset === -1 ? tail : tail.slice(0, firstLineEnd + nextRootOffset);
+    return [...body.matchAll(new RegExp(`^ {${rootIndent + 2}}([a-zA-Z][a-zA-Z0-9]*)\\([^\\n]*\\) \\{`, "gm"))]
+      .map((match) => `${root}.${match[1] ?? ""}`);
+  }).sort();
+}
+
+function extractNativeServiceEffects(source: string): string[] {
+  const emitted = [...source.matchAll(/service: "([a-z]+\.[A-Za-z][A-Za-z0-9]*)"/g)].map((match) => match[1] ?? "");
+  const delegated = [...source.matchAll(/physicsBodyCommand\("([a-z]+\.[A-Za-z][A-Za-z0-9]*)"/g)].map((match) => match[1] ?? "");
+  return [...new Set([...emitted, ...delegated])].sort();
 }
 
 function extractServices(source: string): string[] {

@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
+
+import ts from "typescript";
 
 import { generateProjectContextTypes } from "./typegen.js";
 
@@ -78,8 +82,74 @@ test("should generate project context id unions and schema maps", () => {
   assert.match(output, /"ChessPiece": \{ \[key: string\]: unknown \};/);
   assert.doesNotMatch(output, /"Health": \{ \[key: string\]: unknown \};/);
   assert.match(output, /"GameState": \{ "score": number; "status": string \};/);
-  assert.match(output, /export interface ProjectContext extends ScriptContext/);
+  assert.match(output, /export interface ProjectContext extends Omit<ScriptContext, "entity" \| "input" \| "query" \| "resources">/);
+  assert.match(output, /input: Omit<ScriptContext\["input"\]/);
+  assert.match(output, /resources: Omit<ScriptContext\["resources"\]/);
   assert.match(output, /export interface ProjectGameToOverlayMessageMap/);
   assert.match(output, /"hud:snapshot": \{ "score": number \};/);
   assert.match(output, /"hud:action": \{ "action": string \};/);
+});
+
+test("should preserve generated ProjectContext ID narrowing", () => {
+  const output = generateProjectContextTypes([
+    {
+      data: {
+        entities: [{ id: "hero" }],
+        id: "arena",
+        resources: [{ id: "GameState", value: { score: 0 } }],
+        schema: "threenative.scene",
+      },
+      file: "content/scenes/arena.scene.json",
+      kind: "scene",
+      projectRelativePath: "content/scenes/arena.scene.json",
+    },
+    {
+      data: { actions: [{ id: "Jump" }], axes: [{ id: "MoveX" }], id: "arena-input", schema: "threenative.input" },
+      file: "content/input/arena.input.json",
+      kind: "input",
+      projectRelativePath: "content/input/arena.input.json",
+    },
+  ]);
+
+  assert.doesNotMatch(output, /interface ProjectContext extends ScriptContext/);
+  assert.match(output, /entity\(id: ProjectEntityId\)/);
+  assert.match(output, /action\(name: ProjectInputId\)/);
+  assert.match(output, /get<K extends ProjectResourceId>/);
+
+  const root = mkdtempSync(resolve(process.cwd(), ".typegen-contract-"));
+  try {
+    const declarations = resolve(root, "project-context.d.ts");
+    const fixture = resolve(root, "fixture.ts");
+    writeFileSync(declarations, output);
+    writeFileSync(fixture, [
+      'import type { ProjectContext } from "./project-context.js";',
+      "declare const context: ProjectContext;",
+      'context.entity("hero");',
+      'context.input.action("Jump");',
+      'context.input.getAxis2("MoveX", "MoveX");',
+      'context.resources.get("GameState");',
+      '// @ts-expect-error undeclared entity ID',
+      'context.entity("villain");',
+      '// @ts-expect-error undeclared input ID',
+      'context.input.action("Fire");',
+      '// @ts-expect-error undeclared resource ID',
+      'context.resources.get("MissingState");',
+      "",
+    ].join("\n"));
+    const program = ts.createProgram({
+      options: {
+        module: ts.ModuleKind.NodeNext,
+        moduleResolution: ts.ModuleResolutionKind.NodeNext,
+        noEmit: true,
+        skipLibCheck: true,
+        strict: true,
+        target: ts.ScriptTarget.ES2023,
+      },
+      rootNames: [fixture],
+    });
+    const diagnostics = ts.getPreEmitDiagnostics(program);
+    assert.deepEqual(diagnostics.map((diagnostic) => ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n")), []);
+  } finally {
+    rmSync(root, { force: true, recursive: true });
+  }
 });

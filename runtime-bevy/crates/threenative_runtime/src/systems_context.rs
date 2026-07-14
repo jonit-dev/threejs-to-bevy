@@ -3,8 +3,8 @@ use std::collections::BTreeMap;
 use serde::{Serialize, Serializer, ser::SerializeStruct};
 use serde_json::{Value, json};
 use threenative_loader::{
-    EntityComponents, LoadedBundle, LocalDataIr, SystemIr, SystemQueryIr, SystemStateSourceIr,
-    UiIr, UiNodeIr, WorldEntity,
+    EntityComponents, LoadedBundle, SystemIr, SystemQueryIr, SystemStateSourceIr, UiIr, UiNodeIr,
+    WorldEntity,
 };
 
 use crate::component_diff::ComponentDiffCache;
@@ -215,6 +215,8 @@ pub struct NativeLocalDataSnapshot {
     pub resources: Vec<NativeLocalDataSchemaEntry>,
     pub save_slots: Vec<NativeLocalDataSaveSlot>,
     pub settings: Vec<NativeLocalDataSetting>,
+    pub persisted_saves: BTreeMap<String, Value>,
+    pub persisted_settings: BTreeMap<String, Value>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -393,7 +395,7 @@ pub fn build_system_context_snapshot_with_sensor_events_and_lifecycle(
             NativeSystemInputSnapshot::from_native_input,
         ),
         lifecycle,
-        local_data: local_data_snapshot(bundle.local_data.as_ref()),
+        local_data: local_data_snapshot(bundle),
         mesh_bounds: mesh_bounds(bundle),
         observer_routes: observer_routes(bundle),
         plugin_groups: plugin_group_declarations(bundle),
@@ -429,10 +431,13 @@ fn normalize_entity_tags(tags: &[String]) -> Vec<String> {
     normalized
 }
 
-fn local_data_snapshot(local_data: Option<&LocalDataIr>) -> NativeLocalDataSnapshot {
-    let Some(local_data) = local_data else {
+fn local_data_snapshot(bundle: &LoadedBundle) -> NativeLocalDataSnapshot {
+    let Some(local_data) = bundle.local_data.as_ref() else {
         return NativeLocalDataSnapshot::default();
     };
+
+    let (persisted_saves, persisted_settings) =
+        crate::persistence::native_persistence_snapshot(bundle).unwrap_or_default();
 
     NativeLocalDataSnapshot {
         components: local_data
@@ -470,6 +475,8 @@ fn local_data_snapshot(local_data: Option<&LocalDataIr>) -> NativeLocalDataSnaps
                 min: setting.min,
             })
             .collect(),
+        persisted_saves,
+        persisted_settings,
     }
 }
 

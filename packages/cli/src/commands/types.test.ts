@@ -29,7 +29,9 @@ test("should generate project script types from source documents", async () => {
     assert.deepEqual(payload.files, [".threenative/types/project-context.d.ts"]);
     assert.match(generated, /export type ProjectEntityId = "hero";/);
     assert.match(generated, /export type ProjectInputId = "MoveX";/);
-    assert.match(generated, /export interface ProjectContext extends ScriptContext/);
+    assert.match(generated, /export interface ProjectContext extends Omit<ScriptContext, "entity" \| "input" \| "query" \| "resources">/);
+    assert.match(generated, /entity\(id: ProjectEntityId\)/);
+    assert.match(generated, /get<K extends ProjectResourceId>/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

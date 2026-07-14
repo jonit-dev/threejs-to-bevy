@@ -8,6 +8,7 @@ import type { IPrefabsIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 import { loadSystemModule } from "./moduleLoader.js";
 import { createWebSystemRuntimeState } from "./context.js";
 import { runSchedule } from "./runner.js";
+import { createMemoryPersistenceStorage, createWebPersistenceService } from "./services/persistence.js";
 
 test("should run systems move entity during fixed update", async () => {
   const world = makeWorld();
@@ -646,6 +647,14 @@ test("should run systems using before and after ordering constraints", async () 
 test("should share persistence and settings facade state across scheduled systems", async () => {
   const world = makeWorld();
   world.resources = { Progress: { level: 7 }, Report: {} };
+  const localData = {
+    components: [],
+    resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" as const } } } }],
+    saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+    schema: "threenative.local-data" as const,
+    settings: [{ defaultValue: 0.5, group: "audio" as const, key: "audio.master", kind: "number" as const, max: 1, min: 0 }],
+    version: "0.1.0" as const,
+  };
   const systems = makeSystems("update", "saveProgress");
   systems.systems.push({
     ...systems.systems[0]!,
@@ -665,14 +674,7 @@ test("should share persistence and settings facade state across scheduled system
   };
 
   await runSchedule({
-    localData: {
-      components: [],
-      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
-      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
-      schema: "threenative.local-data",
-      settings: [{ defaultValue: 0.5, group: "audio", key: "audio.master", kind: "number", max: 1, min: 0 }],
-      version: "0.1.0",
-    },
+    localData,
     module: {
       systems: {
         saveProgress(context: any) {
@@ -689,6 +691,7 @@ test("should share persistence and settings facade state across scheduled system
       },
     },
     schedule: "update",
+    persistence: createWebPersistenceService(localData, { storage: createMemoryPersistenceStorage() }),
     systems,
     world,
   });

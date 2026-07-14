@@ -30,6 +30,7 @@
     "vite": "^7.2.7"
   },
   "devDependencies": {
+    "@threenative/script-stdlib": "workspace:*",
     "@types/node": "^20.19.25",
     "@types/three": "^0.181.0"
   }

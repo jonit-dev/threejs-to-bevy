@@ -19,9 +19,10 @@ import {
   requiredFieldsFromTypeScriptInterface,
   rustFieldTypeFromStruct,
 } from "./contractDrift.js";
-import { IR_DOCUMENTS, IR_SCHEMA_IDS, IR_VERSION, schemaBackedDocuments, type IrEnumDriftMetadata } from "./documents.js";
+import { IR_DOCUMENTS, IR_SCHEMA_IDS, irDocumentVersions, schemaBackedDocuments, type IrEnumDriftMetadata } from "./documents.js";
 import { schemaUrls } from "./schemas.js";
 import { DISTRIBUTION_ARCHITECTURES, DISTRIBUTION_CAPABILITIES, DISTRIBUTION_CHANNELS, DISTRIBUTION_FORMATS, DISTRIBUTION_PLATFORMS, DISTRIBUTION_RUNTIMES } from "./distribution.js";
+import { SCRIPT_HOST_SERVICE_MATRIX } from "./scriptingHost.js";
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = resolve(packageRoot, "../..");
@@ -126,9 +127,11 @@ test("contractDrift should keep schema literals aligned with document metadata",
     if (constants.schema !== metadata.schema) {
       diagnostics.push(`${document}: schema const ${constants.schema ?? "<missing>"} does not match ${metadata.schema}.`);
     }
-    const expectedVersion = "version" in metadata ? metadata.version : IR_VERSION;
-    if (!constants.versions.includes(expectedVersion)) {
-      diagnostics.push(`${document}: versions ${constants.versions.join(", ") || "<missing>"} do not include ${expectedVersion}.`);
+    const expectedVersions = irDocumentVersions(metadata);
+    for (const expectedVersion of expectedVersions) {
+      if (!constants.versions.includes(expectedVersion)) {
+        diagnostics.push(`${document}: versions ${constants.versions.join(", ") || "<missing>"} do not include ${expectedVersion}.`);
+      }
     }
   }
 
@@ -334,8 +337,11 @@ test("contractDrift should keep compiler document schema and version literals al
     if (!source.includes(`schema: "${metadata.schema}"`)) {
       diagnostics.push(`${item.document}: ${item.source} does not emit schema '${metadata.schema}'.`);
     }
-    if (!source.includes(`version: "${IR_VERSION}"`)) {
-      diagnostics.push(`${item.document}: ${item.source} does not emit version '${IR_VERSION}'.`);
+    const expectedVersions = irDocumentVersions(metadata);
+    for (const expectedVersion of expectedVersions) {
+      if (!source.includes(`"${expectedVersion}"`)) {
+        diagnostics.push(`${item.document}: ${item.source} does not emit version '${expectedVersion}'.`);
+      }
     }
   }
 
@@ -418,6 +424,34 @@ test("contractDrift should reject unchecked support checklist drift when claimed
     "TN_CONTRACT_DRIFT_V9_SUPPORT_CHECKLIST_UNCHECKED",
   );
 });
+
+test("should keep promoted service names aligned with shared DTO ownership", async () => {
+  const source = await readFile(resolve(repoRoot, "packages/script-stdlib/src/script-context.ts"), "utf8");
+  assert.equal(SCRIPT_HOST_SERVICE_MATRIX.every((entry) => entry.contract === "shared"), true);
+  assert.deepEqual(missingPublicFacadeRoots(source), []);
+});
+
+test("should keep shared script service types adapter-independent", async () => {
+  const source = await readFile(resolve(packageRoot, "src/scriptServices.ts"), "utf8");
+  assert.doesNotMatch(source, /from\s+["'][^"']*(?:runtime-web-three|runtime-bevy|\/runtime)[^"']*["']/);
+  assert.doesNotMatch(source, /\b(?:WebGL|HTMLElement|AudioContext|bevy|THREE)\b/);
+});
+
+test("should fail when a promoted context surface lacks a public facade", async () => {
+  const source = await readFile(resolve(repoRoot, "packages/script-stdlib/src/script-context.ts"), "utf8");
+  const firstRoot = promotedFacadeRoots()[0];
+  assert.notEqual(firstRoot, undefined);
+  const withoutFirstRoot = source.replace(new RegExp(`^\\s{2}${firstRoot}: Script[A-Za-z]+Facade;\\n`, "m"), "");
+  assert.deepEqual(missingPublicFacadeRoots(withoutFirstRoot), [firstRoot]);
+});
+
+function promotedFacadeRoots(): string[] {
+  return [...new Set(SCRIPT_HOST_SERVICE_MATRIX.map((entry) => entry.context.split(".")[1]).filter((root): root is string => root !== undefined))].sort();
+}
+
+function missingPublicFacadeRoots(source: string): string[] {
+  return promotedFacadeRoots().filter((root) => !new RegExp(`^\\s{2}${root}: Script[A-Za-z]+Facade;`, "m").test(source));
+}
 
 function rejectSupportDrift(input: { irTypes: string; nativeConformance: string; parity: string; status: string; webMetrics: string }): { code: string } | undefined {
   if (!input.status.includes("V9-06 target profiles")) {

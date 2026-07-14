@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import { feedbackPresetById } from "@threenative/ir/feedback";
-import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, IIrSystemQuery, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptSystemQuery, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -271,7 +271,7 @@ export function webSystemRuntimeStateFor(
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IIrSystemQuery; delayedCommands?: IIrSystemDeclaration["delayedCommands"]; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; mappedObjects?: ReadonlyMap<string, import("three").Object3D>; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; schedule?: IIrSystemDeclaration["schedule"]; systemName?: string; systems?: ISystemsIr; tick?: number; ui?: IUiIr; uiState?: IRenderedUi },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IScriptSystemQuery; delayedCommands?: IIrSystemDeclaration["delayedCommands"]; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; mappedObjects?: ReadonlyMap<string, import("three").Object3D>; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; schedule?: IIrSystemDeclaration["schedule"]; systemName?: string; systems?: ISystemsIr; tick?: number; ui?: IUiIr; uiState?: IRenderedUi },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -1676,7 +1676,7 @@ export function applyResourceWrites(world: IWorldIr, resources: ReadonlyArray<IQ
   };
 }
 
-function applyQueryWindow(entities: IWorldEntity[], query: IIrSystemQuery): IWorldEntity[] {
+function applyQueryWindow(entities: IWorldEntity[], query: IScriptSystemQuery): IWorldEntity[] {
   const ordered = query.orderBy === "id" ? [...entities].sort((left, right) => left.id.localeCompare(right.id)) : entities;
   const offset = Math.max(0, Math.floor(query.offset ?? 0));
   const limit = query.limit === undefined ? undefined : Math.max(0, Math.floor(query.limit));
@@ -1684,7 +1684,7 @@ function applyQueryWindow(entities: IWorldEntity[], query: IIrSystemQuery): IWor
 }
 
 function diagnoseUnknownQueryComponents(
-  query: IIrSystemQuery,
+  query: IScriptSystemQuery,
   knownComponents: ReadonlySet<string>,
   emitted: Set<string>,
   systemName: string,
@@ -1729,7 +1729,7 @@ function editDistance(left: string, right: string): number {
   return row[right.length]!;
 }
 
-function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IIrSystemQuery, componentDiff?: IComponentDiffCache): boolean {
+function matchesQuery(world: IWorldIr, entity: IWorldEntity, query: IScriptSystemQuery, componentDiff?: IComponentDiffCache): boolean {
   return (query.with ?? []).every((component) => entity.components[component] !== undefined)
     && (query.without ?? []).every((component) => entity.components[component] === undefined)
     && (query.changed ?? []).every((component) => changedComponents(world, entity, componentDiff).has(component));

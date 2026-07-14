@@ -4,6 +4,8 @@ import { resolve } from "node:path";
 import test from "node:test";
 import vm from "node:vm";
 
+import { SCRIPT_HOST_SERVICE_MATRIX } from "@threenative/ir";
+
 import {
   AngleEx,
   ArrayEx,
@@ -40,16 +42,30 @@ import {
 } from "./index.js";
 import type { QuatTuple, Vec3Tuple } from "./index.js";
 
-test("should expose every runtime context service on ScriptContext or allowlist", () => {
-  const runtimeKeys = interfaceKeys(readFileSync(resolve(process.cwd(), "../runtime-web-three/src/systems/contextTypes.ts"), "utf8"), "ISystemContext");
-  const scriptKeys = interfaceKeys(readFileSync(resolve(process.cwd(), "src/script-context.ts"), "utf8"), "ScriptContext");
-  const temporarilyUntyped = [
-    "animation", "assets", "audio", "cameras", "channels", "character", "components", "effects", "navigation", "observers", "particles",
-    "persistence", "physics", "plugins", "random", "scenes", "schedule", "sequences", "settings", "states", "tasks", "timers", "ui",
-  ];
+test("should compile every promoted ScriptContext facade", () => {
+  const fixture = readFileSync(resolve(process.cwd(), "src/fixtures/script-context.contract.fixture.ts"), "utf8");
+  for (const entry of SCRIPT_HOST_SERVICE_MATRIX) {
+    const call = entry.context.replace(/^ctx/, "context").replaceAll(".", "\\.");
+    assert.match(fixture, new RegExp(`\\b${call}\\(`), `${entry.service} should have positive compile coverage`);
+  }
+});
 
-  assert.equal(scriptKeys.has("picking"), true);
-  assert.deepEqual([...runtimeKeys].filter((key) => !scriptKeys.has(key)).sort(), temporarilyUntyped);
+test("should reject an invalid physics vector", () => {
+  assertTypeErrorFixture("physics vectors must contain exactly three numbers", "context.physics.addForce");
+});
+
+test("should reject an undeclared setting value", () => {
+  assertTypeErrorFixture("setting values are restricted to portable scalar values", "context.settings.set");
+});
+
+test("should reject invalid service payloads and result assumptions", () => {
+  assertTypeErrorFixture("navigation requests require both start and goal vectors", "context.navigation.path");
+  const fixture = readFileSync(resolve(process.cwd(), "src/fixtures/script-context.contract.fixture.ts"), "utf8");
+  assert.match(fixture, /@ts-expect-error raycasts can miss[\s\S]*const assumedRaycastHit/);
+});
+
+test("should reject an unknown ScriptContext property", () => {
+  assertTypeErrorFixture("adapter and renderer handles are not public context surfaces", "context.renderer");
 });
 
 test("should keep bundle-source parity for MaterialEx", () => {
@@ -58,24 +74,9 @@ test("should keep bundle-source parity for MaterialEx", () => {
   assert.deepEqual(JSON.parse(JSON.stringify(bundled)), MaterialEx.patch("piece.e4", { emissive: "#ffaa00", opacity: 0.8 }));
 });
 
-function interfaceKeys(source: string, name: string): Set<string> {
-  const keys = new Set<string>();
-  let active = false;
-  let depth = 0;
-  for (const line of source.split("\n")) {
-    if (!active && line.includes(`interface ${name} `)) active = true;
-    if (!active) continue;
-    if (depth === 1) {
-      const match = /^  ([A-Za-z][A-Za-z0-9]*)(?:<[^;{(]*>)?[(:]/.exec(line);
-      if (match?.[1] !== undefined) keys.add(match[1]);
-    }
-    for (const character of line) {
-      if (character === "{") depth += 1;
-      else if (character === "}") depth -= 1;
-    }
-    if (depth === 0) break;
-  }
-  return keys;
+function assertTypeErrorFixture(reason: string, expression: string): void {
+  const fixture = readFileSync(resolve(process.cwd(), "src/fixtures/script-context.contract.fixture.ts"), "utf8");
+  assert.match(fixture, new RegExp(`// @ts-expect-error ${reason}\\n${expression.replaceAll(".", "\\.")}`));
 }
 
 test("defineBehavior should attach frozen metadata and bundle equivalently", () => {

@@ -1,14 +1,68 @@
 import type { IComponentReflectionRegistry, IComponentReflectionType } from "@threenative/ir/reflection";
-import type { IAssetsManifest, IIrSystemQuery, IPickMeshRequest, IPickMeshResult, IPointerRayRequest, IPointerRayResult, IUiIr, IWorldEntity, IrSystemService, IrTweenEasing, IrTweenProperty } from "@threenative/ir";
-import type { IScriptAudioPlayOptions } from "../audio.js";
-import type { ICharacterTraceObservation } from "../character.js";
-import type { IUiActionEvent } from "../ui/inputBridge.js";
-import type { IPhysicsSensorEvent } from "../sensors.js";
-import type { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
-import type { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
-import type { IWebPersistenceService } from "./services/persistence.js";
-import type { IOverlapRequest, IOverlapResult, IRaycastRequest, IRaycastResult, IShapeCastRequest, IShapeCastResult } from "./services/physics.js";
-import type { INavigationPathRequest, INavigationPathResult } from "../navigation.js";
+import type {
+  IAssetsManifest,
+  IPickMeshRequest,
+  IPickMeshResult,
+  IPointerRayRequest,
+  IPointerRayResult,
+  IScriptAnimationPlayResult,
+  IScriptAnimationQueryResult,
+  IScriptAnimationStopResult,
+  IScriptAudioPlayOptions,
+  IScriptAudioPlayResult,
+  IScriptAudioQueryResult,
+  IScriptAudioStopResult,
+  IScriptAssetLoadResult,
+  IScriptCameraShakeOptions,
+  IScriptCameraShakeResult,
+  IScriptCharacterMoveRequest,
+  IScriptCharacterMoveResult,
+  IScriptComponentHookObservation,
+  IScriptFeedbackPlayOptions,
+  IScriptFeedbackPlayResult,
+  IScriptInstantiateResult,
+  IScriptNavigationPathRequest,
+  IScriptNavigationPathResult,
+  IScriptPersistenceLoadResult,
+  IScriptPersistenceSaveResult,
+  IScriptPhysicsBodyCommandResult,
+  IScriptPhysicsOverlapRequest,
+  IScriptPhysicsOverlapResult,
+  IScriptPhysicsRaycastRequest,
+  IScriptPhysicsRaycastResult,
+  IScriptPhysicsSensorEvent,
+  IScriptPhysicsSensorRequest,
+  IScriptPhysicsSensorResult,
+  IScriptPhysicsShapeCastRequest,
+  IScriptPhysicsShapeCastResult,
+  IScriptPluginDeclarationView,
+  IScriptPluginGroupView,
+  IScriptObserverPropagationStep,
+  IScriptParticleCommandOptions,
+  IScriptParticleCommandResult,
+  IScriptSceneServiceResult,
+  IScriptScheduleAfterTicksOptions,
+  IScriptScheduleAfterTicksResult,
+  IScriptSequenceQueryResult,
+  IScriptSequenceServiceResult,
+  IScriptSystemQuery,
+  IScriptTaskDeclarationView,
+  IScriptTweenCommandOptions,
+  IScriptTweenCommandResult,
+  IScriptUiActionEvent,
+  IScriptUiActivateResult,
+  IScriptUiDisabledResult,
+  IScriptUiFocusResult,
+  IScriptUiReadResult,
+  IScriptUiValueResult,
+  IScriptWorldTextCommandOptions,
+  IScriptWorldTextCommandResult,
+  IUiIr,
+  IWorldEntity,
+  IrSystemService,
+  IrTweenEasing,
+  IrTweenProperty,
+} from "@threenative/ir";
 
 export interface ISystemEntityView {
   components: IWorldEntity["components"];
@@ -34,7 +88,7 @@ export interface ISystemCommandBuffer {
   addComponent(entity: string, component: unknown, value?: unknown): void;
   clearParent(child: string): void;
   despawn(entity: string): void;
-  emitEvent(event: unknown, payload: unknown): void;
+  emitEvent(event: unknown, payload?: unknown): void;
   instantiate(prefab: string, prefix: string): IInstantiateResult;
   materialPatch(entity: string, value: Record<string, unknown>): void;
   removeComponent(entity: string, component: unknown): void;
@@ -47,14 +101,14 @@ export interface ISystemCommandBuffer {
 
 export interface ISystemContext {
   animation: {
-    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): ReturnType<typeof animationPlayPayload>["result"];
-    query(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationQueryPayload>["result"];
-    stop(entity: string | ISystemEntityView, clip?: string): ReturnType<typeof animationStopPayload>["result"];
+    play(entity: string | ISystemEntityView, clip: string, options?: Record<string, unknown>): IScriptAnimationPlayResult;
+    query(entity: string | ISystemEntityView, clip?: string): IScriptAnimationQueryResult;
+    stop(entity: string | ISystemEntityView, clip?: string): IScriptAnimationStopResult;
   };
   audio: {
-    play(soundId: string, options?: IScriptAudioPlayOptions): ReturnType<typeof audioPlayPayload>["result"];
-    query(playbackId: string): ReturnType<typeof audioQueryPayload>["result"];
-    stop(playbackId: string): ReturnType<typeof audioStopPayload>["result"];
+    play(soundId: string, options?: IScriptAudioPlayOptions): IScriptAudioPlayResult;
+    query(playbackId: string): IScriptAudioQueryResult;
+    stop(playbackId: string): IScriptAudioStopResult;
   };
   cameras: {
     shake(options?: ICameraShakeOptions): ICameraShakeResult;
@@ -74,7 +128,7 @@ export interface ISystemContext {
     load(id: unknown): IAssetLoadResult;
   };
   character: {
-    move(entity: string | ISystemEntityView, options?: ICharacterMoveRequest): ICharacterTraceObservation | null;
+    move(entity: string | ISystemEntityView, options?: ICharacterMoveRequest): IScriptCharacterMoveResult | null;
   };
   commands: ISystemCommandBuffer;
   effects: {
@@ -90,7 +144,7 @@ export interface ISystemContext {
     send(channel: unknown, payload: unknown): void;
   };
   events: {
-    emit(event: unknown, payload: unknown): void;
+    emit(event: unknown, payload?: unknown): void;
     read(event: unknown): unknown[];
   };
   input: {
@@ -115,7 +169,7 @@ export interface ISystemContext {
   entity(id: string): ISystemEntityView | undefined;
   ui: {
     activate(nodeId: string): IUiActivateResult;
-    actions(): IUiActionEvent[];
+    actions(): IScriptUiActionEvent[];
     focus(nodeId: string): IUiFocusResult;
     read(nodeId: string): IUiReadResult;
     setDisabled(nodeId: string, disabled: boolean): IUiDisabledResult;
@@ -124,8 +178,8 @@ export interface ISystemContext {
   persistence: {
     delete(slot: string): { accepted: boolean; slot: string; status: "deleted" | "missing-save" };
     listSlots(): string[];
-    load(slot: string): ReturnType<IWebPersistenceService["load"]>;
-    save(slot: string): ReturnType<IWebPersistenceService["save"]>;
+    load(slot: string): IScriptPersistenceLoadResult;
+    save(slot: string): IScriptPersistenceSaveResult;
   };
   observers: {
     propagate(event: unknown, target: string): IObserverPropagationStep[];
@@ -135,7 +189,7 @@ export interface ISystemContext {
     has(id: unknown): boolean;
     list(): IPluginDeclarationView[];
   };
-  query(query?: IIrSystemQuery): ISystemEntityView[];
+  query(query?: IScriptSystemQuery): ISystemEntityView[];
   random: {
     bool(probability?: number): boolean;
     float(): number;
@@ -190,15 +244,15 @@ export interface ISystemContext {
     addTorque(entity: string, torque: readonly [number, number, number]): IPhysicsBodyCommandResult;
     applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
     applyImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
-    overlap(options: IOverlapRequest): IOverlapResult;
-    raycast(options: IRaycastRequest): IRaycastResult;
+    overlap(options: IScriptPhysicsOverlapRequest): IScriptPhysicsOverlapResult;
+    raycast(options: IScriptPhysicsRaycastRequest): IScriptPhysicsRaycastResult;
     sensor(options?: IPhysicsSensorRequest): IPhysicsSensorResult;
-    shapeCast(options: IShapeCastRequest): IShapeCastResult;
+    shapeCast(options: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult;
     setAngularVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
     setLinearVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
   };
   navigation: {
-    path(options: INavigationPathRequest): INavigationPathResult;
+    path(options: IScriptNavigationPathRequest): IScriptNavigationPathResult;
   };
   picking: {
     mesh(options: IPickMeshRequest): IPickMeshResult;
@@ -218,66 +272,21 @@ export interface ISystemContext {
   state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }
 
-export interface IPhysicsBodyCommandResult {
-  accepted: boolean;
-  entity: string;
-  status: "applied" | "invalid-body" | "invalid-vector" | "missing";
-}
-
-export interface IScheduleAfterTicksOptions {
-  delayTicks: number;
-  id: string;
-}
-
-export interface IScheduleAfterTicksResult {
-  accepted: boolean;
-  delayTicks: number;
-  id: string;
-  status: "enqueued" | "rejected";
-}
-
-export interface IObserverPropagationStep {
-  entity: string;
-  phase: "bubble" | "target";
-}
-
-export interface IComponentHookObservation {
-  component: string;
-  entity: string;
-  hook: "onAdd" | "onInsert";
-}
-
-export interface ITaskDeclarationView {
-  channel?: string;
-  id: string;
-  mode: "fixed-trace";
-  schedule: "fixedUpdate" | "postUpdate" | "startup" | "update";
-}
+export type IPhysicsBodyCommandResult = IScriptPhysicsBodyCommandResult;
+export type IScheduleAfterTicksOptions = IScriptScheduleAfterTicksOptions;
+export type IScheduleAfterTicksResult = IScriptScheduleAfterTicksResult;
+export type IObserverPropagationStep = IScriptObserverPropagationStep;
+export type IComponentHookObservation = IScriptComponentHookObservation;
+export type ITaskDeclarationView = IScriptTaskDeclarationView;
 
 export interface IEntityLifecycleQueryOptions {
   tag?: string;
 }
 
-export interface ISequenceServiceResult<TOperation extends string> {
-  accepted: boolean;
-  operation: TOperation;
-  sequence: string;
-}
-
-export interface ISequenceQueryResult {
-  active: boolean;
-  sequence: string | null;
-}
-
-export interface IPluginDeclarationView {
-  id: string;
-  systems: string[];
-}
-
-export interface IPluginGroupView {
-  id: string;
-  plugins: string[];
-}
+export type ISequenceServiceResult<TOperation extends string> = IScriptSequenceServiceResult<TOperation>;
+export type ISequenceQueryResult = IScriptSequenceQueryResult;
+export type IPluginDeclarationView = IScriptPluginDeclarationView;
+export type IPluginGroupView = IScriptPluginGroupView;
 
 export interface IQueuedCommand {
   child?: string;
@@ -297,13 +306,7 @@ export interface IQueuedCommand {
   value?: unknown;
 }
 
-export interface IInstantiateResult {
-  accepted: boolean;
-  entities: string[];
-  prefab: string;
-  root: string | null;
-  status: "enqueued" | "missing";
-}
+export type IInstantiateResult = IScriptInstantiateResult;
 
 export interface IQueuedEvent {
   event: string;
@@ -320,146 +323,24 @@ export interface IQueuedServiceCall {
   service: IrSystemService;
 }
 
-export interface ITweenCommandOptions {
-  duration: number;
-  easing?: IrTweenEasing;
-  loops?: number;
-  property: IrTweenProperty;
-  to: number | readonly number[];
-  yoyo?: boolean;
-}
+export type ITweenCommandOptions = IScriptTweenCommandOptions;
+export type ITweenCommandResult = IScriptTweenCommandResult;
+export type IWorldTextCommandOptions = IScriptWorldTextCommandOptions;
+export type IWorldTextCommandResult = IScriptWorldTextCommandResult;
+export type ICameraShakeOptions = IScriptCameraShakeOptions;
+export type ICameraShakeResult = IScriptCameraShakeResult;
+export type IFeedbackPlayOptions = IScriptFeedbackPlayOptions;
+export type IFeedbackPlayResult = IScriptFeedbackPlayResult;
+export type IParticleCommandOptions = IScriptParticleCommandOptions;
+export type IParticleCommandResult = IScriptParticleCommandResult;
 
-export interface ITweenCommandResult {
-  accepted: boolean;
-  id: string;
-  status: "enqueued" | "rejected";
-}
-
-export interface IWorldTextCommandOptions {
-  billboard?: boolean;
-  color?: string | readonly number[];
-  fade?: boolean;
-  floatDistance?: number;
-  lifetime?: number;
-  offset?: readonly [number, number, number];
-  size?: number;
-  target?: string;
-  text: string;
-}
-
-export interface IWorldTextCommandResult {
-  accepted: boolean;
-  entity: string;
-  status: "enqueued" | "rejected";
-}
-
-export interface ICameraShakeOptions {
-  amplitude?: number;
-  camera?: string;
-  duration?: number;
-  frequency?: number;
-  seed?: number | string;
-}
-
-export interface ICameraShakeResult {
-  accepted: boolean;
-  id: string;
-  status: "enqueued" | "rejected";
-}
-
-export interface IFeedbackPlayOptions {
-  camera?: string;
-  entity?: string;
-  seed?: number | string;
-}
-
-export interface IFeedbackPlayResult {
-  accepted: boolean;
-  preset: string;
-  status: "enqueued" | "missing";
-}
-
-export interface IParticleCommandOptions {
-  count?: number;
-  seed?: number | string;
-}
-
-export interface IParticleCommandResult {
-  accepted: boolean;
-  active: boolean;
-  asset: string;
-  command: "burst" | "clear" | "emit" | "play" | "reset" | "start" | "stop";
-  count: number;
-  emitter: string;
-  maxParticles: number;
-  seed: number;
-  status: "burst" | "cleared" | "emitted" | "missing-emitter" | "played" | "reset" | "started" | "stopped";
-}
-
-export interface IUiFocusResult {
-  accepted: boolean;
-  current: string | null;
-  previous: string | null;
-  status: "focused" | "missing" | "not-focusable";
-}
-
-export interface IUiActivateResult {
-  accepted: boolean;
-  action?: string;
-  node: string;
-  status: "activated" | "disabled" | "missing" | "no-action";
-}
-
-export interface IUiDisabledResult {
-  accepted: boolean;
-  disabled: boolean;
-  node: string;
-  status: "missing" | "updated";
-}
-
-export interface IUiValueResult {
-  accepted: boolean;
-  node: string;
-  status: "missing" | "updated";
-  value: boolean | number | string;
-}
-
-export interface IUiReadResult {
-  action?: string;
-  disabled: boolean;
-  focusable: boolean;
-  focused: boolean;
-  kind?: string;
-  node: string;
-  status: "found" | "missing";
-  value?: boolean | number | string;
-}
-
-export interface ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> {
-  accepted: true;
-  operation: TOperation;
-  scene: string;
-}
-
-export interface IAssetLoadResult {
-  accepted: boolean;
-  asset: IAssetsManifest["assets"][number] | null;
-  id: string;
-  status: "missing" | "ready";
-}
-
-export interface ICharacterMoveRequest {
-  axes?: Record<string, number>;
-  direction?: [number, number];
-  fixedDelta?: number;
-  speed?: number;
-}
-
-export interface IPhysicsSensorRequest {
-  phases?: Array<"enter" | "exit" | "stay">;
-  sensor?: string;
-}
-
-export interface IPhysicsSensorResult {
-  events: IPhysicsSensorEvent[];
-}
+export type IUiFocusResult = IScriptUiFocusResult;
+export type IUiActivateResult = IScriptUiActivateResult;
+export type IUiDisabledResult = IScriptUiDisabledResult;
+export type IUiValueResult = IScriptUiValueResult;
+export type IUiReadResult = IScriptUiReadResult;
+export type ISceneServiceResult<TOperation extends "change" | "loadAdditive" | "push" | "unload"> = IScriptSceneServiceResult<TOperation>;
+export type IAssetLoadResult = IScriptAssetLoadResult;
+export type ICharacterMoveRequest = IScriptCharacterMoveRequest;
+export type IPhysicsSensorRequest = IScriptPhysicsSensorRequest;
+export type IPhysicsSensorResult = IScriptPhysicsSensorResult;

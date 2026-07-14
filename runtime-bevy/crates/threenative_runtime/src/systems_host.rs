@@ -282,6 +282,7 @@ pub struct NativeGameLoopState {
     pub interaction_runtime: crate::interactions::NativeInteractionRuntimeState,
     pub kinematic_mover_origins: BTreeMap<String, [f32; 3]>,
     pub patrol_runtime: crate::patrol::NativePatrolRuntimeState,
+    pub persistence_runtime: crate::persistence::NativeAutosaveRuntimeState,
     pub presentation: crate::presentation::NativePresentationRuntimeState,
     pub state_machine_runtime: crate::state_machines::NativeStateMachineRuntimeState,
     pub paused: bool,
@@ -309,6 +310,7 @@ impl NativeGameLoopState {
             interaction_runtime: crate::interactions::NativeInteractionRuntimeState::default(),
             kinematic_mover_origins: BTreeMap::new(),
             patrol_runtime: crate::patrol::NativePatrolRuntimeState::default(),
+            persistence_runtime: crate::persistence::NativeAutosaveRuntimeState::default(),
             presentation: crate::presentation::NativePresentationRuntimeState::default(),
             state_machine_runtime: crate::state_machines::NativeStateMachineRuntimeState::default(),
             paused,
@@ -704,6 +706,14 @@ pub fn run_native_systems_frame_with_input(
     state.presentation.step(bundle, options.delta);
     merge_emitted_events(&mut run.emitted_events, bundle.world.events.clone());
 
+    crate::persistence::step_native_autosave(
+        bundle,
+        state.elapsed,
+        &run.emitted_events,
+        &mut state.persistence_runtime,
+    )
+    .map_err(|message| host_error("TN_BEVY_PERSISTENCE_AUTOSAVE_FAILED", message))?;
+
     Ok(run)
 }
 
@@ -1067,6 +1077,8 @@ fn run_native_system_schedules_with_state_filtered(
                     sensor_events,
                     lifecycle,
                 )?;
+                crate::persistence::apply_native_persistence_service_effects(bundle, &effects)
+                    .map_err(|message| host_error("TN_BEVY_PERSISTENCE_SERVICE_FAILED", message))?;
                 system_observations.extend(native_resource_observations(system, &effects));
                 if let Some((pending, observations)) = delayed_state.as_mut() {
                     enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
@@ -1620,6 +1632,8 @@ fn call_system_export(
     sensor_events: &[Value],
     lifecycle: NativeEntityLifecycleSnapshot,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
+    crate::persistence::native_persistence_snapshot(bundle)
+        .map_err(|message| host_error("TN_BEVY_PERSISTENCE_RESTORE_FAILED", message))?;
     let export_name = system
         .script
         .as_ref()

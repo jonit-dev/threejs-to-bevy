@@ -53,6 +53,26 @@ test("should prove clean consumers can resolve exported schemas capabilities and
   }
 });
 
+test("should order distributable packages after their workspace dependencies", async () => {
+  const positions = new Map(packageOrder.map(([name], index) => [name, index]));
+  const diagnostics = [];
+  for (const [name, packagePath] of packageOrder) {
+    const manifest = JSON.parse(await readFile(join(packagePath, "package.json"), "utf8"));
+    const dependencies = { ...manifest.dependencies, ...manifest.peerDependencies };
+    for (const dependency of Object.keys(dependencies)) {
+      if (positions.has(dependency) && positions.get(dependency) >= positions.get(name)) {
+        diagnostics.push(`${name} must follow ${dependency}`);
+      }
+    }
+  }
+  assert.deepEqual(diagnostics, []);
+
+  const rootManifest = JSON.parse(await readFile("package.json", "utf8"));
+  const tnBuilds = [...rootManifest.scripts.tn.matchAll(/--filter (@threenative\/[a-z0-9-]+) build/g)]
+    .map((match) => match[1]);
+  assert.deepEqual(tnBuilds.slice(0, 3), ["@threenative/ir", "@threenative/script-stdlib", "@threenative/sdk"]);
+});
+
 async function createInstalledConsumer() {
   return await mkdtemp(join(tmpdir(), "threenative-distribution-test-"));
 }

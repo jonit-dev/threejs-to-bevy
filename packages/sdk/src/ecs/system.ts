@@ -1,5 +1,5 @@
 import { SdkError } from "../errors.js";
-import type { IParticleCommandOptions, IParticleCommandResult } from "../animation.js";
+import type { ScriptContext, ScriptEntity, ScriptTransformFacade } from "@threenative/script-stdlib";
 import type { CommandDeclaration } from "./commands.js";
 import type { IQueryDeclaration, IQueryOptions } from "./query.js";
 import type { EcsFactory, IEcsSchema } from "./schema.js";
@@ -140,7 +140,7 @@ export interface ISystemDeclaration {
   writes: string[];
 }
 
-export interface ISystemEntity {
+export interface ISystemEntity extends ScriptEntity {
   readonly id: string;
   get<T = unknown>(component: EcsFactory | IEcsSchema | string): T;
   get<T extends Record<string, unknown>>(component: EcsFactory | IEcsSchema | string, defaults: T): T;
@@ -150,317 +150,35 @@ export interface ISystemEntity {
   transform(): ISystemTransformFacade;
 }
 
-export interface ISystemTransformFacade {
-  position: [number, number, number];
-  positionOr(fallback: readonly [number, number, number]): [number, number, number];
-  setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
-  setPosition(position: readonly [number, number, number]): void;
-  setRotation(rotation: readonly [number, number, number, number]): void;
-  yawOr(fallback: number): number;
-}
+export interface ISystemTransformFacade extends ScriptTransformFacade {}
 
-export interface ISystemContext {
-  animation: {
-    play(entity: ISystemEntity | string, clip: string, options?: Record<string, unknown>): void;
-    query(entity: ISystemEntity | string, clip?: string): { active: boolean; clip?: string; entity: string; paused: boolean; stopped: boolean; timeSeconds: number };
-    stop(entity: ISystemEntity | string, clip?: string): { accepted: true; stopped: true };
-  };
-  particles: {
-    burst(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    clear(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
-    emit(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    play(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    reset(asset: string, emitter: string, options?: Pick<IParticleCommandOptions, "seed">): IParticleCommandResult;
-    start(asset: string, emitter: string, options?: IParticleCommandOptions): IParticleCommandResult;
-    stop(asset: string, emitter: string): IParticleCommandResult;
-  };
-  audio: {
-    play(soundId: string, options?: import("../audio.js").IScriptAudioPlayOptions): import("../audio.js").IScriptAudioPlayResult;
-    query(playbackId: string): import("../audio.js").IScriptAudioQueryResult;
-    stop(playbackId: string): import("../audio.js").IScriptAudioStopResult;
-  };
-  cameras: {
-    shake(options?: { amplitude?: number; camera?: string; duration?: number; frequency?: number; seed?: number | string }): { accepted: boolean; id: string; status: "enqueued" | "rejected" };
-  };
-  effects: {
-    play(preset: string, options?: { camera?: string; entity?: string; seed?: number | string }): { accepted: boolean; preset: string; status: "enqueued" | "missing" };
-  };
-  assets: {
-    get(id: unknown): Record<string, unknown> | null;
-    list(): Record<string, unknown>[];
-    load(id: unknown): { accepted: boolean; asset: Record<string, unknown> | null; id: string; status: "missing" | "ready" };
-  };
-  character: {
-    move(
-      entity: ISystemEntity | string,
-      options?: {
-        axes?: Record<string, number>;
-        direction?: readonly [number, number];
-        fixedDelta?: number;
-        speed?: number;
-      },
-    ): {
-      blockedBy?: string;
-      contacts?: Array<{
-        material?: string;
-        normal?: [number, number, number];
-        other: string;
-        phase: "begin" | "end" | "stay";
-        point?: [number, number, number];
-        pointIndex: number;
-        self: string;
-      }>;
-      desired: [number, number, number];
-      entity: string;
-      groundEntity?: string;
-      grounded: boolean;
-      platformDelta?: [number, number, number];
-      pushed?: { entity: string; impulse: [number, number, number]; position: [number, number, number] };
-      pushes?: Array<{ entity: string; impulse: [number, number, number]; position: [number, number, number] }>;
-      resolved: [number, number, number];
-      slope?: { angle: number; axis: "x" | "z"; direction: -1 | 1; entity: string; rise: number; run: number; walkable: boolean };
-      start: [number, number, number];
-      tooHeavy?: string;
-    } | null;
-  };
-  commands: {
+export interface ISystemContext
+  extends Omit<ScriptContext, "commands" | "entities" | "entity" | "events" | "query" | "schedule"> {
+  commands: Omit<
+    ScriptContext["commands"],
+    "addComponent" | "despawn" | "removeComponent" | "setComponent" | "spawn"
+  > & {
     addComponent(entity: string, component: EcsFactory | IEcsSchema | string, value?: unknown): void;
-    clearParent(child: string): void;
     despawn(entity: string, policy?: { recursive?: boolean }): void;
-    instantiate(prefab: string, prefix: string): { accepted: boolean; entities: string[]; prefab: string; root: string | null; status: "enqueued" | "missing" };
     removeComponent(entity: string, component: EcsFactory | IEcsSchema | string): void;
     setComponent(entity: string, component: EcsFactory | IEcsSchema | string, value: unknown): void;
-    setParent(child: string, parent: string): void;
-    spawn(entity: string, components: Record<string, unknown>): void;
-    tween(entity: string, options: { duration: number; easing?: "ease-in" | "ease-in-out" | "ease-out" | "linear"; loops?: number; property: "emissiveIntensity" | "opacity" | "position" | "rotation" | "scale"; to: number[] | number }): { accepted: boolean; id: string; status: "enqueued" | "rejected" };
-    worldText(entity: string, options: { billboard?: boolean; color?: string; fade?: boolean; floatDistance?: number; lifetime?: number; offset?: [number, number, number]; size?: number; target?: string; text: string }): { accepted: boolean; entity: string; status: "enqueued" | "rejected" };
+    spawn(entity: string, components?: Record<string, unknown>, tags?: readonly string[]): void;
   };
-  events: {
-    emit(event: EcsFactory | IEcsSchema | string, payload: unknown): void;
-    read<T = unknown>(event: EcsFactory | IEcsSchema | string): T[];
-  };
-  input: {
-    action(name: string): boolean;
-    axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
-    axis(name: string): number;
-    getAxis(axis: string): number;
-    getAxis2(xAxis: string, yAxis: string, options?: { deadzone?: number; normalize?: boolean }): [number, number];
-    getButton(name: string): boolean;
-    getButtonDown(name: string): boolean;
-    getButtonUp(name: string): boolean;
-    pressed(name: string): boolean;
-    released(name: string): boolean;
-  };
-  entities: {
+  entities: Omit<ScriptContext["entities"], "byId" | "withTag"> & {
     byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ISystemEntity | undefined };
+    withTag(tag: string): ISystemEntity[];
   };
   entity(id: string): ISystemEntity | undefined;
-  ui: {
-    actions(): Array<{ action: string; node: string; value?: boolean | number | string }>;
-    activate(nodeId: string): { accepted: boolean; action?: string; node: string; status: "activated" | "disabled" | "missing" | "no-action" };
-    focus(nodeId: string): { accepted: boolean; current: string | null; previous: string | null; status: "focused" | "missing" | "not-focusable" };
-    read(nodeId: string): {
-      action?: string;
-      disabled: boolean;
-      focusable: boolean;
-      focused: boolean;
-      kind?: string;
-      node: string;
-      status: "found" | "missing";
-      value?: boolean | number | string;
-    };
-    setDisabled(nodeId: string, disabled: boolean): { accepted: boolean; disabled: boolean; node: string; status: "missing" | "updated" };
-    setValue(nodeId: string, value: boolean | number | string): { accepted: boolean; node: string; status: "missing" | "updated"; value: boolean | number | string };
-  };
-  physics: {
-    addForce(entity: string, force: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-    addTorque(entity: string, torque: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-    applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-    applyImpulse(entity: string, impulse: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-    overlap(options: {
-      ignore?: string[];
-      layer?: string;
-      layers?: string[];
-      mask?: string[];
-      position: [number, number, number];
-      shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
-    }): { entities: string[] };
-    raycast(options: {
-      direction: [number, number, number];
-      ignore?: string[];
-      layer?: string;
-      layers?: string[];
-      mask?: string[];
-      maxDistance: number;
-      origin: [number, number, number];
-    }):
-      | { hit: false }
-      | {
-          distance: number;
-          entity: string;
-          hit: true;
-          normal: [number, number, number];
-          point: [number, number, number];
-        };
-    shapeCast(options: {
-      direction: [number, number, number];
-      ignore?: string[];
-      layer?: string;
-      layers?: string[];
-      mask?: string[];
-      maxDistance: number;
-      origin: [number, number, number];
-      shape: { halfExtents: [number, number, number]; kind: "box" } | { kind: "sphere"; radius: number };
-    }):
-      | { hit: false }
-      | {
-          distance: number;
-          entity: string;
-          hit: true;
-          normal: [number, number, number];
-          point: [number, number, number];
-        };
-    sensor(options?: {
-      phases?: Array<"enter" | "exit" | "stay">;
-      sensor?: string;
-    }): {
-      events: Array<{
-        filteredOut: string[];
-        interactionKind?: string;
-        occupants: string[];
-        phase: "enter" | "exit" | "stay";
-        sensor: string;
-        step: number;
-      }>;
-    };
-    setAngularVelocity(entity: string, velocity: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-    setLinearVelocity(entity: string, velocity: readonly [number, number, number]): { accepted: boolean; entity: string; status: "applied" | "invalid-body" | "invalid-vector" | "missing" };
-  };
-  navigation: {
-    path(options: {
-      goal: [number, number, number];
-      id?: string;
-      start: [number, number, number];
-    }): {
-      failureReason?: "goal-outside" | "no-route" | "start-outside";
-      path: Array<[number, number, number]>;
-      query: string;
-      status: "failed" | "success";
-      totalCost: number;
-      visitedRegions: string[];
-    };
-  };
-  picking: {
-    mesh(options: {
-      direction: [number, number, number];
-      ignore?: string[];
-      maxDistance: number;
-      origin: [number, number, number];
-    }):
-      | { hit: false }
-      | {
-          distance: number;
-          entity: string;
-          hit: true;
-          normal: [number, number, number];
-          point: [number, number, number];
-        };
-    pointerRay(options: {
-      aspect?: number;
-      camera?: string;
-      maxDistance?: number;
-      pointer: [number, number];
-    }):
-      | { hit: false }
-      | {
-          direction: [number, number, number];
-          hit: true;
-          maxDistance: number;
-          origin: [number, number, number];
-        };
-  };
-  persistence: {
-    delete(slot: string): { accepted: boolean; slot: string; status: "deleted" | "missing-save" };
-    listSlots(): string[];
-    load(slot: string): {
-      accepted: boolean;
-      record?: {
-        appVersion: string;
-        components: Record<string, Record<string, unknown>>;
-        resources: Record<string, unknown>;
-        schemaVersion: number;
-        settings: Record<string, boolean | number | string>;
-        slot: string;
-      };
-      slot: string;
-      status: "loaded" | "missing-save" | "missing-slot";
-      world: unknown;
-    };
-    save(slot: string): {
-      accepted: boolean;
-      record?: {
-        appVersion: string;
-        components: Record<string, Record<string, unknown>>;
-        resources: Record<string, unknown>;
-        schemaVersion: number;
-        settings: Record<string, boolean | number | string>;
-        slot: string;
-      };
-      slot: string;
-      status: "missing-slot" | "saved";
-    };
+  events: Omit<ScriptContext["events"], "emit" | "read"> & {
+    emit(event: EcsFactory | IEcsSchema | string, payload?: unknown): void;
+    read<T = unknown>(event: EcsFactory | IEcsSchema | string): T[];
   };
   query(query?: IQueryDeclaration | IQueryOptions): ISystemEntity[];
-  random: {
-    bool(probability?: number): boolean;
-    float(): number;
-    int(min: number, max: number): number;
-    pick<T>(values: readonly T[]): T | undefined;
-    range(min: number, max: number): number;
-  };
-  scenes: {
-    change(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "change"; scene: string };
-    current(): string | null;
-    loadAdditive(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "loadAdditive"; scene: string };
-    pop(options?: Record<string, unknown>): { accepted: true; operation: "pop" };
-    push(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "push"; scene: string };
-    unload(scene: string, options?: Record<string, unknown>): { accepted: true; operation: "unload"; scene: string };
-  };
   schedule: {
     afterTicks(options: IScheduleAfterTicksOptions): IScheduleAfterTicksResult;
   };
-  settings: {
-    export(): Record<string, boolean | number | string>;
-    get(key: string): boolean | number | string | undefined;
-    import(values: Record<string, unknown>): Record<string, boolean | number | string>;
-    set(key: string, value: boolean | number | string): boolean;
-  };
-  timers: {
-    done(start: number, duration: number): boolean;
-    elapsed(start: number): number;
-    progress(start: number, duration: number): number;
-    ready(lastRun: number, cooldown: number): boolean;
-    remaining(start: number, duration: number): number;
-  };
-  time: {
-    delta: number;
-    deltaTime: number;
-    dt: number;
-    elapsed: number;
-    fixedDelta: number;
-    fixedDeltaTime: number;
-    fixedDt: number;
-    paused: boolean;
-    time: number;
-  };
-  resources: {
-    get<T = unknown>(name: string): T;
-    get<T extends Record<string, unknown>>(name: string, defaults: T): T;
-    patch(name: string, value: Record<string, unknown>): void;
-    set(name: string, value: unknown): void;
-  };
-  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
 }
+
 
 export function defineSystem(config: IV4SystemConfig, run?: PortableSystem): ISystemDeclaration {
   return createSystem(config.stage, config.id, {

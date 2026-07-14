@@ -825,12 +825,11 @@ function __tnInvokeSystem(options) {
       audioPlaybacks[playbackId] = stopped;
       return serializeAudioState(stopped);
     };
-    const ensurePersistenceStore = () => {
-      if (!globalThis.__tnPersistenceStore) {
-        globalThis.__tnPersistenceStore = { saves: {}, settings: {} };
-      }
-      return globalThis.__tnPersistenceStore;
+    const persistenceStore = {
+      saves: clone(data.localData.persistedSaves || {}),
+      settings: clone(data.localData.persistedSettings || {})
     };
+    const ensurePersistenceStore = () => persistenceStore;
     const settingByKey = (key) => settingIndex.get(key);
     const defaultSettings = () => {
       const defaults = {};
@@ -855,7 +854,9 @@ function __tnInvokeSystem(options) {
         if (setting.max !== undefined && numeric > Number(setting.max)) return false;
         return true;
       }
-      if (setting.kind === "string") return typeof value === "string";
+      if (setting.kind === "string") {
+        return typeof value === "string" && (!Array.isArray(setting.enumValues) || setting.enumValues.length === 0 || setting.enumValues.includes(value));
+      }
       if (setting.kind === "enum") return typeof value === "string" && Array.isArray(setting.enumValues) && setting.enumValues.includes(value);
       return false;
     };
@@ -876,7 +877,18 @@ function __tnInvokeSystem(options) {
         }
         if (Object.keys(components).length > 0) entities.push({ id: entity.id, components });
       }
-      return { resources, world: { entities, resources }, slot };
+      const declaration = saveSlotDeclaration(slot);
+      return {
+        appVersion: declaration.appVersion,
+        components: Object.fromEntries(entities.map((entity) => [entity.id, entity.components])),
+        resources,
+        schema: "threenative.persistence-record",
+        schemaVersion: declaration.schemaVersion,
+        settings: clone(ensureSettings()),
+        slot,
+        version: "0.1.0",
+        world: { entities, resources }
+      };
     };
     const saveSlotDeclaration = (slot) => (data.localData.saveSlots || []).find((candidate) => candidate.id === slot);
     const persistenceListSlots = () => {
@@ -1094,6 +1106,44 @@ function __tnInvokeSystem(options) {
       time: finiteNumber(data.time.time, finiteNumber(data.time.elapsed, 0))
     },
     random: createRandom(randomSeed),
+    scenes: {
+      change(scene, options = {}) {
+        const request = { options: clone(options), scene: normalize(scene) };
+        const result = { accepted: true, operation: "change", scene: request.scene };
+        effects.services.push({ service: "scene.change", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      current() {
+        const request = {};
+        const result = typeof data.currentScene === "string" ? data.currentScene : null;
+        effects.services.push({ service: "scene.current", payload: { request, result } });
+        return result;
+      },
+      loadAdditive(scene, options = {}) {
+        const request = { options: clone(options), scene: normalize(scene) };
+        const result = { accepted: true, operation: "loadAdditive", scene: request.scene };
+        effects.services.push({ service: "scene.loadAdditive", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      pop(options = {}) {
+        const request = { options: clone(options) };
+        const result = { accepted: true, operation: "pop" };
+        effects.services.push({ service: "scene.pop", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      push(scene, options = {}) {
+        const request = { options: clone(options), scene: normalize(scene) };
+        const result = { accepted: true, operation: "push", scene: request.scene };
+        effects.services.push({ service: "scene.push", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      unload(scene, options = {}) {
+        const request = { options: clone(options), scene: normalize(scene) };
+        const result = { accepted: true, operation: "unload", scene: request.scene };
+        effects.services.push({ service: "scene.unload", payload: { request, result: clone(result) } });
+        return clone(result);
+      }
+    },
     timers: createTimers(data.time.elapsed),
     assets: {
       get(id) {

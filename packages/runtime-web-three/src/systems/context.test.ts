@@ -6,6 +6,7 @@ import * as THREE from "three";
 import { applyCommands, channelEvent, componentHookObservations, createSystemContext, createWebSystemRuntimeState, evaluateStates, plugin, pluginGroup, propagateObserverEvent, taskChannel } from "./context.js";
 import { applySystemEffects } from "./effects.js";
 import { applyMaterialPatchEffects, mapWorld } from "../mapWorld.js";
+import { createMemoryPersistenceStorage, createWebPersistenceService } from "./services/persistence.js";
 
 test("should apply material patch command to entity material and log effect", () => {
   const world = makeWorld();
@@ -835,17 +836,19 @@ test("should apply query ordering pagination and changed filters", () => {
 test("should expose persistence and settings facades over declared local data", () => {
   const world = makeWorld();
   world.resources = { Progress: { level: 2 } };
+  const localData = {
+    components: [],
+    resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" as const } } } }],
+    saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+    schema: "threenative.local-data" as const,
+    settings: [{ defaultValue: 0.5, group: "audio" as const, key: "audio.master", kind: "number" as const, max: 1, min: 0 }],
+    version: "0.1.0" as const,
+  };
   const { context, services } = createSystemContext(world, {
     delta: 0.016,
     fixedDelta: 0.016,
-    localData: {
-      components: [],
-      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
-      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
-      schema: "threenative.local-data",
-      settings: [{ defaultValue: 0.5, group: "audio", key: "audio.master", kind: "number", max: 1, min: 0 }],
-      version: "0.1.0",
-    },
+    localData,
+    persistence: createWebPersistenceService(localData, { storage: createMemoryPersistenceStorage() }),
   });
 
   assert.deepEqual(context.persistence.listSlots(), ["slot.auto"]);
