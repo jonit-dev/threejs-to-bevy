@@ -565,8 +565,13 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const captureTicks = nativeScenarioCaptureTicks(options.scenario);
   const observationIds = scenarioObservationIds(options.scenario);
   const recordingFrames = options.nativeRecording ? recordingPlan.frames : [];
+  const stepScreenshots = options.nativeScreenshots
+    ? Object.fromEntries(options.scenario.steps.flatMap((step) => step.screenshot === undefined
+      ? []
+      : [[step.screenshot, resolve(options.artifactDirectory, `${safePlaytestPathPart(step.screenshot)}.png`)]]))
+    : {};
   const screenshotArtifacts = options.nativeScreenshots
-    ? { afterArtifact, beforeArtifact, recordingFrames }
+    ? { afterArtifact, beforeArtifact, recordingFrames, stepScreenshots }
     : { recordingFrames };
   await mkdir(options.artifactDirectory, { recursive: true });
   await mkdir(recordingPlan.directory, { recursive: true });
@@ -608,7 +613,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const nativeFrameSamples = nativeFrameSampleReport(readinessSamples);
   const performance = nativePerformanceReport(readinessSamples, options.scenario);
   const screenshotDiagnostics = options.nativeScreenshots
-    ? [beforeArtifact, afterArtifact, ...recordingFrames.map((frame) => frame.path)]
+    ? [beforeArtifact, afterArtifact, ...Object.values(stepScreenshots), ...recordingFrames.map((frame) => frame.path)]
     : recordingFrames.map((frame) => frame.path);
   diagnostics.push(...await nativeScreenshotDiagnostics(screenshotDiagnostics));
   const movementDelta = before === undefined || after === undefined ? undefined : delta3(before.position, after.position);
@@ -743,7 +748,7 @@ function readinessSampleNearTick(samples: readonly Record<string, unknown>[], ti
   return candidates.find((sample) => (sample.tick as number) >= tick);
 }
 
-export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[] }): unknown {
+export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[]; stepScreenshots?: Readonly<Record<string, string>> }): unknown {
   const commands: Array<Record<string, unknown>> = [];
   const captureTicks = nativeScenarioCaptureTicks(scenario);
   let tick = captureTicks.beforeTick + 1;
@@ -770,6 +775,15 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
     commands.push({ path: frame.path, tick: frame.tick, type: "screenshot" });
   }
   for (const step of scenario.steps) {
+    if (step.window !== undefined) {
+      commands.push({
+        operation: step.window.operation,
+        ...(step.window.width === undefined ? {} : { width: step.window.width }),
+        ...(step.window.height === undefined ? {} : { height: step.window.height }),
+        tick,
+        type: "window",
+      });
+    }
     if (step.overlayMessage !== undefined) {
       commands.push({
         messageType: step.overlayMessage.type,
@@ -787,6 +801,10 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
       }
     }
     tick += playtestStepWaitTicks(step);
+    if (step.screenshot !== undefined) {
+      const path = artifacts.stepScreenshots?.[step.screenshot];
+      if (path !== undefined) commands.push({ path, tick, type: "screenshot" });
+    }
   }
   if (artifacts.afterArtifact !== undefined) {
     commands.push({ path: artifacts.afterArtifact, tick: tick + 1, type: "screenshot" });

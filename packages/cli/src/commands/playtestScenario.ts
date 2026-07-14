@@ -20,8 +20,14 @@ export interface IPlaytestStep {
   };
   press?: string;
   release: boolean;
+  screenshot?: string;
   waitFrames?: number;
   waitTicks?: number;
+  window?: {
+    height?: number;
+    operation: "minimize" | "resize" | "restore";
+    width?: number;
+  };
 }
 
 export interface IPlaytestMovementAssertion {
@@ -390,14 +396,34 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
   const waitFrames = positiveInteger(value.waitFrames);
   const waitTicks = positiveInteger(value.waitTicks);
   const kind = value.kind === "wait" ? "wait" : value.kind === "input" ? "input" : undefined;
+  const screenshot = typeof value.screenshot === "string" && /^[A-Za-z0-9._-]+$/.test(value.screenshot)
+    ? value.screenshot
+    : undefined;
+  const window: IPlaytestStep["window"] = isRecord(value.window)
+    && (value.window.operation === "minimize" || value.window.operation === "resize" || value.window.operation === "restore")
+    && (value.window.operation !== "resize"
+      || (typeof value.window.width === "number" && Number.isFinite(value.window.width) && value.window.width >= 1
+        && typeof value.window.height === "number" && Number.isFinite(value.window.height) && value.window.height >= 1))
+    ? {
+        operation: value.window.operation as NonNullable<IPlaytestStep["window"]>["operation"],
+        ...(typeof value.window.width === "number" ? { width: value.window.width } : {}),
+        ...(typeof value.window.height === "number" ? { height: value.window.height } : {}),
+      }
+    : undefined;
   if (kind === "wait" && press !== undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} kind wait cannot define press.`);
   }
   if (value.overlayMessage !== undefined && overlayMessage === undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} overlayMessage must define non-empty overlayId and type fields.`);
   }
-  if (press === undefined && overlayMessage === undefined && waitFrames === undefined && waitTicks === undefined) {
-    throw invalidStep(scenarioPath, `Scenario step ${index} must define press, overlayMessage, or waitFrames/waitTicks.`);
+  if (value.screenshot !== undefined && screenshot === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} screenshot must be a stable file-safe name.`);
+  }
+  if (value.window !== undefined && window === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} window must define minimize, restore, or resize with positive width and height.`);
+  }
+  if (press === undefined && overlayMessage === undefined && window === undefined && waitFrames === undefined && waitTicks === undefined) {
+    throw invalidStep(scenarioPath, `Scenario step ${index} must define press, overlayMessage, window, or waitFrames/waitTicks.`);
   }
   if (value.holdFrames !== undefined && holdFrames === undefined) {
     throw invalidStep(scenarioPath, `Scenario step ${index} holdFrames must be a positive integer.`);
@@ -425,8 +451,10 @@ function validateStep(value: unknown, scenarioPath: string, index: number): IPla
     ...(overlayMessage === undefined ? {} : { overlayMessage }),
     ...(press === undefined ? {} : { press }),
     release: typeof value.release === "boolean" ? value.release : true,
+    ...(screenshot === undefined ? {} : { screenshot }),
     ...(waitFrames === undefined ? {} : { waitFrames }),
     ...(waitTicks === undefined ? {} : { waitTicks }),
+    ...(window === undefined ? {} : { window }),
   };
 }
 

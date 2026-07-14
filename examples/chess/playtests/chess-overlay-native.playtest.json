@@ -23,6 +23,31 @@
     {
       "label": "wait for the capture snapshot",
       "waitFrames": 8
+    },
+    {
+      "label": "resize the composited overlay surface",
+      "window": {
+        "operation": "resize",
+        "width": 1000,
+        "height": 640
+      },
+      "waitFrames": 8,
+      "screenshot": "resized"
+    },
+    {
+      "label": "minimize the native window",
+      "window": {
+        "operation": "minimize"
+      },
+      "waitFrames": 4
+    },
+    {
+      "label": "restore the native window and capture fresh pixels",
+      "window": {
+        "operation": "restore"
+      },
+      "waitFrames": 8,
+      "screenshot": "restored"
     }
   ],
   "assert": {

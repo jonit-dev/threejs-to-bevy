@@ -867,6 +867,7 @@ pub struct CefOsrRuntime {
     input_regions: Vec<crate::overlay_host::NativeOverlayBounds>,
     ipc_queue: Rc<RefCell<VecDeque<String>>>,
     modal_probe_expected_transitions: usize,
+    occluded: bool,
     overlay_id: String,
     pointer_moves_sent: Cell<u64>,
     queue: Rc<RefCell<CefPaintQueue>>,
@@ -1051,6 +1052,7 @@ impl CefOsrRuntime {
             input_regions: Vec::new(),
             ipc_queue,
             modal_probe_expected_transitions: 10,
+            occluded: false,
             overlay_id,
             pointer_moves_sent: Cell::new(0),
             queue,
@@ -1340,8 +1342,25 @@ impl CefOsrRuntime {
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
         if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
-            host.was_hidden(i32::from(!visible));
+            host.was_hidden(i32::from(!visible || self.occluded));
         }
+    }
+
+    fn set_occluded(&mut self, occluded: bool) -> bool {
+        if self.occluded == occluded {
+            return false;
+        }
+        self.occluded = occluded;
+        if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
+            host.was_hidden(i32::from(occluded || !self.visible));
+            if !occluded {
+                self.surface_generation
+                    .set(self.surface_generation.get().saturating_add(1));
+                self.queue.borrow_mut().latest = None;
+                host.was_resized();
+            }
+        }
+        !occluded
     }
 }
 
@@ -1736,6 +1755,7 @@ fn resize_cef_spike_surface(
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut images: ResMut<Assets<Image>>,
     mut styles: Query<&mut Style>,
+    mut occlusion_events: EventReader<bevy::window::WindowOccluded>,
 ) {
     let Ok(window) = windows.get_single() else {
         return;
@@ -1743,6 +1763,18 @@ fn resize_cef_spike_surface(
     let width = window.width().max(1.0).round() as u32;
     let height = window.height().max(1.0).round() as u32;
     let scale_factor = window.scale_factor() as f32;
+    let restored = occlusion_events
+        .read()
+        .map(|event| event.occluded)
+        .last()
+        .map(|occluded| {
+            let mut restored = false;
+            for runtime in &mut host.surfaces {
+                restored |= runtime.set_occluded(occluded);
+            }
+            restored
+        })
+        .unwrap_or(false);
     for (runtime, texture) in host.surfaces.iter_mut().zip(&mut textures.0) {
         let logical_width = if texture.fills_window {
             width
@@ -1754,10 +1786,12 @@ fn resize_cef_spike_surface(
         } else {
             texture.bounds.height
         };
-        if !runtime.resize(logical_width, logical_height, scale_factor) {
+        let resized = runtime.resize(logical_width, logical_height, scale_factor);
+        if !resized && !restored {
             continue;
         }
         texture.generation = runtime.surface_generation();
+        texture.first_paint_ms = None;
         if texture.fills_window {
             texture.bounds.width = width;
             texture.bounds.height = height;
@@ -1837,6 +1871,7 @@ fn pump_cef_surface(
     }
     if texture.first_paint_ms.is_none()
         && !runtime.render_timeout_reported
+        && !runtime.occluded
         && runtime.startup_elapsed() >= first_paint_timeout()
     {
         runtime.render_timeout_reported = true;

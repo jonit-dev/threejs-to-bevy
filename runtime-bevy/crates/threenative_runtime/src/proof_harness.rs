@@ -76,6 +76,13 @@ pub enum NativeProofHarnessAction {
     Screenshot {
         path: String,
     },
+    Window {
+        operation: String,
+        #[serde(default)]
+        width: Option<f32>,
+        #[serde(default)]
+        height: Option<f32>,
+    },
     SceneOcclusion {
         from: String,
         to: String,
@@ -496,6 +503,33 @@ pub fn apply_native_proof_harness_commands(
                         severity: "warning".to_owned(),
                     }),
                 }
+            }
+            NativeProofHarnessAction::Window {
+                operation,
+                width,
+                height,
+            } => {
+                commands.add(move |world: &mut World| {
+                    let mut windows = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
+                    let Ok(mut window) = windows.get_single_mut(world) else {
+                        return;
+                    };
+                    match operation.as_str() {
+                        "resize" => {
+                            if let (Some(width), Some(height)) = (width, height)
+                                && width.is_finite()
+                                && height.is_finite()
+                                && width >= 1.0
+                                && height >= 1.0
+                            {
+                                window.resolution.set(width, height);
+                            }
+                        }
+                        "minimize" => window.set_minimized(true),
+                        "restore" => window.set_minimized(false),
+                        _ => {}
+                    }
+                });
             }
             NativeProofHarnessAction::SceneOcclusion { from, to } => {
                 let positions = transforms

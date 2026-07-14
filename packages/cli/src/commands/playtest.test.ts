@@ -64,6 +64,33 @@ test("native playtest should route typed overlay messages through the proof harn
   });
 });
 
+test("native playtest should capture resized and restored window states", () => {
+  const scenario = {
+    name: "overlay-window-lifecycle",
+    schemaVersion: 1 as const,
+    steps: [
+      { release: true, screenshot: "resized", waitFrames: 3, window: { height: 640, operation: "resize" as const, width: 1000 } },
+      { release: true, waitFrames: 2, window: { operation: "minimize" as const } },
+      { release: true, screenshot: "restored", waitFrames: 4, window: { operation: "restore" as const } },
+    ],
+    target: "desktop" as const,
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+  const stream = nativeHarnessCommandStream(scenario, {
+    stepScreenshots: { resized: "/proof/resized.png", restored: "/proof/restored.png" },
+  }) as { commands: Array<Record<string, unknown>> };
+
+  assert.deepEqual(stream.commands.slice(0, 6), [
+    { height: 640, operation: "resize", tick: 6, type: "window", width: 1000 },
+    { path: "/proof/resized.png", tick: 9, type: "screenshot" },
+    { operation: "minimize", tick: 9, type: "window" },
+    { operation: "restore", tick: 11, type: "window" },
+    { path: "/proof/restored.png", tick: 15, type: "screenshot" },
+    { tick: 17, type: "exit" },
+  ]);
+});
+
 test("playtest command should pass when target transform changes after input", async () => {
   const root = await playtestTempRoot();
   const result = await playtestCommand(

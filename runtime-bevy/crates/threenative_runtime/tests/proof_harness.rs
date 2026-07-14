@@ -308,6 +308,44 @@ fn should_wait_for_every_native_overlay_surface_before_a_screenshot() {
 }
 
 #[test]
+fn should_apply_native_window_resize_commands() {
+    let root = temp_dir("window-resize");
+    let readiness_path = root.join("readiness.json");
+    let mut app = App::new();
+    app.add_event::<AppExit>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.world_mut()
+        .spawn((Window::default(), bevy::window::PrimaryWindow));
+    app.insert_resource(NativeProofHarnessState::from_stream(
+        NativeProofHarnessCommandStream {
+            schema: "threenative.native-proof-harness".to_owned(),
+            version: "0.1.0".to_owned(),
+            commands: vec![
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 0,
+                    "type": "window",
+                    "operation": "resize",
+                    "width": 1000,
+                    "height": 640
+                }))
+                .expect("window command should parse"),
+            ],
+        },
+        readiness_path.display().to_string(),
+    ));
+    app.add_systems(PreUpdate, apply_native_proof_harness_commands);
+
+    app.update();
+    let mut windows = app
+        .world_mut()
+        .query_filtered::<&Window, With<bevy::window::PrimaryWindow>>();
+    let window = windows.single(app.world());
+    assert_eq!((window.width(), window.height()), (1000.0, 640.0));
+
+    fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
 fn should_snapshot_transform_positions_for_readiness() {
     let player = ThreeNativeId("player".to_owned());
     let player_transform = Transform::from_xyz(1.1234567, 2.0, 3.7654321);
