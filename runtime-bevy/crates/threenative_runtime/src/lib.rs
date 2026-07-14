@@ -291,54 +291,64 @@ pub fn app_from_bundle_with_options(
             );
             #[cfg(feature = "native-overlay-cef")]
             if plan.backend == overlay_host::CEF_OSR_BACKEND.id {
-                let mount = plan.mounts.first();
                 let overlays = bundle.overlays.clone();
-                match (mount, overlays) {
-                    (Some(mount), Some(overlays)) if plan.mounts.len() == 1 => {
+                match overlays {
+                    Some(overlays) => {
                         let parent_width = window.map_or(1280.0, |value| value.width);
                         let parent_height = window.map_or(720.0, |value| value.height);
-                        let bounds =
-                            overlay_host::native_overlay_bounds(mount, parent_width, parent_height);
-                        let initialized = mount
-                            .entry_path
-                            .parent()
-                            .zip(mount.entry_path.file_name().and_then(|name| name.to_str()))
-                            .ok_or_else(|| {
-                                format!(
+                        let cache_path =
+                            std::env::temp_dir().join("threenative-native-overlay-cef");
+                        let mut configs = Vec::with_capacity(plan.mounts.len());
+                        let mut requests = Vec::with_capacity(plan.mounts.len());
+                        let mut invalid_entry = None;
+                        for mount in &plan.mounts {
+                            let bounds = overlay_host::native_overlay_bounds(
+                                mount,
+                                parent_width,
+                                parent_height,
+                            );
+                            let Some((resource_root, entry_name)) = mount
+                                .entry_path
+                                .parent()
+                                .zip(mount.entry_path.file_name().and_then(|name| name.to_str()))
+                            else {
+                                invalid_entry = Some(format!(
                                     "TN_OVERLAY_CEF_RESOURCE_REJECTED: {}: use an entry file below a declared overlay root",
                                     mount.entry_path.display()
-                                )
-                            });
-                        match initialized.and_then(|(resource_root, entry_name)| {
-                            overlay_cef::CefOsrRuntime::initialize_bundle(
-                                resource_root,
+                                ));
+                                break;
+                            };
+                            requests.push(overlay_cef::CefBundleSurfaceInit {
+                                cache_path: &cache_path,
                                 entry_name,
-                                bounds.width,
-                                bounds.height,
-                                &std::env::temp_dir().join("threenative-native-overlay-cef"),
+                                height: bounds.height,
+                                overlay_id: mount.id.clone(),
                                 process_started_at,
-                                mount.id.clone(),
-                            )
-                        }) {
-                            Ok(mut runtime) => {
-                                runtime.set_input_policy(mount.input);
-                                overlay_cef::install_cef_surface(
-                                    &mut app,
-                                    runtime,
-                                    overlays,
-                                    overlay_cef::CefSurfaceConfig {
-                                        bounds,
-                                        fills_window: mount.layout.is_none(),
-                                        z_index: mount.z_index,
-                                    },
-                                )
+                                resource_root,
+                                width: bounds.width,
+                            });
+                            configs.push(overlay_cef::CefSurfaceConfig {
+                                bounds,
+                                fills_window: mount.layout.is_none(),
+                                z_index: mount.z_index,
+                            });
+                        }
+                        match invalid_entry.map_or_else(
+                            || overlay_cef::CefOsrHost::initialize_bundles(&requests),
+                            Err,
+                        ) {
+                            Ok(mut host) => {
+                                for (runtime, mount) in host.surfaces.iter_mut().zip(&plan.mounts) {
+                                    runtime.set_input_policy(mount.input);
+                                }
+                                overlay_cef::install_cef_surfaces(
+                                    &mut app, host, overlays, configs,
+                                );
                             }
                             Err(error) => warn!("{error}"),
                         }
                     }
-                    _ => warn!(
-                        "TN_OVERLAY_CEF_INIT_FAILED: the Phase 2 host requires exactly one declared desktop overlay"
-                    ),
+                    None => warn!("TN_OVERLAY_CEF_INIT_FAILED: overlay IR is unavailable"),
                 }
             }
         }

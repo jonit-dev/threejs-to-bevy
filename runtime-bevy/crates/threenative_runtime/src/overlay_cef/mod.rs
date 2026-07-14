@@ -32,7 +32,7 @@ use cef::{
     PermissionHandler, PermissionPromptCallback, PermissionRequestResult, PopupFeatures, ProcessId,
     ProcessMessage, Rect, RenderHandler, RenderProcessHandler, Request, RequestHandler,
     ResourceHandler, ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions, SchemeRegistrar,
-    Settings, V8Context, V8Handler, V8Propertyattribute, V8Value, WindowInfo,
+    ScreenInfo, Settings, V8Context, V8Handler, V8Propertyattribute, V8Value, WindowInfo,
     WindowOpenDisposition, WrapApp, WrapClient, WrapDisplayHandler, WrapDownloadHandler,
     WrapLifeSpanHandler, WrapPermissionHandler, WrapRenderHandler, WrapRenderProcessHandler,
     WrapRequestHandler, WrapResourceRequestHandler, WrapSchemeHandlerFactory, WrapV8Handler,
@@ -54,6 +54,33 @@ const MAX_PENDING_BRIDGE_MESSAGES: usize = 64;
 const CEF_OVERLAY_PROCESS_MESSAGE: &str = "threenative.overlay.send";
 const CEF_OVERLAY_SCHEME: &str = "threenative-overlay";
 const CEF_OVERLAY_ORIGIN: &str = "threenative-overlay://bundle/";
+const CEF_OVERLAY_ORIGIN_PREFIX: &str = "threenative-overlay://";
+
+/// Selects the last mount at the greatest z-index that is both visible and
+/// currently claims the pointer. Mount order is stable, so later equal-z
+/// surfaces composite above earlier ones just like Bevy UI siblings.
+pub fn select_topmost_cef_surface<'a>(
+    surfaces: &'a [(&'a str, u32, bool, bool)],
+) -> Option<&'a str> {
+    surfaces
+        .iter()
+        .enumerate()
+        .filter(|(_, (_, _, visible, claims_pointer))| *visible && *claims_pointer)
+        .max_by_key(|(mount_order, (_, z_index, _, _))| (*z_index, *mount_order))
+        .map(|(_, (id, _, _, _))| *id)
+}
+
+pub fn cef_surface_physical_extent(width: u32, height: u32, scale_factor: f32) -> (u32, u32) {
+    let scale_factor = if scale_factor.is_finite() && scale_factor > 0.0 {
+        scale_factor
+    } else {
+        1.0
+    };
+    (
+        (width as f32 * scale_factor).round().max(1.0) as u32,
+        (height as f32 * scale_factor).round().max(1.0) as u32,
+    )
+}
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -279,6 +306,7 @@ cef::wrap_render_handler! {
         width: Rc<Cell<i32>>,
         height: Rc<Cell<i32>>,
         generation: Rc<Cell<u64>>,
+        scale_factor: Rc<Cell<f32>>,
     }
 
     impl RenderHandler {
@@ -287,6 +315,17 @@ cef::wrap_render_handler! {
                 rect.width = self.width.get();
                 rect.height = self.height.get();
             }
+        }
+
+        fn screen_info(
+            &self,
+            _browser: Option<&mut Browser>,
+            screen_info: Option<&mut ScreenInfo>,
+        ) -> i32 {
+            if let Some(screen_info) = screen_info {
+                screen_info.device_scale_factor = self.scale_factor.get();
+            }
+            1
         }
 
         fn on_paint(
@@ -301,7 +340,12 @@ cef::wrap_render_handler! {
             if buffer.is_null() || width <= 0 || height <= 0 {
                 return;
             }
-            if width != self.width.get() || height != self.height.get() {
+            let (expected_width, expected_height) = cef_surface_physical_extent(
+                self.width.get().max(1) as u32,
+                self.height.get().max(1) as u32,
+                self.scale_factor.get(),
+            );
+            if width != expected_width as i32 || height != expected_height as i32 {
                 return;
             }
             let length = width as usize * height as usize * 4;
@@ -641,6 +685,7 @@ cef::wrap_render_process_handler! {
 
 cef::wrap_scheme_handler_factory! {
     struct CefOverlaySchemeHandlerFactory {
+        origin: String,
         resource_root: PathBuf,
     }
 
@@ -653,8 +698,9 @@ cef::wrap_scheme_handler_factory! {
             request: Option<&mut Request>,
         ) -> Option<ResourceHandler> {
             let request_url = request.map(|request| CefString::from(&request.url()).to_string())?;
-            let (path, mime_type) = match resolve_cef_overlay_resource(
+            let (path, mime_type) = match resolve_cef_overlay_resource_from_origin(
                 &self.resource_root,
+                &self.origin,
                 &request_url,
             ) {
                 Ok(resource) => resource,
@@ -761,7 +807,23 @@ pub struct CefOsrRuntime {
     surface_generation: Rc<Cell<u64>>,
     surface_height: Rc<Cell<i32>>,
     surface_width: Rc<Cell<i32>>,
+    scale_factor: Rc<Cell<f32>>,
     visible: bool,
+    shutdown_on_drop: bool,
+}
+
+pub struct CefBundleSurfaceInit<'a> {
+    pub cache_path: &'a Path,
+    pub entry_name: &'a str,
+    pub height: u32,
+    pub overlay_id: String,
+    pub process_started_at: Instant,
+    pub resource_root: &'a Path,
+    pub width: u32,
+}
+
+pub struct CefOsrHost {
+    pub surfaces: Vec<CefOsrRuntime>,
 }
 
 impl CefOsrRuntime {
@@ -819,33 +881,7 @@ impl CefOsrRuntime {
         overlay_id: String,
         resource_root: Option<&Path>,
     ) -> Result<Self, String> {
-        let _ = unpremultiply_table();
-        std::fs::create_dir_all(cache_path).map_err(|error| {
-            format!(
-                "TN_OVERLAY_CEF_INIT_FAILED: could not create cache {}: {error}",
-                cache_path.display()
-            )
-        })?;
-        let _ = api_hash(sys::CEF_API_VERSION_LAST, 0);
-        let args = cef::args::Args::new();
-        let mut app = CefSpikeApp::new(CefOverlayRenderProcessHandler::new());
-        let settings = Settings {
-            no_sandbox: 0,
-            root_cache_path: cache_path.to_string_lossy().as_ref().into(),
-            windowless_rendering_enabled: 1,
-            external_message_pump: 1,
-            background_color: 0,
-            ..Default::default()
-        };
-        if initialize(
-            Some(args.as_main_args()),
-            Some(&settings),
-            Some(&mut app),
-            std::ptr::null_mut(),
-        ) != 1
-        {
-            return Err("TN_OVERLAY_CEF_INIT_FAILED: cef_initialize returned false".to_string());
-        }
+        initialize_cef(cache_path)?;
         if let Some(resource_root) = resource_root {
             let canonical_root = match resource_root.canonicalize() {
                 Ok(root) => root,
@@ -857,7 +893,8 @@ impl CefOsrRuntime {
                     ));
                 }
             };
-            let mut factory = CefOverlaySchemeHandlerFactory::new(canonical_root);
+            let mut factory =
+                CefOverlaySchemeHandlerFactory::new(CEF_OVERLAY_ORIGIN.to_string(), canonical_root);
             if register_scheme_handler_factory(
                 Some(&CEF_OVERLAY_SCHEME.into()),
                 Some(&"bundle".into()),
@@ -871,17 +908,30 @@ impl CefOsrRuntime {
             }
         }
 
+        Self::create_browser(url, width, height, process_started_at, overlay_id, true)
+    }
+
+    fn create_browser(
+        url: &str,
+        width: u32,
+        height: u32,
+        process_started_at: Instant,
+        overlay_id: String,
+        shutdown_on_drop: bool,
+    ) -> Result<Self, String> {
         let queue = Rc::new(RefCell::new(CefPaintQueue::default()));
         let ipc_queue = Rc::new(RefCell::new(VecDeque::new()));
         let closed = Rc::new(Cell::new(false));
         let surface_generation = Rc::new(Cell::new(0));
         let surface_width = Rc::new(Cell::new(width as i32));
         let surface_height = Rc::new(Cell::new(height as i32));
+        let scale_factor = Rc::new(Cell::new(1.0));
         let render_handler = CefSpikeRenderHandler::new(
             queue.clone(),
             surface_width.clone(),
             surface_height.clone(),
             surface_generation.clone(),
+            scale_factor.clone(),
         );
         let life_span_handler = CefSpikeLifeSpanHandler::new(closed.clone());
         let display_handler = CefSpikeDisplayHandler::new();
@@ -915,7 +965,6 @@ impl CefOsrRuntime {
             None,
         )
         .ok_or_else(|| {
-            shutdown();
             "TN_OVERLAY_CEF_INIT_FAILED: windowless browser creation failed".to_string()
         })?;
 
@@ -936,7 +985,9 @@ impl CefOsrRuntime {
             surface_generation,
             surface_height,
             surface_width,
+            scale_factor,
             visible: true,
+            shutdown_on_drop,
         })
     }
 
@@ -964,18 +1015,31 @@ impl CefOsrRuntime {
         self.surface_generation.get()
     }
 
-    pub fn resize(&mut self, width: u32, height: u32) -> bool {
+    pub fn resize(&mut self, width: u32, height: u32, scale_factor: f32) -> bool {
         let width = width.max(1) as i32;
         let height = height.max(1) as i32;
-        if self.surface_width.get() == width && self.surface_height.get() == height {
+        let scale_factor = if scale_factor.is_finite() && scale_factor > 0.0 {
+            scale_factor
+        } else {
+            1.0
+        };
+        if self.surface_width.get() == width
+            && self.surface_height.get() == height
+            && (self.scale_factor.get() - scale_factor).abs() < f32::EPSILON
+        {
             return false;
         }
         self.surface_width.set(width);
         self.surface_height.set(height);
+        let scale_changed =
+            (self.scale_factor.replace(scale_factor) - scale_factor).abs() >= f32::EPSILON;
         self.surface_generation
             .set(self.surface_generation.get().saturating_add(1));
         self.queue.borrow_mut().latest = None;
         if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
+            if scale_changed {
+                host.notify_screen_info_changed();
+            }
             host.was_resized();
         }
         true
@@ -1202,6 +1266,96 @@ impl CefOsrRuntime {
     }
 }
 
+impl CefOsrHost {
+    pub fn initialize_bundles(requests: &[CefBundleSurfaceInit<'_>]) -> Result<Self, String> {
+        let Some(first) = requests.first() else {
+            return Err(
+                "TN_OVERLAY_CEF_INIT_FAILED: no desktop overlay surfaces were declared".to_string(),
+            );
+        };
+        initialize_cef(first.cache_path)?;
+        let initialized = (|| {
+            let mut surfaces = Vec::with_capacity(requests.len());
+            for (mount_order, request) in requests.iter().enumerate() {
+                if Path::new(request.entry_name).components().count() != 1 {
+                    return Err(cef_resource_rejected(
+                        request.entry_name,
+                        "pass an entry filename below the declared overlay root",
+                    ));
+                }
+                let canonical_root = request.resource_root.canonicalize().map_err(|error| {
+                    cef_resource_rejected(
+                        &request.resource_root.display().to_string(),
+                        &format!("make the declared overlay root readable: {error}"),
+                    )
+                })?;
+                let domain = format!("surface-{mount_order}");
+                let origin = format!("{CEF_OVERLAY_ORIGIN_PREFIX}{domain}/");
+                let mut factory =
+                    CefOverlaySchemeHandlerFactory::new(origin.clone(), canonical_root);
+                if register_scheme_handler_factory(
+                    Some(&CEF_OVERLAY_SCHEME.into()),
+                    Some(&domain.as_str().into()),
+                    Some(&mut factory),
+                ) == 0
+                {
+                    return Err(format!(
+                        "TN_OVERLAY_CEF_INIT_FAILED: could not install resource handler for overlay {:?}",
+                        request.overlay_id
+                    ));
+                }
+                surfaces.push(CefOsrRuntime::create_browser(
+                    &format!("{origin}{}", request.entry_name),
+                    request.width,
+                    request.height,
+                    request.process_started_at,
+                    request.overlay_id.clone(),
+                    false,
+                )?);
+            }
+            Ok(surfaces)
+        })();
+        match initialized {
+            Ok(surfaces) => Ok(Self { surfaces }),
+            Err(error) => {
+                shutdown();
+                Err(error)
+            }
+        }
+    }
+}
+
+fn initialize_cef(cache_path: &Path) -> Result<(), String> {
+    let _ = unpremultiply_table();
+    std::fs::create_dir_all(cache_path).map_err(|error| {
+        format!(
+            "TN_OVERLAY_CEF_INIT_FAILED: could not create cache {}: {error}",
+            cache_path.display()
+        )
+    })?;
+    let _ = api_hash(sys::CEF_API_VERSION_LAST, 0);
+    let args = cef::args::Args::new();
+    let mut app = CefSpikeApp::new(CefOverlayRenderProcessHandler::new());
+    let settings = Settings {
+        no_sandbox: 0,
+        root_cache_path: cache_path.to_string_lossy().as_ref().into(),
+        windowless_rendering_enabled: 1,
+        external_message_pump: 1,
+        background_color: 0,
+        ..Default::default()
+    };
+    if initialize(
+        Some(args.as_main_args()),
+        Some(&settings),
+        Some(&mut app),
+        std::ptr::null_mut(),
+    ) != 1
+    {
+        return Err("TN_OVERLAY_CEF_INIT_FAILED: cef_initialize returned false".to_string());
+    }
+    Ok(())
+}
+
 pub fn cef_key_values(key: &Key) -> (i32, u16) {
     if let Key::Character(value) = key {
         let character = value.encode_utf16().next().unwrap_or(0);
@@ -1333,6 +1487,15 @@ pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
 
 impl Drop for CefOsrRuntime {
     fn drop(&mut self) {
+        self.close_browser();
+        if self.shutdown_on_drop {
+            shutdown();
+        }
+    }
+}
+
+impl CefOsrRuntime {
+    fn close_browser(&mut self) {
         if let Some(browser) = self.browser.take()
             && let Some(host) = browser.host()
         {
@@ -1343,12 +1506,20 @@ impl Drop for CefOsrRuntime {
                 std::thread::yield_now();
             }
         }
+    }
+}
+
+impl Drop for CefOsrHost {
+    fn drop(&mut self) {
+        for surface in &mut self.surfaces {
+            surface.close_browser();
+        }
         shutdown();
     }
 }
 
-#[derive(Resource)]
-pub struct CefSpikeTexture {
+pub struct CefSurfaceTexture {
+    pub overlay_id: String,
     pub bounds: crate::overlay_host::NativeOverlayBounds,
     pub entity: Entity,
     pub fills_window: bool,
@@ -1358,7 +1529,11 @@ pub struct CefSpikeTexture {
     pub upload_bytes: u64,
     pub upload_micros: Vec<u64>,
     pub uploads: u64,
+    pub z_index: u32,
 }
+
+#[derive(Resource)]
+pub struct CefSurfaceTextures(pub Vec<CefSurfaceTexture>);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct CefSurfaceConfig {
@@ -1396,60 +1571,67 @@ pub fn install_cef_spike_frame_probe(
     Ok(())
 }
 
-pub fn install_cef_surface(
+pub fn install_cef_surfaces(
     app: &mut bevy::prelude::App,
-    runtime: CefOsrRuntime,
+    host: CefOsrHost,
     overlays: OverlaysIr,
-    config: CefSurfaceConfig,
+    configs: Vec<CefSurfaceConfig>,
 ) {
+    assert_eq!(host.surfaces.len(), configs.len());
     let hidden_fallback_roots = hide_native_ui_fallback_for_cef(app.world_mut());
     info!(
         "TN_OVERLAY_CEF_FALLBACK_HIDDEN: hid {hidden_fallback_roots} retained native UI root(s) after successful CEF initialization"
     );
-    let image = Image::new_fill(
-        Extent3d {
-            width: config.bounds.width,
-            height: config.bounds.height,
-            depth_or_array_layers: 1,
-        },
-        TextureDimension::D2,
-        &[0, 0, 0, 0],
-        TextureFormat::Rgba8UnormSrgb,
-        RenderAssetUsages::default(),
-    );
-    let handle = app.world_mut().resource_mut::<Assets<Image>>().add(image);
-    let entity = app
-        .world_mut()
-        .spawn(ImageBundle {
-            style: Style {
-                position_type: PositionType::Absolute,
-                left: Val::Px(config.bounds.x as f32),
-                top: Val::Px(config.bounds.y as f32),
-                width: Val::Px(config.bounds.width as f32),
-                height: Val::Px(config.bounds.height as f32),
-                ..Default::default()
+    let mut textures = Vec::with_capacity(configs.len());
+    for (runtime, config) in host.surfaces.iter().zip(configs) {
+        let image = Image::new_fill(
+            Extent3d {
+                width: config.bounds.width,
+                height: config.bounds.height,
+                depth_or_array_layers: 1,
             },
-            image: UiImage::new(handle.clone()),
-            z_index: ZIndex::Global(config.z_index.min(i32::MAX as u32) as i32),
-            ..Default::default()
-        })
-        .id();
-    app.insert_resource(CefSpikeTexture {
-        bounds: config.bounds,
-        entity,
-        fills_window: config.fills_window,
-        generation: runtime.surface_generation(),
-        handle: handle.clone(),
-        first_paint_ms: None,
-        upload_bytes: 0,
-        upload_micros: Vec::new(),
-        uploads: 0,
-    });
+            TextureDimension::D2,
+            &[0, 0, 0, 0],
+            TextureFormat::Rgba8UnormSrgb,
+            RenderAssetUsages::default(),
+        );
+        let handle = app.world_mut().resource_mut::<Assets<Image>>().add(image);
+        let entity = app
+            .world_mut()
+            .spawn(ImageBundle {
+                style: Style {
+                    position_type: PositionType::Absolute,
+                    left: Val::Px(config.bounds.x as f32),
+                    top: Val::Px(config.bounds.y as f32),
+                    width: Val::Px(config.bounds.width as f32),
+                    height: Val::Px(config.bounds.height as f32),
+                    ..Default::default()
+                },
+                image: UiImage::new(handle.clone()),
+                z_index: ZIndex::Global(config.z_index.min(i32::MAX as u32) as i32),
+                ..Default::default()
+            })
+            .id();
+        textures.push(CefSurfaceTexture {
+            overlay_id: runtime.overlay_id.clone(),
+            bounds: config.bounds,
+            entity,
+            fills_window: config.fills_window,
+            generation: runtime.surface_generation(),
+            handle,
+            first_paint_ms: None,
+            upload_bytes: 0,
+            upload_micros: Vec::new(),
+            uploads: 0,
+            z_index: config.z_index,
+        });
+    }
+    app.insert_resource(CefSurfaceTextures(textures));
     app.insert_resource(crate::overlay_host::NativeOverlayBridgeResource::new(
         overlays,
     ));
     app.init_resource::<crate::overlay_host::NativeOverlayInputCapture>();
-    app.insert_non_send_resource(runtime);
+    app.insert_non_send_resource(host);
     app.add_systems(
         PreUpdate,
         route_cef_spike_input.before(crate::input::capture_native_input),
@@ -1466,8 +1648,8 @@ pub fn install_cef_surface(
 }
 
 fn resize_cef_spike_surface(
-    mut runtime: NonSendMut<CefOsrRuntime>,
-    mut texture: ResMut<CefSpikeTexture>,
+    mut host: NonSendMut<CefOsrHost>,
+    mut textures: ResMut<CefSurfaceTextures>,
     windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
     mut images: ResMut<Assets<Image>>,
     mut styles: Query<&mut Style>,
@@ -1475,33 +1657,47 @@ fn resize_cef_spike_surface(
     let Ok(window) = windows.get_single() else {
         return;
     };
-    if !texture.fills_window {
-        return;
-    }
     let width = window.width().max(1.0).round() as u32;
     let height = window.height().max(1.0).round() as u32;
-    if !runtime.resize(width, height) {
-        return;
+    let scale_factor = window.scale_factor() as f32;
+    for (runtime, texture) in host.surfaces.iter_mut().zip(&mut textures.0) {
+        let logical_width = if texture.fills_window {
+            width
+        } else {
+            texture.bounds.width
+        };
+        let logical_height = if texture.fills_window {
+            height
+        } else {
+            texture.bounds.height
+        };
+        if !runtime.resize(logical_width, logical_height, scale_factor) {
+            continue;
+        }
+        texture.generation = runtime.surface_generation();
+        if texture.fills_window {
+            texture.bounds.width = width;
+            texture.bounds.height = height;
+        }
+        let (physical_width, physical_height) =
+            cef_surface_physical_extent(logical_width, logical_height, scale_factor);
+        if let Some(image) = images.get_mut(&texture.handle) {
+            image.resize(Extent3d {
+                width: physical_width,
+                height: physical_height,
+                depth_or_array_layers: 1,
+            });
+            image.data.fill(0);
+        }
+        if let Ok(mut style) = styles.get_mut(texture.entity) {
+            style.width = Val::Px(width as f32);
+            style.height = Val::Px(height as f32);
+        }
+        info!(
+            "TN_OVERLAY_CEF_SURFACE_RESIZED: overlay={:?}, generation={}, viewport={}x{}",
+            runtime.overlay_id, texture.generation, logical_width, logical_height
+        );
     }
-    texture.generation = runtime.surface_generation();
-    texture.bounds.width = width;
-    texture.bounds.height = height;
-    if let Some(image) = images.get_mut(&texture.handle) {
-        image.resize(Extent3d {
-            width,
-            height,
-            depth_or_array_layers: 1,
-        });
-        image.data.fill(0);
-    }
-    if let Ok(mut style) = styles.get_mut(texture.entity) {
-        style.width = Val::Px(width as f32);
-        style.height = Val::Px(height as f32);
-    }
-    info!(
-        "TN_OVERLAY_CEF_SURFACE_RESIZED: generation={}, viewport={}x{}",
-        texture.generation, width, height
-    );
 }
 
 pub fn hide_native_ui_fallback_for_cef(world: &mut World) -> usize {
@@ -1516,15 +1712,35 @@ pub fn hide_native_ui_fallback_for_cef(world: &mut World) -> usize {
 }
 
 fn pump_cef_spike_surface(
-    mut runtime: NonSendMut<CefOsrRuntime>,
+    mut host: NonSendMut<CefOsrHost>,
     mut bridge: ResMut<crate::overlay_host::NativeOverlayBridgeResource>,
-    mut texture: ResMut<CefSpikeTexture>,
+    mut textures: ResMut<CefSurfaceTextures>,
     mut images: ResMut<Assets<Image>>,
     mut visibility: Query<&mut Visibility>,
     mut exits: EventWriter<bevy::app::AppExit>,
 ) {
-    runtime.pump();
-    drain_cef_spike_ipc(&mut runtime, &mut bridge);
+    cef::do_message_loop_work();
+    for (runtime, texture) in host.surfaces.iter_mut().zip(&mut textures.0) {
+        pump_cef_surface(
+            runtime,
+            texture,
+            &mut bridge,
+            &mut images,
+            &mut visibility,
+            &mut exits,
+        );
+    }
+}
+
+fn pump_cef_surface(
+    runtime: &mut CefOsrRuntime,
+    texture: &mut CefSurfaceTexture,
+    bridge: &mut crate::overlay_host::NativeOverlayBridgeResource,
+    images: &mut Assets<Image>,
+    visibility: &mut Query<&mut Visibility>,
+    exits: &mut EventWriter<bevy::app::AppExit>,
+) {
+    drain_cef_spike_ipc(runtime, bridge);
     if let Some(result) = runtime.spike_scenario_result.take() {
         match result {
             Ok(transitions) => {
@@ -1748,28 +1964,30 @@ pub fn receive_cef_spike_game_message(
 }
 
 fn deliver_cef_spike_snapshots(
-    mut runtime: NonSendMut<CefOsrRuntime>,
+    mut host: NonSendMut<CefOsrHost>,
     bridge: Res<crate::overlay_host::NativeOverlayBridgeResource>,
 ) {
-    let pending = bridge
-        .bridge
-        .snapshots()
-        .iter()
-        .filter(|snapshot| snapshot.sequence > runtime.delivered_sequence)
-        .cloned()
-        .collect::<Vec<_>>();
-    let delivered_sequence = runtime.delivered_sequence;
-    let cursor = advance_snapshot_delivery(delivered_sequence, &pending, |snapshot| {
-        let delivered = runtime.deliver_snapshot(snapshot);
-        if delivered {
-            debug!(
-                "delivered CEF overlay '{}' snapshot '{}' sequence {}",
-                snapshot.overlay_id, snapshot.message_type, snapshot.sequence
-            );
-        }
-        delivered
-    });
-    runtime.delivered_sequence = cursor;
+    for runtime in &mut host.surfaces {
+        let pending = bridge
+            .bridge
+            .snapshots()
+            .iter()
+            .filter(|snapshot| snapshot.sequence > runtime.delivered_sequence)
+            .cloned()
+            .collect::<Vec<_>>();
+        let delivered_sequence = runtime.delivered_sequence;
+        let cursor = advance_snapshot_delivery(delivered_sequence, &pending, |snapshot| {
+            let delivered = runtime.deliver_snapshot(snapshot);
+            if delivered {
+                debug!(
+                    "delivered CEF overlay '{}' snapshot '{}' sequence {}",
+                    snapshot.overlay_id, snapshot.message_type, snapshot.sequence
+                );
+            }
+            delivered
+        });
+        runtime.delivered_sequence = cursor;
+    }
 }
 
 fn parse_cef_input_region(value: &Value) -> Option<crate::overlay_host::NativeOverlayBounds> {
@@ -1962,8 +2180,8 @@ pub fn compare_cef_spike_frame_stats(
 }
 
 fn route_cef_spike_input(
-    runtime: NonSend<CefOsrRuntime>,
-    texture: Res<CefSpikeTexture>,
+    host: NonSend<CefOsrHost>,
+    textures: Res<CefSurfaceTextures>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut cursor_moved: EventReader<bevy::window::CursorMoved>,
     mut cursor_left: EventReader<bevy::window::CursorLeft>,
@@ -1971,86 +2189,168 @@ fn route_cef_spike_input(
     mut keyboard: EventReader<KeyboardInput>,
     mut mouse_wheel: EventReader<MouseWheel>,
     mut last_position: Local<Option<Vec2>>,
-    mut pointer_inside: Local<bool>,
+    mut last_target: Local<Option<usize>>,
     mut capture: ResMut<crate::overlay_host::NativeOverlayInputCapture>,
 ) {
     for event in cursor_moved.read() {
-        let position = Vec2::new(
-            event.position.x - texture.bounds.x as f32,
-            event.position.y - texture.bounds.y as f32,
-        );
-        let claimed = runtime.claims_pointer(position);
-        if claimed {
-            runtime.send_mouse_move(position, false);
-        } else if *pointer_inside {
-            runtime.send_mouse_move(position, true);
+        let target = topmost_cef_surface_at(&host, &textures, event.position);
+        if *last_target != target
+            && let Some(previous) = *last_target
+            && let (Some(runtime), Some(texture)) =
+                (host.surfaces.get(previous), textures.0.get(previous))
+        {
+            runtime.send_mouse_move(local_cef_position(event.position, texture.bounds), true);
         }
-        *pointer_inside = claimed;
-        *last_position = Some(position);
+        if let Some(target) = target
+            && let (Some(runtime), Some(texture)) =
+                (host.surfaces.get(target), textures.0.get(target))
+        {
+            runtime.send_mouse_move(local_cef_position(event.position, texture.bounds), false);
+        }
+        *last_target = target;
+        *last_position = Some(event.position);
     }
     if cursor_left.read().next().is_some() {
-        runtime.send_mouse_move(last_position.unwrap_or(Vec2::ZERO), true);
-        *pointer_inside = false;
+        if let Some(target) = *last_target
+            && let (Some(runtime), Some(texture)) =
+                (host.surfaces.get(target), textures.0.get(target))
+        {
+            runtime.send_mouse_move(
+                local_cef_position(last_position.unwrap_or(Vec2::ZERO), texture.bounds),
+                true,
+            );
+        }
+        *last_target = None;
         *last_position = None;
     }
     for event in focused.read() {
-        runtime.send_focus(event.focused);
+        for runtime in &host.surfaces {
+            runtime.send_focus(event.focused);
+        }
     }
+    let keyboard_target = host
+        .surfaces
+        .iter()
+        .zip(&textures.0)
+        .enumerate()
+        .filter(|(_, (runtime, _))| runtime.captures_keyboard())
+        .max_by_key(|(mount_order, (_, texture))| (texture.z_index, *mount_order))
+        .map(|(index, _)| index);
     for event in keyboard.read() {
-        runtime.send_keyboard_input(event);
+        if let Some(runtime) = keyboard_target.and_then(|index| host.surfaces.get(index)) {
+            runtime.send_keyboard_input(event);
+        }
     }
-    if let Some(position) = *last_position {
+    if let (Some(position), Some(target)) = (*last_position, *last_target) {
         for event in mouse_wheel.read() {
             let factor = match event.unit {
                 MouseScrollUnit::Line => 120.0,
                 MouseScrollUnit::Pixel => 1.0,
             };
-            runtime.send_mouse_wheel(position, Vec2::new(event.x * factor, event.y * factor));
+            if let (Some(runtime), Some(texture)) =
+                (host.surfaces.get(target), textures.0.get(target))
+            {
+                runtime.send_mouse_wheel(
+                    local_cef_position(position, texture.bounds),
+                    Vec2::new(event.x * factor, event.y * factor),
+                );
+            }
         }
     } else {
         mouse_wheel.clear();
     }
-    capture.pointer = last_position.is_some_and(|position| runtime.claims_pointer(position));
-    capture.keyboard = runtime.captures_keyboard();
-    if let Some(position) = *last_position {
+    capture.pointer = last_target.is_some();
+    capture.keyboard = keyboard_target.is_some();
+    if let (Some(position), Some(target)) = (*last_position, *last_target) {
         for button in [MouseButton::Left, MouseButton::Middle, MouseButton::Right] {
-            if buttons.just_pressed(button) {
-                runtime.send_mouse_button(position, button, false);
-            }
-            if buttons.just_released(button) {
-                runtime.send_mouse_button(position, button, true);
+            if let (Some(runtime), Some(texture)) =
+                (host.surfaces.get(target), textures.0.get(target))
+            {
+                let local = local_cef_position(position, texture.bounds);
+                if buttons.just_pressed(button) {
+                    runtime.send_mouse_button(local, button, false);
+                }
+                if buttons.just_released(button) {
+                    runtime.send_mouse_button(local, button, true);
+                }
             }
         }
     }
 }
 
+fn local_cef_position(
+    window_position: Vec2,
+    bounds: crate::overlay_host::NativeOverlayBounds,
+) -> Vec2 {
+    Vec2::new(
+        window_position.x - bounds.x as f32,
+        window_position.y - bounds.y as f32,
+    )
+}
+
+fn topmost_cef_surface_at(
+    host: &CefOsrHost,
+    textures: &CefSurfaceTextures,
+    window_position: Vec2,
+) -> Option<usize> {
+    host.surfaces
+        .iter()
+        .zip(&textures.0)
+        .enumerate()
+        .filter(|(_, (runtime, texture))| {
+            runtime.claims_pointer(local_cef_position(window_position, texture.bounds))
+        })
+        .max_by_key(|(mount_order, (_, texture))| (texture.z_index, *mount_order))
+        .map(|(index, _)| index)
+}
+
 fn report_cef_spike_summary(
     mut exits: EventReader<bevy::app::AppExit>,
-    runtime: NonSend<CefOsrRuntime>,
-    texture: Res<CefSpikeTexture>,
+    host: NonSend<CefOsrHost>,
+    textures: Res<CefSurfaceTextures>,
 ) {
     if exits.read().next().is_none() {
         return;
     }
-    let paint = runtime.metrics();
+    let paint_accepted = host
+        .surfaces
+        .iter()
+        .map(|runtime| runtime.metrics().accepted)
+        .sum::<u64>();
+    let paint_dropped = host
+        .surfaces
+        .iter()
+        .map(|runtime| runtime.metrics().dropped)
+        .sum::<u64>();
+    let paint_copy_micros = host
+        .surfaces
+        .iter()
+        .flat_map(|runtime| runtime.metrics().copy_micros)
+        .collect::<Vec<_>>();
+    let upload_micros = textures
+        .0
+        .iter()
+        .flat_map(|texture| texture.upload_micros.iter().copied())
+        .collect::<Vec<_>>();
     println!(
         "{}",
         serde_json::json!({
             "schema": "threenative.native-overlay-cef-spike-summary",
             "version": "0.1.0",
-            "firstNonblankPaintMs": texture.first_paint_ms,
+            "firstNonblankPaintMs": textures.0.iter().filter_map(|texture| texture.first_paint_ms).reduce(f64::max),
+            "surfaceCount": host.surfaces.len(),
             "paint": {
-                "accepted": paint.accepted,
-                "copyP95Micros": percentile_95(&paint.copy_micros),
-                "dropped": paint.dropped,
+                "accepted": paint_accepted,
+                "copyP95Micros": percentile_95(&paint_copy_micros),
+                "dropped": paint_dropped,
             },
             "upload": {
-                "bytes": texture.upload_bytes,
-                "count": texture.uploads,
-                "p95Micros": percentile_95(&texture.upload_micros),
+                "bytes": textures.0.iter().map(|texture| texture.upload_bytes).sum::<u64>(),
+                "count": textures.0.iter().map(|texture| texture.uploads).sum::<u64>(),
+                "p95Micros": percentile_95(&upload_micros),
             },
             "input": {
-                "pointerMovesSent": runtime.pointer_moves_sent.get(),
+                "pointerMovesSent": host.surfaces.iter().map(|runtime| runtime.pointer_moves_sent.get()).sum::<u64>(),
             },
         })
     );
@@ -2106,8 +2406,16 @@ pub fn resolve_cef_overlay_resource(
     resource_root: &Path,
     request_url: &str,
 ) -> Result<(PathBuf, &'static str), String> {
+    resolve_cef_overlay_resource_from_origin(resource_root, CEF_OVERLAY_ORIGIN, request_url)
+}
+
+fn resolve_cef_overlay_resource_from_origin(
+    resource_root: &Path,
+    origin: &str,
+    request_url: &str,
+) -> Result<(PathBuf, &'static str), String> {
     let relative = request_url
-        .strip_prefix(CEF_OVERLAY_ORIGIN)
+        .strip_prefix(origin)
         .ok_or_else(|| cef_resource_rejected(request_url, "use the declared bundle origin"))?
         .split(['?', '#'])
         .next()
@@ -2153,7 +2461,7 @@ pub fn resolve_cef_overlay_resource(
 }
 
 pub fn cef_overlay_url_allowed(url: &str) -> bool {
-    url.starts_with(CEF_OVERLAY_ORIGIN)
+    url.starts_with(CEF_OVERLAY_ORIGIN_PREFIX)
 }
 
 fn cef_resource_rejected(request_url: &str, fix: &str) -> String {

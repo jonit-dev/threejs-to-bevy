@@ -5,10 +5,10 @@ use threenative_runtime::overlay_cef::{
     CefSpikeFrameProbeConfig, advance_snapshot_delivery, apply_paint_to_image,
     apply_paint_to_image_if_current, build_cef_spike_frame_report, cef_key_values,
     cef_modal_probe_script, cef_overlay_url_allowed, cef_spike_bridge_script,
-    cef_spike_frame_stats, cef_spike_modal_probe_script, compare_cef_spike_frame_stats,
-    dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
+    cef_spike_frame_stats, cef_spike_modal_probe_script, cef_surface_physical_extent,
+    compare_cef_spike_frame_stats, dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
     normalize_bgra_premultiplied_to_rgba, receive_cef_spike_game_message,
-    resolve_cef_overlay_resource,
+    resolve_cef_overlay_resource, select_topmost_cef_surface,
 };
 
 #[test]
@@ -49,6 +49,32 @@ fn should_select_cef_osr_for_a_declared_desktop_overlay() {
     assert_eq!(descriptor.cargo_feature, "native-overlay-cef");
     assert_eq!(descriptor.package_manifest, "cef-runtime-manifest.json");
     assert_eq!(plan.backend, descriptor.id);
+}
+
+#[test]
+fn should_select_the_topmost_visible_surface_that_claims_a_pointer() {
+    let selected = select_topmost_cef_surface(&[
+        ("hud", 10, true, true),
+        ("dialog", 30, true, true),
+        ("tooltip", 40, false, true),
+        ("passive", 50, true, false),
+    ]);
+
+    assert_eq!(selected, Some("dialog"));
+}
+
+#[test]
+fn should_break_equal_z_index_ties_by_stable_mount_order() {
+    let selected =
+        select_topmost_cef_surface(&[("first", 20, true, true), ("second", 20, true, true)]);
+
+    assert_eq!(selected, Some("second"));
+}
+
+#[test]
+fn should_map_hidpi_css_extent_to_physical_overlay_pixels() {
+    assert_eq!(cef_surface_physical_extent(800, 450, 1.5), (1200, 675));
+    assert_eq!(cef_surface_physical_extent(800, 450, 0.0), (800, 450));
 }
 
 #[test]
