@@ -507,9 +507,11 @@ Current UI rows use these labels:
       rendering and a Bevy texture rather than a second transparent native
       window. NVIDIA/Xwayland evidence proves first paint, chooser hover,
       choosing Black, snapshot delivery, and ten settings modal open/close
-      cycles without stale closed-state pixels. Pointer move/button routing is
-      covered; keyboard/IME/focus, complete game-input ownership, multiple
-      overlay layout, other compositors, and Windows/macOS remain unpromoted
+      cycles without stale closed-state pixels. Pointer move/button/wheel,
+      keyboard key/character, focus, live pointer islands, authored bounds and
+      z-order, plus modal game-input suppression are covered. Full IME,
+      multi-overlay lifecycle, memory-growth closure, other compositors, and
+      Windows/macOS remain unpromoted
       (`tools/verify/artifacts/native-overlay-cef/spike-report.json`,
       `tools/verify/artifacts/native-overlay-cef/verification-report.json`,
       `tools/verify/artifacts/native-overlay-cef/package-report.json`,

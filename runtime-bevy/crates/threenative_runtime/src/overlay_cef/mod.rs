@@ -3,10 +3,16 @@ use std::{
     collections::VecDeque,
     path::{Path, PathBuf},
     rc::Rc,
+    sync::OnceLock,
     time::{Duration, Instant},
 };
 
 use bevy::{
+    input::{
+        ButtonState,
+        keyboard::{Key, KeyboardInput},
+        mouse::{MouseScrollUnit, MouseWheel},
+    },
     prelude::*,
     render::{
         render_asset::RenderAssetUsages,
@@ -18,14 +24,14 @@ use cef::{
     App, Browser, BrowserSettings, CefString, Client, CommandLine, DictionaryValue, DisplayHandler,
     ImplApp, ImplBrowser, ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler,
     ImplFrame, ImplLifeSpanHandler, ImplRenderHandler, ImplRequest, ImplRequestHandler,
-    ImplResourceRequestHandler, ImplSchemeHandlerFactory, ImplSchemeRegistrar, LifeSpanHandler,
-    LogSeverity, MouseButtonType, MouseEvent, PopupFeatures, Rect, RenderHandler, Request,
-    RequestHandler, ResourceHandler, ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions,
-    SchemeRegistrar, Settings, WindowInfo, WindowOpenDisposition, WrapApp, WrapClient,
-    WrapDisplayHandler, WrapLifeSpanHandler, WrapRenderHandler, WrapRequestHandler,
-    WrapResourceRequestHandler, WrapSchemeHandlerFactory, api_hash,
-    browser_host_create_browser_sync, execute_process, initialize, register_scheme_handler_factory,
-    shutdown, stream_reader_create_for_file, sys,
+    ImplResourceRequestHandler, ImplSchemeHandlerFactory, ImplSchemeRegistrar, KeyEvent,
+    KeyEventType, LifeSpanHandler, LogSeverity, MouseButtonType, MouseEvent, PopupFeatures, Rect,
+    RenderHandler, Request, RequestHandler, ResourceHandler, ResourceRequestHandler,
+    SchemeHandlerFactory, SchemeOptions, SchemeRegistrar, Settings, WindowInfo,
+    WindowOpenDisposition, WrapApp, WrapClient, WrapDisplayHandler, WrapLifeSpanHandler,
+    WrapRenderHandler, WrapRequestHandler, WrapResourceRequestHandler, WrapSchemeHandlerFactory,
+    api_hash, browser_host_create_browser_sync, execute_process, initialize,
+    register_scheme_handler_factory, shutdown, stream_reader_create_for_file, sys,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -213,17 +219,25 @@ impl CefPaintQueue {
 }
 
 pub fn normalize_bgra_premultiplied_to_rgba(bgra: &[u8]) -> Vec<u8> {
-    let mut rgba = Vec::with_capacity(bgra.len());
-    for pixel in bgra.chunks_exact(4) {
+    let table = unpremultiply_table();
+    let mut rgba = vec![0; bgra.len()];
+    for (pixel, output) in bgra.chunks_exact(4).zip(rgba.chunks_exact_mut(4)) {
         let alpha = pixel[3];
-        rgba.extend_from_slice(&[
-            unpremultiply(pixel[2], alpha),
-            unpremultiply(pixel[1], alpha),
-            unpremultiply(pixel[0], alpha),
-            alpha,
-        ]);
+        output[0] = table[alpha as usize][pixel[2] as usize];
+        output[1] = table[alpha as usize][pixel[1] as usize];
+        output[2] = table[alpha as usize][pixel[0] as usize];
+        output[3] = alpha;
     }
     rgba
+}
+
+fn unpremultiply_table() -> &'static [[u8; 256]] {
+    static TABLE: OnceLock<Vec<[u8; 256]>> = OnceLock::new();
+    TABLE.get_or_init(|| {
+        (0..=u8::MAX)
+            .map(|alpha| std::array::from_fn(|channel| unpremultiply(channel as u8, alpha)))
+            .collect()
+    })
 }
 
 fn unpremultiply(channel: u8, alpha: u8) -> u8 {
@@ -542,6 +556,7 @@ pub struct CefOsrRuntime {
     input_policy: crate::overlay::NativeOverlayInputPolicy,
     input_regions: Vec<crate::overlay_host::NativeOverlayBounds>,
     ipc_queue: Rc<RefCell<VecDeque<String>>>,
+    modal_probe_expected_transitions: usize,
     overlay_id: String,
     pointer_moves_sent: Cell<u64>,
     queue: Rc<RefCell<CefPaintQueue>>,
@@ -608,6 +623,7 @@ impl CefOsrRuntime {
         overlay_id: String,
         resource_root: Option<&Path>,
     ) -> Result<Self, String> {
+        let _ = unpremultiply_table();
         std::fs::create_dir_all(cache_path).map_err(|error| {
             format!(
                 "TN_OVERLAY_CEF_INIT_FAILED: could not create cache {}: {error}",
@@ -618,7 +634,7 @@ impl CefOsrRuntime {
         let args = cef::args::Args::new();
         let mut app = CefSpikeApp::new();
         let settings = Settings {
-            no_sandbox: 1,
+            no_sandbox: 0,
             root_cache_path: cache_path.to_string_lossy().as_ref().into(),
             windowless_rendering_enabled: 1,
             external_message_pump: 1,
@@ -710,6 +726,7 @@ impl CefOsrRuntime {
             input_policy: crate::overlay::native_overlay_input_policy("modal"),
             input_regions: Vec::new(),
             ipc_queue,
+            modal_probe_expected_transitions: 10,
             overlay_id,
             pointer_moves_sent: Cell::new(0),
             queue,
@@ -783,7 +800,14 @@ impl CefOsrRuntime {
             );
         }
         if std::env::var_os("TN_OVERLAY_CEF_SPIKE_MODAL_PROBE").is_some() {
-            frame.execute_java_script(Some(&cef_spike_modal_probe_script().into()), None, 0);
+            self.modal_probe_expected_transitions =
+                std::env::var("TN_OVERLAY_CEF_MODAL_TRANSITIONS")
+                    .ok()
+                    .and_then(|value| value.parse::<usize>().ok())
+                    .filter(|value| (1..=1_000).contains(value))
+                    .unwrap_or(10);
+            let script = cef_modal_probe_script(self.modal_probe_expected_transitions);
+            frame.execute_java_script(Some(&script.as_str().into()), None, 0);
         }
         self.bridge_injected = true;
         Ok(())
@@ -886,6 +910,70 @@ impl CefOsrRuntime {
         );
     }
 
+    pub fn send_mouse_wheel(&self, position: Vec2, delta: Vec2) {
+        if !self.claims_pointer(position) {
+            return;
+        }
+        let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) else {
+            return;
+        };
+        host.send_mouse_wheel_event(
+            Some(&MouseEvent {
+                x: position.x.round() as i32,
+                y: position.y.round() as i32,
+                modifiers: 0,
+            }),
+            delta.x.round() as i32,
+            delta.y.round() as i32,
+        );
+    }
+
+    pub fn send_keyboard_input(&self, event: &KeyboardInput) {
+        if !self.visible || !self.input_policy.captures_keyboard {
+            return;
+        }
+        let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) else {
+            return;
+        };
+        let (windows_key_code, character) = cef_key_values(&event.logical_key);
+        let pressed = event.state == ButtonState::Pressed;
+        host.send_key_event(Some(&KeyEvent {
+            type_: if pressed {
+                KeyEventType::RAWKEYDOWN
+            } else {
+                KeyEventType::KEYUP
+            },
+            windows_key_code,
+            native_key_code: windows_key_code,
+            character,
+            unmodified_character: character,
+            ..Default::default()
+        }));
+        if pressed && character != 0 {
+            host.send_key_event(Some(&KeyEvent {
+                type_: KeyEventType::CHAR,
+                windows_key_code,
+                native_key_code: windows_key_code,
+                character,
+                unmodified_character: character,
+                ..Default::default()
+            }));
+        }
+    }
+
+    pub fn send_focus(&self, focused: bool) {
+        if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
+            host.set_focus(i32::from(focused && self.visible));
+            if !focused {
+                host.send_capture_lost_event();
+            }
+        }
+    }
+
+    fn captures_keyboard(&self) -> bool {
+        self.visible && self.input_policy.captures_keyboard
+    }
+
     fn set_input_mode(&mut self, mode: &str) -> bool {
         if !matches!(
             mode,
@@ -897,12 +985,46 @@ impl CefOsrRuntime {
         true
     }
 
+    pub fn set_input_policy(&mut self, policy: crate::overlay::NativeOverlayInputPolicy) {
+        self.input_policy = policy;
+    }
+
     fn set_visible(&mut self, visible: bool) {
         self.visible = visible;
         if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
             host.was_hidden(i32::from(!visible));
         }
     }
+}
+
+pub fn cef_key_values(key: &Key) -> (i32, u16) {
+    if let Key::Character(value) = key {
+        let character = value.encode_utf16().next().unwrap_or(0);
+        let key_code = value
+            .chars()
+            .next()
+            .map(|value| value.to_ascii_uppercase() as i32)
+            .unwrap_or(0);
+        return (key_code, character);
+    }
+    let key_code = match key {
+        Key::Enter => 13,
+        Key::Tab => 9,
+        Key::Space => 32,
+        Key::ArrowLeft => 37,
+        Key::ArrowUp => 38,
+        Key::ArrowRight => 39,
+        Key::ArrowDown => 40,
+        Key::Backspace => 8,
+        Key::Delete => 46,
+        Key::Home => 36,
+        Key::End => 35,
+        Key::PageUp => 33,
+        Key::PageDown => 34,
+        Key::Escape => 27,
+        _ => 0,
+    };
+    (key_code, 0)
 }
 
 pub fn cef_spike_modal_probe_script() -> &'static str {
@@ -935,6 +1057,12 @@ pub fn cef_spike_modal_probe_script() -> &'static str {
            window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: false, error: String(error) });
          }
        })();"#
+}
+
+pub fn cef_modal_probe_script(transitions: usize) -> String {
+    cef_spike_modal_probe_script()
+        .replace("transition < 10", &format!("transition < {transitions}"))
+        .replace("transitions: 10", &format!("transitions: {transitions}"))
 }
 
 pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
@@ -1013,13 +1141,22 @@ impl Drop for CefOsrRuntime {
 
 #[derive(Resource)]
 pub struct CefSpikeTexture {
+    pub bounds: crate::overlay_host::NativeOverlayBounds,
     pub entity: Entity,
+    pub fills_window: bool,
     pub generation: u64,
     pub handle: Handle<Image>,
     pub first_paint_ms: Option<f64>,
     pub upload_bytes: u64,
     pub upload_micros: Vec<u64>,
     pub uploads: u64,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct CefSurfaceConfig {
+    pub bounds: crate::overlay_host::NativeOverlayBounds,
+    pub fills_window: bool,
+    pub z_index: u32,
 }
 
 pub fn install_cef_spike_frame_probe(
@@ -1058,14 +1195,37 @@ pub fn install_cef_spike_surface(
     width: u32,
     height: u32,
 ) {
+    install_cef_surface(
+        app,
+        runtime,
+        overlays,
+        CefSurfaceConfig {
+            bounds: crate::overlay_host::NativeOverlayBounds {
+                height,
+                width,
+                x: 0,
+                y: 0,
+            },
+            fills_window: true,
+            z_index: i32::MAX as u32,
+        },
+    );
+}
+
+pub fn install_cef_surface(
+    app: &mut bevy::prelude::App,
+    runtime: CefOsrRuntime,
+    overlays: OverlaysIr,
+    config: CefSurfaceConfig,
+) {
     let hidden_fallback_roots = hide_native_ui_fallback_for_cef(app.world_mut());
     info!(
         "TN_OVERLAY_CEF_FALLBACK_HIDDEN: hid {hidden_fallback_roots} retained native UI root(s) after successful CEF initialization"
     );
     let image = Image::new_fill(
         Extent3d {
-            width,
-            height,
+            width: config.bounds.width,
+            height: config.bounds.height,
             depth_or_array_layers: 1,
         },
         TextureDimension::D2,
@@ -1079,19 +1239,21 @@ pub fn install_cef_spike_surface(
         .spawn(ImageBundle {
             style: Style {
                 position_type: PositionType::Absolute,
-                left: Val::Px(0.0),
-                top: Val::Px(0.0),
-                width: Val::Px(width as f32),
-                height: Val::Px(height as f32),
+                left: Val::Px(config.bounds.x as f32),
+                top: Val::Px(config.bounds.y as f32),
+                width: Val::Px(config.bounds.width as f32),
+                height: Val::Px(config.bounds.height as f32),
                 ..Default::default()
             },
             image: UiImage::new(handle.clone()),
-            z_index: ZIndex::Global(i32::MAX),
+            z_index: ZIndex::Global(config.z_index.min(i32::MAX as u32) as i32),
             ..Default::default()
         })
         .id();
     app.insert_resource(CefSpikeTexture {
+        bounds: config.bounds,
         entity,
+        fills_window: config.fills_window,
         generation: runtime.surface_generation(),
         handle: handle.clone(),
         first_paint_ms: None,
@@ -1102,13 +1264,17 @@ pub fn install_cef_spike_surface(
     app.insert_resource(crate::overlay_host::NativeOverlayBridgeResource::new(
         overlays,
     ));
+    app.init_resource::<crate::overlay_host::NativeOverlayInputCapture>();
     app.insert_non_send_resource(runtime);
+    app.add_systems(
+        PreUpdate,
+        route_cef_spike_input.before(crate::input::capture_native_input),
+    );
     app.add_systems(
         Update,
         (
             resize_cef_spike_surface.before(pump_cef_spike_surface),
             pump_cef_spike_surface.before(crate::run_scripted_runtime_systems),
-            route_cef_spike_pointer.after(pump_cef_spike_surface),
             deliver_cef_spike_snapshots.after(crate::run_scripted_runtime_systems),
         ),
     );
@@ -1125,12 +1291,17 @@ fn resize_cef_spike_surface(
     let Ok(window) = windows.get_single() else {
         return;
     };
-    let width = window.physical_width().max(1);
-    let height = window.physical_height().max(1);
+    if !texture.fills_window {
+        return;
+    }
+    let width = window.width().max(1.0).round() as u32;
+    let height = window.height().max(1.0).round() as u32;
     if !runtime.resize(width, height) {
         return;
     }
     texture.generation = runtime.surface_generation();
+    texture.bounds.width = width;
+    texture.bounds.height = height;
     if let Some(image) = images.get_mut(&texture.handle) {
         image.resize(Extent3d {
             width,
@@ -1301,16 +1472,17 @@ fn drain_cef_spike_ipc(
                     .get("transitions")
                     .and_then(Value::as_u64)
                     .and_then(|value| usize::try_from(value).ok());
-                runtime.spike_scenario_result = if completed && transitions == Some(10) {
-                    Some(Ok(10))
-                } else {
-                    Some(Err(envelope
-                        .payload
-                        .get("error")
-                        .and_then(Value::as_str)
-                        .unwrap_or("scenario did not complete 10 transitions")
-                        .to_string()))
-                };
+                runtime.spike_scenario_result =
+                    if completed && transitions == Some(runtime.modal_probe_expected_transitions) {
+                        Some(Ok(runtime.modal_probe_expected_transitions))
+                    } else {
+                        Some(Err(envelope
+                            .payload
+                            .get("error")
+                            .and_then(Value::as_str)
+                            .unwrap_or("scenario did not complete the requested transitions")
+                            .to_string()))
+                    };
             }
             "overlay:set-visible" => {
                 if let Some(visible) = envelope.payload.get("visible").and_then(Value::as_bool) {
@@ -1603,29 +1775,65 @@ pub fn compare_cef_spike_frame_stats(
     }
 }
 
-fn route_cef_spike_pointer(
+fn route_cef_spike_input(
     runtime: NonSend<CefOsrRuntime>,
+    texture: Res<CefSpikeTexture>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut cursor_moved: EventReader<bevy::window::CursorMoved>,
     mut cursor_left: EventReader<bevy::window::CursorLeft>,
+    mut focused: EventReader<bevy::window::WindowFocused>,
+    mut keyboard: EventReader<KeyboardInput>,
+    mut mouse_wheel: EventReader<MouseWheel>,
     mut last_position: Local<Option<Vec2>>,
+    mut pointer_inside: Local<bool>,
+    mut capture: ResMut<crate::overlay_host::NativeOverlayInputCapture>,
 ) {
     for event in cursor_moved.read() {
-        runtime.send_mouse_move(event.position, false);
-        *last_position = Some(event.position);
+        let position = Vec2::new(
+            event.position.x - texture.bounds.x as f32,
+            event.position.y - texture.bounds.y as f32,
+        );
+        let claimed = runtime.claims_pointer(position);
+        if claimed {
+            runtime.send_mouse_move(position, false);
+        } else if *pointer_inside {
+            runtime.send_mouse_move(position, true);
+        }
+        *pointer_inside = claimed;
+        *last_position = Some(position);
     }
     if cursor_left.read().next().is_some() {
         runtime.send_mouse_move(last_position.unwrap_or(Vec2::ZERO), true);
+        *pointer_inside = false;
+        *last_position = None;
     }
-    let Some(position) = *last_position else {
-        return;
-    };
-    for button in [MouseButton::Left, MouseButton::Middle, MouseButton::Right] {
-        if buttons.just_pressed(button) {
-            runtime.send_mouse_button(position, button, false);
+    for event in focused.read() {
+        runtime.send_focus(event.focused);
+    }
+    for event in keyboard.read() {
+        runtime.send_keyboard_input(event);
+    }
+    if let Some(position) = *last_position {
+        for event in mouse_wheel.read() {
+            let factor = match event.unit {
+                MouseScrollUnit::Line => 120.0,
+                MouseScrollUnit::Pixel => 1.0,
+            };
+            runtime.send_mouse_wheel(position, Vec2::new(event.x * factor, event.y * factor));
         }
-        if buttons.just_released(button) {
-            runtime.send_mouse_button(position, button, true);
+    } else {
+        mouse_wheel.clear();
+    }
+    capture.pointer = last_position.is_some_and(|position| runtime.claims_pointer(position));
+    capture.keyboard = runtime.captures_keyboard();
+    if let Some(position) = *last_position {
+        for button in [MouseButton::Left, MouseButton::Middle, MouseButton::Right] {
+            if buttons.just_pressed(button) {
+                runtime.send_mouse_button(position, button, false);
+            }
+            if buttons.just_released(button) {
+                runtime.send_mouse_button(position, button, true);
+            }
         }
     }
 }

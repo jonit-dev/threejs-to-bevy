@@ -29,10 +29,11 @@ Current support:
   applies visibility and input-mode control through adapter-private script
   evaluation. Paint delivery is bounded and latest-frame-wins; resize
   generations prevent stale-size paint callbacks from replacing the current
-  texture. Current native input proof covers pointer move/button and modal
-  ownership. Wheel, keyboard/IME, focus traversal, multiple overlays, authored
-  z-order/bounds, and complete underlying-game input suppression remain
-  unpromoted boundaries.
+  texture. Native routing covers pointer move/button/wheel, keyboard key and
+  character events, window focus, live pointer islands, and modal suppression
+  from the underlying game snapshot. Full IME composition, focus traversal,
+  multiple overlays, and cross-scale pixel proof remain unpromoted boundaries;
+  the single-overlay host applies authored bounds and z-order.
 - Linux NVIDIA/Xwayland compositor evidence covers first paint, chooser hover,
   choosing Black, snapshot delivery, and ten settings modal open/close cycles.
   Other Linux compositor families and Windows/macOS are not yet promoted.

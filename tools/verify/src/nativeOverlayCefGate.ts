@@ -153,7 +153,7 @@ export async function runNativeOverlayCefGate(options: {
     package?: Record<string, unknown>;
     schema?: unknown;
   };
-  for (const budget of ["transparency", "modalRemoval", "input", "bridge", "paintQueue", "installedSize", "startup"] as const) {
+  for (const budget of ["transparency", "modalRemoval", "input", "bridge", "frameCost", "paintQueue", "installedSize", "startup"] as const) {
     if (!String(spike.budgets?.[budget]?.status ?? "").startsWith("pass")) {
       diagnostics.push({
         code: "TN_VERIFY_NATIVE_OVERLAY_CEF_BUDGET_FAILED",

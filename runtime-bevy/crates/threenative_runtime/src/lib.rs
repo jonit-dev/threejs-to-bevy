@@ -295,6 +295,10 @@ pub fn app_from_bundle_with_options(
                 let overlays = bundle.overlays.clone();
                 match (mount, overlays) {
                     (Some(mount), Some(overlays)) if plan.mounts.len() == 1 => {
+                        let parent_width = window.map_or(1280.0, |value| value.width);
+                        let parent_height = window.map_or(720.0, |value| value.height);
+                        let bounds =
+                            overlay_host::native_overlay_bounds(mount, parent_width, parent_height);
                         let initialized = mount
                             .entry_path
                             .parent()
@@ -309,20 +313,26 @@ pub fn app_from_bundle_with_options(
                             overlay_cef::CefOsrRuntime::initialize_bundle(
                                 resource_root,
                                 entry_name,
-                                window.map_or(1280, |value| value.width as u32),
-                                window.map_or(720, |value| value.height as u32),
+                                bounds.width,
+                                bounds.height,
                                 &std::env::temp_dir().join("threenative-native-overlay-cef"),
                                 process_started_at,
                                 mount.id.clone(),
                             )
                         }) {
-                            Ok(runtime) => overlay_cef::install_cef_spike_surface(
-                                &mut app,
-                                runtime,
-                                overlays,
-                                window.map_or(1280, |value| value.width as u32),
-                                window.map_or(720, |value| value.height as u32),
-                            ),
+                            Ok(mut runtime) => {
+                                runtime.set_input_policy(mount.input);
+                                overlay_cef::install_cef_surface(
+                                    &mut app,
+                                    runtime,
+                                    overlays,
+                                    overlay_cef::CefSurfaceConfig {
+                                        bounds,
+                                        fills_window: mount.layout.is_none(),
+                                        z_index: mount.z_index,
+                                    },
+                                )
+                            }
                             Err(error) => warn!("{error}"),
                         }
                     }

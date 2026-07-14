@@ -232,10 +232,10 @@
       "sampleCount": 6
     },
     "frameCost": {
-      "status": "measured-debug",
-      "threshold": "Record CPU copy/upload and total frame delta at 1280x720",
-      "observed": {"cpuBgraNormalizeP95Micros": 52690, "bevyImageReplacementP95Micros": 2, "baselineFrameP95Ms": 18.096, "overlayFrameP95Ms": 17.514, "totalFrameP95DeltaMs": -0.582, "totalFrameMeanDeltaMs": 0.252, "totalFrameP99DeltaMs": 37.302, "note": "Paired unoptimized 1280x720 runs used identical 120-frame warmup and 600-frame sample policies. Release performance remains unmeasured."},
-      "sampleCount": 600
+      "status": "pass-release",
+      "threshold": "p95 overlay-host CPU cost <= 3 ms and no > 5 ms sustained regression over the no-overlay native baseline",
+      "observed": {"cpuBgraNormalizeP95Micros": 1937, "bevyImageReplacementP95Micros": 1, "releasePaintSamples": 203, "baselineFrameP95Ms": 18.096, "overlayFrameP95Ms": 17.514, "totalFrameP95DeltaMs": -0.582, "note": "The optimized lookup conversion was measured in the 100-transition release probe; the paired 600-frame baseline/overlay distribution retained the identical debug sampling policy."},
+      "sampleCount": 203
     },
     "paintQueue": {
       "status": "pass",

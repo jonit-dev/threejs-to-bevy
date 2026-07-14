@@ -3,9 +3,10 @@
 use threenative_runtime::overlay_cef::{
     CEF_DESKTOP_BLINK_SETTINGS, CefPaintFrame, CefPaintQueue, CefSpikeFrameProbe,
     CefSpikeFrameProbeConfig, advance_snapshot_delivery, apply_paint_to_image,
-    apply_paint_to_image_if_current, build_cef_spike_frame_report, cef_overlay_url_allowed,
-    cef_spike_bridge_script, cef_spike_frame_stats, cef_spike_modal_probe_script,
-    compare_cef_spike_frame_stats, dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
+    apply_paint_to_image_if_current, build_cef_spike_frame_report, cef_key_values,
+    cef_modal_probe_script, cef_overlay_url_allowed, cef_spike_bridge_script,
+    cef_spike_frame_stats, cef_spike_modal_probe_script, compare_cef_spike_frame_stats,
+    dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
     normalize_bgra_premultiplied_to_rgba, receive_cef_spike_game_message,
     resolve_cef_overlay_resource,
 };
@@ -361,6 +362,14 @@ fn should_require_ten_complete_modal_probe_transitions() {
 }
 
 #[test]
+fn should_generate_a_hundred_transition_memory_probe() {
+    let script = cef_modal_probe_script(100);
+
+    assert!(script.contains("transition < 100"));
+    assert!(script.contains("transitions: 100"));
+}
+
+#[test]
 fn should_retry_the_first_failed_snapshot_without_skipping_sequences() {
     use threenative_runtime::overlay::OverlayBridgeEnvelope;
 
@@ -396,4 +405,14 @@ fn should_install_live_pointer_region_reporting_in_the_cef_bridge() {
     assert!(script.contains("overlay:set-input-regions"));
     assert!(script.contains("MutationObserver"));
     assert!(script.contains("ResizeObserver"));
+}
+
+#[test]
+fn should_translate_keyboard_characters_and_navigation_keys_for_cef() {
+    use bevy::input::keyboard::Key;
+
+    assert_eq!(cef_key_values(&Key::Character("b".into())), (66, 98));
+    assert_eq!(cef_key_values(&Key::Enter), (13, 0));
+    assert_eq!(cef_key_values(&Key::ArrowLeft), (37, 0));
+    assert_eq!(cef_key_values(&Key::Escape), (27, 0));
 }

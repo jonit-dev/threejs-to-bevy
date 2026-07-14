@@ -20,6 +20,7 @@ use threenative_runtime::input::{
     map_keyboard_event, map_pointer_button_event, rebind_native_input,
     report_native_gamepad_capabilities,
 };
+use threenative_runtime::overlay_host::NativeOverlayInputCapture;
 
 #[test]
 fn should_map_keyboard_input_event_to_action() {
@@ -294,6 +295,74 @@ fn should_capture_bevy_keyboard_and_pointer_input() {
     let state = app.world().resource::<NativeInputState>();
     assert!(!state.action("Attack"));
     assert!(state.released("Attack"));
+}
+
+#[test]
+fn should_keep_modal_overlay_input_out_of_the_game_snapshot() {
+    let mut app = App::new();
+    app.add_event::<MouseMotion>();
+    app.add_event::<CursorMoved>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.insert_resource(NativeOverlayInputCapture {
+        keyboard: true,
+        pointer: true,
+    });
+    app.insert_resource(NativeInputMap(InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![
+            InputActionIr {
+                id: "KeyboardAction".to_owned(),
+                bindings: vec![InputBindingIr::Keyboard {
+                    code: "KeyB".to_owned(),
+                }],
+            },
+            InputActionIr {
+                id: "PointerAction".to_owned(),
+                bindings: vec![InputBindingIr::Pointer {
+                    button: Some(0),
+                    axis: None,
+                }],
+            },
+        ],
+        axes: vec![InputAxisIr {
+            id: "LookX".to_owned(),
+            negative: vec![],
+            positive: vec![],
+            value: Some(InputBindingIr::Pointer {
+                button: None,
+                axis: Some("deltaX".to_owned()),
+            }),
+        }],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
+    }));
+    app.init_resource::<NativeInputState>();
+    app.world_mut().spawn((Window::default(), PrimaryWindow));
+    app.add_systems(PreUpdate, capture_native_input);
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::KeyB);
+    app.world_mut()
+        .resource_mut::<ButtonInput<MouseButton>>()
+        .press(MouseButton::Left);
+    app.world_mut().send_event(MouseMotion {
+        delta: Vec2::new(12.0, 0.0),
+    });
+
+    app.update();
+    let state = app.world().resource::<NativeInputState>();
+    assert!(!state.action("KeyboardAction"));
+    assert!(!state.action("PointerAction"));
+    assert_eq!(state.axis("LookX"), 0.0);
+
+    *app.world_mut().resource_mut::<NativeOverlayInputCapture>() =
+        NativeOverlayInputCapture::default();
+    app.update();
+    let state = app.world().resource::<NativeInputState>();
+    assert!(state.action("KeyboardAction"));
+    assert!(state.action("PointerAction"));
 }
 
 #[test]

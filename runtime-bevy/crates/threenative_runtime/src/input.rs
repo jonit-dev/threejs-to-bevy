@@ -913,6 +913,7 @@ pub fn capture_native_input(
     input: Option<Res<NativeInputMap>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mouse_buttons: Res<ButtonInput<MouseButton>>,
+    overlay_capture: Option<Res<crate::overlay_host::NativeOverlayInputCapture>>,
     gamepads: Option<Res<Gamepads>>,
     gamepad_buttons: Option<Res<ButtonInput<GamepadButton>>>,
     gamepad_button_axes: Option<Res<Axis<GamepadButton>>>,
@@ -933,7 +934,17 @@ pub fn capture_native_input(
     if let Some(position) = cursor_moved.read().last().map(|event| event.position) {
         state.pointer_position = Some(position);
     }
-    let pointer_position = state.pointer_position;
+    let captures_pointer = overlay_capture
+        .as_deref()
+        .is_some_and(|capture| capture.pointer);
+    let pointer_delta = if captures_pointer {
+        Vec2::ZERO
+    } else {
+        pointer_delta
+    };
+    let pointer_position = (!captures_pointer)
+        .then_some(state.pointer_position)
+        .flatten();
     let window_size = windows
         .get_single()
         .ok()
@@ -957,13 +968,31 @@ pub fn capture_native_input(
         }),
         _ => None,
     };
+    let empty_keyboard = ButtonInput::<KeyCode>::default();
+    let empty_mouse_buttons = ButtonInput::<MouseButton>::default();
+    let keyboard = if overlay_capture
+        .as_deref()
+        .is_some_and(|capture| capture.keyboard)
+    {
+        &empty_keyboard
+    } else {
+        keyboard.as_ref()
+    };
+    let mouse_buttons = if overlay_capture
+        .as_deref()
+        .is_some_and(|capture| capture.pointer)
+    {
+        &empty_mouse_buttons
+    } else {
+        mouse_buttons.as_ref()
+    };
 
     for action in &input.0.actions {
         if action.bindings.iter().any(|binding| {
             binding_pressed(
                 binding,
-                &keyboard,
-                &mouse_buttons,
+                keyboard,
+                mouse_buttons,
                 gamepad.as_ref(),
                 touch.as_deref(),
             )
@@ -982,8 +1011,8 @@ pub fn capture_native_input(
         let positive = axis.positive.iter().any(|binding| {
             binding_pressed(
                 binding,
-                &keyboard,
-                &mouse_buttons,
+                keyboard,
+                mouse_buttons,
                 gamepad.as_ref(),
                 touch.as_deref(),
             )
@@ -991,8 +1020,8 @@ pub fn capture_native_input(
         let negative = axis.negative.iter().any(|binding| {
             binding_pressed(
                 binding,
-                &keyboard,
-                &mouse_buttons,
+                keyboard,
+                mouse_buttons,
                 gamepad.as_ref(),
                 touch.as_deref(),
             )

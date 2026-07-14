@@ -42,6 +42,12 @@ pub struct NativeOverlayHostPlan {
 #[derive(Clone, Debug, PartialEq, Resource)]
 pub struct NativeOverlayHostPlanResource(pub NativeOverlayHostPlan);
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Resource)]
+pub struct NativeOverlayInputCapture {
+    pub keyboard: bool,
+    pub pointer: bool,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NativeOverlayBackendDescriptor {
     pub cargo_feature: &'static str,
