@@ -27,7 +27,7 @@ type BevyRuntimeEnvironment = Partial<
   Record<"DISPLAY" | "THREENATIVE_BEVY_MANIFEST" | "THREENATIVE_REPO_ROOT" | "TN_NATIVE_PROFILE" | "WAYLAND_DISPLAY" | "WAYLAND_SOCKET", string>
 >;
 
-export const REQUIRED_BEVY_RUNTIME_FEATURES = ["native-webview"] as const;
+export const REQUIRED_BEVY_RUNTIME_FEATURES = ["native-overlay-cef"] as const;
 
 export class NativeHeadlessUnsupportedError extends Error {
   readonly code = "TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED";

@@ -15,12 +15,17 @@ use bevy::{
 };
 use cef::rc::Rc as _;
 use cef::{
-    App, Browser, BrowserSettings, CefString, Client, CommandLine, DisplayHandler, ImplApp,
-    ImplBrowser, ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler, ImplFrame,
-    ImplLifeSpanHandler, ImplRenderHandler, LifeSpanHandler, LogSeverity, MouseButtonType,
-    MouseEvent, Rect, RenderHandler, Settings, WindowInfo, WrapApp, WrapClient, WrapDisplayHandler,
-    WrapLifeSpanHandler, WrapRenderHandler, api_hash, browser_host_create_browser_sync,
-    execute_process, initialize, shutdown, sys,
+    App, Browser, BrowserSettings, CefString, Client, CommandLine, DictionaryValue, DisplayHandler,
+    ImplApp, ImplBrowser, ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler,
+    ImplFrame, ImplLifeSpanHandler, ImplRenderHandler, ImplRequest, ImplRequestHandler,
+    ImplResourceRequestHandler, ImplSchemeHandlerFactory, ImplSchemeRegistrar, LifeSpanHandler,
+    LogSeverity, MouseButtonType, MouseEvent, PopupFeatures, Rect, RenderHandler, Request,
+    RequestHandler, ResourceHandler, ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions,
+    SchemeRegistrar, Settings, WindowInfo, WindowOpenDisposition, WrapApp, WrapClient,
+    WrapDisplayHandler, WrapLifeSpanHandler, WrapRenderHandler, WrapRequestHandler,
+    WrapResourceRequestHandler, WrapSchemeHandlerFactory, api_hash,
+    browser_host_create_browser_sync, execute_process, initialize, register_scheme_handler_factory,
+    shutdown, stream_reader_create_for_file, sys,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,6 +39,8 @@ pub const CEF_DESKTOP_BLINK_SETTINGS: &str =
 const MAX_METRIC_SAMPLES: usize = 2_048;
 const MAX_PENDING_BRIDGE_MESSAGES: usize = 64;
 const CEF_SPIKE_IPC_PREFIX: &str = "TN_OVERLAY_CEF_IPC:";
+const CEF_OVERLAY_SCHEME: &str = "threenative-overlay";
+const CEF_OVERLAY_ORIGIN: &str = "threenative-overlay://bundle/";
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
@@ -129,6 +136,7 @@ impl CefSpikeFrameProbe {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CefPaintFrame {
+    pub generation: u64,
     pub width: u32,
     pub height: u32,
     pub rgba: Vec<u8>,
@@ -154,6 +162,16 @@ impl CefPaintQueue {
         height: u32,
         bgra: &[u8],
     ) -> Result<(), String> {
+        self.push_bgra_premultiplied_for_generation(0, width, height, bgra)
+    }
+
+    pub fn push_bgra_premultiplied_for_generation(
+        &mut self,
+        generation: u64,
+        width: u32,
+        height: u32,
+        bgra: &[u8],
+    ) -> Result<(), String> {
         let expected = width as usize * height as usize * 4;
         if width == 0 || height == 0 || bgra.len() != expected {
             return Err(format!(
@@ -173,6 +191,7 @@ impl CefPaintQueue {
         );
         self.metrics.accepted += 1;
         self.latest = Some(CefPaintFrame {
+            generation,
             width,
             height,
             rgba,
@@ -222,6 +241,7 @@ cef::wrap_render_handler! {
         queue: Rc<RefCell<CefPaintQueue>>,
         width: Rc<Cell<i32>>,
         height: Rc<Cell<i32>>,
+        generation: Rc<Cell<u64>>,
     }
 
     impl RenderHandler {
@@ -244,9 +264,13 @@ cef::wrap_render_handler! {
             if buffer.is_null() || width <= 0 || height <= 0 {
                 return;
             }
+            if width != self.width.get() || height != self.height.get() {
+                return;
+            }
             let length = width as usize * height as usize * 4;
             let bytes = unsafe { std::slice::from_raw_parts(buffer, length) };
-            let _ = self.queue.borrow_mut().push_bgra_premultiplied(
+            let _ = self.queue.borrow_mut().push_bgra_premultiplied_for_generation(
+                self.generation.get(),
                 width as u32,
                 height as u32,
                 bytes,
@@ -261,8 +285,93 @@ cef::wrap_life_span_handler! {
     }
 
     impl LifeSpanHandler {
+        fn on_before_popup(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut cef::Frame>,
+            _popup_id: i32,
+            target_url: Option<&CefString>,
+            _target_frame_name: Option<&CefString>,
+            _target_disposition: WindowOpenDisposition,
+            _user_gesture: i32,
+            _popup_features: Option<&PopupFeatures>,
+            _window_info: Option<&mut WindowInfo>,
+            _client: Option<&mut Option<Client>>,
+            _settings: Option<&mut BrowserSettings>,
+            _extra_info: Option<&mut Option<DictionaryValue>>,
+            _no_javascript_access: Option<&mut i32>,
+        ) -> i32 {
+            eprintln!(
+                "TN_OVERLAY_CEF_RESOURCE_REJECTED: {}: new windows are disabled",
+                target_url.map(ToString::to_string).unwrap_or_default()
+            );
+            1
+        }
+
         fn on_before_close(&self, _browser: Option<&mut Browser>) {
             self.closed.set(true);
+        }
+    }
+}
+
+cef::wrap_resource_request_handler! {
+    struct CefDeniedResourceRequestHandler {}
+
+    impl ResourceRequestHandler {}
+}
+
+cef::wrap_request_handler! {
+    struct CefOverlayRequestHandler {}
+
+    impl RequestHandler {
+        fn on_before_browse(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut cef::Frame>,
+            request: Option<&mut Request>,
+            _user_gesture: i32,
+            _is_redirect: i32,
+        ) -> i32 {
+            let url = request
+                .map(|request| CefString::from(&request.url()).to_string())
+                .unwrap_or_default();
+            i32::from(!cef_overlay_url_allowed(&url))
+        }
+
+        fn on_open_urlfrom_tab(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut cef::Frame>,
+            _target_url: Option<&CefString>,
+            _target_disposition: WindowOpenDisposition,
+            _user_gesture: i32,
+        ) -> i32 {
+            1
+        }
+
+        fn resource_request_handler(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut cef::Frame>,
+            request: Option<&mut Request>,
+            _is_navigation: i32,
+            _is_download: i32,
+            _request_initiator: Option<&CefString>,
+            disable_default_handling: Option<&mut i32>,
+        ) -> Option<ResourceRequestHandler> {
+            let url = request
+                .map(|request| CefString::from(&request.url()).to_string())
+                .unwrap_or_default();
+            if cef_overlay_url_allowed(&url) {
+                return None;
+            }
+            if let Some(disable_default_handling) = disable_default_handling {
+                *disable_default_handling = 1;
+            }
+            eprintln!(
+                "TN_OVERLAY_CEF_RESOURCE_REJECTED: {url}: remote and external resource loads are disabled"
+            );
+            Some(CefDeniedResourceRequestHandler::new())
         }
     }
 }
@@ -272,6 +381,7 @@ cef::wrap_client! {
         render_handler: RenderHandler,
         life_span_handler: LifeSpanHandler,
         display_handler: DisplayHandler,
+        request_handler: RequestHandler,
     }
 
     impl Client {
@@ -281,6 +391,10 @@ cef::wrap_client! {
 
         fn life_span_handler(&self) -> Option<LifeSpanHandler> {
             Some(self.life_span_handler.clone())
+        }
+
+        fn request_handler(&self) -> Option<RequestHandler> {
+            Some(self.request_handler.clone())
         }
 
         fn display_handler(&self) -> Option<DisplayHandler> {
@@ -320,10 +434,60 @@ cef::wrap_display_handler! {
     }
 }
 
+cef::wrap_scheme_handler_factory! {
+    struct CefOverlaySchemeHandlerFactory {
+        resource_root: PathBuf,
+    }
+
+    impl SchemeHandlerFactory {
+        fn create(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut cef::Frame>,
+            _scheme_name: Option<&CefString>,
+            request: Option<&mut Request>,
+        ) -> Option<ResourceHandler> {
+            let request_url = request.map(|request| CefString::from(&request.url()).to_string())?;
+            let (path, mime_type) = match resolve_cef_overlay_resource(
+                &self.resource_root,
+                &request_url,
+            ) {
+                Ok(resource) => resource,
+                Err(error) => {
+                    eprintln!("{error}");
+                    return None;
+                }
+            };
+            let stream = stream_reader_create_for_file(Some(&path.to_string_lossy().as_ref().into()))?;
+            Some(
+                cef::wrapper::stream_resource_handler::StreamResourceHandler::new_with_stream(
+                    mime_type.to_string(),
+                    stream,
+                ),
+            )
+        }
+    }
+}
+
 cef::wrap_app! {
     struct CefSpikeApp {}
 
     impl App {
+        fn on_register_custom_schemes(&self, registrar: Option<&mut SchemeRegistrar>) {
+            let Some(registrar) = registrar else {
+                return;
+            };
+            let options = SchemeOptions::STANDARD.get_raw()
+                | SchemeOptions::SECURE.get_raw()
+                | SchemeOptions::CORS_ENABLED.get_raw()
+                | SchemeOptions::FETCH_ENABLED.get_raw();
+            if registrar.add_custom_scheme(Some(&CEF_OVERLAY_SCHEME.into()), options as i32) == 0 {
+                eprintln!(
+                    "TN_OVERLAY_CEF_INIT_FAILED: could not register {CEF_OVERLAY_SCHEME} scheme"
+                );
+            }
+        }
+
         fn on_before_command_line_processing(
             &self,
             _process_type: Option<&cef::CefString>,
@@ -382,6 +546,9 @@ pub struct CefOsrRuntime {
     queue: Rc<RefCell<CefPaintQueue>>,
     process_started_at: Instant,
     spike_scenario_result: Option<Result<usize, String>>,
+    surface_generation: Rc<Cell<u64>>,
+    surface_height: Rc<Cell<i32>>,
+    surface_width: Rc<Cell<i32>>,
     visible: bool,
 }
 
@@ -393,6 +560,52 @@ impl CefOsrRuntime {
         cache_path: &Path,
         process_started_at: Instant,
         overlay_id: String,
+    ) -> Result<Self, String> {
+        Self::initialize_with_resource_root(
+            url,
+            width,
+            height,
+            cache_path,
+            process_started_at,
+            overlay_id,
+            None,
+        )
+    }
+
+    pub fn initialize_bundle(
+        resource_root: &Path,
+        entry_name: &str,
+        width: u32,
+        height: u32,
+        cache_path: &Path,
+        process_started_at: Instant,
+        overlay_id: String,
+    ) -> Result<Self, String> {
+        if Path::new(entry_name).components().count() != 1 {
+            return Err(cef_resource_rejected(
+                entry_name,
+                "pass an entry filename below the declared overlay root",
+            ));
+        }
+        Self::initialize_with_resource_root(
+            &format!("{CEF_OVERLAY_ORIGIN}{entry_name}"),
+            width,
+            height,
+            cache_path,
+            process_started_at,
+            overlay_id,
+            Some(resource_root),
+        )
+    }
+
+    fn initialize_with_resource_root(
+        url: &str,
+        width: u32,
+        height: u32,
+        cache_path: &Path,
+        process_started_at: Instant,
+        overlay_id: String,
+        resource_root: Option<&Path>,
     ) -> Result<Self, String> {
         std::fs::create_dir_all(cache_path).map_err(|error| {
             format!(
@@ -420,18 +633,52 @@ impl CefOsrRuntime {
         {
             return Err("TN_OVERLAY_CEF_INIT_FAILED: cef_initialize returned false".to_string());
         }
+        if let Some(resource_root) = resource_root {
+            let canonical_root = match resource_root.canonicalize() {
+                Ok(root) => root,
+                Err(error) => {
+                    shutdown();
+                    return Err(cef_resource_rejected(
+                        &resource_root.display().to_string(),
+                        &format!("make the declared overlay root readable: {error}"),
+                    ));
+                }
+            };
+            let mut factory = CefOverlaySchemeHandlerFactory::new(canonical_root);
+            if register_scheme_handler_factory(
+                Some(&CEF_OVERLAY_SCHEME.into()),
+                Some(&"bundle".into()),
+                Some(&mut factory),
+            ) == 0
+            {
+                shutdown();
+                return Err(format!(
+                    "TN_OVERLAY_CEF_INIT_FAILED: could not install {CEF_OVERLAY_SCHEME} resource handler"
+                ));
+            }
+        }
 
         let queue = Rc::new(RefCell::new(CefPaintQueue::default()));
         let ipc_queue = Rc::new(RefCell::new(VecDeque::new()));
         let closed = Rc::new(Cell::new(false));
+        let surface_generation = Rc::new(Cell::new(0));
+        let surface_width = Rc::new(Cell::new(width as i32));
+        let surface_height = Rc::new(Cell::new(height as i32));
         let render_handler = CefSpikeRenderHandler::new(
             queue.clone(),
-            Rc::new(Cell::new(width as i32)),
-            Rc::new(Cell::new(height as i32)),
+            surface_width.clone(),
+            surface_height.clone(),
+            surface_generation.clone(),
         );
         let life_span_handler = CefSpikeLifeSpanHandler::new(closed.clone());
         let display_handler = CefSpikeDisplayHandler::new(ipc_queue.clone());
-        let mut client = CefSpikeClient::new(render_handler, life_span_handler, display_handler);
+        let request_handler = CefOverlayRequestHandler::new();
+        let mut client = CefSpikeClient::new(
+            render_handler,
+            life_span_handler,
+            display_handler,
+            request_handler,
+        );
         let browser = browser_host_create_browser_sync(
             Some(&WindowInfo {
                 windowless_rendering_enabled: 1,
@@ -466,6 +713,9 @@ impl CefOsrRuntime {
             queue,
             process_started_at,
             spike_scenario_result: None,
+            surface_generation,
+            surface_height,
+            surface_width,
             visible: true,
         })
     }
@@ -484,6 +734,27 @@ impl CefOsrRuntime {
 
     pub fn startup_elapsed(&self) -> Duration {
         self.process_started_at.elapsed()
+    }
+
+    pub fn surface_generation(&self) -> u64 {
+        self.surface_generation.get()
+    }
+
+    pub fn resize(&mut self, width: u32, height: u32) -> bool {
+        let width = width.max(1) as i32;
+        let height = height.max(1) as i32;
+        if self.surface_width.get() == width && self.surface_height.get() == height {
+            return false;
+        }
+        self.surface_width.set(width);
+        self.surface_height.set(height);
+        self.surface_generation
+            .set(self.surface_generation.get().saturating_add(1));
+        self.queue.borrow_mut().latest = None;
+        if let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) {
+            host.was_resized();
+        }
+        true
     }
 
     pub fn inject_spike_bridge(&mut self) -> Result<(), String> {
@@ -703,6 +974,7 @@ impl Drop for CefOsrRuntime {
 #[derive(Resource)]
 pub struct CefSpikeTexture {
     pub entity: Entity,
+    pub generation: u64,
     pub handle: Handle<Image>,
     pub first_paint_ms: Option<f64>,
     pub upload_bytes: u64,
@@ -780,6 +1052,7 @@ pub fn install_cef_spike_surface(
         .id();
     app.insert_resource(CefSpikeTexture {
         entity,
+        generation: runtime.surface_generation(),
         handle: handle.clone(),
         first_paint_ms: None,
         upload_bytes: 0,
@@ -793,12 +1066,47 @@ pub fn install_cef_spike_surface(
     app.add_systems(
         Update,
         (
+            resize_cef_spike_surface.before(pump_cef_spike_surface),
             pump_cef_spike_surface.before(crate::run_scripted_runtime_systems),
             route_cef_spike_pointer.after(pump_cef_spike_surface),
             deliver_cef_spike_snapshots.after(crate::run_scripted_runtime_systems),
         ),
     );
     app.add_systems(Last, report_cef_spike_summary);
+}
+
+fn resize_cef_spike_surface(
+    mut runtime: NonSendMut<CefOsrRuntime>,
+    mut texture: ResMut<CefSpikeTexture>,
+    windows: Query<&Window, With<bevy::window::PrimaryWindow>>,
+    mut images: ResMut<Assets<Image>>,
+    mut styles: Query<&mut Style>,
+) {
+    let Ok(window) = windows.get_single() else {
+        return;
+    };
+    let width = window.physical_width().max(1);
+    let height = window.physical_height().max(1);
+    if !runtime.resize(width, height) {
+        return;
+    }
+    texture.generation = runtime.surface_generation();
+    if let Some(image) = images.get_mut(&texture.handle) {
+        image.resize(Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        });
+        image.data.fill(0);
+    }
+    if let Ok(mut style) = styles.get_mut(texture.entity) {
+        style.width = Val::Px(width as f32);
+        style.height = Val::Px(height as f32);
+    }
+    info!(
+        "TN_OVERLAY_CEF_SURFACE_RESIZED: generation={}, viewport={}x{}",
+        texture.generation, width, height
+    );
 }
 
 pub fn hide_native_ui_fallback_for_cef(world: &mut World) -> usize {
@@ -846,6 +1154,13 @@ fn pump_cef_spike_surface(
     let Some(frame) = runtime.take_latest_paint() else {
         return;
     };
+    if frame.generation != texture.generation {
+        warn!(
+            "TN_OVERLAY_CEF_STALE_PAINT_DROPPED: paintGeneration={}, surfaceGeneration={}",
+            frame.generation, texture.generation
+        );
+        return;
+    }
     if texture.first_paint_ms.is_none() {
         let first_paint_ms = runtime.startup_elapsed().as_secs_f64() * 1_000.0;
         let nontransparent_pixels = frame
@@ -1275,6 +1590,94 @@ pub fn apply_paint_to_image(image: &mut Image, frame: CefPaintFrame) {
         depth_or_array_layers: 1,
     });
     image.data = frame.rgba;
+}
+
+pub fn apply_paint_to_image_if_current(
+    image: &mut Image,
+    frame: CefPaintFrame,
+    surface_generation: u64,
+) -> bool {
+    if frame.generation != surface_generation {
+        return false;
+    }
+    apply_paint_to_image(image, frame);
+    true
+}
+
+pub fn resolve_cef_overlay_resource(
+    resource_root: &Path,
+    request_url: &str,
+) -> Result<(PathBuf, &'static str), String> {
+    let relative = request_url
+        .strip_prefix(CEF_OVERLAY_ORIGIN)
+        .ok_or_else(|| cef_resource_rejected(request_url, "use the declared bundle origin"))?
+        .split(['?', '#'])
+        .next()
+        .unwrap_or_default();
+    if relative.is_empty() || relative.contains('%') || relative.contains('\\') {
+        return Err(cef_resource_rejected(
+            request_url,
+            "use a non-empty, unencoded bundle-local path",
+        ));
+    }
+    let relative = Path::new(relative);
+    if relative.components().any(|component| {
+        !matches!(
+            component,
+            std::path::Component::Normal(_) | std::path::Component::CurDir
+        )
+    }) {
+        return Err(cef_resource_rejected(
+            request_url,
+            "remove absolute or parent-directory path components",
+        ));
+    }
+    let canonical_root = resource_root.canonicalize().map_err(|error| {
+        cef_resource_rejected(
+            request_url,
+            &format!("make the declared overlay root readable: {error}"),
+        )
+    })?;
+    let candidate = canonical_root.join(relative);
+    let canonical = candidate.canonicalize().map_err(|error| {
+        cef_resource_rejected(
+            request_url,
+            &format!("add the declared bundle-local resource: {error}"),
+        )
+    })?;
+    if !canonical.starts_with(&canonical_root) || !canonical.is_file() {
+        return Err(cef_resource_rejected(
+            request_url,
+            "serve only regular files below the declared overlay root",
+        ));
+    }
+    Ok((canonical.clone(), cef_overlay_mime_type(&canonical)))
+}
+
+pub fn cef_overlay_url_allowed(url: &str) -> bool {
+    url.starts_with(CEF_OVERLAY_ORIGIN)
+}
+
+fn cef_resource_rejected(request_url: &str, fix: &str) -> String {
+    format!("TN_OVERLAY_CEF_RESOURCE_REJECTED: {request_url}: {fix}")
+}
+
+fn cef_overlay_mime_type(path: &Path) -> &'static str {
+    match path.extension().and_then(|extension| extension.to_str()) {
+        Some("css") => "text/css",
+        Some("gif") => "image/gif",
+        Some("html") => "text/html",
+        Some("jpeg" | "jpg") => "image/jpeg",
+        Some("js" | "mjs") => "text/javascript",
+        Some("json") => "application/json",
+        Some("png") => "image/png",
+        Some("svg") => "image/svg+xml",
+        Some("wasm") => "application/wasm",
+        Some("webp") => "image/webp",
+        Some("woff") => "font/woff",
+        Some("woff2") => "font/woff2",
+        _ => "application/octet-stream",
+    }
 }
 
 pub fn overlay_entry_url(bundle_path: &Path) -> Result<(PathBuf, String), String> {

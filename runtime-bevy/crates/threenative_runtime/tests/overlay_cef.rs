@@ -2,11 +2,12 @@
 
 use threenative_runtime::overlay_cef::{
     CEF_DESKTOP_BLINK_SETTINGS, CefPaintFrame, CefPaintQueue, CefSpikeFrameProbe,
-    CefSpikeFrameProbeConfig, apply_paint_to_image, build_cef_spike_frame_report,
-    cef_spike_bridge_script, cef_spike_frame_stats, cef_spike_modal_probe_script,
-    compare_cef_spike_frame_stats, dispatch_cef_subprocess_with,
-    hide_native_ui_fallback_for_cef,
+    CefSpikeFrameProbeConfig, apply_paint_to_image, apply_paint_to_image_if_current,
+    build_cef_spike_frame_report, cef_overlay_url_allowed, cef_spike_bridge_script,
+    cef_spike_frame_stats, cef_spike_modal_probe_script, compare_cef_spike_frame_stats,
+    dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
     normalize_bgra_premultiplied_to_rgba, receive_cef_spike_game_message,
+    resolve_cef_overlay_resource,
 };
 
 #[test]
@@ -15,6 +16,80 @@ fn should_advertise_desktop_pointer_capabilities_for_css_hover() {
     assert!(CEF_DESKTOP_BLINK_SETTINGS.contains("availableHoverTypes=2"));
     assert!(CEF_DESKTOP_BLINK_SETTINGS.contains("primaryPointerType=4"));
     assert!(CEF_DESKTOP_BLINK_SETTINGS.contains("availablePointerTypes=4"));
+}
+
+#[test]
+fn should_select_cef_osr_for_a_declared_desktop_overlay() {
+    let overlays = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.overlays",
+        "version": "0.2.0",
+        "overlays": [{
+            "entry": "overlay/index.html",
+            "id": "hud",
+            "input": "pointer",
+            "messages": { "gameToOverlay": [], "overlayToGame": [] },
+            "targetProfiles": ["desktop"],
+            "transparent": true,
+            "zIndex": 10
+        }]
+    }))
+    .unwrap();
+
+    let plan = threenative_runtime::overlay_host::create_native_overlay_host_plan(
+        Some(&overlays),
+        std::path::Path::new("/tmp/example.bundle"),
+    )
+    .unwrap()
+    .unwrap();
+    let descriptor =
+        threenative_runtime::overlay_host::native_overlay_backend_descriptor().unwrap();
+
+    assert_eq!(descriptor.id, "cef-osr");
+    assert_eq!(descriptor.cargo_feature, "native-overlay-cef");
+    assert_eq!(plan.backend, descriptor.id);
+}
+
+#[test]
+fn should_serve_a_normalized_bundle_local_asset() {
+    let root =
+        std::env::temp_dir().join(format!("threenative-cef-resource-{}", std::process::id()));
+    std::fs::create_dir_all(root.join("assets")).unwrap();
+    std::fs::write(root.join("assets/app.js"), "export const ready = true;").unwrap();
+
+    let (path, mime_type) = resolve_cef_overlay_resource(
+        &root,
+        "threenative-overlay://bundle/assets/./app.js?version=1",
+    )
+    .unwrap();
+
+    assert_eq!(path, root.join("assets/app.js").canonicalize().unwrap());
+    assert_eq!(mime_type, "text/javascript");
+    let _ = std::fs::remove_dir_all(root);
+}
+
+#[test]
+fn should_reject_traversal_and_remote_navigation() {
+    let root = std::env::temp_dir().join(format!(
+        "threenative-cef-resource-reject-{}",
+        std::process::id()
+    ));
+    std::fs::create_dir_all(&root).unwrap();
+
+    for request in [
+        "threenative-overlay://bundle/../secret.txt",
+        "threenative-overlay://bundle/%2e%2e/secret.txt",
+        "https://example.com/index.html",
+    ] {
+        let error = resolve_cef_overlay_resource(&root, request).unwrap_err();
+        assert!(error.contains("TN_OVERLAY_CEF_RESOURCE_REJECTED"));
+        assert!(error.contains(request));
+    }
+    assert!(cef_overlay_url_allowed(
+        "threenative-overlay://bundle/index.html"
+    ));
+    assert!(!cef_overlay_url_allowed("https://example.com/index.html"));
+    assert!(!cef_overlay_url_allowed("file:///tmp/index.html"));
+    let _ = std::fs::remove_dir_all(root);
 }
 
 #[test]
@@ -79,6 +154,7 @@ fn should_replace_dynamic_texture_without_stale_mip_levels() {
     apply_paint_to_image(
         &mut image,
         CefPaintFrame {
+            generation: 0,
             width: 2,
             height: 1,
             rgba: vec![1, 2, 3, 4, 5, 6, 7, 8],
@@ -89,6 +165,33 @@ fn should_replace_dynamic_texture_without_stale_mip_levels() {
     assert_eq!(image.texture_descriptor.size.width, 2);
     assert_eq!(image.texture_descriptor.size.height, 1);
     assert_eq!(image.data, vec![1, 2, 3, 4, 5, 6, 7, 8]);
+}
+
+#[test]
+fn should_discard_a_stale_paint_after_resize() {
+    let mut image = bevy::render::texture::Image::new_fill(
+        bevy::render::render_resource::Extent3d {
+            width: 1,
+            height: 1,
+            depth_or_array_layers: 1,
+        },
+        bevy::render::render_resource::TextureDimension::D2,
+        &[9, 9, 9, 9],
+        bevy::render::render_resource::TextureFormat::Rgba8UnormSrgb,
+        bevy::render::render_asset::RenderAssetUsages::default(),
+    );
+
+    assert!(!apply_paint_to_image_if_current(
+        &mut image,
+        CefPaintFrame {
+            generation: 2,
+            width: 1,
+            height: 1,
+            rgba: vec![1, 2, 3, 4],
+        },
+        3,
+    ));
+    assert_eq!(image.data, vec![9, 9, 9, 9]);
 }
 
 #[test]

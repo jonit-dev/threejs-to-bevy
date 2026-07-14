@@ -19,7 +19,7 @@ test("should select threenative runtime binary", () => {
     "--bin",
     "threenative_runtime",
     "--features",
-    "native-webview",
+    "native-overlay-cef",
     "--release",
     "--",
     bundlePath,
@@ -44,7 +44,7 @@ test("should omit release profile when native debug profile is requested", () =>
     "--bin",
     "threenative_runtime",
     "--features",
-    "native-webview",
+    "native-overlay-cef",
     "--",
     bundlePath,
   ]);
@@ -75,7 +75,7 @@ test("should pass native proof harness files to runtime binary", () => {
       "--bin",
       "threenative_runtime",
       "--features",
-      "native-webview",
+      "native-overlay-cef",
       "--release",
       "--",
       bundlePath,
@@ -134,7 +134,7 @@ test("should only reuse a runtime binary that reports every required cargo featu
   await mkdir(join(repoRoot, "runtime-bevy/target/release"), { recursive: true });
   await mkdir(join(repoRoot, "runtime-bevy/target/debug"), { recursive: true });
   await writeFile(releaseBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":[]}'\n`);
-  await writeFile(debugBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":["native-webview"]}'\n`);
+  await writeFile(debugBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":["native-overlay-cef"]}'\n`);
   await chmod(releaseBinary, 0o755);
   await chmod(debugBinary, 0o755);
   try {

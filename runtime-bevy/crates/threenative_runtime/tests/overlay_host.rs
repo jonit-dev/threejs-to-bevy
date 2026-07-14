@@ -8,7 +8,7 @@ use threenative_runtime::overlay_host::{
 use threenative_runtime::overlay_host::{
     create_native_overlay_host_plan, input_capture_policy, native_overlay_bounds,
     native_overlay_file_url, native_overlay_input_rectangles, native_overlay_snapshot_script,
-    native_webview_backend_available, native_webview_backend_name, overlay_host_diagnostics,
+    overlay_host_diagnostics,
 };
 #[cfg(all(
     feature = "native-webview",
@@ -22,6 +22,10 @@ use threenative_runtime::overlay_host::{
 ))]
 use threenative_runtime::overlay_host::{
     native_overlay_host_clear_color, native_overlay_screen_position,
+};
+#[cfg(not(feature = "native-overlay-cef"))]
+use threenative_runtime::overlay_host::{
+    native_webview_backend_available, native_webview_backend_name,
 };
 
 #[test]
@@ -201,7 +205,7 @@ fn uses_authored_native_overlay_layout_rectangle() {
     );
 }
 
-#[cfg(not(feature = "native-webview"))]
+#[cfg(not(any(feature = "native-overlay-cef", feature = "native-webview")))]
 #[test]
 fn native_overlay_host_default_build_reports_unsupported() {
     let overlays = make_overlays();
@@ -216,7 +220,7 @@ fn native_overlay_host_default_build_reports_unsupported() {
     );
 }
 
-#[cfg(feature = "native-webview")]
+#[cfg(all(not(feature = "native-overlay-cef"), feature = "native-webview"))]
 #[test]
 fn native_overlay_host_feature_prepares_wry_mounts() {
     let overlays = make_overlays();

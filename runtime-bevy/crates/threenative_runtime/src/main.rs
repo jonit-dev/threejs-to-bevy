@@ -6,6 +6,10 @@ use threenative_runtime::{
 };
 
 fn main() -> ExitCode {
+    #[cfg(feature = "native-overlay-cef")]
+    if let Some(code) = threenative_runtime::overlay_cef::dispatch_cef_subprocess() {
+        return ExitCode::from(code as u8);
+    }
     let mut args = env::args().skip(1);
     if args.next().as_deref() == Some("--capabilities") {
         println!(
@@ -13,7 +17,9 @@ fn main() -> ExitCode {
             serde_json::json!({
                 "schema": "threenative.runtime-capabilities",
                 "version": "0.1.0",
-                "cargoFeatures": if overlay_host::native_webview_backend_available() { vec!["native-webview"] } else { Vec::<&str>::new() },
+                "cargoFeatures": overlay_host::native_overlay_backend_descriptor()
+                    .map(|descriptor| vec![descriptor.cargo_feature])
+                    .unwrap_or_default(),
                 "nativeWebview": {
                     "available": overlay_host::native_webview_backend_available(),
                     "backend": overlay_host::native_webview_backend_name(),

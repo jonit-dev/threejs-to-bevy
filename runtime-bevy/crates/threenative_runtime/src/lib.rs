@@ -134,8 +134,11 @@ pub fn app_from_bundle_with_options(
     bundle_path: impl AsRef<Path>,
     options: RuntimeOptions,
 ) -> Result<App, RuntimeError> {
+    #[cfg(feature = "native-overlay-cef")]
+    let process_started_at = std::time::Instant::now();
     let proof_harness_requested = options.proof_harness.is_some();
-    let bundle = load_bundle(bundle_path)?;
+    let bundle_source_path = bundle_path.as_ref().to_path_buf();
+    let bundle = load_bundle(&bundle_source_path)?;
     let scene_diagnostics = native_scene_startup_diagnostics(
         &bundle.world,
         &bundle.materials,
@@ -191,8 +194,11 @@ pub fn app_from_bundle_with_options(
         bundle.overlays.as_ref(),
         &bundle.bundle_path,
     ) {
-        Ok(Some(_)) => overlay_host::initialize_native_webview_backend().err(),
+        Ok(Some(plan)) if plan.backend == overlay_host::WRY_BACKEND.id => {
+            overlay_host::initialize_native_webview_backend().err()
+        }
         Ok(None) | Err(_) => None,
+        Ok(Some(_)) => None,
     };
     let mut app = App::new();
     app.insert_resource(ClearColor(default_clear_color_for_bundle(&bundle)))
@@ -294,8 +300,50 @@ pub fn app_from_bundle_with_options(
                 plan.mounts.len(),
                 plan.backend
             );
+            #[cfg(feature = "native-overlay-cef")]
+            if plan.backend == overlay_host::CEF_OSR_BACKEND.id {
+                let mount = plan.mounts.first();
+                let overlays = bundle.overlays.clone();
+                match (mount, overlays) {
+                    (Some(mount), Some(overlays)) if plan.mounts.len() == 1 => {
+                        let initialized = mount
+                            .entry_path
+                            .parent()
+                            .zip(mount.entry_path.file_name().and_then(|name| name.to_str()))
+                            .ok_or_else(|| {
+                                format!(
+                                    "TN_OVERLAY_CEF_RESOURCE_REJECTED: {}: use an entry file below a declared overlay root",
+                                    mount.entry_path.display()
+                                )
+                            });
+                        match initialized.and_then(|(resource_root, entry_name)| {
+                            overlay_cef::CefOsrRuntime::initialize_bundle(
+                                resource_root,
+                                entry_name,
+                                window.map_or(1280, |value| value.width as u32),
+                                window.map_or(720, |value| value.height as u32),
+                                &std::env::temp_dir().join("threenative-native-overlay-cef"),
+                                process_started_at,
+                                mount.id.clone(),
+                            )
+                        }) {
+                            Ok(runtime) => overlay_cef::install_cef_spike_surface(
+                                &mut app,
+                                runtime,
+                                overlays,
+                                window.map_or(1280, |value| value.width as u32),
+                                window.map_or(720, |value| value.height as u32),
+                            ),
+                            Err(error) => warn!("{error}"),
+                        }
+                    }
+                    _ => warn!(
+                        "TN_OVERLAY_CEF_INIT_FAILED: the Phase 2 host requires exactly one declared desktop overlay"
+                    ),
+                }
+            }
             #[cfg(feature = "native-webview")]
-            {
+            if plan.backend == overlay_host::WRY_BACKEND.id {
                 if let Some(overlays) = bundle.overlays.clone() {
                     app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(overlays));
                 }

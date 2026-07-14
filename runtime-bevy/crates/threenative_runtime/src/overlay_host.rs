@@ -62,6 +62,22 @@ pub struct NativeOverlayHostPlan {
 #[derive(Clone, Debug, PartialEq, Resource)]
 pub struct NativeOverlayHostPlanResource(pub NativeOverlayHostPlan);
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct NativeOverlayBackendDescriptor {
+    pub cargo_feature: &'static str,
+    pub id: &'static str,
+}
+
+pub const CEF_OSR_BACKEND: NativeOverlayBackendDescriptor = NativeOverlayBackendDescriptor {
+    cargo_feature: "native-overlay-cef",
+    id: "cef-osr",
+};
+
+pub const WRY_BACKEND: NativeOverlayBackendDescriptor = NativeOverlayBackendDescriptor {
+    cargo_feature: "native-webview",
+    id: "wry",
+};
+
 #[cfg(feature = "native-webview")]
 pub struct NativeOverlayWebviewHost {
     #[cfg(any(
@@ -261,17 +277,39 @@ pub fn create_native_overlay_host_plan(
 }
 
 pub fn native_webview_backend_available() -> bool {
-    cfg!(feature = "native-webview")
+    cfg!(any(
+        feature = "native-overlay-cef",
+        feature = "native-webview"
+    ))
 }
 
 pub fn native_webview_backend_name() -> &'static str {
-    #[cfg(feature = "native-webview")]
+    #[cfg(feature = "native-overlay-cef")]
     {
-        wry_backend_name()
+        return CEF_OSR_BACKEND.id;
     }
-    #[cfg(not(feature = "native-webview"))]
+    #[cfg(all(not(feature = "native-overlay-cef"), feature = "native-webview"))]
+    {
+        return wry_backend_name();
+    }
+    #[cfg(not(any(feature = "native-overlay-cef", feature = "native-webview")))]
     {
         "unsupported"
+    }
+}
+
+pub fn native_overlay_backend_descriptor() -> Option<&'static NativeOverlayBackendDescriptor> {
+    #[cfg(feature = "native-overlay-cef")]
+    {
+        return Some(&CEF_OSR_BACKEND);
+    }
+    #[cfg(all(not(feature = "native-overlay-cef"), feature = "native-webview"))]
+    {
+        return Some(&WRY_BACKEND);
+    }
+    #[cfg(not(any(feature = "native-overlay-cef", feature = "native-webview")))]
+    {
+        None
     }
 }
 
