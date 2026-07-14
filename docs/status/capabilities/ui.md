@@ -19,26 +19,25 @@ Current support:
 - Overlay payload schemas use shared web/native conformance vectors and a 16 KB
   UTF-8 JSON limit in both directions. Compiler drift validation rejects
   colon-namespaced system event reads/writes absent from the overlay manifest.
-- Desktop WRY overlays expose send and subscribe, replay retained snapshots
-  through adapter-private script evaluation, and apply visibility/input control
-  messages without requiring browser-parent event synthesis.
-- One bundle serves both targets: web mounts the authored React overlay through
-  the browser adapter, while Linux desktop mounts it in a synchronized RGBA
-  GTK/Wry host whose backing surface is explicitly cleared to transparent and
-  whose pointer shape is derived from authored interactive regions. Modal
-  state captures the surface; pointer-only state captures only the reported
-  controls, leaving Bevy input active everywhere else.
-  Bounds, screen position, and visibility synchronization is idempotent, so a
-  steady game frame does not resize, show, or raise the GTK/Wry overlay. Other
-  desktop platforms retain Wry child attachment. Cross-compositor lifecycle
-  coverage remains a tracked platform boundary. Transparent WebKitGTK content
-  on NVIDIA/Xwayland is not promoted: manual pixel evidence shows hover alpha
-  accumulation and stale removed DOM pixels, while CSS damage, parent-surface
-  reallocation, child Cairo clearing, and forced software GL all fail. Native
-  projects on that stack must use retained UI (as chess now does) until an
-  offscreen-to-Bevy-texture or equivalent compositor-safe backend exists.
+- Linux desktop overlays render React through CEF off-screen rendering and
+  composite the resulting premultiplied RGBA pixels into the Bevy window. The
+  adapter uses one window and one compositor, so overlay hover and removed DOM
+  pixels no longer depend on transparent GTK/WebKit windows or X11 input
+  shaping. A bundle-local `threenative-overlay://bundle/` scheme serves assets;
+  traversal, remote navigation, remote subresources, and popups are rejected.
+- The CEF bridge exposes send and subscribe, replays retained snapshots, and
+  applies visibility and input-mode control through adapter-private script
+  evaluation. Paint delivery is bounded and latest-frame-wins; resize
+  generations prevent stale-size paint callbacks from replacing the current
+  texture. Current native input proof covers pointer move/button and modal
+  ownership. Wheel, keyboard/IME, focus traversal, multiple overlays, authored
+  z-order/bounds, and complete underlying-game input suppression remain
+  unpromoted boundaries.
+- Linux NVIDIA/Xwayland compositor evidence covers first paint, chooser hover,
+  choosing Black, snapshot delivery, and ten settings modal open/close cycles.
+  Other Linux compositor families and Windows/macOS are not yet promoted.
 - The native launcher capability-checks cached runtime binaries before reuse;
-  binaries missing the descriptor-owned `native-webview` Cargo feature fall
+  binaries missing the descriptor-owned `native-overlay-cef` Cargo feature fall
   back to a feature-complete Cargo launch. Native proof harness startup fails
   with `TN_OVERLAY_TARGET_UNSUPPORTED` when a declared desktop overlay cannot
   mount, rather than recording a false-positive desktop playtest.
@@ -102,9 +101,10 @@ Verification:
 - `pnpm --filter @threenative/authoring test -- --run ui`
 - `pnpm --filter @threenative/overlay-client test`
 - `pnpm --filter @threenative/runtime-web-three test -- --test-name-pattern overlay`
-- `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay --test overlay_host --features native-webview`
+- `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay_cef --features native-overlay-cef`
+- `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay_host`
 - `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-opening.playtest.json --target web --json`
-- `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-retained-native.playtest.json --target desktop --json`
+- `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-overlay-native.playtest.json --target desktop --json`
 - `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime native_ui`
 - `pnpm verify:conformance`
 

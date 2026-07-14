@@ -5,7 +5,7 @@
     {
       "id": "chess-side-select",
       "entry": "overlay/chess-side-select/dist/index.html",
-      "targetProfiles": ["web"],
+      "targetProfiles": ["web", "desktop"],
       "transparent": true,
       "zIndex": 30,
       "input": "modal",

@@ -26,6 +26,24 @@ dist/package/desktop/
 
 Use this when validating native renderer parity, native APIs, and final native-game distribution.
 
+### CEF overlay payload size
+
+Native games that declare a desktop React overlay require the CEF off-screen
+runtime payload. On Linux, the required files plus one locale occupy
+349,022,139 logical bytes; stripping `libcef.so` alone does not bring that
+installed tree below 250 MB. The supported size strategy is a directly mounted
+AppImage/SquashFS image with zstd compression. The measured executable package
+is 161,319,416 bytes and launches CEF from the mounted image without extracting
+the payload.
+
+The 250 MB Linux gate therefore measures the physical on-disk executable image,
+while reports retain logical payload bytes separately. `--appimage-extract` and
+other extraction fallbacks do not satisfy that gate because they materialize
+the full logical payload. A custom Chromium/CEF build is not required for the
+measured result. CLI AppImage assembly is not integrated yet; the current proof
+is the runtime/package feasibility boundary, not a claim that `tn package`
+already emits this format.
+
 ## Three.js desktop-web runtime
 
 ```bash
@@ -130,4 +148,4 @@ artifacts retain the host-inspection expectations.
 
 - Current-platform only; no cross-compilation.
 - `webview` uses a local static server and platform browser opener, not a bundled embedded WebView yet.
-- Real platform installers such as NSIS/WiX `.exe`, `.msi`, `.dmg`, `.app`, AppImage, and code signing/notarization are not implemented yet.
+- Real platform installers such as NSIS/WiX `.exe`, `.msi`, `.dmg`, `.app`, and code signing/notarization are not implemented yet. A Linux CEF AppImage has a measured feasibility proof, but CLI assembly is not implemented.
