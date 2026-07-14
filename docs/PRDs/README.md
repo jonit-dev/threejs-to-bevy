@@ -4,6 +4,16 @@ This index separates open planning work from completed PRDs and historical
 milestone batches. For current implementation status, read
 [../STATUS.md](../STATUS.md) first.
 
+## Active Initiatives
+
+### Systems Code Quality Remediation (2026-07-14)
+
+The [active systems code quality remediation bundle](other/systems-code-quality-remediation-2026-07-14/README.md)
+turns five lower-scoring status rows into executable slices: four confirmed
+interaction executor divergences, native process-restart persistence,
+`ScriptContext` type-contract closure, evidence-tiered UI/accessibility parity,
+and relocatable material-aware `tn model-test` proof.
+
 ## Completed Initiatives
 
 ### Agent Ergonomics (2026-07-05)
@@ -72,10 +82,10 @@ bundles for rendering and generated-game proof.
 ## Initiative Inventory
 
 This section inventories current, completed, and frozen work. The executable
-near-term backlog is Round-5B churn-budget evidence and rerun, PRD-012 public
-shipping proof, the Rust static-analysis ratchet, and the bounded web-first
-distribution phases. Links under `done/` are historical implementation
-evidence, not active backlog.
+near-term backlog includes the 2026-07-14 systems code-quality remediation
+bundle, Round-5B churn-budget evidence and rerun, PRD-012 public shipping proof,
+the Rust static-analysis ratchet, and bounded web-first distribution phases.
+Links under `done/` are historical implementation evidence, not active backlog.
 
 ### Runtime And Gameplay Parity
 
@@ -172,6 +182,10 @@ evidence, not active backlog.
 
 ### Tooling And Code Quality
 
+- [Systems Code Quality Remediation (2026-07-14)](other/systems-code-quality-remediation-2026-07-14/README.md):
+  batches five focused PRDs for interaction executor parity, durable local
+  data, public script context typing, UI/accessibility proof tiers, and
+  relocatable material-aware model-test evidence.
 - [Rust Static Analysis And Code-Smell Quality Ratchet](other/rust-static-analysis-quality-ratchet-2026-07-13.md):
   turns the documented-but-missing `pnpm check:rust` into one workspace-owned
   rustfmt/Clippy policy, adds a structured lint/path debt ratchet, wires it
