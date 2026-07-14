@@ -540,6 +540,7 @@ pub struct CefOsrRuntime {
     closed: Rc<Cell<bool>>,
     delivered_sequence: u64,
     input_policy: crate::overlay::NativeOverlayInputPolicy,
+    input_regions: Vec<crate::overlay_host::NativeOverlayBounds>,
     ipc_queue: Rc<RefCell<VecDeque<String>>>,
     overlay_id: String,
     pointer_moves_sent: Cell<u64>,
@@ -707,6 +708,7 @@ impl CefOsrRuntime {
             closed,
             delivered_sequence: 0,
             input_policy: crate::overlay::native_overlay_input_policy("modal"),
+            input_regions: Vec::new(),
             ipc_queue,
             overlay_id,
             pointer_moves_sent: Cell::new(0),
@@ -823,8 +825,23 @@ impl CefOsrRuntime {
         true
     }
 
-    pub fn send_mouse_move(&self, position: Vec2, mouse_leave: bool) {
+    fn claims_pointer(&self, position: Vec2) -> bool {
         if !self.visible || !self.input_policy.captures_pointer {
+            return false;
+        }
+        if self.input_policy.modal {
+            return true;
+        }
+        self.input_regions.iter().any(|region| {
+            position.x >= region.x as f32
+                && position.y >= region.y as f32
+                && position.x < region.x.saturating_add(region.width) as f32
+                && position.y < region.y.saturating_add(region.height) as f32
+        })
+    }
+
+    pub fn send_mouse_move(&self, position: Vec2, mouse_leave: bool) {
+        if !self.claims_pointer(position) && !mouse_leave {
             return;
         }
         let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) else {
@@ -844,7 +861,7 @@ impl CefOsrRuntime {
     }
 
     pub fn send_mouse_button(&self, position: Vec2, button: MouseButton, released: bool) {
-        if !self.visible || !self.input_policy.captures_pointer {
+        if !self.claims_pointer(position) {
             return;
         }
         let Some(host) = self.browser.as_ref().and_then(ImplBrowser::host) else {
@@ -950,6 +967,29 @@ pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
             snapshots.set(type, snapshot);
             for (const listener of listeners) listener(type, payload, { sequence });
           };
+          let inputRegionFrame = 0;
+          const reportInputRegions = () => {
+            cancelAnimationFrame(inputRegionFrame);
+            inputRegionFrame = requestAnimationFrame(() => {
+              const regions = Array.from(document.querySelectorAll(
+                "[data-threenative-interactive],button,a,input,select,textarea,[role='button'],[tabindex]"
+              )).filter((element) => {
+                const style = getComputedStyle(element);
+                const rect = element.getBoundingClientRect();
+                return style.display !== "none" && style.visibility !== "hidden"
+                  && style.pointerEvents !== "none" && rect.width > 0 && rect.height > 0;
+              }).map((element) => {
+                const rect = element.getBoundingClientRect();
+                return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+              });
+              window.threenativeOverlayBridge.send("overlay:set-input-regions", { regions });
+            });
+          };
+          new MutationObserver(reportInputRegions).observe(document.documentElement, {
+            attributes: true, childList: true, subtree: true
+          });
+          new ResizeObserver(reportInputRegions).observe(document.documentElement);
+          reportInputRegions();
           window.dispatchEvent(new Event("threenative:bridge-ready"));
         })();"#
         .replace("__OVERLAY_ID__", &overlay_id))
@@ -1287,7 +1327,24 @@ fn drain_cef_spike_ipc(
                     info!("TN_OVERLAY_CEF_INPUT_MODE: mode={mode}");
                 }
             }
-            "overlay:set-input-regions" => {}
+            "overlay:set-input-regions" => {
+                let mut regions = envelope
+                    .payload
+                    .get("regions")
+                    .and_then(Value::as_array)
+                    .into_iter()
+                    .flatten()
+                    .filter_map(parse_cef_input_region)
+                    .take(256)
+                    .collect::<Vec<_>>();
+                regions.sort_by_key(|region| (region.y, region.x, region.height, region.width));
+                regions.dedup();
+                runtime.input_regions = regions;
+                info!(
+                    "TN_OVERLAY_CEF_INPUT_REGIONS: count={}",
+                    runtime.input_regions.len()
+                );
+            }
             _ => {
                 if bridge.bridge.receive_overlay_message(
                     &bridge.overlays,
@@ -1343,14 +1400,58 @@ fn deliver_cef_spike_snapshots(
         .filter(|snapshot| snapshot.sequence > runtime.delivered_sequence)
         .cloned()
         .collect::<Vec<_>>();
-    for snapshot in &pending {
-        if runtime.deliver_snapshot(snapshot) {
+    let delivered_sequence = runtime.delivered_sequence;
+    let cursor = advance_snapshot_delivery(delivered_sequence, &pending, |snapshot| {
+        let delivered = runtime.deliver_snapshot(snapshot);
+        if delivered {
             info!(
                 "delivered CEF overlay '{}' snapshot '{}' sequence {}",
                 snapshot.overlay_id, snapshot.message_type, snapshot.sequence
             );
         }
+        delivered
+    });
+    runtime.delivered_sequence = cursor;
+}
+
+fn parse_cef_input_region(value: &Value) -> Option<crate::overlay_host::NativeOverlayBounds> {
+    let finite_nonnegative = |field: &str| {
+        value
+            .get(field)
+            .and_then(Value::as_f64)
+            .filter(|number| number.is_finite() && *number >= 0.0)
+    };
+    let x = finite_nonnegative("x")?;
+    let y = finite_nonnegative("y")?;
+    let width = finite_nonnegative("width")?;
+    let height = finite_nonnegative("height")?;
+    if width <= 0.0 || height <= 0.0 {
+        return None;
     }
+    Some(crate::overlay_host::NativeOverlayBounds {
+        x: x.round().min(u32::MAX as f64) as u32,
+        y: y.round().min(u32::MAX as f64) as u32,
+        width: width.round().min(u32::MAX as f64) as u32,
+        height: height.round().min(u32::MAX as f64) as u32,
+    })
+}
+
+pub fn advance_snapshot_delivery(
+    delivered_sequence: u64,
+    snapshots: &[crate::overlay::OverlayBridgeEnvelope],
+    mut deliver: impl FnMut(&crate::overlay::OverlayBridgeEnvelope) -> bool,
+) -> u64 {
+    let mut cursor = delivered_sequence;
+    for snapshot in snapshots
+        .iter()
+        .filter(|snapshot| snapshot.sequence > delivered_sequence)
+    {
+        if !deliver(snapshot) {
+            break;
+        }
+        cursor = cursor.max(snapshot.sequence);
+    }
+    cursor
 }
 
 fn sample_cef_spike_frame_probe(
