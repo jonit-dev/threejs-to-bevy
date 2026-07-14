@@ -534,8 +534,9 @@ Current UI rows use these labels:
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers
 - [x] `P1` UI background/text color, borders, rounded corners, and opacity
-- [x] `P1` Promoted: bounded base retained-menu pixels have named web/native
-      screenshots and a contact sheet in
+- [x] `P1` Promoted: bounded retained UI layout nodes have decoded web/native
+      screenshots, observed adapter regions, retained diffs, and exact paired
+      contact sheets at 1280x720 and 390x844 in
       `pnpm verify:focused verify:feature-parity-ui-native`.
 - [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
 - [x] `P1` Partial/diagnostic: native UI shadows and gradients are preserved as
@@ -590,12 +591,13 @@ Current UI rows use these labels:
       gate, but output is not verified against a platform screen reader.
 - [x] `P1` Static disabled UI metadata for focus/action suppression and ARIA/AccessKit state
 - [x] `P2` UI debug overlay/gizmos
-- [x] `P1` Partial/diagnostic: runtime disabled-to-enabled UI updates have
-      script facade and trace coverage, but native behavior is not yet promoted
-      by a deterministic conformance proof.
+- [x] `P1` Promoted: runtime disabled/value updates are applied to web rendered
+      state and native ECS/AccessKit widget state and compared with button,
+      slider, text-input, and touch-control actions by the UI native gate.
 - [x] `P1` Partial/diagnostic: nested and axis-specific scroll behavior has
       vertical-scroll support and metadata/traces; nested and horizontal-axis
-      behavior remain unpromoted.
+      behavior remain unpromoted under `TN_BEVY_UI_NESTED_SCROLL_PARTIAL` and
+      `TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL`.
 - [x] `P1` Partial/diagnostic: spatial navigation heuristics are implemented
       for web geometric lookup and explicit native links; cross-runtime
       heuristic fallback parity is not promoted.

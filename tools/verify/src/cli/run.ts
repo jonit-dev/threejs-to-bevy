@@ -513,12 +513,12 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       ["node", "scripts/verify-feature-parity-ui-native.mjs"],
       ["node", "tools/verify/dist/uiNative.js"],
     ],
-    description: "Bounded native UI, text editing, accessibility, and attachment evidence gate.",
+    description: "Registry-derived native UI layout, widget, text editing, and accessibility evidence gate.",
     metadata: {
       owner: "tools/verify feature-parity UI native gate",
       profile: "focused",
-      reason: "Pairs real UI captures with cross-adapter effect, text/caret, accessibility, image, and world-attachment reports.",
-      protects: "Bounded retained UI pixel claims and target-scoped native text/accessibility boundaries.",
+      reason: "Pairs two real viewport captures and observed regions with live widget state, text/caret, and normalized accessibility reports.",
+      protects: "Tiered retained UI layout/widget/accessibility claims while platform assistive, world attachment, and native style rows remain partial.",
     },
   },
   "verify:feature-parity-physics-native": {

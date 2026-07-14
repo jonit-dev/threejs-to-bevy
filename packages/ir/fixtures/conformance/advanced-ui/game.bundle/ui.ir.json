@@ -1,11 +1,16 @@
 {
   "schema": "threenative.ui",
   "version": "0.1.0",
+  "focusOrder": ["player.name", "audio.volume", "selected.item", "focused.confirm", "mobile.jump"],
   "root": {
     "id": "advanced.ui",
     "kind": "column",
     "accessibilityLabel": "Mission interface",
     "layout": { "direction": "column", "width": 420, "height": 620, "padding": 18 },
+    "responsive": [
+      { "target": "desktop", "layout": { "width": 420, "height": 620 } },
+      { "target": "mobile", "layout": { "width": 340, "height": 700, "padding": 12 } }
+    ],
     "style": {
       "backgroundColor": "#111827",
       "gradient": { "kind": "linear", "from": "#172033", "to": "#0f172a", "angle": 90 },
@@ -37,10 +42,27 @@
         }
       },
       {
+        "id": "audio.volume",
+        "kind": "slider",
+        "label": "Volume",
+        "accessibilityLabel": "Volume",
+        "action": "SetVolume",
+        "focusable": true,
+        "min": 0,
+        "max": 1,
+        "step": 0.05,
+        "value": 0.5,
+        "valueText": "50 percent",
+        "navigation": { "left": "player.name", "right": "selected.item" },
+        "layout": { "width": 260, "height": 36 }
+      },
+      {
         "id": "selected.item",
         "kind": "button",
         "label": "Crystal Key",
         "action": "InspectItem",
+        "focusable": true,
+        "navigation": { "left": "audio.volume", "right": "focused.confirm" },
         "effects": [
           {
             "id": "selected.item.glow",
@@ -101,6 +123,7 @@
         "accessibilityLabel": "Critical health",
         "value": 2,
         "max": 10,
+        "layout": { "width": 160, "height": 12 },
         "effects": [
           {
             "id": "critical.health.tint",
@@ -130,6 +153,29 @@
             "color": "#ffffff",
             "radius": 4,
             "fallback": "outline"
+          }
+        ]
+      },
+      {
+        "id": "parity.row",
+        "kind": "row",
+        "layout": { "direction": "row", "width": 260, "height": 48 },
+        "children": [
+          {
+            "id": "parity.stack",
+            "kind": "stack",
+            "layout": { "width": 120, "height": 44 },
+            "children": [
+              {
+                "id": "mobile.jump",
+                "kind": "touchControl",
+                "label": "Jump",
+                "accessibilityLabel": "Jump",
+                "action": "Jump",
+                "focusable": true,
+                "layout": { "width": 96, "height": 40 }
+              }
+            ]
           }
         ]
       },

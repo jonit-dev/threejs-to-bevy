@@ -63,6 +63,39 @@ pub struct NativeUiActionQueue {
     pub events: Vec<NativeUiActionEvent>,
 }
 
+#[derive(Debug, Default, Resource)]
+pub struct NativeUiServiceEffectQueue(pub Vec<crate::systems_effects::NativeSystemServiceEffect>);
+
+pub fn queue_native_ui_service_effects(
+    queue: &mut NativeUiServiceEffectQueue,
+    logs: &[crate::systems_effects::NativeSystemEffectLog],
+) {
+    queue.0.extend(
+        logs.iter()
+            .flat_map(|log| log.entries.iter())
+            .filter_map(|entry| {
+                let service = entry.service.as_deref()?;
+                if service != "ui.setDisabled" && service != "ui.setValue" {
+                    return None;
+                }
+                Some(crate::systems_effects::NativeSystemServiceEffect {
+                    payload: entry.payload.clone()?,
+                    service: service.to_owned(),
+                })
+            }),
+    );
+}
+
+pub fn apply_queued_native_ui_service_effects(world: &mut World) {
+    let effects = {
+        let Some(mut queue) = world.get_resource_mut::<NativeUiServiceEffectQueue>() else {
+            return;
+        };
+        std::mem::take(&mut queue.0)
+    };
+    apply_native_ui_service_effects(world, &effects);
+}
+
 #[derive(Clone, Debug, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeUiTextEditTrace {
@@ -107,6 +140,12 @@ pub struct NativeUiFallbackFontStatus {
 pub struct NativeUiBindingTargets {
     bindings_by_node: HashMap<String, UiBindingIr>,
     component_entities_by_node: HashMap<String, String>,
+}
+
+#[derive(Clone, Debug, Resource)]
+pub struct NativeUiResponsiveState {
+    root: UiNodeIr,
+    target: String,
 }
 
 impl NativeUiBindingTargets {
@@ -419,7 +458,7 @@ pub struct NativeUiRenderedTextSpanTrace {
     pub weight: Option<String>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiNavigation {
     pub down: Option<String>,
     pub left: Option<String>,
@@ -565,6 +604,163 @@ pub struct UiDiagnostic {
     pub path: String,
 }
 
+pub fn native_ui_target_for_viewport(width: f32, _height: f32) -> &'static str {
+    if width < 768.0 {
+        "mobile"
+    } else if width < 1200.0 {
+        "tablet"
+    } else {
+        "desktop"
+    }
+}
+
+pub fn resolve_native_ui_node(node: &UiNodeIr, target: &str) -> UiNodeIr {
+    let mut resolved = node.clone();
+    if let Some(rule) = node.responsive.iter().find(|rule| rule.target == target) {
+        resolved.layout = merge_native_ui_layout(node.layout.as_ref(), rule.layout.as_ref());
+        resolved.style = merge_native_ui_style(node.style.as_ref(), rule.style.as_ref());
+    }
+    resolved.children = node
+        .children
+        .iter()
+        .map(|child| resolve_native_ui_node(child, target))
+        .collect();
+    resolved
+}
+
+fn merge_native_ui_layout(
+    base: Option<&threenative_loader::UiLayoutIr>,
+    override_value: Option<&threenative_loader::UiLayoutIr>,
+) -> Option<threenative_loader::UiLayoutIr> {
+    let Some(override_value) = override_value else {
+        return base.cloned();
+    };
+    let inset = match (
+        base.and_then(|layout| layout.inset.as_ref()),
+        override_value.inset.as_ref(),
+    ) {
+        (None, None) => None,
+        (base, override_value) => Some(threenative_loader::UiInsetIr {
+            bottom: override_value
+                .and_then(|value| value.bottom)
+                .or_else(|| base.and_then(|value| value.bottom)),
+            left: override_value
+                .and_then(|value| value.left)
+                .or_else(|| base.and_then(|value| value.left)),
+            right: override_value
+                .and_then(|value| value.right)
+                .or_else(|| base.and_then(|value| value.right)),
+            top: override_value
+                .and_then(|value| value.top)
+                .or_else(|| base.and_then(|value| value.top)),
+        }),
+    };
+    let grid = match (
+        base.and_then(|layout| layout.grid.as_ref()),
+        override_value.grid.as_ref(),
+    ) {
+        (None, None) => None,
+        (base, override_value) => Some(threenative_loader::UiGridLayoutIr {
+            auto_flow: override_value
+                .and_then(|value| value.auto_flow.clone())
+                .or_else(|| base.and_then(|value| value.auto_flow.clone())),
+            columns: override_value
+                .and_then(|value| value.columns)
+                .or_else(|| base.and_then(|value| value.columns)),
+            rows: override_value
+                .and_then(|value| value.rows)
+                .or_else(|| base.and_then(|value| value.rows)),
+        }),
+    };
+    let base = base.cloned().unwrap_or(threenative_loader::UiLayoutIr {
+        align: None,
+        column_gap: None,
+        direction: None,
+        grid: None,
+        grow: None,
+        height: None,
+        inset: None,
+        justify: None,
+        max_height: None,
+        max_width: None,
+        min_height: None,
+        min_width: None,
+        overflow: None,
+        padding: None,
+        position: None,
+        row_gap: None,
+        width: None,
+        z_index: None,
+    });
+    Some(threenative_loader::UiLayoutIr {
+        align: override_value.align.clone().or(base.align),
+        column_gap: override_value.column_gap.or(base.column_gap),
+        direction: override_value.direction.clone().or(base.direction),
+        grid,
+        grow: override_value.grow.or(base.grow),
+        height: override_value.height.or(base.height),
+        inset,
+        justify: override_value.justify.clone().or(base.justify),
+        max_height: override_value.max_height.or(base.max_height),
+        max_width: override_value.max_width.or(base.max_width),
+        min_height: override_value.min_height.or(base.min_height),
+        min_width: override_value.min_width.or(base.min_width),
+        overflow: override_value.overflow.clone().or(base.overflow),
+        padding: override_value.padding.or(base.padding),
+        position: override_value.position.clone().or(base.position),
+        row_gap: override_value.row_gap.or(base.row_gap),
+        width: override_value.width.or(base.width),
+        z_index: override_value.z_index.or(base.z_index),
+    })
+}
+
+fn merge_native_ui_style(
+    base: Option<&UiStyleIr>,
+    override_value: Option<&UiStyleIr>,
+) -> Option<UiStyleIr> {
+    let Some(override_value) = override_value else {
+        return base.cloned();
+    };
+    let base = base.cloned().unwrap_or(UiStyleIr {
+        background_color: None,
+        border_color: None,
+        border_radius: None,
+        border_width: None,
+        color: None,
+        font_family: None,
+        font_size: None,
+        font_weight: None,
+        gradient: None,
+        opacity: None,
+        shadow: None,
+        text_decoration: None,
+        text_align: None,
+        wrap: None,
+    });
+    Some(UiStyleIr {
+        background_color: override_value
+            .background_color
+            .clone()
+            .or(base.background_color),
+        border_color: override_value.border_color.clone().or(base.border_color),
+        border_radius: override_value.border_radius.or(base.border_radius),
+        border_width: override_value.border_width.or(base.border_width),
+        color: override_value.color.clone().or(base.color),
+        font_family: override_value.font_family.clone().or(base.font_family),
+        font_size: override_value.font_size.or(base.font_size),
+        font_weight: override_value.font_weight.clone().or(base.font_weight),
+        gradient: override_value.gradient.clone().or(base.gradient),
+        opacity: override_value.opacity.or(base.opacity),
+        shadow: override_value.shadow.clone().or(base.shadow),
+        text_decoration: override_value
+            .text_decoration
+            .clone()
+            .or(base.text_decoration),
+        text_align: override_value.text_align.clone().or(base.text_align),
+        wrap: override_value.wrap.clone().or(base.wrap),
+    })
+}
+
 pub fn build_native_ui(ui: &UiIr) -> Result<NativeUiNode, UiDiagnostic> {
     build_node(&ui.root, "ui.ir.json/root")
 }
@@ -572,13 +768,151 @@ pub fn build_native_ui(ui: &UiIr) -> Result<NativeUiNode, UiDiagnostic> {
 pub fn map_ui_into_world(world: &mut World, ui: &UiIr) -> Result<(), UiDiagnostic> {
     build_native_ui(ui)?;
 
+    let (width, height) = native_ui_logical_viewport(world).unwrap_or((1280.0, 720.0));
+    let target = native_ui_target_for_viewport(width, height);
+    let resolved_root = resolve_native_ui_node(&ui.root, target);
+
     install_native_ui_fallback_font(world);
     world.insert_resource(build_native_ui_binding_targets(ui));
+    world.insert_resource(NativeUiResponsiveState {
+        root: ui.root.clone(),
+        target: target.to_owned(),
+    });
     let mut entities_by_id = HashMap::new();
-    spawn_node(world, &ui.root, &ui.fonts, &mut entities_by_id, true);
-    attach_children(world, &ui.root, &entities_by_id);
+    spawn_node(world, &resolved_root, &ui.fonts, &mut entities_by_id, true);
+    attach_children(world, &resolved_root, &entities_by_id);
 
     Ok(())
+}
+
+pub fn reconcile_native_ui_responsive_layout(world: &mut World) {
+    let Some((width, height)) = native_ui_logical_viewport(world) else {
+        return;
+    };
+    let target = native_ui_target_for_viewport(width, height);
+    let Some(state) = world.get_resource::<NativeUiResponsiveState>() else {
+        return;
+    };
+    if state.target == target {
+        return;
+    }
+    let resolved_root = resolve_native_ui_node(&state.root, target);
+    let mut resolved_nodes = HashMap::new();
+    collect_resolved_ui_nodes(&resolved_root, true, &mut resolved_nodes);
+    let entities = world
+        .query::<(Entity, &ThreeNativeId)>()
+        .iter(world)
+        .filter_map(|(entity, id)| {
+            resolved_nodes
+                .get(&id.0)
+                .cloned()
+                .map(|node| (entity, node))
+        })
+        .collect::<Vec<_>>();
+    for (entity, (node, is_root)) in entities {
+        world
+            .entity_mut(entity)
+            .insert(ui_node_style(&node, is_root, |node| {
+                match node.kind.as_str() {
+                    "bar" => bar_style(node),
+                    "minimap" => minimap_style(node),
+                    "button" | "image" | "text" | "textInput" | "touchControl" | "slider"
+                    | "scrollbar" => leaf_style(node),
+                    _ => layout_style(node),
+                }
+            }));
+    }
+    world.resource_mut::<NativeUiResponsiveState>().target = target.to_owned();
+}
+
+pub fn apply_native_ui_service_effects(
+    world: &mut World,
+    effects: &[crate::systems_effects::NativeSystemServiceEffect],
+) {
+    for effect in effects {
+        if effect.service != "ui.setDisabled" && effect.service != "ui.setValue" {
+            continue;
+        }
+        let Some(request) = effect.payload.get("request") else {
+            continue;
+        };
+        let Some(node_id) = request.get("node").and_then(serde_json::Value::as_str) else {
+            continue;
+        };
+        let entity = world
+            .query::<(Entity, &ThreeNativeId)>()
+            .iter(world)
+            .find(|(_, id)| id.0 == node_id)
+            .map(|(entity, _)| entity);
+        let Some(entity) = entity else {
+            continue;
+        };
+        if effect.service == "ui.setDisabled" {
+            let Some(disabled) = request.get("disabled").and_then(serde_json::Value::as_bool)
+            else {
+                continue;
+            };
+            let clear_focus = disabled
+                && world
+                    .get_resource::<bevy::a11y::Focus>()
+                    .is_some_and(|focus| focus.0 == Some(entity));
+            {
+                let mut entity_mut = world.entity_mut(entity);
+                entity_mut.insert(NativeUiDisabled(disabled));
+                if let Some(mut accessibility) = entity_mut.get_mut::<AccessibilityNode>() {
+                    if disabled {
+                        accessibility.set_disabled();
+                    } else {
+                        accessibility.clear_disabled();
+                    }
+                }
+            }
+            if clear_focus {
+                world.insert_resource(bevy::a11y::Focus(None));
+            }
+            continue;
+        }
+        let Some(value) = request.get("value") else {
+            continue;
+        };
+        let mut entity = world.entity_mut(entity);
+        if let Some(mut widget) = entity.get_mut::<NativeUiWidget>() {
+            if let Some(number) = value.as_f64().filter(|number| number.is_finite()) {
+                widget.value = (number as f32).clamp(widget.min, widget.max);
+                widget.value_text = Some(number.to_string());
+            } else if let Some(text) = value.as_str() {
+                widget.value_text = Some(text.to_owned());
+            }
+        }
+        if let Some(mut accessibility) = entity.get_mut::<AccessibilityNode>() {
+            if let Some(number) = value.as_f64().filter(|number| number.is_finite()) {
+                accessibility.clear_value();
+                accessibility.set_numeric_value(number);
+            } else if let Some(text) = value.as_str() {
+                accessibility.clear_numeric_value();
+                accessibility.set_value(text.to_owned());
+            }
+        }
+    }
+}
+
+fn native_ui_logical_viewport(world: &mut World) -> Option<(f32, f32)> {
+    world
+        .query_filtered::<&Window, With<bevy::window::PrimaryWindow>>()
+        .iter(world)
+        .next()
+        .map(|window| (window.resolution.width(), window.resolution.height()))
+}
+
+fn collect_resolved_ui_nodes(
+    node: &UiNodeIr,
+    is_root: bool,
+    nodes: &mut HashMap<String, (UiNodeIr, bool)>,
+) {
+    nodes.insert(node.id.clone(), (node.clone(), is_root));
+    for child in &node.children {
+        collect_resolved_ui_nodes(child, false, nodes);
+    }
 }
 
 fn install_native_ui_fallback_font(world: &mut World) {
@@ -729,6 +1063,48 @@ pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {
     let mut diagnostics = Vec::new();
     diagnose_node_visual_support(&ui.root, "ui.ir.json/root", &mut diagnostics);
     diagnostics
+}
+
+pub fn diagnose_native_ui_nested_axis_scroll(ui: &UiIr) -> Vec<UiDiagnostic> {
+    let mut diagnostics = Vec::new();
+    diagnose_nested_axis_scroll_node(&ui.root, "ui.ir.json/root", false, &mut diagnostics);
+    diagnostics
+}
+
+fn diagnose_nested_axis_scroll_node(
+    node: &UiNodeIr,
+    path: &str,
+    inside_scroll: bool,
+    diagnostics: &mut Vec<UiDiagnostic>,
+) {
+    let is_scroll = node
+        .layout
+        .as_ref()
+        .and_then(|layout| layout.overflow.as_deref())
+        == Some("scroll");
+    if is_scroll && inside_scroll {
+        diagnostics.push(UiDiagnostic {
+            code: "TN_BEVY_UI_NESTED_SCROLL_PARTIAL".to_owned(),
+            message: "Native Bevy UI does not yet route wheel input to the deepest hovered nested scroll container.".to_owned(),
+            path: format!("{path}/layout/overflow"),
+        });
+    }
+    if is_scroll && node.orientation.as_deref() == Some("horizontal") {
+        diagnostics.push(UiDiagnostic {
+            code: "TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL".to_owned(),
+            message: "Native Bevy UI currently applies scroll offsets on the vertical axis only."
+                .to_owned(),
+            path: format!("{path}/orientation"),
+        });
+    }
+    for (index, child) in node.children.iter().enumerate() {
+        diagnose_nested_axis_scroll_node(
+            child,
+            &format!("{path}/children/{index}"),
+            inside_scroll || is_scroll,
+            diagnostics,
+        );
+    }
 }
 
 fn diagnose_node_visual_support(node: &UiNodeIr, path: &str, diagnostics: &mut Vec<UiDiagnostic>) {
@@ -1114,5 +1490,147 @@ mod tests {
             vec![("Nova", 4), ("Nova", 3), ("Novra", 4), ("Nova", 3)]
         );
         assert_eq!(trace.capability.ime, "platform-diagnostic");
+    }
+
+    #[test]
+    fn native_ui_should_resolve_responsive_boundaries_and_merge_base_fields() {
+        let ui: UiIr = serde_json::from_value(serde_json::json!({
+            "schema": "threenative.ui", "version": "0.1.0",
+            "root": { "id": "hud", "kind": "column",
+                "layout": { "height": 80, "width": 320, "inset": { "left": 24, "top": 16 } },
+                "style": { "color": "#ffffff", "opacity": 1 },
+                "responsive": [
+                    { "target": "mobile", "layout": { "width": 156, "inset": { "left": 8 } }, "style": { "opacity": 0.5 } },
+                    { "target": "tablet", "layout": { "width": 240 } }
+                ] }
+        })).expect("responsive ui");
+
+        assert_eq!(native_ui_target_for_viewport(767.0, 900.0), "mobile");
+        assert_eq!(native_ui_target_for_viewport(768.0, 900.0), "tablet");
+        assert_eq!(native_ui_target_for_viewport(1200.0, 900.0), "desktop");
+        let mobile = resolve_native_ui_node(&ui.root, "mobile");
+        let layout = mobile.layout.as_ref().unwrap();
+        assert_eq!(layout.width, Some(156.0));
+        assert_eq!(layout.height, Some(80.0));
+        assert_eq!(
+            layout.inset.as_ref().and_then(|inset| inset.left),
+            Some(8.0)
+        );
+        assert_eq!(
+            layout.inset.as_ref().and_then(|inset| inset.top),
+            Some(16.0)
+        );
+        assert_eq!(
+            mobile.style.as_ref().and_then(|style| style.opacity),
+            Some(0.5)
+        );
+        assert_eq!(
+            mobile
+                .style
+                .as_ref()
+                .and_then(|style| style.color.as_deref()),
+            Some("#ffffff")
+        );
+    }
+
+    #[test]
+    fn native_ui_should_reconcile_responsive_layout_after_logical_viewport_resize() {
+        let ui: UiIr = serde_json::from_value(serde_json::json!({
+            "schema": "threenative.ui", "version": "0.1.0",
+            "root": { "id": "hud", "kind": "column", "layout": { "width": 320 },
+                "responsive": [{ "target": "mobile", "layout": { "width": 156 } }] }
+        }))
+        .expect("responsive ui");
+        let mut world = World::new();
+        world.insert_resource(Assets::<Font>::default());
+        world.spawn((
+            Window {
+                resolution: bevy::window::WindowResolution::new(1280.0, 720.0),
+                ..Default::default()
+            },
+            bevy::window::PrimaryWindow,
+        ));
+        map_ui_into_world(&mut world, &ui).expect("ui should map");
+        assert_eq!(native_ui_style_width(&mut world, "hud"), Val::Px(320.0));
+
+        world
+            .query_filtered::<&mut Window, With<bevy::window::PrimaryWindow>>()
+            .single_mut(&mut world)
+            .resolution
+            .set(600.0, 900.0);
+        reconcile_native_ui_responsive_layout(&mut world);
+
+        assert_eq!(native_ui_style_width(&mut world, "hud"), Val::Px(156.0));
+    }
+
+    #[test]
+    fn native_ui_should_keep_nested_axis_scroll_explicitly_partial() {
+        let ui: UiIr = serde_json::from_value(serde_json::json!({
+            "schema":"threenative.ui","version":"0.1.0",
+            "root":{"id":"outer","kind":"column","orientation":"vertical","layout":{"overflow":"scroll"},
+                "children":[{"id":"inner","kind":"row","orientation":"horizontal","layout":{"overflow":"scroll"}}]}
+        })).expect("nested scroll ui");
+
+        let diagnostics = diagnose_native_ui_nested_axis_scroll(&ui);
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "TN_BEVY_UI_NESTED_SCROLL_PARTIAL")
+        );
+        assert!(
+            diagnostics
+                .iter()
+                .any(|diagnostic| diagnostic.code == "TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL")
+        );
+    }
+
+    #[test]
+    fn native_ui_service_effects_should_update_ecs_widget_and_accessibility_state() {
+        let mut world = World::new();
+        let mut builder = NodeBuilder::new(Role::Slider);
+        builder.set_name("Volume".to_owned());
+        let entity = world
+            .spawn((
+                ThreeNativeId("audio.volume".to_owned()),
+                NativeUiDisabled(false),
+                NativeUiWidget {
+                    kind: "slider".to_owned(),
+                    min: 0.0,
+                    max: 1.0,
+                    orientation: "horizontal".to_owned(),
+                    step: Some(0.1),
+                    value: 0.2,
+                    value_text: Some("20 percent".to_owned()),
+                },
+                AccessibilityNode::from(builder),
+            ))
+            .id();
+        let effects = vec![
+            crate::systems_effects::NativeSystemServiceEffect {
+                service: "ui.setValue".to_owned(),
+                payload: serde_json::json!({"request":{"node":"audio.volume","value":0.6}}),
+            },
+            crate::systems_effects::NativeSystemServiceEffect {
+                service: "ui.setDisabled".to_owned(),
+                payload: serde_json::json!({"request":{"node":"audio.volume","disabled":true}}),
+            },
+        ];
+
+        apply_native_ui_service_effects(&mut world, &effects);
+
+        assert_eq!(world.get::<NativeUiWidget>(entity).unwrap().value, 0.6);
+        assert!(world.get::<NativeUiDisabled>(entity).unwrap().0);
+        let accessibility = world.get::<AccessibilityNode>(entity).unwrap();
+        assert!(accessibility.is_disabled());
+        assert_eq!(accessibility.numeric_value(), Some(0.6));
+    }
+
+    fn native_ui_style_width(world: &mut World, id: &str) -> Val {
+        world
+            .query::<(&ThreeNativeId, &Style)>()
+            .iter(world)
+            .find(|(candidate, _)| candidate.0 == id)
+            .map(|(_, style)| style.width)
+            .expect("ui style")
     }
 }

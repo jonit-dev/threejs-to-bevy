@@ -28,6 +28,24 @@ export interface IUiDebugOverlayReport {
   nodes: IUiDebugNodeReport[];
 }
 
+export interface IUiAccessibilitySnapshotNode {
+  disabled: boolean;
+  focusable: boolean;
+  focused: boolean;
+  id: string;
+  name?: string;
+  relationships: { children: string[]; down?: string; left?: string; right?: string; up?: string };
+  role?: string;
+  value?: boolean | number | string;
+}
+
+export interface IUiAccessibilitySnapshot {
+  adapter: "web";
+  nodes: IUiAccessibilitySnapshotNode[];
+  schema: "threenative.ui-accessibility-snapshot";
+  version: "0.1.0";
+}
+
 export function createUiDebugOverlayReport(rendered: IRenderedUi): IUiDebugOverlayReport {
   const focusIndexes = focusOrder(rendered).reduce((indexes, id, index) => indexes.set(id, index), new Map<string, number>());
   const nodes: IUiDebugNodeReport[] = [];
@@ -38,6 +56,39 @@ export function createUiDebugOverlayReport(rendered: IRenderedUi): IUiDebugOverl
     gizmos: nodes.flatMap((node) => gizmosForNode(node)),
     nodes,
   };
+}
+
+export function createUiAccessibilitySnapshot(rendered: IRenderedUi): IUiAccessibilitySnapshot {
+  const nodes: IUiAccessibilitySnapshotNode[] = [];
+  visit(rendered.root, (node) => {
+    const state = rendered.read(node.id);
+    const value = accessibilityValue(node, state.value);
+    nodes.push({
+      disabled: state.disabled,
+      focusable: accessibleFocusable(node) && !state.disabled,
+      focused: state.focused,
+      id: node.id,
+      ...(accessibleName(node) === undefined ? {} : { name: accessibleName(node) }),
+      relationships: {
+        children: node.children.map((child) => child.id),
+        ...(node.navigation ?? {}),
+      },
+      ...(role(node) === undefined ? {} : { role: role(node) }),
+      ...(value === undefined ? {} : { value }),
+    });
+  });
+  return { adapter: "web", nodes, schema: "threenative.ui-accessibility-snapshot", version: "0.1.0" };
+}
+
+function accessibilityValue(node: IRenderedUiNode, stateValue: boolean | number | string | undefined): boolean | number | string | undefined {
+  const value = node.kind === "textInput" ? (stateValue ?? node.text)
+    : (node.kind === "slider" || node.kind === "scrollbar" || node.kind === "bar") ? (stateValue ?? node.valueText ?? node.value)
+      : undefined;
+  return value === undefined ? undefined : String(value);
+}
+
+function accessibleFocusable(node: IRenderedUiNode): boolean {
+  return node.focusable ?? ["button", "textInput", "touchControl", "slider", "scrollbar"].includes(node.kind);
 }
 
 function debugNode(node: IRenderedUiNode, focusIndex: number | undefined): IUiDebugNodeReport {
@@ -110,6 +161,9 @@ function role(node: IRenderedUiNode): string | undefined {
 }
 
 function defaultRole(node: IRenderedUiNode): string | undefined {
+  if (node.kind === "column" || node.kind === "component" || node.kind === "row" || node.kind === "stack") {
+    return "group";
+  }
   if (node.kind === "button" || node.kind === "touchControl") {
     return "button";
   }

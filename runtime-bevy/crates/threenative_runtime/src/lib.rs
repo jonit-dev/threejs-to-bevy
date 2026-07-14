@@ -271,11 +271,14 @@ pub fn app_from_bundle_with_options(
             ui::install_native_ui_overlay_camera(app.world_mut());
         }
         app.init_resource::<ui::NativeUiActionQueue>();
+        app.init_resource::<ui::NativeUiServiceEffectQueue>();
         app.add_systems(
             Update,
             (
+                ui::reconcile_native_ui_responsive_layout,
                 ui::scroll_native_ui,
                 ui::dispatch_native_ui_actions.before(run_scripted_runtime_systems),
+                ui::apply_queued_native_ui_service_effects.after(run_scripted_runtime_systems),
             ),
         );
     }
@@ -639,6 +642,7 @@ struct ScriptedRuntimeParams<'w> {
     audio_queue: Option<ResMut<'w, audio::NativeAudioServiceQueue>>,
     audio_events: Option<ResMut<'w, audio::NativeAudioEventQueue>>,
     audio_event_cursors: Option<ResMut<'w, audio::NativeAudioEventCursors>>,
+    ui_service_effects: Option<ResMut<'w, ui::NativeUiServiceEffectQueue>>,
 }
 
 fn run_scripted_runtime_systems(
@@ -751,6 +755,9 @@ fn run_scripted_runtime_systems(
         );
         match run {
             Ok(run) => {
+                if let Some(queue) = scripted.ui_service_effects.as_deref_mut() {
+                    ui::queue_native_ui_service_effects(queue, &run.logs);
+                }
                 if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
                     let overlays = bridge.overlays.clone();
                     bridge

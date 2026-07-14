@@ -3,7 +3,7 @@
 Complexity: 8 -> HIGH mode
 
 Date: 2026-07-14
-Status: PLANNED
+Status: DONE
 Owner: UI IR, compiler lowering, web/native UI runtimes, and proof tooling
 
 ## 1. Context
@@ -178,19 +178,56 @@ keyboard claims platform-diagnostic without platform evidence`.
 
 ## 6. Acceptance Criteria
 
-- [ ] One registry owns UI parity rows and evidence tiers.
-- [ ] Text, button, slider, and text-input behavior is paired and negative-tested.
-- [ ] Responsive rules survive source -> compiler -> runtime at two viewports.
-- [ ] Runtime disabled/value updates, focus order, and nested/axis scroll are
+- [x] One registry owns UI parity rows and evidence tiers.
+- [x] Text, button, slider, and text-input behavior is paired and negative-tested.
+- [x] Responsive rules survive source -> compiler -> runtime at two viewports.
+- [x] Runtime disabled/value updates, focus order, and nested/axis scroll are
       proved on both adapters or explicitly remain partial.
-- [ ] Accessibility snapshots compare role/name/value/state consistently.
-- [ ] Trace/metadata is never presented as rendered or screen-reader proof.
-- [ ] Unsupported DPI, IME, virtual-keyboard, world-attachment, or style rows
+- [x] Accessibility snapshots compare role/name/value/state consistently.
+- [x] Trace/metadata is never presented as rendered or screen-reader proof.
+- [x] Unsupported DPI, IME, virtual-keyboard, world-attachment, or style rows
       retain actionable diagnostics until their own evidence exists.
-- [ ] Automated and required manual checkpoints pass.
+- [x] Automated and required manual checkpoints pass.
 
 ## 7. Verification Evidence (complete during implementation)
 
-Record matrix coverage, focused test counts, screenshot/snapshot artifact
-paths, any platform assistive-technology transcript, conformance result, and
-the exact rows promoted or retained as partial.
+The node-kind-derived registry covers all 14 UI kinds plus layout, state,
+focus, scroll, accessibility, and platform rows. Promoted rows require paired
+same-tier artifacts; fake PNG, empty behavior, and stale-manifest negative
+controls pass. The current run is bound by run ID and SHA-256 in
+`tools/verify/artifacts/feature-parity-ui-native/verification-report.json`.
+
+Paired evidence is retained under
+`tools/verify/artifacts/feature-parity-ui-native/`: desktop 1280x720 and mobile
+390x844 web/native PNGs, exact contact sheets, pixel diffs, viewport/region
+observations, widget behavior reports, normalized accessibility snapshots, and
+source-bound platform diagnostics. The gate passes with no diagnostics.
+
+Manual checkpoint: both contact sheets show the same ordered text input,
+image, slider, item buttons, validation text, bar, confirm, Jump, Scout, and
+Energy Cell nodes, with the mobile root changing from 420x620 to 340x700.
+Styling and whitespace differ substantially (desktop differing-pixel ratio
+0.492575; mobile 0.80165), so promotion is bounded to node presence and
+responsive regions. Native gradient/shadow/style pixel parity remains partial.
+
+Behavior promotion is bounded to real button/slider/text-input/touch actions,
+native ECS plus AccessKit-backed disabled/value updates, deterministic caret
+editing, and sequential/explicit focus. Accessibility promotion is metadata
+only. Nested/horizontal scroll, spatial fallback, focus narration, platform
+screen readers, DPI scaling, IME, virtual keyboard, rendered world attachment,
+and native style effects remain partial or unsupported. No assistive-technology
+transcript was produced or claimed.
+
+Automated verification completed:
+
+- `pnpm --dir packages/ir test`: 382/382 passed.
+- `pnpm --filter @threenative/runtime-web-three test`: 465/465 passed.
+- focused registry/gate negative controls: 13/13 passed.
+- native loader/UI proof: loader 17/17, UI library 3/3, UI integration
+  17/17, UI debug 1/1, capture viewport 1/1, and native behavior/accessibility
+  producer 3/3 passed.
+- structured responsive compiler lowering: 1/1 focused test passed.
+- feature-parity producer/gate: PASS with 16 current-run artifacts and zero
+  gate diagnostics.
+- `pnpm verify:conformance`, `pnpm verify:cookbook`, `pnpm check:docs`, and
+  `git diff --check` passed.

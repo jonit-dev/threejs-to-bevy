@@ -7,6 +7,7 @@ import { PNG } from "../packages/cli/node_modules/pngjs/lib/png.js";
 import { validateBundle } from "../packages/ir/dist/validate.js";
 import { loadBundle, traceInputUiPolish } from "../packages/runtime-web-three/dist/index.js";
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
+import { promotedUiCapabilitiesForFixture } from "../tools/verify/dist/uiParityRegistry.js";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const fixture = resolve(root, "packages/ir/fixtures/conformance/input-ui-polish/game.bundle");
@@ -49,17 +50,18 @@ if (!validation.ok) {
       artifacts: {
         contactSheet: "tools/verify/artifacts/input-ui-polish/contact-sheet.png",
         diff: "tools/verify/artifacts/input-ui-polish/diff.json",
-        native: "tools/verify/artifacts/input-ui-polish/native-report.json",
+        nativeReport: "tools/verify/artifacts/input-ui-polish/native-report.json",
         report: "tools/verify/artifacts/input-ui-polish/verification-report.json",
-        web: "tools/verify/artifacts/input-ui-polish/web-report.json",
+        webReport: "tools/verify/artifacts/input-ui-polish/web-report.json",
       },
       commands: [
         { command: "validateBundle(input-ui-polish)", status: "pass" },
         { command: "cargo run -p threenative_runtime --bin threenative_input_ui_polish_trace", status: "pass", stderr: native.stderr.trim(), stdout: native.stdout.trim() },
       ],
-      deferred: ["full mobile virtual keyboard integration", "native synthesized italic rendering", "3D/world UI", "render-to-texture UI", "broad packaged webview manual matrix"],
+      deferred: ["nested and axis-specific scroll parity", "spatial navigation fallback", "platform focus narration and screen-reader proof", "full mobile virtual keyboard integration", "native synthesized italic rendering", "3D/world UI", "render-to-texture UI", "broad packaged webview manual matrix"],
       ok: diff.ok,
-      promoted: ["platform touch stream snapshots", "settings fixture controls polish", "gamepad diagnostics repair hints", "disabled runtime reconciliation", "nested and axis-specific scroll report", "spatial navigation trace", "focus narration report"],
+      parity: { mismatches: diff.mismatches },
+      promotedCapabilities: promotedUiCapabilitiesForFixture("input-ui-polish"),
       status: diff.ok ? "passed" : "failed",
       tolerance: { ordering: "stable ids" },
     });

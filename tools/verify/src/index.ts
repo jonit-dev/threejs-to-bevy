@@ -11,6 +11,7 @@ export { runEfficientScaleGate, type EfficientScaleGateOptions, type EfficientSc
 export { runVisualPolishGate, validateVisualPolishEvidence, type VisualPolishGateResult } from "./visualPolish.js";
 export { runShadowCascadeStabilityGate, validateShadowCascadeEvidence, type ShadowCascadeStabilityGateResult } from "./shadowCascadeStability.js";
 export { runUiNativeGate, validateUiNativeReport, type UiNativeGateResult } from "./uiNative.js";
+export { UI_EVIDENCE_TIERS, UI_PARITY_ROWS, UI_PARITY_SUPPORT_ARTIFACTS, promotedUiCapabilitiesForFixture, requiredUiParityArtifacts, uiParityRowsForArtifact, validateUiParityRegistry, type UiParityRow } from "./uiParityRegistry.js";
 export { runPhysicsNativeGate, validatePhysicsNativeEvidence, type PhysicsNativeGateResult } from "./physicsNative.js";
 export { runAudioPlatformGate, validateAudioPlatformEvidence, type AudioPlatformGateResult } from "./audioPlatform.js";
 export { resolveArtifactTargets, toRepoRelative, type ArtifactOwner, type ArtifactTargets } from "./artifacts.js";

@@ -42,6 +42,17 @@ errors and unexpected process-level failures.
 | `TN_VERIFY_*` | Screenshot, walkthrough, visual, or release-gate failure. |
 | `TN_SCRIPT_*` | Portable scripting or future QuickJS errors. |
 
+Native UI retains two stable adapter diagnostics for behavior that is not a
+parity claim:
+
+- `TN_BEVY_UI_NESTED_SCROLL_PARTIAL`: nested scroll arbitration is not
+  promoted; use a single native vertical scroll container.
+- `TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL`: horizontal scroll behavior is not
+  promoted; use vertical native scrolling.
+
+The UI parity registry binds both codes to its partial scroll row, and the
+focused gate verifies that each code still exists in its native owning source.
+
 Existing code currently uses mixed underscore-style codes such as
 `TN_V3_SCENE_MISSING_ENVIRONMENT` and `TN_BEVY_SYSTEM_HOST_UNSUPPORTED`. Keep
 new codes stable and domain-specific; do not replace existing emitted codes

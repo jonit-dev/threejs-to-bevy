@@ -59,6 +59,12 @@ struct CaptureTransformTraceOptions {
     output_path: PathBuf,
 }
 
+#[derive(Debug, PartialEq)]
+struct CaptureViewportOptions {
+    height: f32,
+    width: f32,
+}
+
 #[derive(Resource)]
 struct CaptureTransformTraceState {
     capture_request: Option<CaptureTransformTraceRequest>,
@@ -124,9 +130,13 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(code) => return code,
     };
+    let viewport_options = match take_viewport_options(&mut args) {
+        Ok(options) => options,
+        Err(code) => return code,
+    };
     if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
-            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--transform-trace <entity-id> <output-json>]"
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--transform-trace <entity-id> <output-json>]"
         );
         return ExitCode::from(2);
     }
@@ -196,6 +206,13 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
+    if let Some(viewport) = viewport_options {
+        let world = app.world_mut();
+        let mut query = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
+        if let Some(mut window) = query.iter_mut(world).next() {
+            window.resolution.set(viewport.width, viewport.height);
+        }
+    }
 
     if !apply_environment_bookmark(app.world_mut(), &bundle, bookmark_id)
         && !bundle
@@ -301,6 +318,36 @@ fn take_transform_trace_options(
         entity_id,
         output_path,
     }))
+}
+
+fn take_viewport_options(
+    args: &mut Vec<String>,
+) -> Result<Option<CaptureViewportOptions>, ExitCode> {
+    let Some(index) = args.iter().position(|arg| arg == "--viewport") else {
+        return Ok(None);
+    };
+    if index + 2 >= args.len() {
+        eprintln!("--viewport requires <width> <height>");
+        return Err(ExitCode::from(2));
+    }
+    let width = args[index + 1]
+        .parse::<f32>()
+        .ok()
+        .filter(|value| value.is_finite() && *value > 0.0);
+    let height = args[index + 2]
+        .parse::<f32>()
+        .ok()
+        .filter(|value| value.is_finite() && *value > 0.0);
+    let (Some(width), Some(height)) = (width, height) else {
+        eprintln!("--viewport width and height must be positive finite numbers");
+        return Err(ExitCode::from(2));
+    };
+    args.drain(index..=index + 2);
+    if args.iter().any(|arg| arg == "--viewport") {
+        eprintln!("--viewport may only be provided once");
+        return Err(ExitCode::from(2));
+    }
+    Ok(Some(CaptureViewportOptions { height, width }))
 }
 
 fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
@@ -633,6 +680,31 @@ mod tests {
         assert_eq!(args.len(), 5);
         assert_eq!(trace.entity_id, "motion.marker");
         assert_eq!(trace.output_path, PathBuf::from("trace.json"));
+    }
+
+    #[test]
+    fn viewport_options_are_optional_and_removed_without_changing_positional_capture_args() {
+        let mut args = vec![
+            "threenative_capture".to_owned(),
+            "bundle".to_owned(),
+            "camera.main".to_owned(),
+            "frame.png".to_owned(),
+            "120".to_owned(),
+            "--viewport".to_owned(),
+            "600".to_owned(),
+            "900".to_owned(),
+        ];
+
+        let viewport = take_viewport_options(&mut args)
+            .expect("viewport should parse")
+            .unwrap();
+
+        assert_eq!(args.len(), 5);
+        assert_eq!((viewport.width, viewport.height), (600.0, 900.0));
+        assert_eq!(
+            take_viewport_options(&mut args).expect("omitted viewport"),
+            None
+        );
     }
 
     #[test]

@@ -51,6 +51,8 @@ export { traceUiAttachments, type IUiAttachmentProjectionTrace } from "./ui/atta
 export { traceUiEffects, type IUiEffectTrace } from "./ui/effects.js";
 export { traceWebUiTextEdit, type IUiTextEditFrame, type IUiTextEditTrace, type UiTextEditOperation } from "./ui/textInputTrace.js";
 export { createUiDomOverlay, type IUiDomOverlay } from "./ui/domOverlay.js";
+export { createUiAccessibilitySnapshot, createUiDebugOverlayReport, type IUiAccessibilitySnapshot, type IUiAccessibilitySnapshotNode, type IUiDebugOverlayReport } from "./ui/debugOverlay.js";
+export { reportWebUiParityBehavior, type IUiParityBehaviorReport } from "./ui/parityEvidence.js";
 export { createRenderedParticleObjects, renderLoadedBundle, type IRenderResult, type IWebRuntimePerformanceSnapshot } from "./render.js";
 export { renderBundle } from "./renderBundle.js";
 export {

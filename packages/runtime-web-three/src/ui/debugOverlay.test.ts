@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import type { IUiIr, IWorldIr } from "@threenative/ir";
 
-import { createUiDebugOverlayReport } from "./debugOverlay.js";
+import { createUiAccessibilitySnapshot, createUiDebugOverlayReport } from "./debugOverlay.js";
 import { renderUi } from "./renderUi.js";
 
 test("debugOverlay should report ui debug overlay nodes with bounds and focus metadata", () => {
@@ -25,6 +25,26 @@ test("debugOverlay should report ui debug overlay nodes with bounds and focus me
   assert.equal(frame?.imageSource, "assets/ui/frame.png");
   assert.equal(report.gizmos.some((gizmo) => gizmo.id === "volume" && gizmo.kind === "focusRing"), true);
   assert.equal(report.gizmos.some((gizmo) => gizmo.id === "frame" && gizmo.kind === "nineSliceInsets"), true);
+});
+
+test("should export normalized accessible role name value and state", () => {
+  const rendered = renderUi(makeUi(), makeWorld());
+  rendered.focus("volume");
+  const snapshot = createUiAccessibilitySnapshot(rendered);
+  const volume = snapshot.nodes.find((node) => node.id === "volume");
+
+  assert.equal(snapshot.schema, "threenative.ui-accessibility-snapshot");
+  assert.equal(snapshot.nodes.find((node) => node.id === "hud")?.role, "group");
+  assert.deepEqual(volume, {
+    disabled: false,
+    focusable: true,
+    focused: true,
+    id: "volume",
+    name: "Volume",
+    relationships: { children: [] },
+    role: "slider",
+    value: "0.5",
+  });
 });
 
 function makeUi(): IUiIr {

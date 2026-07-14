@@ -1,4 +1,5 @@
 import type { IUiComponentDefinitionIr, IUiFocusScopeIr, IUiIr, IUiNodeIr, IUiThemeTokenIr } from "./types.js";
+import { UI_NODE_KINDS } from "./uiTypes.js";
 import { validateUiGradient, validateUiShadow, validateUiTheme, validateUiTokenRefs } from "./uiThemeValidation.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { validateUnsupportedFields } from "./validationDiagnostics.js";
@@ -60,7 +61,7 @@ function validateUiNode(
   }
   validateUiWidget(node, path, diagnostics);
   validateUiAccessibility(node, path, diagnostics);
-  if (!["bar", "button", "column", "component", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"].includes(node.kind)) {
+  if (!(UI_NODE_KINDS as readonly string[]).includes(node.kind)) {
     diagnostics.push({
       code: "TN_IR_UI_NODE_UNSUPPORTED",
       message: `Unsupported UI node kind '${String(node.kind)}'.`,

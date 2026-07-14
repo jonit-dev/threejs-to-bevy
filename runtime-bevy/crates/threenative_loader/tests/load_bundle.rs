@@ -5,9 +5,29 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use threenative_loader::{LoadError, load_bundle};
+use threenative_loader::{LoadError, UiIr, load_bundle};
 
 static TEMP_BUNDLE_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn should_preserve_ui_responsive_rules() {
+    let ui: UiIr = serde_json::from_str(r#"{
+      "schema":"threenative.ui","version":"0.1.0",
+      "root":{"id":"hud","kind":"column","layout":{"width":320,"inset":{"left":24}},
+        "responsive":[{"target":"mobile","layout":{"width":156,"inset":{"top":8}},"style":{"opacity":0.5}}]}
+    }"#).expect("responsive ui should deserialize");
+
+    let rule = &ui.root.responsive[0];
+    assert_eq!(rule.target, "mobile");
+    assert_eq!(
+        rule.layout.as_ref().and_then(|layout| layout.width),
+        Some(156.0)
+    );
+    assert_eq!(
+        rule.style.as_ref().and_then(|style| style.opacity),
+        Some(0.5)
+    );
+}
 
 #[test]
 fn should_load_cube_fixture_bundle() {

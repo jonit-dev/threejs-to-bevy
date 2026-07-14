@@ -5,6 +5,8 @@ export type IUiBinding =
   | { component: string; entity: string; fields?: readonly string[]; field?: string; format?: string; kind: "component" };
 export type IUiAccessibilityRole = "button" | "group" | "image" | "list" | "listitem" | "none" | "progressbar" | "text";
 export type UiTargetProfileClass = "desktop" | "mobile" | "tablet";
+export const UI_NODE_KINDS = ["bar", "button", "column", "component", "contextMenu", "image", "minimap", "row", "scrollbar", "slider", "stack", "text", "textInput", "touchControl"] as const;
+export type UiNodeKind = (typeof UI_NODE_KINDS)[number];
 
 export interface IUiResponsiveRuleIr {
   layout?: IUiLayoutIr;
@@ -114,7 +116,7 @@ export interface IUiNodeIr {
   glyph?: IUiGlyphPromptIr;
   id: string;
   image?: IUiImageMetadataIr;
-  kind: "bar" | "button" | "column" | "component" | "contextMenu" | "image" | "minimap" | "row" | "scrollbar" | "slider" | "stack" | "text" | "textInput" | "touchControl";
+  kind: UiNodeKind;
   localization?: IUiLocalizationIr;
   minimap?: IUiMinimapMetadataIr;
   label?: string;

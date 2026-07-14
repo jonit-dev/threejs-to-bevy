@@ -4,17 +4,15 @@ This index separates open planning work from completed PRDs and historical
 milestone batches. For current implementation status, read
 [../STATUS.md](../STATUS.md) first.
 
-## Active Initiatives
+## Completed Initiatives
 
 ### Systems Code Quality Remediation (2026-07-14)
 
-The [active systems code quality remediation bundle](other/systems-code-quality-remediation-2026-07-14/README.md)
-turns five lower-scoring status rows into executable slices: four confirmed
-interaction executor divergences, native process-restart persistence,
-`ScriptContext` type-contract closure, evidence-tiered UI/accessibility parity,
+The [completed systems code quality remediation bundle](done/other/systems-code-quality-remediation-2026-07-14/README.md)
+closes interaction executor parity, native process-restart persistence,
+`ScriptContext` type-contract drift, evidence-tiered UI/accessibility parity,
 and relocatable material-aware `tn model-test` proof.
 
-## Completed Initiatives
 
 ### Agent Ergonomics (2026-07-05)
 
@@ -182,7 +180,7 @@ Links under `done/` are historical implementation evidence, not active backlog.
 
 ### Tooling And Code Quality
 
-- [Systems Code Quality Remediation (2026-07-14)](other/systems-code-quality-remediation-2026-07-14/README.md):
+- [Systems Code Quality Remediation (2026-07-14)](done/other/systems-code-quality-remediation-2026-07-14/README.md) - done:
   batches five focused PRDs for interaction executor parity, durable local
   data, public script context typing, UI/accessibility proof tiers, and
   relocatable material-aware model-test evidence.

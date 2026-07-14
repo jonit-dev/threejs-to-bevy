@@ -1754,7 +1754,7 @@ test("should emit ui ir for scene with portable hud", async () => {
   }
 });
 
-test("should emit structured ui bindings from retained source documents", async () => {
+test("should preserve responsive overrides at both viewports through structured UI lowering", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-structured-ui-"));
   try {
     const config = {
@@ -1777,11 +1777,10 @@ test("should emit structured ui bindings from retained source documents", async 
                 id: "score",
                 type: "text",
                 text: "Score 0",
-                responsive: [{
-                  target: "mobile",
-                  layout: { left: 12, top: 16, width: 280 },
-                  style: { fontSize: 18, opacity: 0.5 },
-                }],
+                responsive: [
+                  { target: "desktop", layout: { left: 24, top: 32, width: 480 }, style: { fontSize: 24, opacity: 1 } },
+                  { target: "mobile", layout: { left: 12, top: 16, width: 280 }, style: { fontSize: 18, opacity: 0.5 } },
+                ],
               },
               {
                 id: "panel",
@@ -1810,11 +1809,10 @@ test("should emit structured ui bindings from retained source documents", async 
     const panel = ui.root.children.find((node: { id: string }) => node.id === "panel");
 
     assert.deepEqual(score.binding, { field: "scoreText", kind: "resource", name: "GameState" });
-    assert.deepEqual(score.responsive, [{
-      layout: { inset: { left: 12, top: 16 }, position: "absolute", width: 280 },
-      style: { fontSize: 18, opacity: 0.5 },
-      target: "mobile",
-    }]);
+    assert.deepEqual(score.responsive, [
+      { layout: { inset: { left: 24, top: 32 }, position: "absolute", width: 480 }, style: { fontSize: 24, opacity: 1 }, target: "desktop" },
+      { layout: { inset: { left: 12, top: 16 }, position: "absolute", width: 280 }, style: { fontSize: 18, opacity: 0.5 }, target: "mobile" },
+    ]);
     assert.deepEqual(panel.children[0].binding, { fields: ["coins", "total"], format: "Coins {coins}/{total}", kind: "resource", name: "GameState" });
   } finally {
     await rm(root, { force: true, recursive: true });

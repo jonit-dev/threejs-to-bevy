@@ -1,4 +1,12 @@
+use crate::ui::{
+    NativeUiDisabled, NativeUiFocusable, NativeUiKind, NativeUiNavigation, NativeUiWidget,
+};
+use bevy::{
+    a11y::{AccessibilityNode, Focus},
+    prelude::*,
+};
 use serde::Serialize;
+use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr};
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
@@ -38,6 +46,139 @@ pub struct NativeUiDebugWidgetState {
     pub orientation: String,
     pub value: f32,
     pub value_text: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiAccessibilitySnapshot {
+    pub adapter: &'static str,
+    pub nodes: Vec<NativeUiAccessibilityNode>,
+    pub schema: &'static str,
+    pub version: &'static str,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeUiAccessibilityNode {
+    pub disabled: bool,
+    pub focusable: bool,
+    pub focused: bool,
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    pub relationships: NativeUiAccessibilityRelationships,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub value: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize)]
+pub struct NativeUiAccessibilityRelationships {
+    pub children: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub down: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub left: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub right: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub up: Option<String>,
+}
+
+pub fn report_native_ui_accessibility(world: &mut World) -> NativeUiAccessibilitySnapshot {
+    let ids = world
+        .query::<(Entity, &ThreeNativeId)>()
+        .iter(world)
+        .map(|(entity, id)| (entity, id.0.clone()))
+        .collect::<std::collections::HashMap<_, _>>();
+    let focused = world.get_resource::<Focus>().and_then(|focus| focus.0);
+    let mut nodes = world
+        .query::<(
+            Entity,
+            &ThreeNativeId,
+            &NativeUiKind,
+            Option<&AccessibilityNode>,
+            Option<&NativeUiDisabled>,
+            Option<&NativeUiFocusable>,
+            Option<&NativeUiWidget>,
+            Option<&NativeUiNavigation>,
+            Option<&Children>,
+        )>()
+        .iter(world)
+        .map(
+            |(
+                entity,
+                id,
+                kind,
+                accessibility,
+                disabled,
+                focusable,
+                widget,
+                navigation,
+                children,
+            )| {
+                let disabled = disabled.is_some_and(|disabled| disabled.0)
+                    || accessibility.is_some_and(|node| node.0.is_disabled());
+                NativeUiAccessibilityNode {
+                    disabled,
+                    focusable: !disabled
+                        && focusable.map_or_else(
+                            || {
+                                matches!(
+                                    kind.0.as_str(),
+                                    "button"
+                                        | "textInput"
+                                        | "touchControl"
+                                        | "slider"
+                                        | "scrollbar"
+                                )
+                            },
+                            |focusable| focusable.0,
+                        ),
+                    focused: focused == Some(entity),
+                    id: id.0.clone(),
+                    name: accessibility.and_then(|node| node.name().map(str::to_owned)),
+                    relationships: NativeUiAccessibilityRelationships {
+                        children: children
+                            .into_iter()
+                            .flat_map(|children| children.iter())
+                            .filter_map(|child| ids.get(child).cloned())
+                            .collect(),
+                        down: navigation.and_then(|navigation| navigation.down.clone()),
+                        left: navigation.and_then(|navigation| navigation.left.clone()),
+                        right: navigation.and_then(|navigation| navigation.right.clone()),
+                        up: navigation.and_then(|navigation| navigation.up.clone()),
+                    },
+                    role: accessibility.map(|node| normalized_accesskit_role(node.role())),
+                    value: accessibility
+                        .and_then(|node| node.value().map(str::to_owned))
+                        .or_else(|| widget.and_then(|widget| widget.value_text.clone()))
+                        .or_else(|| {
+                            accessibility.and_then(|node| {
+                                node.numeric_value().map(|value| value.to_string())
+                            })
+                        }),
+                }
+            },
+        )
+        .collect::<Vec<_>>();
+    nodes.sort_by(|left, right| left.id.cmp(&right.id));
+    NativeUiAccessibilitySnapshot {
+        adapter: "native",
+        nodes,
+        schema: "threenative.ui-accessibility-snapshot",
+        version: "0.1.0",
+    }
+}
+
+fn normalized_accesskit_role(role: bevy::a11y::accesskit::Role) -> String {
+    match role {
+        bevy::a11y::accesskit::Role::ProgressIndicator => "progressbar".to_owned(),
+        bevy::a11y::accesskit::Role::StaticText => "text".to_owned(),
+        bevy::a11y::accesskit::Role::TextInput => "textbox".to_owned(),
+        other => format!("{other:?}").to_lowercase(),
+    }
 }
 
 pub fn report_native_ui_debug(ui: &UiIr) -> NativeUiDebugReport {

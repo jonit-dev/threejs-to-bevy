@@ -61,9 +61,11 @@ export async function captureWebScreenshot(options) {
  * @param {string} options.outputPath
  * @param {string} options.repoRoot
  * @param {string} [options.cameraId]
+ * @param {{ width: number; height: number }} [options.viewport]
  */
 export async function captureBevyScreenshot(options) {
   const { cargoCaptureEnv, resolveCargoCommand } = await loadCliModules(options.repoRoot);
+  const viewportArgs = options.viewport === undefined ? [] : ["--viewport", String(options.viewport.width), String(options.viewport.height)];
   await execFileAsync(
     resolveCargoCommand(),
     [
@@ -77,6 +79,7 @@ export async function captureBevyScreenshot(options) {
       resolve(options.bundlePath),
       options.cameraId ?? "camera.calibration",
       resolve(options.outputPath),
+      ...viewportArgs,
     ],
     {
       cwd: resolve(options.repoRoot, "runtime-bevy"),
@@ -110,6 +113,7 @@ export async function captureCalibrationScreenshots(options) {
     cameraId: options.cameraId,
     outputPath: bevyScreenshotPath,
     repoRoot: options.repoRoot,
+    viewport: options.capture,
   });
   return { bevyScreenshotPath, webScreenshotPath };
 }

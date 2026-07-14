@@ -75,29 +75,30 @@ Current support:
   | Safe area | Web overlay applies `safe-area-inset-*` padding for avoided edges. Native preserves safe-area metadata in navigation traces. |
   | Context menus | Web context menus clamp to the viewport. Native context-menu behavior remains metadata/trace-only. |
   | Focus navigation | Web and native navigation traces skip disabled nodes for sequential and explicit navigation. Geometric spatial fallback remains partial. |
+  | Widget/runtime state | Button, slider, text-input, and touch-control actions plus live `setDisabled`/`setValue` effects are paired against web rendered state and native ECS/AccessKit state. |
+  | Accessibility | Normalized ARIA/AccessKit role, name, string value, disabled, focusable, focused, and relationship snapshots are paired metadata. Focus narration and actual platform screen-reader output remain partial. |
+  | Scroll | Basic vertical scrolling is retained. Native nested and horizontal behavior remains partial under `TN_BEVY_UI_NESTED_SCROLL_PARTIAL` and `TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL`. |
   | DPI/scale | Native UI currently treats authored pixel values as absolute Bevy UI pixels and reports `TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY`. DPI-aware scaling is an unsupported boundary, not promoted parity. |
   | Text input | Web dispatches deterministic value actions. `verify:feature-parity-ui-native` promotes a bounded, adapter-matched value/caret edit trace; OS text services, IME composition, and virtual keyboards remain platform diagnostics. |
 
 - UI parity claims are truth-graded in
   [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
-  proof gate or artifact, while trace-only native shadows/gradients, effect
+  registry evidence tier and current-run artifact, while trace-only native shadows/gradients, effect
   presets, world-attached rendered placement, nested/axis scroll,
-  spatial fallback navigation, focus narration, and runtime disabled-state
-  updates remain partial/diagnostic until behavior-level proof exists.
+  spatial fallback navigation, and focus narration remain partial/diagnostic.
 - `pnpm verify:focused verify:feature-parity-ui-native` captures the same
-  compact retained menu in web and native renderers and compares attachment,
-  effect-strategy, and value/caret traces. It also records AccessKit/ARIA
-  metadata scope, native image slicing metadata, and screenshot paths. The
-  captures prove bounded base UI pixels; they do not promote native
+  retained UI fixture in web and native renderers at 1280x720 and 390x844. The
+  registry-derived gate decodes screenshots, checks observed layout/widget
+  regions, retains paired pixel diffs and exact contact sheets, compares live
+  actions/state/focus/caret reports, and compares normalized AccessKit/ARIA
+  metadata. A run ID and SHA-256 manifest prevent stale or artifact-less row
+  promotion. The captures prove the registry's bounded rendered rows; they do not promote native
   gradient/shadow rendering, actual screen-reader output, or rendered
   world-attachment placement.
 - `pnpm verify:conformance` now emits explicit UI evidence categories:
-  structural retained-UI reports, behavioral runtime traces for focus/action
-  delivery plus input/UI polish, and a visual/style contact sheet for the
-  input-UI polish fixture. The input/UI polish probe covers disabled-state
-  reconciliation, nested and axis-specific scroll reports, spatial navigation
-  traces, and focus narration as deterministic evidence rather than parity
-  promotion.
+  structural retained-UI reports, behavioral runtime proof for promoted
+  focus/action/state delivery, and diagnostic traces for retained partial
+  input/UI rows. Input/UI polish diagrams are not treated as rendered proof.
 - Unsupported UI boundaries remain explicit for virtual keyboard behavior,
   arbitrary grid named areas/dense packing, render-to-texture/world transforms,
   UI viewport nodes, drag/drop UI nodes, and custom UI material/shader

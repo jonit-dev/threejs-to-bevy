@@ -1838,6 +1838,8 @@ pub struct UiNodeIr {
     pub orientation: Option<String>,
     pub role: Option<String>,
     #[serde(default)]
+    pub responsive: Vec<UiResponsiveRuleIr>,
+    #[serde(default)]
     pub spans: Vec<UiRichTextSpanIr>,
     pub step: Option<f32>,
     pub style: Option<UiStyleIr>,
@@ -1848,6 +1850,13 @@ pub struct UiNodeIr {
     pub value_text: Option<String>,
     #[serde(rename = "virtualRange")]
     pub virtual_range: Option<UiVirtualRangeIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct UiResponsiveRuleIr {
+    pub layout: Option<UiLayoutIr>,
+    pub style: Option<UiStyleIr>,
+    pub target: String,
 }
 
 #[derive(Clone, Debug, Deserialize)]

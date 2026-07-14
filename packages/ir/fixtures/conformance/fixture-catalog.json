@@ -158,10 +158,8 @@
         "input:touch-stream",
         "input:gamepad-diagnostics",
         "ui:disabled-runtime-update",
-        "ui:focus-narration",
-        "ui:nested-scroll",
-        "ui:spatial-navigation",
-        "ui:virtual-keyboard-diagnostic"
+        "ui:focus-navigation",
+        "ui:touch-control"
       ],
       "reportArtifacts": [
         "tools/verify/artifacts/input-ui-polish/verification-report.json"

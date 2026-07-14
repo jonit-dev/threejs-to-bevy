@@ -92,6 +92,14 @@ fn spawn_node(
         if let Some(focusable) = node.focusable {
             entity_mut.insert(NativeUiFocusable(focusable));
         }
+        if let Some(navigation) = node.navigation.as_ref() {
+            entity_mut.insert(NativeUiNavigation {
+                down: navigation.down.clone(),
+                left: navigation.left.clone(),
+                right: navigation.right.clone(),
+                up: navigation.up.clone(),
+            });
+        }
         if node.kind == "slider" || node.kind == "scrollbar" {
             entity_mut.insert(NativeUiWidget {
                 kind: node.kind.clone(),
@@ -300,6 +308,15 @@ fn accessibility_node(node: &UiNodeIr) -> Option<AccessibilityNode> {
     if let Some(name) = accessibility_name(node) {
         builder.set_name(name);
     }
+    if node.disabled == Some(true) {
+        builder.set_disabled();
+    }
+    if let Some(value) = node.value {
+        builder.set_numeric_value(f64::from(value));
+    }
+    if let Some(value_text) = node.value_text.as_ref().or(node.text.as_ref().filter(|_| node.kind == "textInput")) {
+        builder.set_value(value_text.clone());
+    }
     Some(AccessibilityNode::from(builder))
 }
 
@@ -316,6 +333,7 @@ fn accessibility_role(node: &UiNodeIr) -> Option<Role> {
         None => match node.kind.as_str() {
             "bar" => Some(Role::ProgressIndicator),
             "button" | "touchControl" => Some(Role::Button),
+            "column" | "component" | "row" | "stack" => Some(Role::Group),
             "textInput" => Some(Role::TextInput),
             "slider" => Some(Role::Slider),
             "scrollbar" => Some(Role::ProgressIndicator),
