@@ -1,6 +1,6 @@
 {
   "schema": "threenative.local-data",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "autosave": {
     "checkpointEvents": ["CheckpointReached"],
     "debounceMs": 250,
@@ -18,7 +18,15 @@
   ],
   "migration": {
     "currentVersion": 2,
-    "migrators": [1]
+    "migrators": [1],
+    "transforms": [
+      {
+        "fromVersion": 1,
+        "operations": [
+          { "from": "LegacyProgress", "kind": "renameResource", "to": "Progress" }
+        ]
+      }
+    ]
   },
   "resources": [
     {

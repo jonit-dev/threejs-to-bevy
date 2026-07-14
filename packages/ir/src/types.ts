@@ -7,6 +7,7 @@ export type GltfSceneSchema = "threenative.gltf-scene";
 export type AudioSchema = "threenative.audio";
 export type GameFlowSchema = "threenative.game-flow";
 export type LocalDataSchema = "threenative.local-data";
+export type LocalDataVersion = "0.1.0" | "0.2.0";
 export type SequencesSchema = "threenative.sequences";
 export type TargetProfileSchema = "threenative.target-profile";
 export type RuntimeConfigSchema = "threenative.runtime-config";
@@ -204,6 +205,26 @@ export interface ILocalDataSaveSlotIr {
 export interface ILocalDataMigrationIr {
   currentVersion: number;
   migrators: readonly number[];
+  transforms?: readonly ILocalDataMigrationTransformIr[];
+}
+
+export type LocalDataMigrationOperationKind =
+  | "deleteComponent"
+  | "deleteResource"
+  | "deleteSetting"
+  | "renameComponent"
+  | "renameResource"
+  | "renameSetting";
+
+export interface ILocalDataMigrationOperationIr {
+  from: string;
+  kind: LocalDataMigrationOperationKind;
+  to?: string;
+}
+
+export interface ILocalDataMigrationTransformIr {
+  fromVersion: number;
+  operations: readonly ILocalDataMigrationOperationIr[];
 }
 
 export interface ILocalDataAutosaveIr {
@@ -220,7 +241,7 @@ export interface ILocalDataIr {
   saveSlots: readonly ILocalDataSaveSlotIr[];
   schema: LocalDataSchema;
   settings: readonly ILocalDataSettingIr[];
-  version: SchemaVersion;
+  version: LocalDataVersion;
 }
 
 export interface ITransformAnimationKeyframeIr {

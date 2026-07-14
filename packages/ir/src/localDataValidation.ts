@@ -1,6 +1,9 @@
 import type { ILocalDataIr } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
 import { isRecord, validateOptionalFiniteNumber } from "./validationPrimitives.js";
+import { IR_DOCUMENTS } from "./documents.js";
+
+const localDataVersions = IR_DOCUMENTS.localData.supportedVersions;
 
 export function validateLocalData(localData: ILocalDataIr, path: string, diagnostics: IIrDiagnostic[]): void {
   if (!isRecord(localData)) {
@@ -13,10 +16,10 @@ export function validateLocalData(localData: ILocalDataIr, path: string, diagnos
     });
     return;
   }
-  if (localData.schema !== "threenative.local-data" || localData.version !== "0.1.0") {
+  if (localData.schema !== IR_DOCUMENTS.localData.schema || !localDataVersions.some((version) => version === localData.version)) {
     diagnostics.push({
       code: "TN_IR_LOCAL_DATA_VERSION_UNSUPPORTED",
-      message: "Local data IR must use threenative.local-data version 0.1.0.",
+      message: `Local data IR must use ${IR_DOCUMENTS.localData.schema} version ${localDataVersions.join(" or ")}.`,
       path,
       severity: "error",
     });
@@ -35,7 +38,16 @@ export function validateLocalData(localData: ILocalDataIr, path: string, diagnos
   validateLocalDataSchemaEntries(localData.components, `${path}/components`, "component", diagnostics);
   validateLocalDataSettings(localData.settings, `${path}/settings`, diagnostics);
   validateLocalDataSaveSlots(localData.saveSlots, `${path}/saveSlots`, diagnostics);
-  validateLocalDataMigration(localData.migration, `${path}/migration`, diagnostics);
+  validateLocalDataMigration(localData.migration, localData.version, `${path}/migration`, diagnostics);
+  if (localData.version === "0.1.0" && localData.migration?.transforms !== undefined) {
+    diagnostics.push({
+      code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORMS_VERSION_UNSUPPORTED",
+      message: "Declarative persistence migration transforms require local data IR version 0.2.0.",
+      path: `${path}/migration/transforms`,
+      severity: "error",
+      suggestion: "Emit local-data.ir.json version 0.2.0 when declaring executable transforms.",
+    });
+  }
   validateLocalDataAutosave(localData.autosave, `${path}/autosave`, diagnostics);
 }
 
@@ -148,7 +160,7 @@ function validateLocalDataSaveSlots(value: unknown, path: string, diagnostics: I
   });
 }
 
-function validateLocalDataMigration(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+function validateLocalDataMigration(value: unknown, version: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
   if (value === undefined) {
     return;
   }
@@ -159,20 +171,113 @@ function validateLocalDataMigration(value: unknown, path: string, diagnostics: I
   if (!Number.isInteger(value.currentVersion) || Number(value.currentVersion) <= 0) {
     diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_VERSION_INVALID", message: "Local data currentVersion must be a positive integer.", path: `${path}/currentVersion` });
   }
+  for (const key of Object.keys(value)) {
+    if (!["currentVersion", "migrators", "transforms"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_FIELD_UNSUPPORTED", message: `Local data migration field '${key}' is not supported.`, path: `${path}/${key}` });
+    }
+  }
   if (!Array.isArray(value.migrators) || value.migrators.some((entry) => !Number.isInteger(entry) || Number(entry) <= 0)) {
     diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATORS_INVALID", message: "Local data migrators must be positive integer versions.", path: `${path}/migrators` });
     return;
   }
   if (Number.isInteger(value.currentVersion) && Number(value.currentVersion) > 1) {
-    const required = Number(value.currentVersion) - 1;
-    if (!value.migrators.includes(required)) {
-      diagnostics.push({
-        code: "TN_IR_LOCAL_DATA_MIGRATOR_MISSING",
-        message: `Local data migration to version ${String(value.currentVersion)} must declare a migrator from version ${required}.`,
-        path: `${path}/migrators`,
-        suggestion: "Add the missing migrator metadata or lower currentVersion.",
-      });
+    for (let required = 1; required < Number(value.currentVersion); required += 1) {
+      if (!value.migrators.includes(required)) {
+        diagnostics.push({
+          code: "TN_IR_LOCAL_DATA_MIGRATOR_MISSING",
+          message: `Local data migration to version ${String(required + 1)} must declare a migrator from version ${required}.`,
+          path: `${path}/migrators`,
+          suggestion: "Add the missing migrator metadata or lower currentVersion.",
+        });
+      }
     }
+  }
+  validateLocalDataMigrationTransforms(value.transforms, value.migrators, value.currentVersion, `${path}/transforms`, diagnostics);
+  if (version === "0.2.0" && Number.isInteger(value.currentVersion) && Array.isArray(value.transforms)) {
+    for (let required = 1; required < Number(value.currentVersion); required += 1) {
+      if (!value.transforms.some((transform) => isRecord(transform) && transform.fromVersion === required)) {
+        diagnostics.push({
+          code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_MISSING",
+          message: `Local data 0.2.0 migration from version ${String(required)} requires an executable transform.`,
+          path: `${path}/transforms`,
+          suggestion: "Declare a transform for every sequential migration step.",
+        });
+      }
+    }
+  }
+}
+
+function validateLocalDataMigrationTransforms(
+  value: unknown,
+  migrators: unknown[],
+  currentVersion: unknown,
+  path: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  if (value === undefined) return;
+  if (!Array.isArray(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORMS_INVALID", message: "Local data migration transforms must be an array.", path });
+    return;
+  }
+  const versions = new Set<number>();
+  value.forEach((transform, index) => {
+    const transformPath = `${path}/${index}`;
+    if (!isRecord(transform)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_INVALID", message: "Local data migration transform must be an object.", path: transformPath });
+      return;
+    }
+    for (const key of Object.keys(transform)) {
+      if (!["fromVersion", "operations"].includes(key)) {
+        diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_FIELD_UNSUPPORTED", message: `Local data migration transform field '${key}' is not supported.`, path: `${transformPath}/${key}` });
+      }
+    }
+    if (!Number.isInteger(transform.fromVersion) || Number(transform.fromVersion) <= 0 || (Number.isInteger(currentVersion) && Number(transform.fromVersion) >= Number(currentVersion))) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_VERSION_INVALID", message: "Local data migration transform fromVersion must be positive and lower than currentVersion.", path: `${transformPath}/fromVersion` });
+    } else if (versions.has(Number(transform.fromVersion))) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_DUPLICATE", message: `Local data migration transform from version ${String(transform.fromVersion)} is duplicated.`, path: `${transformPath}/fromVersion` });
+    } else {
+      versions.add(Number(transform.fromVersion));
+      if (!migrators.includes(transform.fromVersion)) {
+        diagnostics.push({
+          code: "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORM_UNDECLARED",
+          message: `Local data migration transform from version ${String(transform.fromVersion)} must have matching migrator metadata.`,
+          path: `${transformPath}/fromVersion`,
+          suggestion: "Add the transform version to migration.migrators.",
+        });
+      }
+    }
+    if (!Array.isArray(transform.operations) || transform.operations.length === 0) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATIONS_INVALID", message: "Local data migration transform operations must be a non-empty array.", path: `${transformPath}/operations` });
+      return;
+    }
+    transform.operations.forEach((operation, operationIndex) => validateLocalDataMigrationOperation(operation, `${transformPath}/operations/${operationIndex}`, diagnostics));
+  });
+}
+
+function validateLocalDataMigrationOperation(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_INVALID", message: "Local data migration operation must be an object.", path });
+    return;
+  }
+  for (const key of Object.keys(value)) {
+    if (!["from", "kind", "to"].includes(key)) {
+      diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_FIELD_UNSUPPORTED", message: `Local data migration operation field '${key}' is not supported.`, path: `${path}/${key}` });
+    }
+  }
+  const kinds = ["deleteComponent", "deleteResource", "deleteSetting", "renameComponent", "renameResource", "renameSetting"];
+  if (!kinds.includes(String(value.kind))) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_KIND_INVALID", message: "Local data migration operation kind is not supported.", path: `${path}/kind` });
+    return;
+  }
+  if (typeof value.from !== "string" || value.from.trim() === "") {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_SOURCE_INVALID", message: "Local data migration operation from must be a non-empty string.", path: `${path}/from` });
+  }
+  const isRename = String(value.kind).startsWith("rename");
+  if (isRename && (typeof value.to !== "string" || value.to.trim() === "")) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_TARGET_INVALID", message: "Local data rename operations require a non-empty to value.", path: `${path}/to` });
+  }
+  if (!isRename && value.to !== undefined) {
+    diagnostics.push({ code: "TN_IR_LOCAL_DATA_MIGRATION_OPERATION_TARGET_INVALID", message: "Local data delete operations must not declare a to value.", path: `${path}/to` });
   }
 }
 

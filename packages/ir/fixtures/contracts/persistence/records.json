@@ -1,0 +1,132 @@
+{
+  "schema": "threenative.persistence-record-contract",
+  "version": "0.1.0",
+  "maxRecordBytes": 1048576,
+  "storageNamespace": "contract-fixture",
+  "localData": {
+    "schema": "threenative.local-data",
+    "version": "0.2.0",
+    "components": [
+      {
+        "id": "Inventory",
+        "schema": {
+          "fields": {
+            "items": {
+              "kind": "string"
+            }
+          }
+        }
+      }
+    ],
+    "migration": {
+      "currentVersion": 2,
+      "migrators": [
+        1
+      ],
+      "transforms": [
+        {
+          "fromVersion": 1,
+          "operations": [
+            {
+              "from": "LegacyProgress",
+              "kind": "renameResource",
+              "to": "Progress"
+            }
+          ]
+        }
+      ]
+    },
+    "resources": [
+      {
+        "id": "Progress",
+        "schema": {
+          "fields": {
+            "level": {
+              "kind": "integer"
+            }
+          }
+        }
+      }
+    ],
+    "saveSlots": [
+      {
+        "appVersion": "1.0.0",
+        "id": "slot.main",
+        "schemaVersion": 2
+      }
+    ],
+    "settings": [
+      {
+        "defaultValue": 0.5,
+        "group": "audio",
+        "key": "audio.master",
+        "kind": "number",
+        "max": 1,
+        "min": 0
+      }
+    ]
+  },
+  "records": {
+    "declared": {
+      "schema": "threenative.persistence-record",
+      "version": "0.1.0",
+      "appVersion": "1.0.0",
+      "components": {
+        "player": {
+          "Inventory": {
+            "items": "key"
+          }
+        }
+      },
+      "resources": {
+        "Progress": {
+          "level": 4
+        }
+      },
+      "schemaVersion": 2,
+      "settings": {
+        "audio.master": 0.25
+      },
+      "slot": "slot.main"
+    },
+    "forward": {
+      "schema": "threenative.persistence-record",
+      "version": "0.1.0",
+      "appVersion": "1.0.0",
+      "components": {},
+      "resources": {},
+      "schemaVersion": 3,
+      "settings": {},
+      "slot": "slot.main"
+    },
+    "migratable": {
+      "schema": "threenative.persistence-record",
+      "version": "0.1.0",
+      "appVersion": "1.0.0",
+      "components": {},
+      "resources": {
+        "LegacyProgress": {
+          "level": 2
+        }
+      },
+      "schemaVersion": 1,
+      "settings": {},
+      "slot": "slot.main"
+    },
+    "undeclared": {
+      "schema": "threenative.persistence-record",
+      "version": "0.1.0",
+      "appVersion": "1.0.0",
+      "components": {},
+      "resources": {
+        "SecretRuntimeState": {
+          "handle": 7
+        }
+      },
+      "schemaVersion": 2,
+      "settings": {},
+      "slot": "slot.main"
+    }
+  },
+  "corruptRaw": "{\"slot\":\"slot.main\",\"resources\":"
+}

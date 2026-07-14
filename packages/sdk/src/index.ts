@@ -315,10 +315,13 @@ export {
   type IPersistedResourceDeclaration,
   type IPersistenceDeclaration,
   type IPersistenceMigrationDeclaration,
+  type IPersistenceMigrationOperationDeclaration,
+  type IPersistenceMigrationTransformDeclaration,
   type IPersistenceSettingDeclaration,
   type ISaveSlotDeclaration,
   type PersistenceSettingGroup,
   type PersistenceSettingKind,
+  type PersistenceMigrationOperationKind,
 } from "./persistence.js";
 export {
   action,

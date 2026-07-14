@@ -74,3 +74,53 @@ test("local data should reject missing migration metadata", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("local data 0.2.0 should accept declarative migration transforms", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-local-data-transform-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { localData: "local-data.ir.json" } } });
+    await writeJson(root, "local-data.ir.json", {
+      schema: "threenative.local-data",
+      version: "0.2.0",
+      components: [],
+      migration: {
+        currentVersion: 2,
+        migrators: [1],
+        transforms: [{ fromVersion: 1, operations: [{ from: "OldProgress", kind: "renameResource", to: "Progress" }] }],
+      },
+      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.main", schemaVersion: 2 }],
+      settings: [],
+    });
+
+    assert.equal((await validateBundle(root)).ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("local data 0.1.0 should reject executable migration transforms", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-local-data-transform-version-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { localData: "local-data.ir.json" } } });
+    await writeJson(root, "local-data.ir.json", {
+      schema: "threenative.local-data",
+      version: "0.1.0",
+      components: [],
+      migration: {
+        currentVersion: 2,
+        migrators: [1],
+        transforms: [{ fromVersion: 1, operations: [{ from: "OldProgress", kind: "deleteResource" }] }],
+      },
+      resources: [],
+      saveSlots: [{ appVersion: "1.0.0", id: "slot.main", schemaVersion: 2 }],
+      settings: [],
+    });
+
+    const result = await validateBundle(root);
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_LOCAL_DATA_MIGRATION_TRANSFORMS_VERSION_UNSUPPORTED"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

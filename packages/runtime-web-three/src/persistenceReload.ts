@@ -1,7 +1,7 @@
 import type { IAssetReloadReportIr, ILocalDataIr, IWorldIr } from "@threenative/ir";
 
 import { observeWebAssetReload } from "./assetReload.js";
-import { createWebPersistenceService, type IPersistenceSaveRecord } from "./systems/services/persistence.js";
+import { createMemoryPersistenceStorage, createWebPersistenceService, type IPersistenceSaveRecord } from "./systems/services/persistence.js";
 
 export interface IPersistenceReloadReport {
   boundaries: IPersistenceReloadBoundary[];
@@ -59,7 +59,7 @@ export interface IPersistenceReloadBoundary {
 }
 
 export function tracePersistenceReload(localData: ILocalDataIr, world: IWorldIr): IPersistenceReloadReport {
-  const service = createWebPersistenceService(localData);
+  const service = createWebPersistenceService(localData, { storage: createMemoryPersistenceStorage() });
   const slot = localData.saveSlots[0]?.id ?? "slot.main";
   service.setSetting("audio.master", 0.6);
   const save = service.save(slot, world);

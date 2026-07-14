@@ -9,6 +9,7 @@ import * as THREE from "three";
 import { createGameLoopState, runGameFrame } from "./gameLoop.js";
 import { createInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { createMemoryPersistenceStorage, createWebPersistenceService } from "./systems/services/persistence.js";
 import { renderUi } from "./ui/renderUi.js";
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), "../../..");
@@ -644,7 +645,16 @@ test("gameLoop should expose drained UI actions and values to scripts for one fr
 });
 
 test("gameLoop should keep one persistence service and apply a loaded world", async () => {
+  const localData = {
+    schema: "threenative.local-data" as const,
+    version: "0.1.0" as const,
+    components: [],
+    resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" as const } } } }],
+    saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
+    settings: [],
+  };
   const state = createGameLoopState();
+  state.persistence = createWebPersistenceService(localData, { storage: createMemoryPersistenceStorage() });
   const world = makeWorld();
   world.resources = { Progress: { level: 4 } };
   let frame = 0;
@@ -652,14 +662,7 @@ test("gameLoop should keep one persistence service and apply a loaded world", as
   persistenceSystem.services = ["persistence.load", "persistence.save"];
   const options = {
     delta: 1 / 60,
-    localData: {
-      schema: "threenative.local-data" as const,
-      version: "0.1.0" as const,
-      components: [],
-      resources: [{ id: "Progress", schema: { fields: { level: { kind: "integer" } } } }],
-      saveSlots: [{ appVersion: "1.0.0", id: "slot.auto", schemaVersion: 1 }],
-      settings: [],
-    },
+    localData,
     mapped: makeMapped(),
     module: {
       systems: {

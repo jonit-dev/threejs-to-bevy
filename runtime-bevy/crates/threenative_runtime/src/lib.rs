@@ -49,6 +49,7 @@ pub mod patrol;
 pub mod performance_metrics;
 pub mod persistence;
 pub mod persistence_reload;
+pub mod persistence_storage;
 pub mod physics;
 pub mod physics_sensors;
 pub mod picking;

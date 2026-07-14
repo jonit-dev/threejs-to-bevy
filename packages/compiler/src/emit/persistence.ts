@@ -4,7 +4,7 @@ import type { IPersistenceDeclaration } from "@threenative/sdk";
 export function emitPersistence(persistence: IPersistenceDeclaration): ILocalDataIr {
   return {
     schema: "threenative.local-data",
-    version: "0.1.0",
+    version: persistence.migration?.transforms === undefined ? "0.1.0" : "0.2.0",
     ...(persistence.autosave === undefined
       ? {}
       : {
@@ -17,7 +17,20 @@ export function emitPersistence(persistence: IPersistenceDeclaration): ILocalDat
     components: persistence.components.map((component) => ({ id: component.id, schema: component.schema })),
     ...(persistence.migration === undefined
       ? {}
-      : { migration: { currentVersion: persistence.migration.currentVersion, migrators: [...persistence.migration.migrators] } }),
+      : {
+          migration: {
+            currentVersion: persistence.migration.currentVersion,
+            migrators: [...persistence.migration.migrators],
+            ...(persistence.migration.transforms === undefined
+              ? {}
+              : {
+                  transforms: persistence.migration.transforms.map((transform) => ({
+                    fromVersion: transform.fromVersion,
+                    operations: transform.operations.map((operation) => ({ ...operation })),
+                  })),
+                }),
+          },
+        }),
     resources: persistence.resources.map((resource) => ({ id: resource.id, schema: resource.schema })),
     saveSlots: persistence.saveSlots.map((slot) => ({
       appVersion: slot.appVersion,

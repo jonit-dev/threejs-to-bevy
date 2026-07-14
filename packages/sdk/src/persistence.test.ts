@@ -32,3 +32,23 @@ test("should reject runtime handles in persistence schemas", () => {
     name: "SdkError",
   });
 });
+
+test("should derive migration registry metadata from declarative transforms", () => {
+  const migration = persistenceMigration({
+    currentVersion: 3,
+    transforms: [
+      { fromVersion: 2, operations: [{ from: "LegacyInventory", kind: "renameComponent", to: "Inventory" }] },
+      { fromVersion: 1, operations: [{ from: "obsolete.setting", kind: "deleteSetting" }] },
+    ],
+  });
+
+  assert.deepEqual(migration.migrators, [1, 2]);
+  assert.deepEqual(migration.transforms?.map((transform) => transform.fromVersion), [1, 2]);
+});
+
+test("should reject malformed migration operations", () => {
+  assert.throws(() => persistenceMigration({
+    currentVersion: 2,
+    transforms: [{ fromVersion: 1, operations: [{ from: "Progress", kind: "renameResource" }] }],
+  }), /rename operations require a non-empty to value/);
+});

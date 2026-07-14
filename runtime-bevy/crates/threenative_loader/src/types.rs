@@ -1293,6 +1293,24 @@ pub struct LocalDataMigrationIr {
     pub current_version: u32,
     #[serde(default)]
     pub migrators: Vec<u32>,
+    #[serde(default)]
+    pub transforms: Vec<LocalDataMigrationTransformIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalDataMigrationTransformIr {
+    pub from_version: u32,
+    #[serde(default)]
+    pub operations: Vec<LocalDataMigrationOperationIr>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+pub struct LocalDataMigrationOperationIr {
+    pub from: String,
+    pub kind: String,
+    #[serde(default)]
+    pub to: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]

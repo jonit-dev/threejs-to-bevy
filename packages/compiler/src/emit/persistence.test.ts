@@ -5,7 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 
 import { validateBundle } from "@threenative/ir";
-import { World, definePersistence, persistComponent, persistResource, persistSetting, saveSlot } from "@threenative/sdk";
+import { World, definePersistence, persistenceMigration, persistComponent, persistResource, persistSetting, saveSlot } from "@threenative/sdk";
 
 import { emitPersistence } from "./persistence.js";
 import { emitBundle } from "./bundle.js";
@@ -88,4 +88,23 @@ test("should emit local data IR from structured persistence source", async () =>
   } finally {
     await rm(root, { force: true, recursive: true });
   }
+});
+
+test("should emit local data IR 0.2.0 only for executable migration transforms", () => {
+  const legacy = emitPersistence(definePersistence({
+    migration: persistenceMigration({ currentVersion: 2, migrators: [1] }),
+  }));
+  const executable = emitPersistence(definePersistence({
+    migration: persistenceMigration({
+      currentVersion: 2,
+      transforms: [{ fromVersion: 1, operations: [{ from: "OldProgress", kind: "renameResource", to: "Progress" }] }],
+    }),
+  }));
+
+  assert.equal(legacy.version, "0.1.0");
+  assert.equal(executable.version, "0.2.0");
+  assert.deepEqual(executable.migration?.migrators, [1]);
+  assert.deepEqual(executable.migration?.transforms?.[0]?.operations, [
+    { from: "OldProgress", kind: "renameResource", to: "Progress" },
+  ]);
 });

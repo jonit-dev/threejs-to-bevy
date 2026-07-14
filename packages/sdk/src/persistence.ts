@@ -32,6 +32,26 @@ export interface ISaveSlotDeclaration {
 export interface IPersistenceMigrationDeclaration {
   currentVersion: number;
   migrators: number[];
+  transforms?: IPersistenceMigrationTransformDeclaration[];
+}
+
+export type PersistenceMigrationOperationKind =
+  | "deleteComponent"
+  | "deleteResource"
+  | "deleteSetting"
+  | "renameComponent"
+  | "renameResource"
+  | "renameSetting";
+
+export interface IPersistenceMigrationOperationDeclaration {
+  from: string;
+  kind: PersistenceMigrationOperationKind;
+  to?: string;
+}
+
+export interface IPersistenceMigrationTransformDeclaration {
+  fromVersion: number;
+  operations: IPersistenceMigrationOperationDeclaration[];
 }
 
 export interface IAutosaveDeclaration {
@@ -108,12 +128,51 @@ export function saveSlot(id: string, options: { appVersion: string; schemaVersio
   return { appVersion: options.appVersion, id, schemaVersion: options.schemaVersion };
 }
 
-export function persistenceMigration(options: { currentVersion: number; migrators?: number[] }): IPersistenceMigrationDeclaration {
+export function persistenceMigration(options: {
+  currentVersion: number;
+  migrators?: number[];
+  transforms?: IPersistenceMigrationTransformDeclaration[];
+}): IPersistenceMigrationDeclaration {
   assertPositiveInteger(options.currentVersion, "TN_SDK_PERSIST_MIGRATION_VERSION_INVALID", "Persistence current version must be a positive integer.");
   for (const version of options.migrators ?? []) {
     assertPositiveInteger(version, "TN_SDK_PERSIST_MIGRATOR_INVALID", "Persistence migrator versions must be positive integers.");
   }
-  return { currentVersion: options.currentVersion, migrators: [...(options.migrators ?? [])].sort((left, right) => left - right) };
+  const transformVersions = new Set<number>();
+  const transforms = (options.transforms ?? []).map((transform) => {
+    assertPositiveInteger(transform.fromVersion, "TN_SDK_PERSIST_MIGRATOR_INVALID", "Persistence transform versions must be positive integers.");
+    if (transform.fromVersion >= options.currentVersion) {
+      throw new SdkError("TN_SDK_PERSIST_MIGRATOR_INVALID", "Persistence transform fromVersion must be lower than currentVersion.");
+    }
+    if (transformVersions.has(transform.fromVersion)) {
+      throw new SdkError("TN_SDK_PERSIST_MIGRATOR_DUPLICATE", `Persistence transform from version ${transform.fromVersion} is duplicated.`);
+    }
+    transformVersions.add(transform.fromVersion);
+    return {
+      fromVersion: transform.fromVersion,
+      operations: transform.operations.map(normalizeMigrationOperation),
+    };
+  }).sort((left, right) => left.fromVersion - right.fromVersion);
+  const migrators = [...new Set([...(options.migrators ?? []), ...transformVersions])].sort((left, right) => left - right);
+  return {
+    currentVersion: options.currentVersion,
+    migrators,
+    ...(transforms.length === 0 ? {} : { transforms }),
+  };
+}
+
+function normalizeMigrationOperation(operation: IPersistenceMigrationOperationDeclaration): IPersistenceMigrationOperationDeclaration {
+  if (!["deleteComponent", "deleteResource", "deleteSetting", "renameComponent", "renameResource", "renameSetting"].includes(operation.kind)) {
+    throw new SdkError("TN_SDK_PERSIST_MIGRATION_OPERATION_INVALID", `Persistence migration operation kind '${String(operation.kind)}' is not supported.`);
+  }
+  assertId(operation.from, "TN_SDK_PERSIST_MIGRATION_OPERATION_INVALID", "Persistence migration operation from must not be empty.");
+  const isRename = operation.kind.startsWith("rename");
+  if (isRename && (operation.to === undefined || operation.to.trim() === "")) {
+    throw new SdkError("TN_SDK_PERSIST_MIGRATION_OPERATION_INVALID", "Persistence rename operations require a non-empty to value.");
+  }
+  if (!isRename && operation.to !== undefined) {
+    throw new SdkError("TN_SDK_PERSIST_MIGRATION_OPERATION_INVALID", "Persistence delete operations must not declare a to value.");
+  }
+  return { from: operation.from, kind: operation.kind, ...(operation.to === undefined ? {} : { to: operation.to }) };
 }
 
 export function autosave(options: { checkpointEvents?: string[]; debounceMs: number; intervalSeconds?: number }): IAutosaveDeclaration {
