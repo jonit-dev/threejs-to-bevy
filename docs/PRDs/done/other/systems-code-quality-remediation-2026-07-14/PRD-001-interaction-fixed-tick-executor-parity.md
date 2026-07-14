@@ -3,7 +3,7 @@
 Complexity: 7 -> HIGH mode
 
 Date: 2026-07-14
-Status: PLANNED
+Status: COMPLETE
 Owner: IR contracts, web runtime, native runtime, and conformance tooling
 
 ## 1. Context
@@ -89,10 +89,10 @@ exists in Interaction IR.
 
 **Implementation:**
 
-- [ ] Add unequal-size overlap and just-outside negative cases.
-- [ ] Predicate on a typed component and patch a typed component field.
-- [ ] Apply a non-identity quaternion and assert exact normalized state.
-- [ ] Prove each old native behavior is caught by a state comparison.
+- [x] Add unequal-size overlap and just-outside negative cases.
+- [x] Predicate on a typed component and patch a typed component field.
+- [x] Apply a non-identity quaternion and assert exact normalized state.
+- [x] Prove each old native behavior is caught by a state comparison.
 
 **Verification:** focused web interaction tests and
 `cargo test -p threenative_runtime --test interactions --manifest-path runtime-bevy/Cargo.toml`.
@@ -113,11 +113,11 @@ and `should preserve quaternion rotation in setTransform`.
 
 **Implementation:**
 
-- [ ] Route predicate lookup and patching through one loader-owned component API.
-- [ ] Reject unknown typed fields or invalid value shapes without reporting the effect applied.
-- [ ] Compute overlap from typed Collider size and Transform position.
-- [ ] Apply position, quaternion rotation, and scale independently.
-- [ ] Record writes for typed patches and transform fields through the existing ledger.
+- [x] Route predicate lookup and patching through one loader-owned component API.
+- [x] Reject unknown typed fields or invalid value shapes without reporting the effect applied.
+- [x] Compute overlap from typed Collider size and Transform position.
+- [x] Apply position, quaternion rotation, and scale independently.
+- [x] Record writes for typed patches and transform fields through the existing ledger.
 
 **Verification:** both focused suites pass; invalid typed patches leave state
 unchanged and do not consume once/cooldown gates.
@@ -137,9 +137,9 @@ consuming the gate` and `should record typed transform writes in the interaction
 
 **Implementation:**
 
-- [ ] Emit paired web/native artifacts for all four residuals.
-- [ ] Preserve exact trace order and final typed component/transform state.
-- [ ] Add negative controls for old center-distance, `extra`-only, and no-rotation behavior.
+- [x] Emit paired web/native artifacts for all four residuals.
+- [x] Preserve exact trace order and final typed component/transform state.
+- [x] Add negative controls for old center-distance, `extra`-only, and no-rotation behavior.
 
 **Verification:** `pnpm verify:conformance` and the focused interaction parity tests.
 
@@ -148,16 +148,40 @@ extra-only typed state`, and `should reject a missing native rotation`.
 
 ## 5. Acceptance Criteria
 
-- [ ] Overlap uses the same collider-size semantics on web and native.
-- [ ] Predicates read typed and custom components consistently.
-- [ ] Patches update typed and custom components or fail explicitly.
-- [ ] Native `setTransform` preserves authored quaternion rotation.
-- [ ] Failed effects do not consume gates or claim success in traces.
-- [ ] Paired trace/state artifacts and negative controls pass.
-- [ ] Automated checkpoints pass after all phases.
+- [x] Overlap uses the same collider-size semantics on web and native.
+- [x] Predicates read typed and custom components consistently.
+- [x] Patches update typed and custom components or fail explicitly.
+- [x] Native `setTransform` preserves authored quaternion rotation.
+- [x] Failed effects do not consume gates or claim success in traces.
+- [x] Paired trace/state artifacts and negative controls pass.
+- [x] Automated checkpoints pass after all phases.
 
 ## 6. Verification Evidence (complete during implementation)
 
 Record focused test counts, residual artifact paths, `pnpm verify:conformance`
 result, and any status/capability changes here. No manual visual checkpoint is
 required because exact world state proves the rotation contract.
+
+- Web interaction suite: 10/10 passed (`node --test
+  packages/runtime-web-three/dist/interactions.test.js`).
+- Native interaction suite: 9/9 passed (`cargo test -p threenative_runtime
+  --test interactions --manifest-path runtime-bevy/Cargo.toml`).
+- Interaction parity comparator: 5/5 passed (`node --test
+  tools/verify/dist/interactionParity.test.js`), including all three required
+  legacy-output negative controls.
+- Aggregate conformance: passed (`pnpm verify:conformance`); report at
+  `packages/ir/artifacts/conformance/verification-report.json`.
+- Paired residual evidence:
+  `packages/ir/artifacts/conformance/interactions/residuals.web.json` and
+  `packages/ir/artifacts/conformance/interactions/residuals.native.json`.
+- The aggregate gate regenerates those artifacts from the shared fixture via
+  `tools/verify/src/interactionResidualArtifacts.ts` and the bounded
+  `threenative_interaction_residual_trace` native binary before comparison;
+  they are not hand-authored snapshots.
+- Native invalid typed patches emit the exact actionable
+  `TN_INTERACTION_COMPONENT_PATCH_INVALID` diagnostic while leaving the gate
+  reusable, state atomic, completion false, and the failed effect absent from
+  the trace.
+- `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md` now records zero confirmed
+  interaction executor bugs and an 84/100 row score; scripting capability and
+  the `docs/STATUS.md` index now link the promoted typed-state evidence.

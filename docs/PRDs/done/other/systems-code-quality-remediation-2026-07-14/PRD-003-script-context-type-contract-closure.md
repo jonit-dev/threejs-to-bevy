@@ -3,7 +3,7 @@
 Complexity: 6 -> MEDIUM mode
 
 Date: 2026-07-14
-Status: PLANNED
+Status: DONE
 Owner: Script stdlib, shared IR service types, compiler, and runtime hosts
 
 ## 1. Context
@@ -141,16 +141,47 @@ facade` and `should reject an unknown ScriptContext property`.
 
 ## 5. Acceptance Criteria
 
-- [ ] Every promoted runtime service has a portable public facade type.
-- [ ] Public DTOs do not depend on the web or native adapter implementation.
-- [ ] `ProjectContext` still narrows project-owned identifiers.
-- [ ] Wrong calls fail TypeScript compilation in negative fixtures.
-- [ ] The 22-entry omission allowlist and broad context index signature are gone.
-- [ ] Registry drift fails when a new service misses public, compiler, web, or
+- [x] Every promoted runtime service has a portable public facade type.
+- [x] Public DTOs do not depend on the web or native adapter implementation.
+- [x] `ProjectContext` still narrows project-owned identifiers.
+- [x] Wrong calls fail TypeScript compilation in negative fixtures.
+- [x] The 22-entry omission allowlist and broad context index signature are gone.
+- [x] Registry drift fails when a new service misses public, compiler, web, or
       native ownership.
-- [ ] Automated checkpoints pass after each phase.
+- [x] Automated checkpoints pass after each phase.
 
 ## 6. Verification Evidence (complete during implementation)
 
-Record migrated service families, compile-fixture results, generated-declaration
-diff, drift-test result, and conformance result.
+Implemented all 53 promoted service methods across named public facade families
+plus the nine non-service portable roots. Portable DTOs now live in
+`packages/ir/src/scriptServices.ts`; the web context consumes those DTOs, the
+SDK composes the public context with ECS-specific overrides, and generated
+`ProjectContext` declarations preserve entity, input, and resource ID
+narrowing after removing the corresponding broad overloads.
+
+Positive compile fixtures cover every promoted facade. Negative
+`@ts-expect-error` cases reject invalid physics vectors, invalid setting
+values, malformed navigation payloads, unsafe result assumptions, unknown
+context properties, and unknown generated project IDs. The prior omission
+allowlist and broad context index signature are removed.
+
+Registry-derived drift proof covers all 53 public methods, shared DTO ownership,
+web structural assignability, compiler declarations, and the actual native
+bridge's 53 methods and 53 emitted service effects. Distribution build and
+publish package order now comes from one dependency-aware list, with IR and
+script-stdlib built before SDK and a workspace dependency-order test guarding
+the clean topology.
+
+Verification completed on 2026-07-14:
+
+- `pnpm --filter @threenative/script-stdlib test` - PASS, 38/38.
+- `pnpm --filter @threenative/compiler test` - PASS, 273/273.
+- compiler generated-consumer/typegen focused tests - PASS, 2/2.
+- `pnpm --filter @threenative/sdk typecheck` - PASS.
+- CLI generated types test - PASS, 1/1.
+- `pnpm --filter @threenative/ir test` - PASS, 382/382.
+- `pnpm --filter @threenative/runtime-web-three test` - PASS, 463/463.
+- distribution dependency/root build-order tests - PASS, 3/3.
+- `pnpm check:docs` and `git diff --check` - PASS.
+- `pnpm verify:conformance` - PASS.
+- Independent implementation re-review - PASS with no blockers.

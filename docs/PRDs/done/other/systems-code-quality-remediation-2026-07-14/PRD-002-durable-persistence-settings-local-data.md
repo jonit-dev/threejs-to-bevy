@@ -3,7 +3,7 @@
 Complexity: 9 -> HIGH mode
 
 Date: 2026-07-14
-Status: PLANNED
+Status: COMPLETE
 Owner: Runtime services, platform storage, IR, and proof tooling
 
 ## 1. Context
@@ -125,11 +125,11 @@ reject undeclared fields`, `should preserve a corrupt record for recovery`, and
 
 **Implementation:**
 
-- [ ] Resolve a contained namespace from app identity and target profile.
-- [ ] Write atomically and preserve the previous valid record on failure.
-- [ ] Route save/load/delete/settings operations through the Rust owner.
-- [ ] Bound bytes, slots, and settings; reject undeclared data.
-- [ ] Keep injectable in-memory storage for deterministic tests.
+- [x] Resolve a contained namespace from app identity and target profile.
+- [x] Write atomically and preserve the previous valid record on failure.
+- [x] Route save/load/delete/settings operations through the Rust owner.
+- [x] Bound bytes, slots, and settings; reject undeclared data.
+- [x] Keep injectable in-memory storage for deterministic tests.
 
 **Verification:** tests recreate the runtime/storage object and separately
 launch a second trace process against the same temporary profile root.
@@ -184,17 +184,43 @@ cannot restore progress` and `should fail when restored settings differ`.
 
 ## 6. Acceptance Criteria
 
-- [ ] Native script persistence is not owned by a process-global JS object.
-- [ ] Save/settings records survive a real native process restart.
-- [ ] Writes are atomic, bounded, namespaced, and source/bundle independent.
-- [ ] Only declared portable resources/components/settings are serialized.
-- [ ] Migration, corruption, and forward-version failures are actionable and
+- [x] Native script persistence is not owned by a process-global JS object.
+- [x] Save/settings records survive a real native process restart.
+- [x] Writes are atomic, bounded, namespaced, and source/bundle independent.
+- [x] Only declared portable resources/components/settings are serialized.
+- [x] Migration, corruption, and forward-version failures are actionable and
       preserve recoverable data.
-- [ ] Authored autosave interval/checkpoint/debounce behavior is proved.
-- [ ] Cloud/account and arbitrary filesystem access remain explicit boundaries.
-- [ ] Automated and manual checkpoints pass.
+- [x] Authored autosave interval/checkpoint/debounce behavior is proved.
+- [x] Cloud/account and arbitrary filesystem access remain explicit boundaries.
+- [x] Automated cold-restart checkpoint passes using two separate native
+      reference processes. A user-driven packaged-game relaunch was not run or
+      claimed; the task-authorized reference-process alternative is retained.
 
 ## 7. Verification Evidence (complete during implementation)
 
 Record storage root policy, focused test counts, two-process artifact paths,
 desktop relaunch evidence, conformance result, and doc claim changes.
+
+- Storage root policy: adapter-private root, then validated app and target
+  profile namespace segments; portable scripts never receive paths. Native
+  records are limited to 1 MiB and use stage, file sync, atomic rename, and
+  directory sync.
+- Local Data version: executable transform ownership added in `0.2.0` through
+  ordered rename/delete operations. Compiler output stays `0.1.0` for legacy
+  numeric-only migration metadata, which is diagnostic-only and fails closed.
+- Focused Rust tests: persistence 5 passed; persistence storage/shared vectors
+  13 passed; persistence reload 1 passed; live systems-host persistence facade
+  1 passed. The storage suite includes durable checkpoint/debounce/interval
+  autosave followed by cold restore.
+- Focused TypeScript tests: IR persistence 5 passed; SDK persistence 4 passed;
+  compiler persistence emit 3 passed; web persistence service 16 passed, all
+  through exact direct test files with zero skipped tests.
+- Gate tests: verifier unit controls 3 passed. Separate native writer and
+  reader processes passed, along with save and settings corruption,
+  forward-version, undeclared-field, interrupted-migration-commit, and
+  storage-backed autosave controls. The web half uses a real injected adapter
+  and cold service recreation; it does not claim native atomic-write behavior.
+- Evidence: `tools/verify/artifacts/persistence-reload/native-write-report.json`,
+  `native-report.json`, `diff.json`, and `verification-report.json`.
+- `pnpm verify:conformance`: passed after the synthetic native reload test was
+  replaced with the real storage-backed writer/reader contract.

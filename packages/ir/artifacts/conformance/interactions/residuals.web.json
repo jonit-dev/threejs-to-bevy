@@ -1,0 +1,170 @@
+{
+  "adapter": "web",
+  "componentStorage": {
+    "residual-overlap-source": {
+      "Collider": "typed",
+      "Transform": "typed"
+    },
+    "residual-small-outside": {
+      "Collider": "typed",
+      "Transform": "typed"
+    },
+    "residual-small-source": {
+      "Collider": "typed",
+      "Transform": "typed"
+    },
+    "residual-typed-source": {
+      "Collider": "typed",
+      "Health": "custom",
+      "Transform": "typed"
+    }
+  },
+  "components": {
+    "residual-overlap-source": {
+      "Collider": {
+        "kind": "box",
+        "size": [
+          4,
+          2,
+          2
+        ],
+        "layer": "interaction-only",
+        "mask": [
+          "never-collide"
+        ]
+      },
+      "Transform": {
+        "position": [
+          20,
+          0,
+          0
+        ]
+      }
+    },
+    "residual-small-outside": {
+      "Collider": {
+        "kind": "box",
+        "size": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "layer": "interaction-only",
+        "mask": [
+          "never-collide"
+        ]
+      },
+      "Transform": {
+        "position": [
+          25.899999618530273,
+          0,
+          0
+        ]
+      }
+    },
+    "residual-small-source": {
+      "Collider": {
+        "kind": "box",
+        "size": [
+          0.20000000298023224,
+          0.20000000298023224,
+          0.20000000298023224
+        ],
+        "layer": "interaction-only",
+        "mask": [
+          "never-collide"
+        ]
+      },
+      "Transform": {
+        "position": [
+          25,
+          0,
+          0
+        ]
+      }
+    },
+    "residual-typed-source": {
+      "Collider": {
+        "kind": "box",
+        "size": [
+          1,
+          1,
+          1
+        ],
+        "layer": "interaction-only",
+        "mask": [
+          "never-collide"
+        ],
+        "friction": 0.25
+      },
+      "Health": {
+        "value": 2
+      },
+      "Transform": {
+        "position": [
+          30,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0.7071067690849304,
+          0,
+          0.7071067690849304
+        ]
+      }
+    }
+  },
+  "diagnostics": [],
+  "entities": [
+    "crate",
+    "enemy",
+    "pickup",
+    "player",
+    "residual-overlap-boundary",
+    "residual-overlap-outside",
+    "residual-overlap-source",
+    "residual-small-outside",
+    "residual-small-source",
+    "residual-typed-source",
+    "residual-typed-target",
+    "sensor",
+    "worker"
+  ],
+  "resources": {
+    "Score": {
+      "value": 10
+    }
+  },
+  "scenario": "residuals",
+  "schema": "threenative.interaction-parity",
+  "traces": [
+    {
+      "tick": 0,
+      "interaction": "residual-overlap-boundary",
+      "source": "residual-overlap-source",
+      "target": "residual-overlap-boundary",
+      "detector": "overlap",
+      "gate": "passed",
+      "effects": [
+        "addResource"
+      ],
+      "completion": false
+    },
+    {
+      "tick": 0,
+      "interaction": "residual-typed-state",
+      "source": "residual-typed-source",
+      "target": "residual-typed-target",
+      "detector": "distance3d",
+      "gate": "passed",
+      "effects": [
+        "patchComponent",
+        "patchComponent",
+        "setTransform"
+      ],
+      "completion": false
+    }
+  ],
+  "version": "0.1.0"
+}

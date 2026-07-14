@@ -3,7 +3,7 @@
 Complexity: 5 -> MEDIUM mode
 
 Date: 2026-07-14
-Status: PLANNED
+Status: COMPLETE
 Owner: CLI model-test, templates/dependency resolution, web asset mapping, and asset proof
 
 ## 1. Context
@@ -175,18 +175,44 @@ owning verification report`.
 
 ## 6. Acceptance Criteria
 
-- [ ] Generated source/config/package/docs contain no absolute workspace path.
-- [ ] A moved generated project validates and builds in a supported environment.
-- [ ] Successfully loaded GLBs retain authored material ownership.
-- [ ] Fallback geometry/material is separate, diagnostic, and cannot count as
+- [x] Generated source/config/package/docs contain no absolute workspace path.
+- [x] A moved generated project validates and builds in a supported environment.
+- [x] Successfully loaded GLBs retain authored material ownership.
+- [x] Fallback geometry/material is separate, diagnostic, and cannot count as
       imported material evidence.
-- [ ] Reported material observations agree with inspection/runtime state.
-- [ ] Colored/metallic positive fixture and white-fallback negative control pass.
-- [ ] Screenshot/manual evidence retains the isolated-proof caveat.
-- [ ] Automated and manual checkpoints pass.
+- [x] Reported material observations agree with inspection/runtime state.
+- [x] Colored/metallic positive fixture and white-fallback negative control pass.
+- [x] Screenshot/manual evidence retains the isolated-proof caveat.
+- [x] Automated and manual checkpoints pass.
 
 ## 7. Verification Evidence (complete during implementation)
 
-Record relocation roots, generated package excerpt, focused test counts,
-material observation report, contact-sheet path, negative-control result, and
-doc claim changes.
+The retained gate report is
+`tools/verify/artifacts/model-test-material/verification-report.json`. It
+records relocation from `relocation-from` to `relocation-to`, confirms the
+source root is absent, and records successful validation and build. Generated
+package metadata uses compatible `^0.1.11` CLI and SDK dependencies with no
+absolute checkout path.
+
+The material report records expected and observed `CobaltMetal` values:
+base color `[0.08, 0.35, 0.9]`, metallic `0.82`, roughness `0.24`, and distinct
+base-color and metallic-roughness texture-presence flags. The positive verdict
+is `matches-authored`. The retained command-level negative report at
+`tools/verify/artifacts/model-test-material/negative-control-report.json`
+records `TN_MODEL_TEST_MATERIAL_VERIFY_FAILED` and `fallback-only`; its white
+fallback screenshot is retained beside the generated negative-control project.
+The gate recursively rejects checkout-root leaks across retained text files.
+
+The retained four-angle evidence is
+`tools/verify/artifacts/model-test-material/contact-sheet.png`, backed by yaw
+captures at 0, 90, 180, and 270 degrees. Manual inspection confirmed the blue
+authored material and asymmetric marker rotate between views, with no white
+fallback. This remains isolated model proof, not final-scene composition proof.
+
+Focused verification passed: CLI model-test 17 tests, SDK assets 10 tests, IR
+assets 25 tests, compiler scene-to-world 12 tests, web mapper 26 tests, and the
+retained material gate test 1 test. `pnpm verify:model-test-material` passed.
+Capability and workflow claims were updated in
+`docs/status/capabilities/assets.md`, `docs/STATUS.md`,
+`docs/workflows/asset-pipeline.md`, and the Blender audit; the systems quality
+row links the retained gate evidence.
