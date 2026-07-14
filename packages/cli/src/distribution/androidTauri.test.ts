@@ -117,6 +117,50 @@ test("should write an aab report with redacted signing metadata", async (context
   assert.equal(await readFile(join(shellPath, "gen/android/app/build.gradle.kts"), "utf8"), androidGradleFixture());
 });
 
+test("should report a debug apk signer without claiming the release credential", async (context) => {
+  const root = await mkdtemp(join(tmpdir(), "tn-android-tauri-apk-"));
+  context.after(() => rm(root, { force: true, recursive: true }));
+  const shellPath = join(root, "shell");
+  const outputPath = join(root, "output");
+  await mkdir(shellPath, { recursive: true });
+  const credential = createCredentialHandle("ci:android-upload", JSON.stringify({
+    keyAlias: "upload",
+    keyPassword: "debug-apk-key-canary",
+    storeFile: join(root, "upload.jks"),
+    storePassword: "debug-apk-store-canary",
+  }));
+  const commands: string[][] = [];
+  const runner: AndroidCommandRunner = async (command, args, options) => {
+    commands.push([command, ...args]);
+    if (args[1] === "init") {
+      await mkdir(resolve(options.cwd, "gen/android/app/src/main"), { recursive: true });
+      await writeFile(resolve(options.cwd, "gen/android/app/build.gradle.kts"), androidGradleFixture());
+      return;
+    }
+    if (args[0] === "android") {
+      const artifact = resolve(options.cwd, "gen/android/app/build/outputs/apk/universal/debug/app-universal-debug.apk");
+      await mkdir(resolve(artifact, ".."), { recursive: true });
+      await writeFile(artifact, "android debug signed apk fixture");
+    }
+  };
+
+  const report = await buildAndroidTauriDistribution({
+    architecture: "x86_64",
+    commandRunner: runner,
+    credential,
+    distribution: source([]),
+    env: {},
+    format: "apk",
+    outputPath,
+    shellPath,
+    tauriCliPath: "cargo-tauri",
+  });
+
+  assert.deepEqual(report.signing, { status: "signed", verification: "apksigner" });
+  assert.ok(commands.some(([command, operation]) => command?.endsWith("apksigner") && operation === "verify"));
+  await assert.rejects(readFile(join(shellPath, "gen/android/keystore.properties")), /ENOENT/);
+});
+
 test("should reject an aab containing an individual credential secret", async (context) => {
   const root = await mkdtemp(join(tmpdir(), "tn-android-tauri-leak-"));
   context.after(() => rm(root, { force: true, recursive: true }));

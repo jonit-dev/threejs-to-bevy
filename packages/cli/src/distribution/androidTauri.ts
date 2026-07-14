@@ -47,7 +47,7 @@ export interface IAndroidTauriReport {
   platform: "android";
   runtime: "webview";
   schema: "threenative.package-report";
-  signing: { credentialRef?: string; status: "signed" | "unsigned"; verification?: "jarsigner" };
+  signing: { credentialRef?: string; status: "signed" | "unsigned"; verification?: "apksigner" | "jarsigner" };
   sourceHash: string;
   toolchain: { gradle: "tauri-generated"; ndk: "27.0.12077973"; tauriCli: "2.11.4" };
   version: "0.1.0";
@@ -165,12 +165,13 @@ export async function buildAndroidTauriDistribution(options: {
   }
   let signingState: Awaited<ReturnType<typeof writeAndroidSigningFiles>> | undefined;
   try {
-    signingState = options.credential === undefined
+    const releaseCredential = options.format === "aab" ? options.credential : undefined;
+    signingState = releaseCredential === undefined
       ? undefined
-      : await writeAndroidSigningFiles(options.shellPath, options.credential);
-    const credentials = options.credential === undefined
+      : await writeAndroidSigningFiles(options.shellPath, releaseCredential);
+    const credentials = releaseCredential === undefined
       ? []
-      : [options.credential, ...(signingState?.secretCanaries ?? []).map((value) => ({ reference: options.credential!.reference, value }))];
+      : [releaseCredential, ...(signingState?.secretCanaries ?? []).map((value) => ({ reference: releaseCredential.reference, value }))];
     const target = options.architecture === "arm64" ? "aarch64" : "x86_64";
     const args = ["android", "build", "--ci", "--target", target, options.format === "apk" ? "--apk" : "--aab"];
     if (options.format === "apk") args.push("--debug");
@@ -178,6 +179,8 @@ export async function buildAndroidTauriDistribution(options: {
     const generated = await findAndroidArtifact(resolve(options.shellPath, "gen/android/app/build/outputs"), options.format);
     if (options.format === "aab") {
       await (options.commandRunner ?? runAndroidCommand)("jarsigner", ["-verify", generated], { cwd: options.shellPath, env: options.env, sensitiveCredentials: credentials });
+    } else {
+      await (options.commandRunner ?? runAndroidCommand)(await resolveApkSigner(options.env), ["verify", generated], { cwd: options.shellPath, env: options.env, sensitiveCredentials: [] });
     }
     await rm(options.outputPath, { force: true, recursive: true });
     await mkdir(options.outputPath, { recursive: true });
@@ -193,8 +196,8 @@ export async function buildAndroidTauriDistribution(options: {
       runtime: "webview",
       schema: "threenative.package-report",
       signing: {
-        ...(options.credential === undefined ? {} : { credentialRef: options.credential.reference, verification: "jarsigner" as const }),
-        status: options.credential === undefined ? "unsigned" : "signed",
+        ...(options.format === "aab" ? { credentialRef: releaseCredential!.reference, verification: "jarsigner" as const } : { verification: "apksigner" as const }),
+        status: "signed",
       },
       sourceHash: createHash("sha256").update(JSON.stringify(normalizeDistribution(options.distribution))).digest("hex"),
       toolchain: { gradle: "tauri-generated", ndk: "27.0.12077973", tauriCli: "2.11.4" },
@@ -210,6 +213,27 @@ export async function buildAndroidTauriDistribution(options: {
       await writeFile(signingState.gradlePath, signingState.originalGradle);
     }
   }
+}
+
+async function resolveApkSigner(env: NodeJS.ProcessEnv): Promise<string> {
+  const roots = [env.ANDROID_HOME, env.ANDROID_SDK_ROOT, env.HOME === undefined ? undefined : resolve(env.HOME, "Android/Sdk")]
+    .filter((value): value is string => value !== undefined);
+  for (const root of roots) {
+    try {
+      const versions = (await readdir(resolve(root, "build-tools"))).sort().reverse();
+      for (const version of versions) {
+        const candidate = resolve(root, "build-tools", version, process.platform === "win32" ? "apksigner.bat" : "apksigner");
+        try {
+          if ((await stat(candidate)).isFile()) return candidate;
+        } catch {
+          // Continue through installed build-tools versions.
+        }
+      }
+    } catch {
+      // Fall back to PATH when this SDK root is unavailable.
+    }
+  }
+  return "apksigner";
 }
 
 async function writeAndroidSigningFiles(shellPath: string, credential: ICredentialHandle): Promise<{

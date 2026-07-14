@@ -529,13 +529,27 @@ input evidence for both promoted runtimes.
 
 ### Phase 7: Android webview distribution - A Tauri-wrapped game installs and runs on Android
 
-**Files (max 5):**
+**Owning Android adapter files (initial slice):**
 
 - `packages/cli/src/distribution/androidTauri.ts` - Android Tauri invocation.
 - `packages/cli/src/distribution/androidTauri.test.ts` - Gradle/config/report tests.
 - `packages/cli/templates/tauri/mobile/android.json` - generated Android defaults.
 - `scripts/verify-android-webview-distribution.mjs` - emulator/device proof.
 - `tools/verify/src/gateDescriptors.ts` - Android webview row enrollment.
+
+**Audited correction surfaces added during device proof:**
+
+- `packages/runtime-web-three/src/audio.ts`, `systems/runner.ts`, and their
+  tests - deliver accepted script audio commands to the web sink.
+- `packages/runtime-web-three/src/overlay/host.ts` and `host.test.ts` - retain
+  modal presentation geometry while the overlay changes input ownership.
+- `examples/chess/overlay/chess-side-select/src/{App.tsx,styles.css}` - compact
+  short-landscape controls and scale iframe pointer coordinates.
+- `examples/chess/content/distribution.json` and
+  `examples/chess/artifacts/distribution/android/webview/**` - opaque signing
+  reference plus exact-artifact emulator evidence and reports.
+- `docs/STATUS.md`, `docs/status/capabilities/distribution.md`, and
+  `docs/status/SYSTEMS_CODE_QUALITY_STATUS.md` - bounded status and debt record.
 
 **Implementation:**
 
@@ -576,11 +590,11 @@ viewport, script-audio delivery, and generated Tauri lifecycle defects; the
 owning contract, compiler, runtime, game source, tests, and status documents
 were updated rather than hiding those defects in the proof harness.
 
-**Budget reconciliation:** The original five-file list was a planning estimate
-for the Android adapter slice, not a safe cap on proof-driven corrections. Phase
-7 now explicitly includes the independently tested runtime audio, overlay input,
-chess UI, evidence, and status surfaces named in this checkpoint; Phase 8 stays
-gated until the remaining physical arm64 proof passes.
+**Budget reconciliation:** The original five-file adapter slice is retained
+above as ownership context, while the normative audited scope now explicitly
+includes the independently tested runtime audio, overlay input, chess UI,
+evidence, and status surfaces. Phase 8 stays gated until the remaining physical
+arm64 proof passes.
 
 Evidence:
 
