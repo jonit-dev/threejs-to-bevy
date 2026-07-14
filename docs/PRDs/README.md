@@ -121,6 +121,11 @@ execution bundle.
   anti-patterns (debug-build launch, per-frame QuickJS and Rapier rebuilds,
   per-frame asset re-uploads), but should not start without a documented
   shipped-game need and focused native gate.
+- [Native React Overlays Through CEF Offscreen Textures](done/native-overlay-cef-offscreen-texture.md) - done:
+  replaces the falsified GTK/Wry OS-window attachment with CEF offscreen pixels
+  composited as Bevy textures, preserving the React/typed-bridge contract while
+  adding routed input, package payload ownership, and blocking native pixel
+  evidence on the reference NVIDIA/Xwayland stack.
 - [Runtime Parity Test Harness](done/proof-first-engine-loop-2026-07-05/PRD-022-gameplay-parity-test-harness.md) - done:
   created the bounded `pnpm test:gameplay` and
   `pnpm verify:gameplay-parity` harness over paired web/desktop playtests,

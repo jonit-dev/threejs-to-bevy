@@ -39,7 +39,7 @@ runtime payload. On Linux, the required files plus one locale occupy
 349,022,139 logical bytes; stripping `libcef.so` alone does not bring that
 installed tree below 250 MB. The supported size strategy is a directly mounted
 AppImage/SquashFS image with zstd compression. The measured executable package
-is 161,319,416 bytes and launches CEF from the mounted image without extracting
+is 156,809,720 bytes and launches CEF from the mounted image without extracting
 the payload.
 
 The 250 MB Linux gate therefore measures the physical on-disk executable image,
@@ -63,6 +63,23 @@ library, resource, locale, and license hash, strips the reviewed stock
 package measured 156,809,720 bytes and launched directly from its mounted
 filesystem with first paint, Black-side selection, snapshot delivery, ten
 modal transitions, and clean CEF shutdown.
+
+### CEF updates and rollback
+
+`runtime-bevy/cef-runtime-manifest.json` is the owning record for the pinned
+CEF/Chromium distribution, platform payload, checksums, and license files. The
+native-runtime maintainers review upstream CEF security notices monthly and
+triage critical notices within seven days. An upgrade must change the manifest
+and reviewed Cargo pin together, refresh every affected checksum and notice,
+then pass the CEF runtime tests, focused pixel gate, offline mounted-package
+launch, size/startup budgets, and docs checks. Build and packaging never fetch a
+floating CEF release.
+
+If any upgrade gate fails, restore the preceding reviewed manifest/Cargo pin
+and publish the preceding hash-identified AppImage. Do not mix payload files
+between versions or waive the bundle-local resource policy. Retained UI remains
+the lightweight native tier, while `--runtime webview` remains the separate
+Three.js desktop-web fallback.
 
 ## Three.js desktop-web runtime
 

@@ -28,6 +28,11 @@ export interface NativeOverlayFrameSet {
   settingsOpen: PixelFrame;
 }
 
+export interface NativeOverlayLifecycleFrameSet {
+  resized: PixelFrame;
+  restored: PixelFrame;
+}
+
 export interface NativeOverlayCefGateResult {
   diagnostics: VerificationDiagnostic[];
   measurements: Record<string, unknown>;
@@ -52,6 +57,13 @@ const FRAME_PATHS = {
   settingsClosed: "frames/settings-closed-after-10-cef-raw.png",
   settingsOpen: "frames/settings-open-after-10-cef-raw.png",
 } as const;
+
+const LIFECYCLE_FRAME_PATHS = {
+  resized: "frames/lifecycle-resized.png",
+  restored: "frames/lifecycle-restored.png",
+} as const;
+
+const EXPECTED_LIFECYCLE_HASH = "a6d8e9048a26aef3df809e1be1bb43dc75156f9b75ac98acf92495416107be11";
 
 export function evaluateNativeOverlayFrames(
   frames: NativeOverlayFrameSet,
@@ -111,6 +123,35 @@ export function evaluateNativeOverlayFrames(
   };
 }
 
+export function evaluateNativeOverlayLifecycleFrames(
+  frames: NativeOverlayLifecycleFrameSet,
+): { diagnostics: VerificationDiagnostic[]; restoreDifferenceRatio: number } {
+  const diagnostics: VerificationDiagnostic[] = [];
+  for (const [name, frame] of Object.entries(frames)) {
+    if (frame.width !== 1000
+      || frame.height !== 640
+      || frame.data.length !== 1000 * 640 * 4
+      || visiblePixelRatio(frame) < 0.01) {
+      diagnostics.push({
+        code: "TN_VERIFY_NATIVE_OVERLAY_CEF_LIFECYCLE_FRAME_INVALID",
+        message: `${name} must be a complete nonblank 1000x640 native proof-harness capture.`,
+        severity: "error",
+      });
+    }
+  }
+  const restoreDifferenceRatio = differingPixelRatio(frames.resized, frames.restored, {
+    x: 0, y: 0, width: 1000, height: 640,
+  });
+  if (restoreDifferenceRatio !== 0) {
+    diagnostics.push({
+      code: "TN_VERIFY_NATIVE_OVERLAY_CEF_RESTORE_DRIFT",
+      message: `Restored native pixels differ from the resized pre-minimize frame (${restoreDifferenceRatio.toFixed(6)} ratio).`,
+      severity: "error",
+    });
+  }
+  return { diagnostics, restoreDifferenceRatio };
+}
+
 export async function runNativeOverlayCefGate(options: {
   evidenceRoot?: string;
   reportPath?: string;
@@ -142,6 +183,29 @@ export async function runNativeOverlayCefGate(options: {
   }
   const evaluated = evaluateNativeOverlayFrames(frames);
   diagnostics.push(...evaluated.diagnostics);
+  const lifecycleFrames = {} as NativeOverlayLifecycleFrameSet;
+  const lifecycleHashes: Record<string, string> = {};
+  for (const [name, relativePath] of Object.entries(LIFECYCLE_FRAME_PATHS)) {
+    const bytes = await readFile(resolve(evidenceRoot, relativePath));
+    const hash = createHash("sha256").update(bytes).digest("hex");
+    lifecycleHashes[name] = hash;
+    if (hash !== EXPECTED_LIFECYCLE_HASH) {
+      diagnostics.push({
+        code: "TN_VERIFY_NATIVE_OVERLAY_CEF_LIFECYCLE_DRIFT",
+        message: `${relativePath} does not match the reviewed resize/restore evidence hash.`,
+        severity: "error",
+      });
+    }
+    const png = PNG.sync.read(bytes);
+    lifecycleFrames[name as keyof NativeOverlayLifecycleFrameSet] = {
+      data: png.data,
+      height: png.height,
+      width: png.width,
+    };
+  }
+  const lifecycleEvaluation = evaluateNativeOverlayLifecycleFrames(lifecycleFrames);
+  diagnostics.push(...lifecycleEvaluation.diagnostics);
+  const { restoreDifferenceRatio } = lifecycleEvaluation;
   const spike = JSON.parse(await readFile(resolve(evidenceRoot, "spike-report.json"), "utf8")) as {
     budgets?: Record<string, { status?: unknown }>;
     scenario?: { noResizeWorkaround?: unknown; noSecondaryWindow?: unknown; realInput?: unknown };
@@ -194,6 +258,8 @@ export async function runNativeOverlayCefGate(options: {
   const measurements = {
     ...evaluated.measurements,
     hashes,
+    lifecycleHashes,
+    restoreDifferenceRatio,
     package: packageEvidence.package,
     packageLaunch: packageEvidence.launch,
   };
@@ -201,6 +267,7 @@ export async function runNativeOverlayCefGate(options: {
   await writeFile(reportPath, `${JSON.stringify({
     artifacts: {
       ...Object.fromEntries(Object.entries(FRAME_PATHS).map(([name, path]) => [name, `tools/verify/artifacts/native-overlay-cef/${path}`])),
+      ...Object.fromEntries(Object.entries(LIFECYCLE_FRAME_PATHS).map(([name, path]) => [`lifecycle${name[0]?.toUpperCase()}${name.slice(1)}`, `tools/verify/artifacts/native-overlay-cef/${path}`])),
       package: "tools/verify/artifacts/native-overlay-cef/package-report.json",
       spike: "tools/verify/artifacts/native-overlay-cef/spike-report.json",
     },

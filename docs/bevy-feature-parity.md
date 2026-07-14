@@ -508,11 +508,13 @@ Current UI rows use these labels:
       window. NVIDIA/Xwayland evidence proves first paint, chooser hover,
       choosing Black, snapshot delivery, and ten settings modal open/close
       cycles without stale closed-state pixels. Pointer move/button/wheel,
-      keyboard key/character, focus, live pointer islands, authored bounds and
-      z-order, plus modal game-input suppression are covered. A 300-transition
-      stress run reached a flat five-second process-tree RSS settle window.
-      Full IME, multi-overlay lifecycle, other compositors, and
-      Windows/macOS remain unpromoted
+      keyboard key/character, focus, live pointer islands, authored bounds,
+      stable multi-overlay z-order/topmost routing, plus modal game-input
+      suppression are covered. Resize and minimize/restore retain pixel-identical
+      overlay output after every surface reaches a fresh nonblank paint. A
+      300-transition stress run reached a flat five-second process-tree RSS
+      settle window. Full IME, other compositors, and Windows/macOS remain
+      unpromoted
       (`tools/verify/artifacts/native-overlay-cef/spike-report.json`,
       `tools/verify/artifacts/native-overlay-cef/verification-report.json`,
       `tools/verify/artifacts/native-overlay-cef/package-report.json`,

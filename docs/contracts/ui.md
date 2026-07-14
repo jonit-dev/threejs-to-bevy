@@ -80,10 +80,12 @@ Rules:
 - Both bridge directions enforce the declared payload schema and a 16 KB UTF-8
   JSON limit. Subscriptions replay retained snapshots once by sequence on web
   and desktop.
-- The native desktop adapter keeps webview handles private behind
-  `runtime-bevy`; the optional `native-webview` feature selects the maintained
-  `wry` backend. Default builds that do not enable the desktop host fail fast
-  with `TN_OVERLAY_TARGET_UNSUPPORTED` instead of silently ignoring overlays.
+- The native desktop adapter keeps browser handles private behind
+  `runtime-bevy`; the optional `native-overlay-cef` feature selects the CEF
+  off-screen backend, which composites browser pixels into Bevy-owned images
+  without a second native window. Default builds that do not enable the
+  desktop host fail fast with `TN_OVERLAY_TARGET_UNSUPPORTED` instead of
+  silently ignoring overlays.
 
 Source ownership is deliberately split. Authors edit `overlay/<name>/index.html`,
 `overlay/<name>/src/**`, and the local Vite configuration. The overlay's

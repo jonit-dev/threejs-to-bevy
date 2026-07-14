@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   evaluateNativeOverlayFrames,
+  evaluateNativeOverlayLifecycleFrames,
   type NativeOverlayFrameSet,
   type PixelFrame,
 } from "./nativeOverlayCefGate.js";
@@ -48,6 +49,25 @@ test("should pass chooser hud settings and hover transitions", () => {
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("should reject blank or incomplete lifecycle captures", () => {
+  const result = evaluateNativeOverlayLifecycleFrames({
+    resized: lifecycleFrame(20),
+    restored: lifecycleFrame(0, 0),
+  });
+
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_NATIVE_OVERLAY_CEF_LIFECYCLE_FRAME_INVALID"), true);
+});
+
+test("should reject restored pixels that drift after minimize", () => {
+  const result = evaluateNativeOverlayLifecycleFrames({
+    resized: lifecycleFrame(20),
+    restored: lifecycleFrame(30),
+  });
+
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_NATIVE_OVERLAY_CEF_RESTORE_DRIFT"), true);
+  assert.equal(result.restoreDifferenceRatio, 1);
+});
+
 function completeFrames(): NativeOverlayFrameSet {
   return {
     chooser: solidFrame(20),
@@ -68,6 +88,17 @@ function solidFrame(value: number, alpha = 255): PixelFrame {
     data[offset + 3] = alpha;
   }
   return { data, height: 720, width: 1280 };
+}
+
+function lifecycleFrame(value: number, alpha = 255): PixelFrame {
+  const data = new Uint8Array(1000 * 640 * 4);
+  for (let offset = 0; offset < data.length; offset += 4) {
+    data[offset] = value;
+    data[offset + 1] = value;
+    data[offset + 2] = value;
+    data[offset + 3] = alpha;
+  }
+  return { data, height: 640, width: 1000 };
 }
 
 function regionFrame(base: number, changed: number, region: { x: number; y: number; width: number; height: number }): PixelFrame {

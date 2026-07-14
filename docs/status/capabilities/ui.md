@@ -31,13 +31,18 @@ Current support:
   game-to-overlay snapshots and visibility/input controls use adapter-private
   script evaluation. Paint delivery is bounded and latest-frame-wins; resize
   generations prevent stale-size paint callbacks from replacing the current
-  texture. Native routing covers pointer move/button/wheel, keyboard key and
-  character events, window focus, live pointer islands, and modal suppression
-  from the underlying game snapshot. Full IME composition, focus traversal,
-  multiple overlays, and cross-scale pixel proof remain unpromoted boundaries;
-  the single-overlay host applies authored bounds and z-order.
+  texture. One CEF session owns one browser and Bevy image per mounted overlay;
+  stable authored `zIndex` plus mount order controls composition and topmost
+  input routing. Native routing covers pointer move/button/wheel, keyboard key
+  and character events, window focus, live pointer islands, modal suppression,
+  authored bounds, and explicit physical-to-CSS scale conversion. Full IME
+  composition, focus traversal, and cross-compositor scale-factor pixel proof
+  remain unpromoted boundaries.
 - Linux NVIDIA/Xwayland compositor evidence covers first paint, chooser hover,
-  choosing Black, snapshot delivery, and ten settings modal open/close cycles.
+  choosing Black, snapshot delivery, ten settings modal open/close cycles, and
+  pixel-identical output after resize plus minimize/restore. Native screenshots
+  wait for a nonblank paint from every declared CEF surface, preventing a ready
+  game scene from hiding a blank or stale overlay.
   A release stress run completed 300 modal transitions, then held full
   process-tree RSS within a 136 KiB range during a five-second settle window.
   Other Linux compositor families and Windows/macOS are not yet promoted.

@@ -6,6 +6,8 @@
     "hud": "tools/verify/artifacts/native-overlay-cef/frames/hud-cef-native-bridge-clean.png",
     "settingsClosed": "tools/verify/artifacts/native-overlay-cef/frames/settings-closed-after-10-cef-raw.png",
     "settingsOpen": "tools/verify/artifacts/native-overlay-cef/frames/settings-open-after-10-cef-raw.png",
+    "lifecycleResized": "tools/verify/artifacts/native-overlay-cef/frames/lifecycle-resized.png",
+    "lifecycleRestored": "tools/verify/artifacts/native-overlay-cef/frames/lifecycle-restored.png",
     "package": "tools/verify/artifacts/native-overlay-cef/package-report.json",
     "spike": "tools/verify/artifacts/native-overlay-cef/spike-report.json"
   },
@@ -24,6 +26,11 @@
       "settingsClosed": "2ee25ea7b048768da2d8753a60ea4f2a26ddd2a52232e33062f22678a9a6cff6",
       "settingsOpen": "084c0e7c8f565aa47056d4419b9a1fb690357ae52dc2059689c28fb7319005eb"
     },
+    "lifecycleHashes": {
+      "resized": "a6d8e9048a26aef3df809e1be1bb43dc75156f9b75ac98acf92495416107be11",
+      "restored": "a6d8e9048a26aef3df809e1be1bb43dc75156f9b75ac98acf92495416107be11"
+    },
+    "restoreDifferenceRatio": 0,
     "package": {
       "format": "appimage",
       "physicalBytes": 156809720,
