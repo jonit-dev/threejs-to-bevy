@@ -3,7 +3,7 @@
 `Planning Mode: Principal Architect`
 `Complexity: 3 (10+ files) + 2 (multi-package) + 2 (runtime/compiler state logic) = 7 -> HIGH mode`
 
-Source evidence: `docs/PRDs/AUTHORING-TRIAL-CHESS-CODEX-2026-07-12.md`
+Source evidence: `docs/PRDs/done/chess-trial-remediation-2026-07-12/AUTHORING-TRIAL-CHESS-CODEX-2026-07-12.md`
 (findings C1-C7, C9, C10). Playtest-loop findings (C8 and related) are owned
 by `PRD-002-playtest-loop-trust-and-visual-proof.md` in this bundle.
 
@@ -360,7 +360,7 @@ Checkpoint: `prd-work-reviewer` phase 5.
 **Files (max 5):**
 
 - CLI command registry (owning source per
-  `docs/PRDs/other/adapter-surface-remediation-2026-07-08/`) - register
+  `docs/PRDs/done/other/adapter-surface-remediation-2026-07-08/`) - register
   `asset import` first; help/dispatch derive from it.
 - `packages/cli/src/commands/assetImport.ts` (new) - `tn asset import
   <source-path-or-url> --id <asset-id> [--license <id>] [--attribution
@@ -630,7 +630,7 @@ Checkpoint: `prd-work-reviewer` phase 13.
   `packages/sdk/src/environment.ts` skybox declarations vs a new scene node
   kind; capture as its own PRD when picked up.
 - **Generator-owned content contract** (C2): architectural; overlaps
-  `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`.
+  `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`.
   Do not band-aid in this PRD.
 - **Bevy-side unlit/material-patch parity**: freeze-gated by the native path
   decision (PRD-018/019); stable diagnostics only.

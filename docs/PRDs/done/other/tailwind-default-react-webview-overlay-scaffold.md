@@ -1,5 +1,8 @@
 # Tailwind-Default React Webview Overlay Scaffold
 
+Status: complete. The descriptor-owned scaffold and focused browser/package
+proof are promoted; broad release reruns remain normal release maintenance.
+
 Complexity: 8 -> HIGH mode
 
 ## Complexity Assessment

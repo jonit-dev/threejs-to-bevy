@@ -14,7 +14,7 @@ loops.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `tools/agent-benchmark/TOKEN-COST-DIRECTION.md`
 - `tools/verify/artifacts/agent-benchmark/*/session*.json`
 - `tools/verify/src/`

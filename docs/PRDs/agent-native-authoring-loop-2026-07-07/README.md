@@ -1,7 +1,7 @@
 # Agent-Native Authoring Loop PRDs
 
 This folder slices
-`docs/PRDs/engine-improvement-candidates-2026-07-07.md` into an ordered
+`docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md` into an ordered
 execution bundle. The strategic bet is the agent-native authoring loop:
 lower the token cost of authored game deltas, raise the visual/gameplay
 quality ceiling inside the existing contract, and cut standing maintenance

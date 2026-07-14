@@ -1,6 +1,9 @@
 # Agent Engine Wishlist Delivery Roadmap (2026-07-11)
 
-Source: [`../AGENT-ENGINE-WISHLIST-2026-07-11.md`](../AGENT-ENGINE-WISHLIST-2026-07-11.md)
+Status: complete. All four delivery PRDs are promoted; remaining example
+adoption is ordinary follow-up work.
+
+Source: [`WISHLIST-2026-07-11.md`](WISHLIST-2026-07-11.md)
 
 This folder batches the wishlist by owning runtime contract and delivery path.
 It deliberately does not create one PRD per wishlist item: related primitives
@@ -11,9 +14,9 @@ batch avoids repeated service plumbing and duplicate registries.
 
 | Order | PRD | Wishlist items | Why this boundary |
 | --- | --- | --- | --- |
-| 1 | [PRD-001 Runtime State Integrity And Write Audit](../done/agent-engine-wishlist-2026-07-11/PRD-001-runtime-state-integrity-and-write-audit.md) | 2, 4 | Sensor phase memory and write provenance share per-tick runtime state, trace artifacts, and playtest diagnostics. |
-| 2 | [PRD-002 Project-Local Script Modules](../done/agent-engine-wishlist-2026-07-11/PRD-002-project-local-script-modules.md) | 1 | Module graph resolution is compiler-owned and should land before later examples are split into reusable scripts. |
-| 3 | [PRD-003 Runtime-Owned Gameplay Primitives](../done/agent-engine-wishlist-2026-07-11/PRD-003-runtime-owned-gameplay-primitives.md) | 5, 6, 7 residual, 8 | Patrol, entity FSMs, tagged lifecycle queries, and countdowns share component/resource ticking and gameplay proof. |
+| 1 | [PRD-001 Runtime State Integrity And Write Audit](PRD-001-runtime-state-integrity-and-write-audit.md) | 2, 4 | Sensor phase memory and write provenance share per-tick runtime state, trace artifacts, and playtest diagnostics. |
+| 2 | [PRD-002 Project-Local Script Modules](PRD-002-project-local-script-modules.md) | 1 | Module graph resolution is compiler-owned and should land before later examples are split into reusable scripts. |
+| 3 | [PRD-003 Runtime-Owned Gameplay Primitives](PRD-003-runtime-owned-gameplay-primitives.md) | 5, 6, 7 residual, 8 | Patrol, entity FSMs, tagged lifecycle queries, and countdowns share component/resource ticking and gameplay proof. |
 | 4 | [PRD-004 Portable Feedback And World Presentation](PRD-004-portable-feedback-and-world-presentation.md) | 3, 9, 10, 11 | Tweening, shake, effect presets, and world text are bounded presentation commands with common lifetime/cancellation rules. |
 
 The order is intentional. PRD-001 makes failures diagnosable; PRD-002 makes

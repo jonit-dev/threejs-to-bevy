@@ -8,7 +8,7 @@ Source of truth for observations: screenshot pairs in
 Baseline sanity: `photoreal-lighting-units-probe` and `photoreal-ao-corner-test`
 pairs match near-pixel-perfect, so base lighting/exposure calibration is good.
 The remaining gaps below are effect-specific, not a global exposure problem.
-Related prior diagnosis: `docs/PRDs/proof-first-engine-loop-2026-07-05/PRD-015-parity-diagnosis-and-recommendations.md`
+Related prior diagnosis: `docs/PRDs/done/proof-first-engine-loop-2026-07-05/PRD-015-parity-diagnosis-and-recommendations.md`
 (items D2 clear-color tonemapping and D5 gate regions are still relevant here).
 
 ---

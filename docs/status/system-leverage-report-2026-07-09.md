@@ -13,7 +13,7 @@ editor, generated-game proof, runtime adapters, and verify tooling.
 
 No behavior changes were made. The worktree already had uncommitted edits in
 `docs/bevy-feature-parity.md`, `docs/status/ENGINE-READINESS-REPORT-2026-07-08.md`,
-and `docs/PRDs/feature-parity-polishing/`; this report does not modify them.
+and `docs/PRDs/done/feature-parity-polishing/`; this report does not modify them.
 
 ## Overall Read
 
@@ -322,7 +322,7 @@ Suggested verification:
   - `docs/status/capabilities/tooling-proof.md`
   - `docs/PRDs/README.md`
   - `docs/PRDs/proof-first-engine-loop-2026-07-05/README.md`
-  - `docs/PRDs/other/adapter-surface-remediation-2026-07-08/README.md`
+  - `docs/PRDs/done/other/adapter-surface-remediation-2026-07-08/README.md`
   - `tools/verify/src/adapterSurfaceDrift.test.ts`
   - `tools/verify/src/gameProductionGate.ts`
   - `tools/verify/src/cli/run.ts`

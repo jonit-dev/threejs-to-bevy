@@ -62,7 +62,7 @@ diagnostics before runtime.
 - `docs/PRDs/done/other/script-module-references-and-manifest.md`
 - `docs/PRDs/done/other/scene-lifecycle-and-flow-contract.md`
 - `docs/PRDs/done/v5/V5-11-game-authoring-ergonomics-refactor.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `docs/contracts/scripting.md`
 - `docs/contracts/scripting-api.md`
 - `docs/STATUS.md`

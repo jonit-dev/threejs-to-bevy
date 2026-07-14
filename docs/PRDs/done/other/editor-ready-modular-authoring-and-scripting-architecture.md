@@ -1,5 +1,8 @@
 # PRD: Editor-Ready Modular Authoring and Scripting Architecture
 
+Status: complete at the architecture-contract threshold. Richer editor code
+editing remains separately tracked by the editor script-body code-mode PRD.
+
 Complexity: 13 -> HIGH mode
 
 Score basis: +3 touches 10+ future files, +2 spans SDK/compiler/IR/CLI/web/Bevy/docs/templates, +2 changes authoring source-of-truth boundaries, +2 affects portable scripting and script bundling, +1 affects editor snapshot contracts, +1 affects scene lifecycle/prefab/resource architecture, +1 requires cross-runtime web/Bevy conformance, +1 needs migration of canonical templates/examples.

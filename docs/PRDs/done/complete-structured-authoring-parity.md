@@ -27,7 +27,7 @@ Score basis: +3 touches 10+ future files, +2 adds/extends authoring source syste
 - `docs/PRDs/README.md`
 - `docs/PRDs/done/other/agent-safe-scene-authoring-cli.md`
 - `docs/PRDs/other/agent-friendly-project-and-visual-debugging-workflows.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `packages/authoring/src/operations.ts`
 - `packages/authoring/src/schemas.ts`
 - `packages/authoring/src/index.ts`

@@ -1,5 +1,7 @@
 # Authoring Trial Report: Chess via Codex (2026-07-12)
 
+Status: historical trial evidence. Its remediation PRDs are complete.
+
 Third external authoring trial, this time driven by Codex CLI (GPT-5) instead
 of Claude. Three sessions built and polished `examples/chess`:
 

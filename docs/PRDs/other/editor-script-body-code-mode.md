@@ -29,7 +29,7 @@ build artifacts and must not be reverse-generated into source.
 - `packages/cli/src/commands/scene.ts`
 - `packages/cli/src/commands/sourceDocuments.ts`
 - `docs/contracts/authoring-source-documents.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 
 ## 2. Goal
 

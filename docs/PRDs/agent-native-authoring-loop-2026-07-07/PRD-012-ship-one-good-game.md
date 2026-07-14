@@ -16,7 +16,7 @@ five-minute stranger-playable pass.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `docs/workflows/open-source-3d-asset-kits.md`
 - `examples/`

@@ -1,7 +1,9 @@
 # ThreeNative Roadmap
 
-Status: proposed 2026-07-05. This is the strategic front door for "what next";
-`docs/STATUS.md` remains the front door for "what works today".
+Status: historical 2026-07-05 roadmap. Its major proof-loop, visual-default,
+scale, and capability slices have since landed. It is retained for sequencing
+rationale and is not the executable backlog. Use `docs/PRDs/README.md` for
+current planning and `docs/STATUS.md` for implemented capability truth.
 
 ## North Star
 

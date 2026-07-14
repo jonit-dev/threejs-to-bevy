@@ -1,5 +1,8 @@
 # Engine Improvement Candidates (2026-07-12)
 
+Status: historical candidate inventory. Selected work is tracked by current
+PRDs and completed overlay/remediation initiatives.
+
 Proposals derived from mining the Codex authoring transcripts at
 `~/.codex/sessions/2026/07/{10,11,12}/rollout-*.jsonl` (~30 sessions:
 chess visual polish, overlay regressions, remediation execution). Follows

@@ -69,13 +69,13 @@ diagnostics, manifest-owned examples/templates, the build-only
 `examples/neon-harbor-rescue` forcing-function game, and reusable visual metric
 bundles for rendering and generated-game proof.
 
-## Current Initiatives
+## Initiative Inventory
 
-Open PRDs usually live under `docs/PRDs/other/`. The near-term proof
-infrastructure bundle lives under
-`docs/PRDs/proof-first-engine-loop-2026-07-05/`; broader capability, docs,
-refactor, and packaging work stays in `other/` until pulled into an active
-execution bundle.
+This section inventories current, completed, and frozen work. The executable
+near-term backlog is Round-5B churn-budget evidence and rerun, PRD-012 public
+shipping proof, the Rust static-analysis ratchet, and the bounded web-first
+distribution phases. Links under `done/` are historical implementation
+evidence, not active backlog.
 
 ### Runtime And Gameplay Parity
 
@@ -136,24 +136,24 @@ execution bundle.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
-- [Authored-Value Compression — Placement Sets and Objective Interactions](other/authored-value-compression-placement-interactions.md):
+- [Authored-Value Compression — Placement Sets and Objective Interactions](done/other/authored-value-compression-placement-interactions.md) - done:
   adds deterministic compiler-expanded placement sets for repeated ECS/scene
   population and a bounded portable interaction contract for the recurring
   detect/gate/mutate/consume/emit loop, then ratchets examples onto existing
   controller, query, flow, sequence, UI-recipe, and behavior-metadata paths.
-- [ElevenLabs Sound-Effect Generation](other/elevenlabs-sfx-generation.md):
+- [ElevenLabs Sound-Effect Generation](done/other/elevenlabs-sfx-generation.md) - done at the mock-proved integration boundary:
   adds project-local `.env` support to every `tn init` template and a bounded,
   credential-safe `tn audio generate-sfx` flow that imports generated MP3s as
   normal bundle-local structured audio assets without widening the runtime
   network-audio boundary.
-- [Chess Trial Remediation](chess-trial-remediation-2026-07-12/README.md):
+- [Chess Trial Remediation](done/chess-trial-remediation-2026-07-12/README.md) - done:
   fixes the C1-C10 findings from the 2026-07-12 Codex chess authoring trial
   in two PRDs: authoring friction (GLB subtree picking, custom-component
   queryability, render-profile surfacing, asset import/validation, schema
   vocabulary, unlit/material-patch primitives, plan/scaffold hygiene) and
   playtest loop trust (split visual/gameplay verdicts, honest artifacts,
   bundle-grounded discovery, visual assertions, headless desktop proof).
-- [Adapter Surface Remediation](other/adapter-surface-remediation-2026-07-08/README.md):
+- [Adapter Surface Remediation](done/other/adapter-surface-remediation-2026-07-08/README.md) - done:
   slices the current four urgent adapter-surface rows from the 2026-07-08
   diagnostic into generated-game proof enrollment, shared adapter drift gates,
   CLI command registry and arg plumbing, executable authoring operation
@@ -166,15 +166,15 @@ execution bundle.
   rustfmt/Clippy policy, adds a structured lint/path debt ratchet, wires it
   into pre-push and CI, and closes toward `--all-targets -- -D warnings` in
   bounded verified slices.
-- [Agent Token Efficiency IO Budget](other/agent-token-efficiency-io-budget.md):
+- [Agent Token Efficiency IO Budget](done/other/agent-token-efficiency-io-budget.md) - done:
   makes agent-facing CLI output compact by default, removes playtest
   `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,
   adds compact playtest reports, and gates documented command stdout size.
-- [Agent Token Efficiency Loop and API Card](other/agent-token-efficiency-loop-and-api-card.md):
+- [Agent Token Efficiency Loop and API Card](done/other/agent-token-efficiency-loop-and-api-card.md) - done:
   funnels generated-project agents through `tn iterate`, ships a compact
   source-validated API card in starters, and makes game-plan stdout artifact
   backed instead of long-lived full-plan context.
-- [Agent Benchmark Token Cost Metrics and Rerun](other/agent-benchmark-token-cost-rerun.md):
+- [Agent Benchmark Token Cost Metrics and Rerun](done/other/agent-benchmark-token-cost-rerun.md) - done and superseded by the equal-proof Round 5/5B protocol:
   extends benchmark artifacts with cached/uncached token, tool-output,
   failed-command, and cost-weighted fields, then reruns the unchanged pilot
   protocol against the audit's <=0.5x raw-token target. Historical V2
@@ -230,7 +230,7 @@ execution bundle.
   bundle-local React/CSS app-shell startup for title, login, profile, settings,
   and launcher flows before initial game activation, using typed bridge
   messages without making React the portable game UI contract.
-- [Editor-Ready Modular Authoring and Scripting Architecture](other/editor-ready-modular-authoring-and-scripting-architecture.md):
+- [Editor-Ready Modular Authoring and Scripting Architecture](done/other/editor-ready-modular-authoring-and-scripting-architecture.md) - done:
   source-of-truth boundaries, modular authoring graph/provenance, script module
   references, editor-safe source documents, and web/Bevy runtime parity.
 - [Editor Script Body Code Mode](other/editor-script-body-code-mode.md):

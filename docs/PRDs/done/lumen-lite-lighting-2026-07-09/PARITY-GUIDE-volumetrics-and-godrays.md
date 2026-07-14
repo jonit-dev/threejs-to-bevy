@@ -1,5 +1,8 @@
 # Lumen-lite Parity Guide: Cross-Platform Divergence + God-Ray Visibility
 
+Status: historical diagnosis. Current truth lives in
+`docs/status/capabilities/rendering.md` and the focused rendering gates.
+
 Date: 2026-07-10
 Scope: why the lumen-lite showcase reads completely differently on web vs
 native, why god rays are barely visible even on web, and the ordered work

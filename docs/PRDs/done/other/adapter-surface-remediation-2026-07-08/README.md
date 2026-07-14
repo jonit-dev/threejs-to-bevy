@@ -1,7 +1,9 @@
 # Adapter Surface Remediation PRDs
 
+Status: complete. All five slices and the bundle acceptance checks are closed.
+
 This bundle slices
-[`docs/status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md`](../../../status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md)
+[`docs/status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md`](../../../../status/systems-code-quality-diagnostic-adapter-surfaces-2026-07-08.md)
 into ordered, verifiable work. The diagnostic found the same systemic failure
 across authoring operations, editor source operations, CLI commands, and
 generated-game verification: a descriptor or policy source of truth exists, but
@@ -14,11 +16,11 @@ surface.
 
 ## Ordered PRDs
 
-1. [PRD-001 Generated-Game Proof Enrollment From Config](../../done/other/adapter-surface-remediation-2026-07-08/PRD-001-generated-game-proof-enrollment-from-config.md)
-2. [PRD-002 Adapter Surface Drift Gates](../../done/other/adapter-surface-remediation-2026-07-08/PRD-002-adapter-surface-drift-gates.md)
-3. [PRD-003 CLI Command Registry and Shared Arg Plumbing](../../done/other/adapter-surface-remediation-2026-07-08/PRD-003-cli-command-registry-and-shared-arg-plumbing.md)
-4. [PRD-004 Executable Authoring Operation Descriptors](../../done/other/adapter-surface-remediation-2026-07-08/PRD-004-executable-authoring-operation-descriptors.md)
-5. [PRD-005 Editor Operation Metadata and Composite Recipes](../../done/other/adapter-surface-remediation-2026-07-08/PRD-005-editor-operation-metadata-and-composite-recipes.md)
+1. [PRD-001 Generated-Game Proof Enrollment From Config](PRD-001-generated-game-proof-enrollment-from-config.md)
+2. [PRD-002 Adapter Surface Drift Gates](PRD-002-adapter-surface-drift-gates.md)
+3. [PRD-003 CLI Command Registry and Shared Arg Plumbing](PRD-003-cli-command-registry-and-shared-arg-plumbing.md)
+4. [PRD-004 Executable Authoring Operation Descriptors](PRD-004-executable-authoring-operation-descriptors.md)
+5. [PRD-005 Editor Operation Metadata and Composite Recipes](PRD-005-editor-operation-metadata-and-composite-recipes.md)
 
 ## Dependency Shape
 

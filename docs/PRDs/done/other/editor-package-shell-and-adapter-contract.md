@@ -22,7 +22,7 @@ project.
 - `docs/PRDs/done/v8/V8-00-local-editor-scope-and-contract.md`
 - `docs/PRDs/done/v8/V8-01-editor-project-snapshot-and-structured-diffs.md`
 - `docs/PRDs/done/v8/V8-18-editor-debugging-diagnostics-packaging-performance-support.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `docs/PRDs/other/complete-structured-authoring-parity.md`
 - `docs/contracts/authoring-source-documents.md`
 - `docs/contracts/authoring-mcp.md`

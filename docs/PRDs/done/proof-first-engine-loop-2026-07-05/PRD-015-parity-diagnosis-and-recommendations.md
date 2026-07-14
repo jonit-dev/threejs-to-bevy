@@ -1,5 +1,8 @@
 # PRD-015 Parity: Diagnosis and Recommendations (2026-07-08)
 
+Status: historical diagnosis. The implemented rendering contract and current
+residuals live in the rendering capability status and focused gates.
+
 Audience: the agent implementing
 `PRD-015-portable-photoreal-rendering-and-postprocessing.md`. This is a
 diagnosis of why web/Bevy parity is currently failing and exactly what to do,

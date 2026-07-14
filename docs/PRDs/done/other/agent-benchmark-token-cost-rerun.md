@@ -1,5 +1,8 @@
 # PRD: Agent Benchmark Token Cost Metrics and Rerun
 
+Status: complete for the version-2 metrics/rerun scope and superseded for
+decision policy by the Round 5/5B equal-proof protocol.
+
 `Planning Mode: Principal Architect`
 `Complexity: 4 -> MEDIUM mode`
 

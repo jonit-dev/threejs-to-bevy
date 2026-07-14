@@ -43,7 +43,7 @@ runtime semantics.
 - `packages/compiler/src/scene-document.ts`
 - `packages/compiler/src/examples.test.ts`
 - `docs/contracts/authoring-source-documents.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `docs/PRDs/other/agent-friendly-project-and-visual-debugging-workflows.md`
 
 **Current Behavior:**

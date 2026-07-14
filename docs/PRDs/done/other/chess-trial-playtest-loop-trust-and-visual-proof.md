@@ -4,7 +4,7 @@
 `Complexity: 2 (6-10 files) + 2 (multi-stage pipeline state) + 1 (native
 integration) = 5 -> MEDIUM mode`
 
-Source evidence: `docs/PRDs/AUTHORING-TRIAL-CHESS-CODEX-2026-07-12.md`
+Source evidence: `docs/PRDs/done/chess-trial-remediation-2026-07-12/AUTHORING-TRIAL-CHESS-CODEX-2026-07-12.md`
 (finding C8 plus the playtest-adjacent smaller items). Companion to
 `PRD-001-authoring-friction-fixes.md` in this bundle.
 

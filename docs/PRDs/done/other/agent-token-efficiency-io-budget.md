@@ -1,5 +1,8 @@
 # PRD: Agent Token Efficiency IO Budget
 
+Status: complete. Compact reports, artifact-backed deep logs, and the agent IO
+budget gate are promoted.
+
 `Planning Mode: Principal Architect`
 `Complexity: 6 -> MEDIUM mode`
 

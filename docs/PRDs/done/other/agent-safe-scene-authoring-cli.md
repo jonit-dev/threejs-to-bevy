@@ -8,7 +8,7 @@ Score basis: +2 adds CLI authoring surface, +2 requires schema/semantic validati
 
 ThreeNative needs editor-ready modular authoring, but the first dangerous gap is more basic: AIs will make scene authoring mistakes if they freehand JSON or giant imperative TypeScript. Syntax is only the visible failure. The real failures are semantic: misspelled IDs, missing camera targets, invalid vector lengths, duplicate entity IDs, unknown component names, invalid prefab refs, UI bindings to missing resources, script refs that do not export what they claim, and authoring data that is web-only or Bevy-incompatible.
 
-The broader architecture PRD is `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`. This PRD is the first implementation slice: build the shared authoring core and `tn scene ... --json` CLI operations that AIs, humans, CI, and a future MCP wrapper can use safely.
+The broader architecture PRD is `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`. This PRD is the first implementation slice: build the shared authoring core and `tn scene ... --json` CLI operations that AIs, humans, CI, and a future MCP wrapper can use safely.
 
 ## 2. Goal
 

@@ -27,11 +27,11 @@ may still proceed.
 1. [PRD-001 Agent Proof Loop Scenario Ratchet](../done/PRD-001-agent-proof-loop-scenario-ratchet.md) - done
 2. [PRD-002 Humanoid Course Stair Traversal Proof](../done/PRD-002-humanoid-course-stair-traversal-proof.md) - done; native proof deferred by freeze
 3. [PRD-003 External Services, Media, And Non-Portable Boundaries](../done/PRD-003-external-services-media-boundaries.md) - done
-4. [PRD-004 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](PRD-004-contract-de-sprawl-authoring-runtime-traces.md)
-5. [PRD-005 Cinematic Default Look](PRD-005-cinematic-default-look.md)
+4. [PRD-004 Contract De-Sprawl Through Authoring Modules And Runtime Trace Contracts](../done/proof-first-engine-loop-2026-07-05/PRD-004-contract-de-sprawl-authoring-runtime-traces.md) - done
+5. [PRD-005 Cinematic Default Look](../done/proof-first-engine-loop-2026-07-05/PRD-005-cinematic-default-look.md) - done
 6. [PRD-006 Believable Worlds: Heightfield Terrain And Biome Dressing](../done/proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md) - done
 7. [PRD-007 Runtime-Proven Efficient Scale](../done/proof-first-engine-loop-2026-07-05/PRD-007-runtime-proven-efficient-scale.md) - done
-8. [PRD-008 Declarative Gameplay Flow](PRD-008-declarative-gameplay-flow-spawners-sequencer.md)
+8. [PRD-008 Declarative Gameplay Flow](../done/proof-first-engine-loop-2026-07-05/PRD-008-declarative-gameplay-flow-spawners-sequencer.md) - done
 9. [PRD-009 Actor Archetypes And Typed Scripting](../done/proof-first-engine-loop-2026-07-05/PRD-009-actor-archetypes-and-typed-scripting.md) - done
 10. [PRD-010 Portable Scripting Audio Facade](../done/proof-first-engine-loop-2026-07-05/PRD-010-portable-scripting-audio-facade.md) - done
 11. [PRD-011 Portable Scripting Delayed Commands And Bounded Scheduling](../done/PRD-011-portable-scripting-delayed-commands-scheduling.md) - done

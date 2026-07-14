@@ -14,7 +14,7 @@ Unity-like or Three.js-familiar names would transfer for free.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `packages/sdk/`
 - `packages/compiler/`

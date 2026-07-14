@@ -5,7 +5,7 @@
 - **Complexity:** 9 → HIGH mode (10+ files, multi-package, new client library, web + native runtimes)
 - **Origin:** Inspection of `examples/chess/overlay` and the overlay stack it exercises
   (V8-05 follow-up; see `docs/PRDs/done/v8/V8-05-optional-react-webview-overlay.md`)
-- **Related:** `docs/PRDs/other/tailwind-default-react-webview-overlay-scaffold.md`
+- **Related:** `docs/PRDs/done/other/tailwind-default-react-webview-overlay-scaffold.md`
   (implemented in the working tree; this PRD builds on it)
 
 ---

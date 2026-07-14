@@ -14,7 +14,7 @@ exact prompts and do not reduce authored deltas for off-recipe games.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `tools/agent-benchmark/OFF-RECIPE-DIRECTIVE.md`
 - `packages/cli/src/commands/game.ts`
 - `templates/structured-source-starter/`

@@ -13,7 +13,7 @@ door, and generated-game evidence volume has become standing maintenance cost.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `docs/STATUS.md`
 - `docs/status/capabilities/*.md`

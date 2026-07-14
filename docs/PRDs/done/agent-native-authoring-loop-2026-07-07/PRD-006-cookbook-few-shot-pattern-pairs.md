@@ -14,7 +14,7 @@ examples showing the exact source delta for common game patterns.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `tools/agent-benchmark/TOKEN-COST-DIRECTION.md`
 - `examples/`

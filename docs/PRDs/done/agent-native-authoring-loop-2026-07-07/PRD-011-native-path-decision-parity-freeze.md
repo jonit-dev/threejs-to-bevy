@@ -15,7 +15,7 @@ web runtime.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `docs/bevy-feature-parity.md`
 - `runtime-bevy/`

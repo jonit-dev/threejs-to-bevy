@@ -1,5 +1,9 @@
 # PRD-004: Portable Feedback And World Presentation
 
+Status: complete at the promoted-capability threshold. The focused semantic
+gate passes; broader example adoption and additional visual evidence are
+follow-up polish rather than blockers for this PRD.
+
 `Planning Mode: Principal Architect`
 `Complexity: 9 -> HIGH mode`
 

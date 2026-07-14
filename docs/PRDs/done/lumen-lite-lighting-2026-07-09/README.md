@@ -1,5 +1,8 @@
 # Lumen-lite Lighting Milestone (2026-07-09)
 
+Status: complete. Current rendering regressions and calibration are owned by
+the rendering capability status and focused gates, not by this milestone.
+
 Goal: make ThreeNative's default lighting read like a modern "Lumen-class"
 renderer — stable sun shadows, grounded objects, dynamic indirect light,
 shadowed light shafts, and atmospheric depth — while keeping every knob
@@ -37,12 +40,12 @@ rather than reopening broad checklist promotion.
 
 | PRD | Feature | Web technique | Bevy technique |
 |-----|---------|---------------|----------------|
-| [PRD-001](../done/lumen-lite-lighting-2026-07-09/PRD-001-portable-cascaded-shadow-stability.md) | Cascaded sun-shadow stability (done) | `three-csm` split/frustum/texel-snap math, adapter-owned | `CascadeShadowConfigBuilder` mapping |
-| [PRD-002](../done/lumen-lite-lighting-2026-07-09/PRD-002-contact-shadows-grounding.md) | Contact shadows (object grounding) (done) | Drei `ContactShadows` port | Ortho depth capture + separable blur + composite plane |
-| [PRD-003](../done/lumen-lite-lighting-2026-07-09/PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog (done) | `three-good-godrays`-derived bounded pass + analytic height fog | Native `VolumetricFogSettings` + `VolumetricLight` approximation |
-| [PRD-004](../done/lumen-lite-lighting-2026-07-09/PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) (done) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |
-| [PRD-005](../done/lumen-lite-lighting-2026-07-09/PRD-005-scene-ray-query-and-baked-gi.md) | Scene ray queries + baked GI probes (off-screen light foundation) (done) | Wrapped `three-mesh-bvh` CPU queries; camera-weighted SH2 | Parry rendered-mesh queries; honest global SH-L0 ambient approximation |
-| [PRD-006](../done/lumen-lite-lighting-2026-07-09/PRD-006-hero-interior-showcase.md) | Hero interior showcase + native baked-GI calibration (done) | Composed scene: GI, CSM, contact shadows, bloom, fog, god rays | Calibrated ambient fix gated by `verify:baked-gi`, same composed scene |
+| [PRD-001](PRD-001-portable-cascaded-shadow-stability.md) | Cascaded sun-shadow stability (done) | `three-csm` split/frustum/texel-snap math, adapter-owned | `CascadeShadowConfigBuilder` mapping |
+| [PRD-002](PRD-002-contact-shadows-grounding.md) | Contact shadows (object grounding) (done) | Drei `ContactShadows` port | Ortho depth capture + separable blur + composite plane |
+| [PRD-003](PRD-003-volumetric-godrays-height-fog.md) | Shadowed god rays + height fog (done) | `three-good-godrays`-derived bounded pass + analytic height fog | Native `VolumetricFogSettings` + `VolumetricLight` approximation |
+| [PRD-004](PRD-004-ssgi-promotion.md) | SSGI promotion (dynamic indirect diffuse) (done) | `realism-effects` SSGI algorithms, adapter-owned WebGL pass | Bounded approximation (SSAO + calibrated ambient/irradiance term) with honest reporting |
+| [PRD-005](PRD-005-scene-ray-query-and-baked-gi.md) | Scene ray queries + baked GI probes (off-screen light foundation) (done) | Wrapped `three-mesh-bvh` CPU queries; camera-weighted SH2 | Parry rendered-mesh queries; honest global SH-L0 ambient approximation |
+| [PRD-006](PRD-006-hero-interior-showcase.md) | Hero interior showcase + native baked-GI calibration (done) | Composed scene: GI, CSM, contact shadows, bloom, fog, god rays | Calibrated ambient fix gated by `verify:baked-gi`, same composed scene |
 
 ## Rendering tiers this milestone targets
 

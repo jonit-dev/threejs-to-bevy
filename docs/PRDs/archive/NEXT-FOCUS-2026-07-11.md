@@ -1,5 +1,8 @@
 # Where to Spend Compute Next (2026-07-11)
 
+Status: superseded strategy snapshot. Use `docs/PRDs/README.md` for the current
+executable backlog.
+
 Strategic assessment of the highest-value work, ranked. Written after reading
 `docs/STATUS.md`, `docs/ROADMAP.md`, the lumen-lite handoff docs, the
 agent-benchmark round-4/round-5 records, and the 2026-07-09 hands-on

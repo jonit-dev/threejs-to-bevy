@@ -1,5 +1,8 @@
 # Engine Improvement Candidates - 2026-07-07
 
+Status: historical planning input. Its selected delivery PRDs are complete or
+separately tracked.
+
 A prioritized menu of PRD candidates to slice from. Grounded in
 `CHALLENGES.md`, the 2026-07 benchmark evidence
 (`tools/verify/artifacts/agent-benchmark/`), `tools/agent-benchmark/

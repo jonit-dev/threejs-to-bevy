@@ -14,7 +14,7 @@ even though look profiles and beautiful defaults exist elsewhere in the repo.
 
 **Files Analyzed:**
 
-- `docs/PRDs/engine-improvement-candidates-2026-07-07.md`
+- `docs/PRDs/archive/engine-improvement-candidates-2026-07-07.md`
 - `CHALLENGES.md`
 - `docs/PRDs/done/beautiful-defaults-render-look-profiles.md`
 - `templates/structured-source-starter/`

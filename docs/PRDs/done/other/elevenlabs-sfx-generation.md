@@ -1,5 +1,8 @@
 # PRD: ElevenLabs Sound-Effect Generation
 
+Status: complete for the mock-proved, credential-safe integration. A paid live
+provider smoke remains optional external evidence and does not block closure.
+
 Complexity: 10 -> HIGH mode
 
 Score basis: +3 touches more than ten files, +2 adds a new provider/client

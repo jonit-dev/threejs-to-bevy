@@ -23,7 +23,7 @@ Score basis: +3 touches 10+ future files, +2 spans CLI/compiler/IR/runtime-web/B
 - `AGENTS.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/other/agent-friendly-project-and-visual-debugging-workflows.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `packages/cli/src/commands/dev.ts`
 - `packages/cli/src/commands/scene.ts`
 - `packages/cli/src/commands/asset.ts`

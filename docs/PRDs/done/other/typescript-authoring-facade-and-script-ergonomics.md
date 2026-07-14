@@ -42,7 +42,7 @@ this PRD.
 - `packages/AGENTS.md`
 - `docs/PRDs/README.md`
 - `docs/PRDs/other/complete-structured-authoring-parity.md`
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
 - `docs/PRDs/other/editor-script-body-code-mode.md`
 - `docs/PRDs/done/other/game-authoring-loop-hardening.md`
 - `docs/PRDs/other/portable-scripting-ergonomics-stdlib-and-lifecycle.md`

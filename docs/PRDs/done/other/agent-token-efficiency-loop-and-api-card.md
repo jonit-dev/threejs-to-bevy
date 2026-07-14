@@ -1,5 +1,8 @@
 # PRD: Agent Token Efficiency Loop and API Card
 
+Status: complete. Maintained starters use the iterate-first loop, generated API
+cards, and artifact-backed compact game plans.
+
 `Planning Mode: Principal Architect`
 `Complexity: 5 -> MEDIUM mode`
 

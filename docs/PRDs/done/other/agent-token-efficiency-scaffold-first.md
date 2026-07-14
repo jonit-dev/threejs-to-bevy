@@ -126,7 +126,7 @@ sequenceDiagram
 - `packages/cli/src/commands/gamePlanTypes.ts` - scaffold/apply plan fields.
 - `packages/cli/src/commands/gameScore.test.ts` - command contract tests.
 - `packages/cli/src/index.ts` - help text.
-- `docs/PRDs/other/agent-benchmark-token-cost-rerun.md` - note activation
+- `docs/PRDs/done/other/agent-benchmark-token-cost-rerun.md` - note activation
   dependency if needed.
 
 **Implementation:**

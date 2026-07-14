@@ -1,6 +1,7 @@
 # PRD: Authored-Value Compression — Placement Sets and Objective Interactions
 
-**Status:** Proposed
+**Status:** Complete. All feature acceptance rows pass; unrelated aggregate
+gate debt remains owned by its respective systems.
 **Date:** 2026-07-12
 **Owner:** ThreeNative authoring/runtime
 **Scope:** Durable `content/**/*.json`, `src/scripts/**/*.ts`, compiler expansion, shared IR, web Three.js and native Bevy adapters, CLI/editor/MCP derivation

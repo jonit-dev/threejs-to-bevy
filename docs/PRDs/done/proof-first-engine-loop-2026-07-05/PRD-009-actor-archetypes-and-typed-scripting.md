@@ -26,7 +26,7 @@ components, and Blueprints; this PRD delivers the data-first equivalents.
   on top of them.
 - Recipes (`packages/authoring/src/recipes.ts`) remain the one-shot stamping
   mechanism; archetypes are re-appliable and record provenance.
-- `docs/PRDs/other/editor-ready-modular-authoring-and-scripting-architecture.md`
+- `docs/PRDs/done/other/editor-ready-modular-authoring-and-scripting-architecture.md`
   owns editor-facing modularity; this PRD's outputs (typed context, behavior
   metadata, archetype provenance) must conform to its source-of-truth rules.
 
