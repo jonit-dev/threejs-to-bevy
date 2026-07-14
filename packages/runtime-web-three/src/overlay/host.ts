@@ -156,7 +156,10 @@ const INPUT_MODES = new Set<OverlayInputMode>(["keyboard", "modal", "none", "poi
 
 function applyOverlayInputMode(frame: HTMLIFrameElement, overlay: IOverlayIr, input: OverlayInputMode): void {
   for (const property of ["bottom", "height", "inset", "left", "right", "top", "width"] as const) frame.style[property] = "";
-  Object.assign(frame.style, overlayFrameStyle({ ...overlay, input }));
+  const presentationInput = input === "modal" || overlay.input === "modal" ? "modal" : overlay.input;
+  Object.assign(frame.style, overlayFrameStyle({ ...overlay, input: presentationInput }), {
+    pointerEvents: overlayPointerEvents(input),
+  });
 }
 
 function dispatchSnapshot(windowBridge: IOverlayWindowBridge | undefined, snapshot: { payload: Record<string, unknown>; sequence: number; type: string }): void {

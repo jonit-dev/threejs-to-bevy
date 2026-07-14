@@ -1,0 +1,36 @@
+{
+  "schema": "threenative.android-persistence-trace",
+  "version": "0.1.0",
+  "artifactSha256": "41acaa14bf637340f7ae1f3573e447fae5fb68350524c532fb7ef782c7316337",
+  "packageId": "com.threenative.chess",
+  "device": {
+    "class": "emulator",
+    "model": "Google sdk_gphone64_x86_64",
+    "api": 35,
+    "os": "Android 15 (AE3A.240806.043)"
+  },
+  "procedure": [
+    "Launch the installed APK and select White.",
+    "Force-stop com.threenative.chess without clearing application data.",
+    "Start the main activity and wait for the software-rendered WebView.",
+    "Capture the restored 1280x720 surface before any post-launch input."
+  ],
+  "restoredState": {
+    "sideSelectionChooserAbsent": true,
+    "selectedSide": "white",
+    "persistedPosition": "e2-e4 and d7-d5",
+    "boardVisible": true,
+    "newGameControlVisible": true,
+    "settingsControlVisible": true
+  },
+  "screenshot": {
+    "path": "examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence.png",
+    "sha256": "838f8e652b3d86d4e5f6430ab69d8b22dc377be17925244aaddd4af9a52889df",
+    "bytes": 754092,
+    "width": 1280,
+    "height": 720,
+    "normalizedMeanLuminance": 0.62605
+  },
+  "result": "passed",
+  "boundary": "This trace proves persisted side selection across force-stop/cold launch; it does not replace the missing physical-device proof."
+}

@@ -113,11 +113,21 @@ test("accepts overlay client input and visibility control messages", () => {
 
   assert.equal(bridge.send("overlay:set-input", { mode: "pointer" }), true);
   assert.equal(frame.style.pointerEvents, "auto");
-  assert.equal(frame.style.width, "min(242px, calc(100% - 48px))");
+  assert.equal(frame.style.inset, "0");
+  assert.equal(frame.style.width, "100%");
   assert.equal(frame.blurred, true);
   assert.equal(bridge.send("overlay:set-visible", { visible: false }), true);
   assert.equal(frame.style.display, "none");
   assert.equal(host.bridge.events.length, 0);
+});
+
+test("expands a pointer overlay while its client owns modal input", () => {
+  const host = createWebOverlayHost(makeOverlays("pointer"), "/bundle", new FakeDocument() as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+
+  assert.equal(host.setInput("inventory", "modal"), true);
+  assert.equal(frame.style.inset, "0");
+  assert.equal(frame.style.width, "100%");
 });
 
 function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointer-and-keyboard") {

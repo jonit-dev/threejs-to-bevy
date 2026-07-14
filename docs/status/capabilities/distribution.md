@@ -31,9 +31,9 @@ project-local tool cache and records the automated upstream `linuxdeploy`
 Android webview now produces a registry-native x86-64 debug APK and a signed
 arm64 AAB through the supported package command. Emulator install, launch,
 first-frame, touch, Back, pause/resume, resize, safe-area, cold-relaunch
-persistence, and local-asset evidence passes. Promotion remains partial because
-audio interruption/resume and physical arm64 execution are unproved. Android
-Bevy plus all Windows, macOS, and iOS rows remain
+persistence, local-asset, non-silent one-shot audio, and background/foreground
+loop-audio evidence passes. Promotion remains partial because physical arm64
+execution is unproved. Android Bevy plus all Windows, macOS, and iOS rows remain
 `planned`; no store-ready credential, cross-host, or physical-device support is
 claimed yet.
 
@@ -45,5 +45,6 @@ Evidence:
 - `examples/chess/artifacts/distribution/desktop-proof-report.json`
 - `examples/chess/artifacts/distribution/linux/webview/tauri-appimage-auto-input.png`
 - `examples/chess/artifacts/distribution/android/webview/phase-7-partial-proof-report.json`
+- `examples/chess/artifacts/distribution/android/webview/emulator/audio-lifecycle-trace.json`
 - `packages/cli/src/distribution/web.test.ts`
 - `docs/workflows/release-packaging.md`

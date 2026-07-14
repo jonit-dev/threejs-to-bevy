@@ -1,16 +1,19 @@
 {
   "artifact": {
-    "bytes": 134703938,
+    "bytes": 134119890,
     "format": "apk",
     "path": "examples/chess/artifacts/distribution/android/webview/apk/ThreeNative-Chess_1.0.0_x86_64.apk",
-    "sha256": "487e73915cdf1bf4cf699eb48a82b17bba3914ada3761b230e41f2f8063343eb",
-    "signingStatus": "unsigned"
+    "sha256": "41acaa14bf637340f7ae1f3573e447fae5fb68350524c532fb7ef782c7316337",
+    "signingStatus": "signed-disposable-proof"
   },
   "devices": [
     {
       "api": "35",
       "class": "emulator",
       "evidence": {
+        "audioLifecycle": "examples/chess/artifacts/distribution/android/webview/emulator/audio-lifecycle-trace.json",
+        "audioMove": "examples/chess/artifacts/distribution/android/webview/emulator/audio-move-completed.png",
+        "audioOutput": "examples/chess/artifacts/distribution/android/webview/emulator/audio-move-proof.wav",
         "back": "examples/chess/artifacts/distribution/android/webview/emulator/back-navigation.txt",
         "firstFrame": "examples/chess/artifacts/distribution/android/webview/emulator/first-frame.png",
         "install": "examples/chess/artifacts/distribution/android/webview/emulator/launch-log.txt",
@@ -27,7 +30,7 @@
       "model": "Google sdk_gphone64_x86_64",
       "os": "Android 15 (AE3A.240806.043)",
       "proof": {
-        "audioLifecycle": "failed",
+        "audioLifecycle": "passed",
         "back": "passed",
         "firstFrame": "passed",
         "install": "passed",
@@ -44,15 +47,14 @@
     }
   ],
   "findings": [
-    "The headless emulator has no audio output, so audio interruption/resume is unproved.",
     "A physical arm64 device report is not available on this host."
   ],
   "releaseArtifact": {
-    "bytes": 16824728,
+    "bytes": 16826916,
     "credentialRef": "ci:android-disposable-proof",
     "format": "aab",
     "path": "examples/chess/artifacts/distribution/android/webview/aab/ThreeNative-Chess_1.0.0_arm64.aab",
-    "sha256": "85a7d0083737968799cfafd84fba66078f51ec60890e66e146a1564170cb8b1d",
+    "sha256": "f5624f22bd12a50f294ea87cc7fba8522ec64f6e958f5d9c57a34510f33ea52c",
     "signingStatus": "signed-disposable-proof",
     "signingVerification": "jarsigner"
   },

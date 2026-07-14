@@ -562,13 +562,25 @@ the app, rotate where allowed, and confirm persisted state.
 produces and hashes a current x86-64 APK plus disposable-proof-signed arm64 AAB.
 Pinned Android 15 emulator evidence passes install, launch, first frame, touch,
 Back, pause/resume, surface resize, safe area, cold-relaunch persistence, and
-local assets. Audio interruption/resume is unproved because the available
-headless emulator has no audio output, and no physical arm64 device is attached.
-The proof report therefore remains fail-closed at `partial` and Phase 8 has not
-started. Fixes crossed the original five-file estimate because emulator proof
-exposed runtime persistence/viewport defects and generated Tauri lifecycle
-drift; the owning contract, compiler, runtime, game source, tests, and status
-documents were updated rather than hiding those defects in the proof harness.
+local assets. The 1280x720 landscape pass keeps the React overlay full-screen,
+compacts actions without covering the board, and scales relayed pointer
+coordinates between the iframe and parent viewport. A QEMU WAV output capture
+now proves non-silent move audio, while
+Android audio-service state proves the ambience stops after backgrounding and
+starts again after foregrounding. This proof exposed and fixed a web runtime
+defect that validated script audio services but discarded them before the sink.
+No physical arm64 device is attached. The proof report therefore remains
+fail-closed at `partial` and Phase 8 has not started. Fixes crossed the original
+five-file estimate because emulator proof exposed runtime persistence,
+viewport, script-audio delivery, and generated Tauri lifecycle defects; the
+owning contract, compiler, runtime, game source, tests, and status documents
+were updated rather than hiding those defects in the proof harness.
+
+**Budget reconciliation:** The original five-file list was a planning estimate
+for the Android adapter slice, not a safe cap on proof-driven corrections. Phase
+7 now explicitly includes the independently tested runtime audio, overlay input,
+chess UI, evidence, and status surfaces named in this checkpoint; Phase 8 stays
+gated until the remaining physical arm64 proof passes.
 
 Evidence:
 
@@ -576,6 +588,7 @@ Evidence:
 - `examples/chess/artifacts/distribution/android/webview/emulator/resize-1280x720.png`
 - `examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence.png`
 - `examples/chess/artifacts/distribution/android/webview/emulator/cold-relaunch-persistence-trace.json`
+- `examples/chess/artifacts/distribution/android/webview/emulator/audio-lifecycle-trace.json`
 - `examples/chess/artifacts/distribution/android/webview/apk/package-report.json`
 - `examples/chess/artifacts/distribution/android/webview/aab/package-report.json`
 

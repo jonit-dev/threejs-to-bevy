@@ -5,3 +5,72 @@ html, body, #root { width: 100%; min-height: 100%; margin: 0; background: transp
 * { box-sizing: border-box; }
 button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
+
+@media (orientation: landscape) and (max-height: 760px) {
+  main.side-chooser {
+    padding: max(8px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
+  }
+
+  .side-chooser .side-chooser-panel {
+    max-width: 720px;
+    padding: clamp(12px, 3vh, 18px);
+  }
+
+  .side-chooser .side-chooser-kicker { margin-bottom: 3px; font-size: 10px; }
+  .side-chooser .side-chooser-title { font-size: clamp(26px, 8vh, 34px); }
+  .side-chooser .side-chooser-subtitle { margin: 2px 0 10px; font-size: 13px; }
+  .side-chooser .side-chooser-options { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .side-chooser .side-choice { min-height: 72px; gap: 8px; padding: 10px; }
+  .side-chooser .side-choice-piece { width: 42px; font-size: 42px; }
+  .side-chooser .side-chooser-footer { margin-top: 8px; font-size: 10px; }
+
+  .game-hud .captured-card {
+    top: auto;
+    bottom: auto;
+    left: auto;
+    min-height: 54px;
+    width: 108px;
+    padding: 8px;
+  }
+
+  .game-hud .captured-card[data-empty="true"] { display: none; }
+  .game-hud .captured-card--opponent {
+    top: 218px;
+    left: max(8px, env(safe-area-inset-left));
+  }
+  .game-hud .captured-card--player {
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: max(8px, env(safe-area-inset-left));
+  }
+  .game-hud .captured-card p { margin-bottom: 4px; font-size: 10px; }
+  .game-hud .captured-card div { min-height: 16px; font-size: 16px; letter-spacing: 2px; }
+
+  .game-hud .hud-action {
+    right: max(8px, env(safe-area-inset-right));
+    height: 44px;
+    width: 96px;
+    gap: 8px;
+    padding-inline: 12px;
+    font-size: 12px;
+    white-space: nowrap;
+  }
+
+  .game-hud .hud-action svg { width: 22px; height: 22px; }
+  .game-hud .hud-action--restart { bottom: calc(max(8px, env(safe-area-inset-bottom)) + 52px); }
+  .game-hud .hud-action--settings { bottom: max(8px, env(safe-area-inset-bottom)); }
+
+  .game-hud .settings-panel { max-width: 400px; padding: 14px; }
+  .game-hud .settings-title { margin-bottom: 8px; font-size: 24px; }
+  .game-hud .settings-option { padding-block: 8px; }
+  .game-hud .settings-done { margin-top: 10px; padding: 10px; }
+}
+
+@media (orientation: landscape) and (max-width: 600px) {
+  .game-hud .hud-action {
+    width: 44px;
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  .game-hud .hud-action > span:last-child { display: none; }
+}

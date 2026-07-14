@@ -40,4 +40,13 @@ artifacts/distribution/android/webview/emulator/*
 !artifacts/distribution/android/webview/emulator/resize-1280x720.png
 !artifacts/distribution/android/webview/emulator/back-navigation.txt
 !artifacts/distribution/android/webview/emulator/launch-log.txt
+!artifacts/distribution/android/webview/emulator/cold-relaunch-persistence.png
+!artifacts/distribution/android/webview/emulator/cold-relaunch-persistence-trace.json
+!artifacts/distribution/android/webview/emulator/audio-before-background.png
+!artifacts/distribution/android/webview/emulator/audio-move-completed.png
+!artifacts/distribution/android/webview/emulator/audio-move-proof.wav
+!artifacts/distribution/android/webview/emulator/audio-playing-dumpsys.txt
+!artifacts/distribution/android/webview/emulator/audio-background-dumpsys.txt
+!artifacts/distribution/android/webview/emulator/audio-resumed-dumpsys.txt
+!artifacts/distribution/android/webview/emulator/audio-lifecycle-trace.json
 .threenative/

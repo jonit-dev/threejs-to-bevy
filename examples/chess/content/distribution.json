@@ -7,6 +7,11 @@
     "version": "1.0.0"
   },
   "schema": "threenative.distribution",
+  "signing": {
+    "android": {
+      "credentialRef": "ci:android-disposable-proof"
+    }
+  },
   "targets": [
     {
       "formats": [

@@ -1,0 +1,78 @@
+{
+  "app": {
+    "apk": {
+      "bytes": 134119890,
+      "path": "examples/chess/artifacts/distribution/android/webview/apk/ThreeNative-Chess_1.0.0_x86_64.apk",
+      "sha256": "41acaa14bf637340f7ae1f3573e447fae5fb68350524c532fb7ef782c7316337"
+    },
+    "id": "com.threenative.chess",
+    "version": "1.0.0"
+  },
+  "capture": {
+    "backend": "QEMU_AUDIO_DRV=wav",
+    "clip": {
+      "channels": 2,
+      "codec": "pcm_s16le",
+      "durationSeconds": 2,
+      "path": "examples/chess/artifacts/distribution/android/webview/emulator/audio-move-proof.wav",
+      "peakDbfs": -36.738366,
+      "rmsDbfs": -62.364182,
+      "sampleRateHz": 44100,
+      "sha256": "21ce6f2f77d97c578d418ad38f76cd1167b7b285f54765325b1aefbc442c44a1"
+    },
+    "sourceWindowSeconds": {
+      "duration": 2,
+      "start": 1785.5
+    }
+  },
+  "device": {
+    "api": 35,
+    "class": "emulator",
+    "model": "Google sdk_gphone64_x86_64",
+    "os": "Android 15 (AE3A.240806.043)"
+  },
+  "evidence": {
+    "backgroundAudioState": "examples/chess/artifacts/distribution/android/webview/emulator/audio-background-dumpsys.txt",
+    "beforeBackground": "examples/chess/artifacts/distribution/android/webview/emulator/audio-before-background.png",
+    "moveCompleted": "examples/chess/artifacts/distribution/android/webview/emulator/audio-move-completed.png",
+    "playingAudioState": "examples/chess/artifacts/distribution/android/webview/emulator/audio-playing-dumpsys.txt",
+    "resumedAudioState": "examples/chess/artifacts/distribution/android/webview/emulator/audio-resumed-dumpsys.txt"
+  },
+  "observations": [
+    {
+      "at": "2026-07-14T11:12:00-07:00",
+      "evidence": "audio-playing-dumpsys.txt",
+      "result": "The exact installed APK reported active audio after restoring the persisted game."
+    },
+    {
+      "at": "2026-07-14T11:12:10-07:00",
+      "evidence": "Android activity state recorded com.threenative.chess as paused and not visible.",
+      "result": "Home backgrounded the activity."
+    },
+    {
+      "at": "2026-07-14T11:12:20-07:00",
+      "evidence": "audio-background-dumpsys.txt",
+      "result": "The exact installed APK was backgrounded and its audio state was captured after ten seconds."
+    },
+    {
+      "at": "2026-07-14T11:12:28-07:00",
+      "evidence": "audio-resumed-dumpsys.txt",
+      "result": "Bringing the exact installed APK task forward restored active audio without choosing a side again."
+    },
+    {
+      "at": "2026-07-14T11:06:00-07:00",
+      "evidence": "audio-move-completed.png and audio-move-proof.wav",
+      "result": "Touch input completed e2-e4, the AI replied d7-d5, and the captured output contains two non-silent move transients."
+    }
+  ],
+  "proof": {
+    "backgroundPause": "passed",
+    "foregroundResume": "passed",
+    "loopPlayback": "passed",
+    "nonSilentOutput": "passed",
+    "oneShotPlayback": "passed"
+  },
+  "schema": "threenative.android-audio-lifecycle-trace",
+  "status": "passed",
+  "version": "0.1.0"
+}
