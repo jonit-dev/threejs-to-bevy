@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.blender-object-job",
+  "version": "0.1.0",
+  "materials": [
+    {
+      "name": "paint",
+      "color": [0.08, 0.32, 0.8, 1.0],
+      "metallic": 0.1,
+      "roughness": 0.42
+    },
+    {
+      "name": "band",
+      "color": [0.04, 0.05, 0.07, 1.0],
+      "metallic": 0.75,
+      "roughness": 0.24
+    }
+  ],
+  "parts": [
+    {
+      "name": "body",
+      "primitive": "cube",
+      "scale": [1.0, 1.0, 1.0],
+      "bevel": 0.08,
+      "bevelSegments": 3,
+      "material": "paint"
+    },
+    {
+      "name": "band-x",
+      "primitive": "cube",
+      "scale": [1.08, 0.14, 1.08],
+      "bevel": 0.025,
+      "material": "band"
+    },
+    {
+      "name": "band-y",
+      "primitive": "cube",
+      "scale": [0.14, 1.08, 1.08],
+      "bevel": 0.025,
+      "material": "band"
+    }
+  ]
+}

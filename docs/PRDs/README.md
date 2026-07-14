@@ -136,6 +136,16 @@ evidence, not active backlog.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
+
+- [Optional Headless Blender Asset Generation](other/optional-headless-blender-asset-generation.md):
+  adds an explicit, checksum-verified optional Blender tool lifecycle and a
+  bounded structured-recipe generator that emits normal inspected GLB assets,
+  reuses generator provenance, and exposes only a thin safe MCP adapter.
+- [Cross-Platform Distribution](other/cross-platform-distribution-2026-07-13.md):
+  defines one registry-driven build, signing, and proof workflow for web,
+  Windows, macOS, Linux, Android, and iOS/iPadOS, including both native Bevy
+  and Tauri-wrapped web runtime choices on mobile.
+
 - [Authored-Value Compression — Placement Sets and Objective Interactions](done/other/authored-value-compression-placement-interactions.md) - done:
   adds deterministic compiler-expanded placement sets for repeated ECS/scene
   population and a bounded portable interaction contract for the recurring
