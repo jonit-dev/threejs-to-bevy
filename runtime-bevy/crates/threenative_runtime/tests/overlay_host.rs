@@ -2,8 +2,8 @@ use std::path::Path;
 use threenative_loader::{OverlayBridgeMessagesIr, OverlayIr, OverlayLayoutIr, OverlaysIr};
 
 use threenative_runtime::overlay_host::{
-    create_native_overlay_host_plan, input_capture_policy, native_overlay_bounds,
-    native_overlay_input_rectangles, overlay_host_diagnostics,
+    NativeOverlayRenderReadiness, create_native_overlay_host_plan, input_capture_policy,
+    native_overlay_bounds, native_overlay_input_rectangles, overlay_host_diagnostics,
 };
 #[cfg(not(feature = "native-overlay-cef"))]
 use threenative_runtime::overlay_host::{
@@ -16,6 +16,21 @@ fn reports_unsupported_desktop_overlay_webview_capability() {
     let diagnostics = overlay_host_diagnostics(Some(&overlays), false);
 
     assert_eq!(diagnostics[0].code, "TN_OVERLAY_TARGET_UNSUPPORTED");
+}
+
+#[test]
+fn overlay_render_readiness_requires_every_surface_to_paint() {
+    let readiness = NativeOverlayRenderReadiness {
+        ready_surface_ids: vec!["hud".to_owned()],
+        surface_count: 2,
+    };
+    assert!(!readiness.is_ready());
+
+    let readiness = NativeOverlayRenderReadiness {
+        ready_surface_ids: vec!["hud".to_owned(), "dialog".to_owned()],
+        surface_count: 2,
+    };
+    assert!(readiness.is_ready());
 }
 
 fn make_overlays() -> OverlaysIr {

@@ -1706,6 +1706,10 @@ pub fn install_cef_surfaces(
         });
     }
     app.insert_resource(CefSurfaceTextures(textures));
+    app.insert_resource(crate::overlay_host::NativeOverlayRenderReadiness {
+        ready_surface_ids: Vec::new(),
+        surface_count: host.surfaces.len(),
+    });
     app.insert_resource(crate::overlay_host::NativeOverlayBridgeResource::new(
         overlays,
     ));
@@ -1797,6 +1801,7 @@ fn pump_cef_spike_surface(
     mut images: ResMut<Assets<Image>>,
     mut visibility: Query<&mut Visibility>,
     mut exits: EventWriter<bevy::app::AppExit>,
+    mut render_readiness: ResMut<crate::overlay_host::NativeOverlayRenderReadiness>,
 ) {
     cef::do_message_loop_work();
     for (runtime, texture) in host.surfaces.iter_mut().zip(&mut textures.0) {
@@ -1809,6 +1814,12 @@ fn pump_cef_spike_surface(
             &mut exits,
         );
     }
+    render_readiness.ready_surface_ids = textures
+        .0
+        .iter()
+        .filter(|texture| texture.first_paint_ms.is_some())
+        .map(|texture| texture.overlay_id.clone())
+        .collect();
 }
 
 fn pump_cef_surface(

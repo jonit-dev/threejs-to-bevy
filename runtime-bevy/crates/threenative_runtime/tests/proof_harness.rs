@@ -252,6 +252,62 @@ fn should_parse_screenshot_commands_and_report_missing_window_as_warning() {
 }
 
 #[test]
+fn should_wait_for_every_native_overlay_surface_before_a_screenshot() {
+    let root = temp_dir("overlay-screenshot-readiness");
+    let readiness_path = root.join("readiness.json");
+    let screenshot_path = root.join("before.png");
+    let mut app = App::new();
+    app.add_event::<AppExit>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(
+        threenative_runtime::overlay_host::NativeOverlayRenderReadiness {
+            ready_surface_ids: vec!["hud".to_owned()],
+            surface_count: 2,
+        },
+    );
+    app.insert_resource(NativeProofHarnessState::from_stream(
+        NativeProofHarnessCommandStream {
+            schema: "threenative.native-proof-harness".to_owned(),
+            version: "0.1.0".to_owned(),
+            commands: vec![
+                serde_json::from_value::<NativeProofHarnessCommand>(serde_json::json!({
+                    "tick": 0,
+                    "type": "screenshot",
+                    "path": screenshot_path.display().to_string()
+                }))
+                .expect("command should parse"),
+            ],
+        },
+        readiness_path.display().to_string(),
+    ));
+    app.add_systems(PreUpdate, apply_native_proof_harness_commands);
+
+    app.update();
+    let waiting: serde_json::Value = serde_json::from_slice(
+        &fs::read(&readiness_path).expect("waiting readiness should be written"),
+    )
+    .expect("waiting readiness should be json");
+    assert_eq!(waiting["tick"], 0);
+    assert_eq!(waiting["diagnostics"].as_array().unwrap().len(), 0);
+
+    app.world_mut()
+        .resource_mut::<threenative_runtime::overlay_host::NativeOverlayRenderReadiness>()
+        .ready_surface_ids
+        .push("dialog".to_owned());
+    app.update();
+    let captured: serde_json::Value = serde_json::from_slice(
+        &fs::read(&readiness_path).expect("capture readiness should be written"),
+    )
+    .expect("capture readiness should be json");
+    assert_eq!(
+        captured["diagnostics"][0]["code"],
+        "TN_NATIVE_PROOF_SCREENSHOT_FAILED"
+    );
+
+    fs::remove_dir_all(root).expect("temp proof harness dir should be removed");
+}
+
+#[test]
 fn should_snapshot_transform_positions_for_readiness() {
     let player = ThreeNativeId("player".to_owned());
     let player_transform = Transform::from_xyz(1.1234567, 2.0, 3.7654321);

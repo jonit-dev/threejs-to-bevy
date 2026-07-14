@@ -48,6 +48,18 @@ pub struct NativeOverlayInputCapture {
     pub pointer: bool,
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, Resource)]
+pub struct NativeOverlayRenderReadiness {
+    pub ready_surface_ids: Vec<String>,
+    pub surface_count: usize,
+}
+
+impl NativeOverlayRenderReadiness {
+    pub fn is_ready(&self) -> bool {
+        self.surface_count > 0 && self.ready_surface_ids.len() == self.surface_count
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct NativeOverlayBackendDescriptor {
     pub cargo_feature: &'static str,

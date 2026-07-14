@@ -348,7 +348,10 @@ pub fn apply_native_proof_harness_commands(
     root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
     write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
-    scene_ray_query: Option<Res<crate::scene_ray_query::NativeSceneRayQuery>>,
+    mut proof_resources: ParamSet<(
+        Option<Res<crate::scene_ray_query::NativeSceneRayQuery>>,
+        Option<Res<crate::overlay_host::NativeOverlayRenderReadiness>>,
+    )>,
 ) {
     let tick = state.tick;
     let mut diagnostics = Vec::new();
@@ -471,6 +474,14 @@ pub fn apply_native_proof_harness_commands(
                 commands.insert_resource(NativeProofHarnessFastForward(frames.max(1)));
             }
             NativeProofHarnessAction::Screenshot { path } => {
+                if proof_resources
+                    .p1()
+                    .as_deref()
+                    .is_some_and(|readiness| !readiness.is_ready())
+                {
+                    hold_tick = true;
+                    continue;
+                }
                 route_proof_ui_to_scene_camera(
                     &mut commands,
                     &mut ui_cameras,
@@ -496,7 +507,7 @@ pub fn apply_native_proof_harness_commands(
                 match (
                     positions.get(from.as_str()),
                     positions.get(to.as_str()),
-                    scene_ray_query.as_deref(),
+                    proof_resources.p0().as_deref(),
                 ) {
                     (Some(origin), Some(target), Some(query)) => {
                         let hit = query.occluded_excluding(
