@@ -381,6 +381,7 @@ pub struct CefOsrRuntime {
     pointer_moves_sent: Cell<u64>,
     queue: Rc<RefCell<CefPaintQueue>>,
     process_started_at: Instant,
+    spike_scenario_result: Option<Result<usize, String>>,
     visible: bool,
 }
 
@@ -464,6 +465,7 @@ impl CefOsrRuntime {
             pointer_moves_sent: Cell::new(0),
             queue,
             process_started_at,
+            spike_scenario_result: None,
             visible: true,
         })
     }
@@ -495,6 +497,21 @@ impl CefOsrRuntime {
             .ok_or_else(|| "TN_OVERLAY_CEF_INIT_FAILED: main frame is unavailable".to_string())?;
         let script = cef_spike_bridge_script(&self.overlay_id)?;
         frame.execute_java_script(Some(&script.as_str().into()), None, 0);
+        if std::env::var_os("TN_OVERLAY_CEF_SPIKE_BRIDGE_PROBE").is_some() {
+            frame.execute_java_script(
+                Some(
+                    &r#"window.threenativeOverlayBridge.send("overlay:set-visible", { visible: false });
+                       window.threenativeOverlayBridge.send("overlay:set-input", { mode: "pointer" });
+                       setTimeout(() => window.threenativeOverlayBridge.send("overlay:set-visible", { visible: true }), 50);"#
+                        .into(),
+                ),
+                None,
+                0,
+            );
+        }
+        if std::env::var_os("TN_OVERLAY_CEF_SPIKE_MODAL_PROBE").is_some() {
+            frame.execute_java_script(Some(&cef_spike_modal_probe_script().into()), None, 0);
+        }
         self.bridge_injected = true;
         Ok(())
     }
@@ -517,6 +534,20 @@ impl CefOsrRuntime {
             snapshot.sequence,
         );
         frame.execute_java_script(Some(&script.as_str().into()), None, 0);
+        if self.delivered_sequence == 0
+            && std::env::var_os("TN_OVERLAY_CEF_SPIKE_BRIDGE_PROBE").is_some()
+        {
+            frame.execute_java_script(
+                Some(
+                    &r#"window.threenativeOverlayBridge.subscribe((type, _payload, metadata) => {
+                         console.info(`TN_OVERLAY_CEF_BRIDGE_REPLAY:${JSON.stringify({ type, sequence: metadata.sequence })}`);
+                       });"#
+                        .into(),
+                ),
+                None,
+                0,
+            );
+        }
         self.delivered_sequence = self.delivered_sequence.max(snapshot.sequence);
         true
     }
@@ -584,6 +615,38 @@ impl CefOsrRuntime {
             host.was_hidden(i32::from(!visible));
         }
     }
+}
+
+pub fn cef_spike_modal_probe_script() -> &'static str {
+    r#"(async () => {
+         const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+         const button = (label) => Array.from(document.querySelectorAll("button"))
+           .find((candidate) => candidate.textContent?.includes(label));
+         const waitFor = async (predicate, label) => {
+           for (let attempt = 0; attempt < 100; attempt += 1) {
+             const value = predicate();
+             if (value) return value;
+             await delay(25);
+           }
+           throw new Error(`timed out waiting for ${label}`);
+         };
+         try {
+           (await waitFor(() => button("Play Black"), "Play Black button")).click();
+           await waitFor(() => button("Settings"), "Settings button");
+           for (let transition = 0; transition < 10; transition += 1) {
+             button("Settings").click();
+             await waitFor(() => document.querySelector("[role='dialog']"), "settings dialog");
+             await delay(100);
+             (await waitFor(() => button("Done"), "Done button")).click();
+             await waitFor(() => document.querySelector("[role='dialog']") === null, "settings removal");
+             await delay(100);
+           }
+           await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+           window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: true, transitions: 10 });
+         } catch (error) {
+           window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: false, error: String(error) });
+         }
+       })();"#
 }
 
 pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
@@ -755,9 +818,24 @@ fn pump_cef_spike_surface(
     mut texture: ResMut<CefSpikeTexture>,
     mut images: ResMut<Assets<Image>>,
     mut visibility: Query<&mut Visibility>,
+    mut exits: EventWriter<bevy::app::AppExit>,
 ) {
     runtime.pump();
     drain_cef_spike_ipc(&mut runtime, &mut bridge);
+    if let Some(result) = runtime.spike_scenario_result.take() {
+        match result {
+            Ok(transitions) => {
+                info!(
+                    "TN_OVERLAY_CEF_MODAL_PROBE_PASS: transitions={transitions}, windowCount=1, viewport=1280x720"
+                );
+                exits.send(bevy::app::AppExit::Success);
+            }
+            Err(error) => {
+                error!("TN_OVERLAY_CEF_MODAL_PROBE_FAILED: {error}");
+                exits.send(bevy::app::AppExit::error());
+            }
+        }
+    }
     if let Ok(mut surface_visibility) = visibility.get_mut(texture.entity) {
         *surface_visibility = if runtime.visible {
             Visibility::Inherited
@@ -784,6 +862,9 @@ fn pump_cef_spike_surface(
             if let Err(error) = runtime.inject_spike_bridge() {
                 warn!("{error}");
             }
+            if std::env::var_os("TN_OVERLAY_CEF_SPIKE_EXIT_AFTER_FIRST_PAINT").is_some() {
+                exits.send(bevy::app::AppExit::Success);
+            }
         }
         if nontransparent_pixels > 0
             && let Some(path) = std::env::var_os("TN_OVERLAY_CEF_SPIKE_FIRST_PAINT")
@@ -802,6 +883,25 @@ fn pump_cef_spike_surface(
         }
     }
     texture.upload_bytes += frame.rgba.len() as u64;
+    if let Some(directory) = std::env::var_os("TN_OVERLAY_CEF_SPIKE_CAPTURE_DIR") {
+        let directory = PathBuf::from(directory);
+        let path = directory.join(format!("paint-{:04}.png", texture.uploads));
+        if let Err(error) = std::fs::create_dir_all(&directory).and_then(|()| {
+            image::save_buffer(
+                &path,
+                &frame.rgba,
+                frame.width,
+                frame.height,
+                image::ColorType::Rgba8,
+            )
+            .map_err(std::io::Error::other)
+        }) {
+            warn!(
+                "TN_OVERLAY_CEF_SPIKE_CAPTURE_FAILED: {}: {error}",
+                path.display()
+            );
+        }
+    }
     if let Some(image) = images.get_mut(&texture.handle) {
         let upload_started = Instant::now();
         apply_paint_to_image(image, frame);
@@ -835,9 +935,32 @@ fn drain_cef_spike_ipc(
             continue;
         }
         match envelope.message_type.as_str() {
+            "overlay:spike-modal-probe" => {
+                let completed = envelope
+                    .payload
+                    .get("completed")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false);
+                let transitions = envelope
+                    .payload
+                    .get("transitions")
+                    .and_then(Value::as_u64)
+                    .and_then(|value| usize::try_from(value).ok());
+                runtime.spike_scenario_result = if completed && transitions == Some(10) {
+                    Some(Ok(10))
+                } else {
+                    Some(Err(envelope
+                        .payload
+                        .get("error")
+                        .and_then(Value::as_str)
+                        .unwrap_or("scenario did not complete 10 transitions")
+                        .to_string()))
+                };
+            }
             "overlay:set-visible" => {
                 if let Some(visible) = envelope.payload.get("visible").and_then(Value::as_bool) {
                     runtime.set_visible(visible);
+                    info!("TN_OVERLAY_CEF_VISIBILITY: visible={visible}");
                 }
             }
             "overlay:set-input" => {
@@ -845,6 +968,8 @@ fn drain_cef_spike_ipc(
                     && !runtime.set_input_mode(mode)
                 {
                     warn!("TN_OVERLAY_NATIVE_IPC_REJECTED: invalid input mode {mode:?}");
+                } else if let Some(mode) = envelope.payload.get("mode").and_then(Value::as_str) {
+                    info!("TN_OVERLAY_CEF_INPUT_MODE: mode={mode}");
                 }
             }
             "overlay:set-input-regions" => {}

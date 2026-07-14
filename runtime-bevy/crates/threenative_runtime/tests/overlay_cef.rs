@@ -3,8 +3,9 @@
 use threenative_runtime::overlay_cef::{
     CEF_DESKTOP_BLINK_SETTINGS, CefPaintFrame, CefPaintQueue, CefSpikeFrameProbe,
     CefSpikeFrameProbeConfig, apply_paint_to_image, build_cef_spike_frame_report,
-    cef_spike_bridge_script, cef_spike_frame_stats, compare_cef_spike_frame_stats,
-    dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
+    cef_spike_bridge_script, cef_spike_frame_stats, cef_spike_modal_probe_script,
+    compare_cef_spike_frame_stats, dispatch_cef_subprocess_with,
+    hide_native_ui_fallback_for_cef,
     normalize_bgra_premultiplied_to_rgba, receive_cef_spike_game_message,
 };
 
@@ -243,4 +244,14 @@ fn should_install_a_real_cef_bridge_without_fabricating_game_snapshots() {
     assert!(script.contains("__threenativeDispatchOverlaySnapshot"));
     assert!(!script.contains("playerSide: payload.side"));
     assert!(!script.contains("chess:captures"));
+}
+
+#[test]
+fn should_require_ten_complete_modal_probe_transitions() {
+    let script = cef_spike_modal_probe_script();
+
+    assert!(script.contains("transition < 10"));
+    assert!(script.contains("settings removal"));
+    assert!(script.contains("transitions: 10"));
+    assert!(script.contains("completed: false"));
 }
