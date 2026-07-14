@@ -22,22 +22,23 @@ use bevy::{
 use cef::rc::Rc as _;
 use cef::{
     App, BeforeDownloadCallback, Browser, BrowserSettings, CefString, Client, CommandLine,
-    DictionaryValue, DisplayHandler, DownloadHandler, DownloadItem, Frame, ImplApp, ImplBrowser,
-    ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler, ImplDownloadHandler,
-    ImplFrame, ImplLifeSpanHandler, ImplListValue, ImplMediaAccessCallback, ImplPermissionHandler,
-    ImplPermissionPromptCallback, ImplProcessMessage, ImplRenderHandler, ImplRenderProcessHandler,
-    ImplRequest, ImplRequestHandler, ImplResourceRequestHandler, ImplSchemeHandlerFactory,
-    ImplSchemeRegistrar, ImplV8Context, ImplV8Handler, ImplV8Value, KeyEvent, KeyEventType,
-    LifeSpanHandler, LogSeverity, MediaAccessCallback, MouseButtonType, MouseEvent,
-    PermissionHandler, PermissionPromptCallback, PermissionRequestResult, PopupFeatures, ProcessId,
-    ProcessMessage, Rect, RenderHandler, RenderProcessHandler, Request, RequestHandler,
-    ResourceHandler, ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions, SchemeRegistrar,
-    ScreenInfo, Settings, V8Context, V8Handler, V8Propertyattribute, V8Value, WindowInfo,
-    WindowOpenDisposition, WrapApp, WrapClient, WrapDisplayHandler, WrapDownloadHandler,
-    WrapLifeSpanHandler, WrapPermissionHandler, WrapRenderHandler, WrapRenderProcessHandler,
-    WrapRequestHandler, WrapResourceRequestHandler, WrapSchemeHandlerFactory, WrapV8Handler,
-    api_hash, browser_host_create_browser_sync, execute_process, initialize,
-    process_message_create, register_scheme_handler_factory, shutdown,
+    ContextMenuHandler, DictionaryValue, DisplayHandler, DownloadHandler, DownloadItem, Frame,
+    ImplApp, ImplBrowser, ImplBrowserHost, ImplClient, ImplCommandLine, ImplContextMenuHandler,
+    ImplDisplayHandler, ImplDownloadHandler, ImplFrame, ImplLifeSpanHandler, ImplListValue,
+    ImplMediaAccessCallback, ImplMenuModel, ImplPermissionHandler, ImplPermissionPromptCallback,
+    ImplProcessMessage, ImplRenderHandler, ImplRenderProcessHandler, ImplRequest,
+    ImplRequestHandler, ImplResourceRequestHandler, ImplSchemeHandlerFactory, ImplSchemeRegistrar,
+    ImplV8Context, ImplV8Handler, ImplV8Value, KeyEvent, KeyEventType, LifeSpanHandler,
+    LogSeverity, MediaAccessCallback, MenuModel, MouseButtonType, MouseEvent, PermissionHandler,
+    PermissionPromptCallback, PermissionRequestResult, PopupFeatures, ProcessId, ProcessMessage,
+    Rect, RenderHandler, RenderProcessHandler, Request, RequestHandler, ResourceHandler,
+    ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions, SchemeRegistrar, ScreenInfo,
+    Settings, TerminationStatus, V8Context, V8Handler, V8Propertyattribute, V8Value, WindowInfo,
+    WindowOpenDisposition, WrapApp, WrapClient, WrapContextMenuHandler, WrapDisplayHandler,
+    WrapDownloadHandler, WrapLifeSpanHandler, WrapPermissionHandler, WrapRenderHandler,
+    WrapRenderProcessHandler, WrapRequestHandler, WrapResourceRequestHandler,
+    WrapSchemeHandlerFactory, WrapV8Handler, api_hash, browser_host_create_browser_sync,
+    execute_process, initialize, process_message_create, register_scheme_handler_factory, shutdown,
     stream_reader_create_for_file, sys, v8_value_create_function,
 };
 use serde::{Deserialize, Serialize};
@@ -51,6 +52,7 @@ pub const CEF_DESKTOP_BLINK_SETTINGS: &str =
     "primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4";
 const MAX_METRIC_SAMPLES: usize = 2_048;
 const MAX_PENDING_BRIDGE_MESSAGES: usize = 64;
+const DEFAULT_FIRST_PAINT_TIMEOUT: Duration = Duration::from_secs(10);
 const CEF_OVERLAY_PROCESS_MESSAGE: &str = "threenative.overlay.send";
 const CEF_OVERLAY_SCHEME: &str = "threenative-overlay";
 const CEF_OVERLAY_ORIGIN: &str = "threenative-overlay://bundle/";
@@ -80,6 +82,26 @@ pub fn cef_surface_physical_extent(width: u32, height: u32, scale_factor: f32) -
         (width as f32 * scale_factor).round().max(1.0) as u32,
         (height as f32 * scale_factor).round().max(1.0) as u32,
     )
+}
+
+pub fn cef_input_position(
+    window_position: Vec2,
+    bounds: crate::overlay_host::NativeOverlayBounds,
+) -> Result<Vec2, String> {
+    if !window_position.is_finite() {
+        return Err(format!(
+            "TN_OVERLAY_CEF_INPUT_MAPPING_INVALID: non-finite window position ({}, {})",
+            window_position.x, window_position.y
+        ));
+    }
+    Ok(Vec2::new(
+        window_position.x - bounds.x as f32,
+        window_position.y - bounds.y as f32,
+    ))
+}
+
+pub fn cef_process_crash_diagnostic(overlay_id: &str, status: u32, detail: &str) -> String {
+    format!("TN_OVERLAY_CEF_PROCESS_CRASHED: overlay={overlay_id:?}, status={status}, {detail}")
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
@@ -402,7 +424,10 @@ cef::wrap_resource_request_handler! {
 }
 
 cef::wrap_request_handler! {
-    struct CefOverlayRequestHandler {}
+    struct CefOverlayRequestHandler {
+        crash_queue: Rc<RefCell<VecDeque<String>>>,
+        overlay_id: String,
+    }
 
     impl RequestHandler {
         fn on_before_browse(
@@ -454,6 +479,42 @@ cef::wrap_request_handler! {
             );
             Some(CefDeniedResourceRequestHandler::new())
         }
+
+        fn on_render_process_terminated(
+            &self,
+            _browser: Option<&mut Browser>,
+            status: TerminationStatus,
+            error_code: i32,
+            error_string: Option<&CefString>,
+        ) {
+            let detail = format!(
+                "errorCode={error_code}, {}",
+                error_string.map(ToString::to_string).unwrap_or_else(|| "renderer exited".to_string())
+            );
+            self.crash_queue.borrow_mut().push_back(cef_process_crash_diagnostic(
+                &self.overlay_id,
+                status.get_raw(),
+                &detail,
+            ));
+        }
+    }
+}
+
+cef::wrap_context_menu_handler! {
+    struct CefDeniedContextMenuHandler {}
+
+    impl ContextMenuHandler {
+        fn on_before_context_menu(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            _params: Option<&mut cef::ContextMenuParams>,
+            model: Option<&mut MenuModel>,
+        ) {
+            if let Some(model) = model {
+                model.clear();
+            }
+        }
     }
 }
 
@@ -465,6 +526,7 @@ cef::wrap_client! {
         download_handler: DownloadHandler,
         permission_handler: PermissionHandler,
         request_handler: RequestHandler,
+        context_menu_handler: ContextMenuHandler,
         ipc_queue: Rc<RefCell<VecDeque<String>>>,
     }
 
@@ -479,6 +541,11 @@ cef::wrap_client! {
 
         fn request_handler(&self) -> Option<RequestHandler> {
             Some(self.request_handler.clone())
+        }
+
+
+        fn context_menu_handler(&self) -> Option<ContextMenuHandler> {
+            Some(self.context_menu_handler.clone())
         }
 
         fn display_handler(&self) -> Option<DisplayHandler> {
@@ -794,6 +861,7 @@ pub struct CefOsrRuntime {
     browser: Option<Browser>,
     bridge_injected: bool,
     closed: Rc<Cell<bool>>,
+    crash_queue: Rc<RefCell<VecDeque<String>>>,
     delivered_sequence: u64,
     input_policy: crate::overlay::NativeOverlayInputPolicy,
     input_regions: Vec<crate::overlay_host::NativeOverlayBounds>,
@@ -810,6 +878,7 @@ pub struct CefOsrRuntime {
     scale_factor: Rc<Cell<f32>>,
     visible: bool,
     shutdown_on_drop: bool,
+    render_timeout_reported: bool,
 }
 
 pub struct CefBundleSurfaceInit<'a> {
@@ -921,6 +990,7 @@ impl CefOsrRuntime {
     ) -> Result<Self, String> {
         let queue = Rc::new(RefCell::new(CefPaintQueue::default()));
         let ipc_queue = Rc::new(RefCell::new(VecDeque::new()));
+        let crash_queue = Rc::new(RefCell::new(VecDeque::new()));
         let closed = Rc::new(Cell::new(false));
         let surface_generation = Rc::new(Cell::new(0));
         let surface_width = Rc::new(Cell::new(width as i32));
@@ -937,7 +1007,9 @@ impl CefOsrRuntime {
         let display_handler = CefSpikeDisplayHandler::new();
         let download_handler = CefDeniedDownloadHandler::new();
         let permission_handler = CefDeniedPermissionHandler::new();
-        let request_handler = CefOverlayRequestHandler::new();
+        let request_handler =
+            CefOverlayRequestHandler::new(crash_queue.clone(), overlay_id.clone());
+        let context_menu_handler = CefDeniedContextMenuHandler::new();
         let mut client = CefSpikeClient::new(
             render_handler,
             life_span_handler,
@@ -945,6 +1017,7 @@ impl CefOsrRuntime {
             download_handler,
             permission_handler,
             request_handler,
+            context_menu_handler,
             ipc_queue.clone(),
         );
         let browser = browser_host_create_browser_sync(
@@ -972,6 +1045,7 @@ impl CefOsrRuntime {
             browser: Some(browser),
             bridge_injected: false,
             closed,
+            crash_queue,
             delivered_sequence: 0,
             input_policy: crate::overlay::native_overlay_input_policy("modal"),
             input_regions: Vec::new(),
@@ -988,6 +1062,7 @@ impl CefOsrRuntime {
             scale_factor,
             visible: true,
             shutdown_on_drop,
+            render_timeout_reported: false,
         })
     }
 
@@ -1084,6 +1159,10 @@ impl CefOsrRuntime {
 
     fn drain_ipc(&mut self) -> Vec<String> {
         self.ipc_queue.borrow_mut().drain(..).collect()
+    }
+
+    fn drain_crashes(&mut self) -> Vec<String> {
+        self.crash_queue.borrow_mut().drain(..).collect()
     }
 
     fn deliver_snapshot(&mut self, snapshot: &crate::overlay::OverlayBridgeEnvelope) -> bool {
@@ -1741,6 +1820,22 @@ fn pump_cef_surface(
     exits: &mut EventWriter<bevy::app::AppExit>,
 ) {
     drain_cef_spike_ipc(runtime, bridge);
+    for crash in runtime.drain_crashes() {
+        error!("{crash}");
+        exits.send(bevy::app::AppExit::error());
+    }
+    if texture.first_paint_ms.is_none()
+        && !runtime.render_timeout_reported
+        && runtime.startup_elapsed() >= first_paint_timeout()
+    {
+        runtime.render_timeout_reported = true;
+        error!(
+            "TN_OVERLAY_CEF_RENDER_TIMEOUT: overlay={:?}: no nonblank paint within {} ms; inspect overlay console, resource, and process diagnostics",
+            runtime.overlay_id,
+            first_paint_timeout().as_millis()
+        );
+        exits.send(bevy::app::AppExit::error());
+    }
     if let Some(result) = runtime.spike_scenario_result.take() {
         match result {
             Ok(transitions) => {
@@ -1841,6 +1936,15 @@ fn pump_cef_surface(
         );
         texture.uploads += 1;
     }
+}
+
+fn first_paint_timeout() -> Duration {
+    std::env::var("TN_OVERLAY_CEF_FIRST_PAINT_TIMEOUT_MS")
+        .ok()
+        .and_then(|value| value.parse::<u64>().ok())
+        .filter(|value| (100..=120_000).contains(value))
+        .map(Duration::from_millis)
+        .unwrap_or(DEFAULT_FIRST_PAINT_TIMEOUT)
 }
 
 fn drain_cef_spike_ipc(
@@ -2191,8 +2295,24 @@ fn route_cef_spike_input(
     mut last_position: Local<Option<Vec2>>,
     mut last_target: Local<Option<usize>>,
     mut capture: ResMut<crate::overlay_host::NativeOverlayInputCapture>,
+    mut input_mapping_invalid: Local<bool>,
 ) {
     for event in cursor_moved.read() {
+        if let Err(diagnostic) = cef_input_position(
+            event.position,
+            crate::overlay_host::NativeOverlayBounds {
+                x: 0,
+                y: 0,
+                width: u32::MAX,
+                height: u32::MAX,
+            },
+        ) {
+            if !*input_mapping_invalid {
+                warn!("{diagnostic}");
+                *input_mapping_invalid = true;
+            }
+            continue;
+        }
         let target = topmost_cef_surface_at(&host, &textures, event.position);
         if *last_target != target
             && let Some(previous) = *last_target
@@ -2282,10 +2402,7 @@ fn local_cef_position(
     window_position: Vec2,
     bounds: crate::overlay_host::NativeOverlayBounds,
 ) -> Vec2 {
-    Vec2::new(
-        window_position.x - bounds.x as f32,
-        window_position.y - bounds.y as f32,
-    )
+    cef_input_position(window_position, bounds).unwrap_or(Vec2::splat(f32::NEG_INFINITY))
 }
 
 fn topmost_cef_surface_at(

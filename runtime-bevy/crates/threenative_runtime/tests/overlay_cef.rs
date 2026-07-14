@@ -3,12 +3,12 @@
 use threenative_runtime::overlay_cef::{
     CEF_DESKTOP_BLINK_SETTINGS, CefPaintFrame, CefPaintQueue, CefSpikeFrameProbe,
     CefSpikeFrameProbeConfig, advance_snapshot_delivery, apply_paint_to_image,
-    apply_paint_to_image_if_current, build_cef_spike_frame_report, cef_key_values,
-    cef_modal_probe_script, cef_overlay_url_allowed, cef_spike_bridge_script,
-    cef_spike_frame_stats, cef_spike_modal_probe_script, cef_surface_physical_extent,
-    compare_cef_spike_frame_stats, dispatch_cef_subprocess_with, hide_native_ui_fallback_for_cef,
-    normalize_bgra_premultiplied_to_rgba, receive_cef_spike_game_message,
-    resolve_cef_overlay_resource, select_topmost_cef_surface,
+    apply_paint_to_image_if_current, build_cef_spike_frame_report, cef_input_position,
+    cef_key_values, cef_modal_probe_script, cef_overlay_url_allowed, cef_process_crash_diagnostic,
+    cef_spike_bridge_script, cef_spike_frame_stats, cef_spike_modal_probe_script,
+    cef_surface_physical_extent, compare_cef_spike_frame_stats, dispatch_cef_subprocess_with,
+    hide_native_ui_fallback_for_cef, normalize_bgra_premultiplied_to_rgba,
+    receive_cef_spike_game_message, resolve_cef_overlay_resource, select_topmost_cef_surface,
 };
 
 #[test]
@@ -75,6 +75,33 @@ fn should_break_equal_z_index_ties_by_stable_mount_order() {
 fn should_map_hidpi_css_extent_to_physical_overlay_pixels() {
     assert_eq!(cef_surface_physical_extent(800, 450, 1.5), (1200, 675));
     assert_eq!(cef_surface_physical_extent(800, 450, 0.0), (800, 450));
+}
+
+#[test]
+fn should_reject_an_impossible_overlay_input_mapping() {
+    let bounds = threenative_runtime::overlay_host::NativeOverlayBounds {
+        x: 12,
+        y: 20,
+        width: 300,
+        height: 180,
+    };
+    assert_eq!(
+        cef_input_position(bevy::prelude::Vec2::new(42.0, 50.0), bounds).unwrap(),
+        bevy::prelude::Vec2::new(30.0, 30.0)
+    );
+    assert!(
+        cef_input_position(bevy::prelude::Vec2::new(f32::NAN, 50.0), bounds)
+            .unwrap_err()
+            .starts_with("TN_OVERLAY_CEF_INPUT_MAPPING_INVALID:")
+    );
+}
+
+#[test]
+fn should_emit_a_stable_renderer_crash_diagnostic() {
+    assert_eq!(
+        cef_process_crash_diagnostic("hud", 3, "renderer exited"),
+        "TN_OVERLAY_CEF_PROCESS_CRASHED: overlay=\"hud\", status=3, renderer exited"
+    );
 }
 
 #[test]
