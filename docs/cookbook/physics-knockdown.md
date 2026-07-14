@@ -55,23 +55,25 @@ tn build --project . --json
 
 ## character-push
 
-For a kinematic character that should launch a permitted dynamic body instead
-of moving it by pose alone, enable the rig's opt-in velocity handoff and declare
-both component writes on the owning system:
+For a kinematic character that should push a permitted dynamic body, author the
+character's `pushPolicy` and let the runtime physics solver own the dynamic
+body's transform and velocity:
 
 ```ts
-CharacterRig.update(context, player, { applyPushVelocity: true });
+CharacterRig.update(context, player);
 ```
 
 ```json
 {
-  "writes": ["RigidBody", "Transform"]
+  "writes": ["Transform"]
 }
 ```
 
 The player's `CharacterController.pushPolicy` still owns allowed layers, mass
-limits, and impulse scaling. Keep the rendered sphere radius equal to its
-`Collider.radius`; primitive sphere `size[0]` is a radius, not a diameter.
+limits, and impulse scaling. `CharacterRig` reports the `pushed` observation but
+does not pose or accelerate the dynamic body; doing both would apply the same
+movement twice around the solver step. Keep the rendered sphere radius equal to
+its `Collider.radius`; primitive sphere `size[0]` is a radius, not a diameter.
 
 For a grounded kinematic jump, bind an input action and let the same rig retain
 the vertical offset and gravity state:

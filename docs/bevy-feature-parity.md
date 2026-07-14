@@ -422,9 +422,9 @@ diagnostics until portable promotion criteria and web/Bevy evidence exist.
       stacking, character-contact, query, and bounded mesh traces with compact
       stable-order sidecars.
 - [x] `P0` Slope limits and sloped-surface walkability for promoted ramp colliders
-- [x] `P1` Character interaction volumes and object pushing, including an
-      opt-in `CharacterRig` handoff from deterministic push traces to dynamic
-      body velocity
+- [x] `P1` Character interaction volumes and object pushing, with
+      `CharacterRig` push observations and solver-owned dynamic-body transform
+      and velocity response across web and Bevy
 - [x] `P1` Closed Interaction IR fixed-tick execution on web and Bevy for
       pickup, hazard, checkpoint, and projectile/event scenarios. The
       `pnpm verify:conformance` aggregate compares paired normalized traces,

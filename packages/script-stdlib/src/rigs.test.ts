@@ -177,7 +177,7 @@ test("CharacterRig.update: rig.yaw stays in the plain library convention regardl
   assert.ok(Math.abs((plainResult?.yaw ?? 0) - (flippedResult?.yaw ?? 0)) < 1e-6, `yaw should match across forwardAxis: ${plainResult?.yaw} vs ${flippedResult?.yaw}`);
 });
 
-test("CharacterRig.update: optionally applies character push velocity to the dynamic body", () => {
+test("CharacterRig.update: reports character pushes without authoring the dynamic body", () => {
   const player = createEntity("player", [0, 0, 0]);
   const ball = createEntity("ball.push.01", [1, 0.35, 0]);
   const context = createContext([player, ball]);
@@ -186,9 +186,9 @@ test("CharacterRig.update: optionally applies character push velocity to the dyn
 
   const result = CharacterRig.update(context as never, player, { applyPushVelocity: true, fixedDelta: 0.2, maxTurnSpeed: 20, walkSpeed: 3 });
 
-  assert.deepEqual(ball.position, [1.4, 0.35, 0]);
-  assert.deepEqual(ball.components.RigidBody, { velocity: [2, 0, 0] });
-  assert.deepEqual(result.pushed, { entity: "ball.push.01", position: [1.4, 0.35, 0], velocity: [2, 0, 0] });
+  assert.deepEqual(ball.position, [1, 0.35, 0]);
+  assert.equal(ball.components.RigidBody, undefined);
+  assert.deepEqual(result.pushed, { entity: "ball.push.01", position: [1.4, 0.35, 0] });
   assert.deepEqual(player.position, [0.2, 0, 0]);
 });
 

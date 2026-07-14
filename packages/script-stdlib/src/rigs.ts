@@ -61,6 +61,7 @@ interface IPhysicsSensorEventLike {
 
 export interface ICharacterRigOptions {
   readonly acceleration?: number;
+  /** @deprecated Dynamic push response is owned by the runtime physics solver. */
   readonly applyPushVelocity?: boolean;
   readonly bounds?: { readonly max: Vec3Value; readonly min: Vec3Value };
   readonly cameraYaw?: number;
@@ -284,7 +285,7 @@ export const CharacterRig = Object.freeze({
     }
     const jumping = state.jumpOffset > EPSILON;
     const position = clampVec3([resolved[0], (jumping ? state.groundY : resolved[1]) + state.jumpOffset, resolved[2]], options.bounds);
-    const pushed = applyCharacterPushTrace(context, trace?.pushed, options.applyPushVelocity === true ? dt : undefined);
+    const pushed = readCharacterPushTrace(trace?.pushed);
     transform?.setPose(position, Quat.fromYaw(state.yaw + meshYawOffset(options.forwardAxis ?? "+z")));
     playCharacterClip(context, entityRef, state.speed, sprinting, options.clips);
     return { grounded: !jumping && trace?.grounded === true, jumping, moving, position, ...(pushed === undefined ? {} : { pushed }), speed: state.speed, sprinting, verticalSpeed: state.verticalSpeed, yaw: state.yaw };
@@ -472,25 +473,12 @@ function playCharacterClip(context: IRigContextLike, entity: string | ISystemEnt
   });
 }
 
-function applyCharacterPushTrace(context: IRigContextLike, pushed: { entity?: string; impulse?: Vec3Value; position?: Vec3Value } | undefined, fixedDelta: number | undefined): ICharacterRigResult["pushed"] {
+function readCharacterPushTrace(pushed: { entity?: string; impulse?: Vec3Value; position?: Vec3Value } | undefined): ICharacterRigResult["pushed"] {
   if (pushed?.entity === undefined || pushed.position === undefined) {
     return undefined;
   }
-  const target = context.entity?.(pushed.entity);
   const position = Vec3.from(pushed.position);
-  const transform = target?.transform?.();
-  const rotation = readComponentRotation(target);
-  if (transform !== undefined) {
-    transform.setPose(position, rotation);
-  } else {
-    target?.patch?.("Transform", { position });
-  }
-  if (fixedDelta === undefined || fixedDelta <= EPSILON || pushed.impulse === undefined) {
-    return { entity: pushed.entity, position };
-  }
-  const velocity = Vec3.scale(Vec3.from(pushed.impulse), 1 / fixedDelta);
-  target?.patch?.("RigidBody", { velocity });
-  return { entity: pushed.entity, position, velocity };
+  return { entity: pushed.entity, position };
 }
 
 function readFixedDelta(context: IRigContextLike): number {

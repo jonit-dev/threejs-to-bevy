@@ -827,7 +827,9 @@ Rules:
   primitive bodies or `tooHeavy` when policy blocks movement against a dynamic
   primitive above the authored mass limit. Extended observations may include
   ordered contact, slope, and step data when primitive solver metadata resolves
-  ramps, step-up, or push interactions.
+  ramps, step-up, or push interactions. Push payloads are observations; scripts
+  and stdlib rigs must not copy their predicted position into a dynamic body's
+  `Transform`, because the runtime solver exclusively owns that response.
 - V9 static pathfinding uses a built-in `Navigation` world resource containing
   bounded static convex regions, area costs, and optional fixture queries.
   Scripts declare `navigation.path` and call `ctx.navigation.path({ start,

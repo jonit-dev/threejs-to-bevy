@@ -19,8 +19,9 @@ Current support:
   stalls through forward-distance and resolved vertical-displacement checks;
   Bevy's direct and script-host character solvers share leading-edge step
   semantics with web.
-- `CharacterRig.update` can opt into transferring a permitted push trace to a
-  dynamic body's velocity while retaining the deterministic pose handoff.
+- `CharacterRig.update` reports permitted push traces without authoring the
+  dynamic body; retained Rapier contact solving exclusively owns its transform
+  and velocity, avoiding duplicate pose-and-velocity movement per fixed tick.
 - `CharacterRig.update` supports an opt-in grounded kinematic jump with an
   action binding, authored takeoff speed, portable gravity, held-input
   debouncing, stdlib bundle-equivalence coverage, and desktop transform proof.
