@@ -46,6 +46,7 @@ fn should_select_cef_osr_for_a_declared_desktop_overlay() {
 
     assert_eq!(descriptor.id, "cef-osr");
     assert_eq!(descriptor.cargo_feature, "native-overlay-cef");
+    assert_eq!(descriptor.package_manifest, "cef-runtime-manifest.json");
     assert_eq!(plan.backend, descriptor.id);
 }
 

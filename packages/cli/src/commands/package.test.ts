@@ -1,12 +1,13 @@
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
 
-import { packageCommand } from "./package.js";
+import { packageCommand, type ICefPayloadManifest } from "./package.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -78,6 +79,99 @@ test("package should create archive and installer artifacts", async () => {
     await execFileAsync("sh", [installerPayload.artifacts.installerPath, installDir]);
     assert.match(await readFile(join(installDir, "run.sh"), "utf8"), /exec \.\/threenative_runtime "game\.bundle"/);
     assert.equal(await readFile(join(installDir, "desktop", "game.bundle", "manifest.json"), "utf8").then((value) => value.length > 0), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should build a validated mounted CEF AppImage", { skip: process.platform !== "linux" || process.arch !== "x64" }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-cef-appimage-"));
+  try {
+    await writeBundle(root, ["web", "desktop"], true);
+    const cefRuntimeDir = join(root, "cef-runtime");
+    await mkdir(cefRuntimeDir);
+    const bytes = Buffer.from("pinned-cef-runtime");
+    await writeFile(join(cefRuntimeDir, "libcef.so"), bytes);
+    const manifest = testCefManifest("libcef.so", bytes);
+
+    const result = await packageCommand(
+      ["--bundle", "game.bundle", "--outDir", "artifacts/appimage", "--format", "appimage", "--json"],
+      root,
+      {
+        cefPayloadManifest: manifest,
+        cefRuntimeDir,
+        runtimeBuilder: async ({ outputPath }) => {
+          await writeFile(outputPath, "fake-runtime", { mode: 0o755 });
+          return outputPath;
+        },
+        appImageBuilder: async ({ appDir, outputPath }) => {
+          assert.match(await readFile(join(appDir, "AppRun"), "utf8"), /game\.bundle/);
+          assert.match(await readFile(join(appDir, "threenative_runtime"), "utf8"), /LD_LIBRARY_PATH/);
+          assert.equal(await readFile(join(appDir, "libcef.so"), "utf8"), bytes.toString());
+          assert.equal(JSON.parse(await readFile(join(appDir, "cef-runtime-manifest.json"), "utf8")).backend, "cef-osr");
+          await writeFile(outputPath, "mounted-appimage", { mode: 0o755 });
+          return outputPath;
+        },
+      },
+    );
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.format, "appimage");
+    assert.equal(payload.nativeOverlay.backend, "cef-osr");
+    assert.equal(payload.nativeOverlay.logicalPayloadBytes, bytes.length);
+    assert.equal(payload.nativeOverlay.mountedPackage.bytes, Buffer.byteLength("mounted-appimage"));
+    assert.equal(payload.nativeOverlay.mountedPackage.sha256, createHash("sha256").update("mounted-appimage").digest("hex"));
+    assert.match(payload.artifacts.appImagePath, /game-bevy-linux-x64\.AppImage$/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should fail when a descriptor-owned CEF artifact is missing", { skip: process.platform !== "linux" || process.arch !== "x64" }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-cef-missing-"));
+  try {
+    await writeBundle(root, ["desktop"], true);
+    const cefRuntimeDir = join(root, "cef-runtime");
+    await mkdir(cefRuntimeDir);
+    const result = await packageCommand(["--bundle", "game.bundle", "--json"], root, {
+      cefPayloadManifest: testCefManifest("libcef.so", Buffer.from("expected")),
+      cefRuntimeDir,
+      runtimeBuilder: async ({ outputPath }) => {
+        await writeFile(outputPath, "fake-runtime", { mode: 0o755 });
+        return outputPath;
+      },
+    });
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_OVERLAY_CEF_HELPER_MISSING");
+    assert.match(payload.message, /libcef\.so/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("package should reject an unpinned CEF artifact", { skip: process.platform !== "linux" || process.arch !== "x64" }, async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-package-cef-checksum-"));
+  try {
+    await writeBundle(root, ["desktop"], true);
+    const cefRuntimeDir = join(root, "cef-runtime");
+    await mkdir(cefRuntimeDir);
+    await writeFile(join(cefRuntimeDir, "libcef.so"), "wrong-version");
+    const result = await packageCommand(["--bundle", "game.bundle", "--json"], root, {
+      cefPayloadManifest: testCefManifest("libcef.so", Buffer.from("expected-version")),
+      cefRuntimeDir,
+      runtimeBuilder: async ({ outputPath }) => {
+        await writeFile(outputPath, "fake-runtime", { mode: 0o755 });
+        return outputPath;
+      },
+    });
+    const payload = JSON.parse(result.stdout);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_OVERLAY_CEF_RESOURCE_REJECTED");
+    assert.match(payload.message, /checksum mismatch/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -231,7 +325,7 @@ test("package should reject invalid bundles before copying artifacts", async () 
   }
 });
 
-async function writeBundle(root: string, targets: string[]): Promise<void> {
+async function writeBundle(root: string, targets: string[], desktopOverlay = false): Promise<void> {
   const bundle = join(root, "game.bundle");
   await mkdir(bundle);
   await writeFile(
@@ -239,7 +333,7 @@ async function writeBundle(root: string, targets: string[]): Promise<void> {
     JSON.stringify({
       schema: "threenative.bundle",
       version: "0.1.0",
-      entry: { world: "world.ir.json" },
+      entry: { world: "world.ir.json", ...(desktopOverlay ? { overlays: "overlays.ir.json" } : {}) },
       requiredCapabilities: {},
       files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
     }),
@@ -248,4 +342,41 @@ async function writeBundle(root: string, targets: string[]): Promise<void> {
   await writeFile(join(bundle, "world.ir.json"), JSON.stringify({ schema: "threenative.world", version: "0.1.0", entities: [], prefabs: [] }));
   await writeFile(join(bundle, "assets.manifest.json"), JSON.stringify({ schema: "threenative.assets", version: "0.1.0", assets: [] }));
   await writeFile(join(bundle, "materials.ir.json"), JSON.stringify({ schema: "threenative.materials", version: "0.1.0", materials: [] }));
+  if (desktopOverlay) {
+    await writeFile(join(bundle, "overlays.ir.json"), JSON.stringify({
+      schema: "threenative.overlays",
+      version: "0.2.0",
+      overlays: [{
+        id: "hud",
+        entry: "overlay/index.html",
+        targetProfiles: ["desktop"],
+        transparent: true,
+        zIndex: 1,
+        input: "pointer",
+        messages: { gameToOverlay: [], overlayToGame: [] },
+      }],
+    }));
+    await mkdir(join(bundle, "overlay"));
+    await writeFile(join(bundle, "overlay", "index.html"), "<!doctype html><title>HUD</title>");
+  }
+}
+
+function testCefManifest(path: string, bytes: Buffer): ICefPayloadManifest {
+  return {
+    schema: "threenative.native-overlay-backend",
+    version: "0.1.0",
+    backend: "cef-osr",
+    cargoFeature: "native-overlay-cef",
+    cefCrate: "150.0.0+150.0.10",
+    cefDistribution: "150.0.10+test",
+    chromium: "150.0.7871.101",
+    platform: "linux-x86_64",
+    helperModel: "runtime-reexec-before-bevy",
+    locales: ["en-US"],
+    payload: [{
+      path,
+      sha256: createHash("sha256").update(bytes).digest("hex"),
+      source: "distribution",
+    }],
+  };
 }

@@ -39,10 +39,24 @@ the payload.
 The 250 MB Linux gate therefore measures the physical on-disk executable image,
 while reports retain logical payload bytes separately. `--appimage-extract` and
 other extraction fallbacks do not satisfy that gate because they materialize
-the full logical payload. A custom Chromium/CEF build is not required for the
-measured result. CLI AppImage assembly is not integrated yet; the current proof
-is the runtime/package feasibility boundary, not a claim that `tn package`
-already emits this format.
+the full logical payload. A custom Chromium/CEF build is not required.
+
+Set `THREENATIVE_CEF_RUNTIME_DIR` to the pinned CEF distribution payload and
+request the mounted package explicitly:
+
+```bash
+THREENATIVE_CEF_RUNTIME_DIR=/opt/cef-150-runtime \
+  tn package --target desktop --runtime bevy --format appimage \
+  --bundle dist/my-game.bundle --out dist/package
+```
+
+The descriptor-owned `runtime-bevy/cef-runtime-manifest.json` validates every
+library, resource, locale, and license hash, strips the reviewed stock
+`libcef.so` when needed, writes both logical and mounted sizes to
+`package.report.json`, and fails on a missing or unpinned file. The real chess
+package measured 160,516,600 bytes and launched directly from its mounted
+filesystem with first paint, Black-side selection, snapshot delivery, ten
+modal transitions, and clean CEF shutdown.
 
 ## Three.js desktop-web runtime
 
@@ -102,6 +116,8 @@ All desktop runtimes support:
 --format installer  # folder + .tar.gz + Unix self-extracting installer
 ```
 
+Linux x86-64 native CEF bundles additionally support `--format appimage`.
+
 Examples:
 
 ```bash
@@ -148,4 +164,4 @@ artifacts retain the host-inspection expectations.
 
 - Current-platform only; no cross-compilation.
 - `webview` uses a local static server and platform browser opener, not a bundled embedded WebView yet.
-- Real platform installers such as NSIS/WiX `.exe`, `.msi`, `.dmg`, `.app`, and code signing/notarization are not implemented yet. A Linux CEF AppImage has a measured feasibility proof, but CLI assembly is not implemented.
+- Real platform installers such as NSIS/WiX `.exe`, `.msi`, `.dmg`, `.app`, and code signing/notarization are not implemented yet. Linux x86-64 CEF AppImage assembly is implemented and evidence-gated.

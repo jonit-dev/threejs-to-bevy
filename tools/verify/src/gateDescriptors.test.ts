@@ -16,6 +16,7 @@ import {
 test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(validateGateDescriptors(), []);
   assert.deepEqual(GATE_DESCRIPTORS.map((descriptor) => descriptor.name), [
+    "verify:native-overlay-cef",
     "verify:overlay-scaffold",
     "verify:emitted-commands",
     "verify:agent-io",
@@ -47,7 +48,9 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
   assert.equal(focused["verify:agent-io"]?.metadata.owner, "tools/verify agent IO budget gate");
   assert.equal(focused["verify:session-cost"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/sessionCostGate.js");
   assert.equal(focused["verify:overlay-scaffold"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/overlayScaffoldGate.js");
+  assert.equal(focused["verify:native-overlay-cef"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/nativeOverlayCefGate.js");
   assert.deepEqual(release.map((gate) => [gate.script, gate.reportPath]), [
+    ["verify:native-overlay-cef", "tools/verify/artifacts/native-overlay-cef/verification-report.json"],
     ["verify:overlay-scaffold", "tools/verify/artifacts/overlay-scaffold/verification-report.json"],
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],

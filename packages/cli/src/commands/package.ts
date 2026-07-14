@@ -1,5 +1,7 @@
 import { spawn } from "node:child_process";
-import { access, cp, chmod, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { createReadStream } from "node:fs";
+import { access, cp, chmod, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { validateBundle } from "@threenative/compiler";
@@ -12,6 +14,7 @@ export interface IPackageReport {
   artifacts: {
     archivePath?: string;
     installerPath?: string;
+    appImagePath?: string;
     manifestPath: string;
     packageReportPath: string;
     packagedBundlePath: string;
@@ -22,7 +25,7 @@ export interface IPackageReport {
   bundlePath: string;
   code: "TN_PACKAGE_OK";
   files: string[];
-  format: "archive" | "installer" | "portable";
+  format: "appimage" | "archive" | "installer" | "portable";
   manifestPath: string;
   runtimeArgsPath: string;
   schema: "threenative.package-report";
@@ -30,6 +33,41 @@ export interface IPackageReport {
   runtime: "bevy" | "webview";
   target: "desktop";
   version: "0.1.0";
+  nativeOverlay?: ICefPackageReport;
+}
+
+export interface ICefPayloadArtifact {
+  executable?: boolean;
+  path: string;
+  repositoryPath?: string;
+  sha256: string;
+  source: "distribution" | "repository";
+  sourceSha256?: string;
+  transform?: "strip-unneeded";
+}
+
+export interface ICefPayloadManifest {
+  backend: "cef-osr";
+  cargoFeature: "native-overlay-cef";
+  cefCrate: string;
+  cefDistribution: string;
+  chromium: string;
+  helperModel: string;
+  locales: string[];
+  payload: ICefPayloadArtifact[];
+  platform: string;
+  schema: "threenative.native-overlay-backend";
+  version: "0.1.0";
+}
+
+export interface ICefPackageReport {
+  backend: "cef-osr";
+  cefDistribution: string;
+  chromium: string;
+  files: Array<{ bytes: number; path: string; sha256: string }>;
+  logicalPayloadBytes: number;
+  mountedPackage?: { bytes: number; path: string; sha256: string };
+  packageManifestPath: string;
 }
 
 export interface IWebviewInspectionReport {
@@ -58,8 +96,12 @@ export interface IPackagePreflightReport {
 }
 
 export type DesktopRuntimeBuilder = (options: { outputPath: string }) => Promise<string>;
+export type AppImageBuilder = (options: { appDir: string; outputPath: string }) => Promise<string>;
 
 export interface IPackageCommandOptions {
+  appImageBuilder?: AppImageBuilder;
+  cefPayloadManifest?: ICefPayloadManifest;
+  cefRuntimeDir?: string;
   runtimeBuilder?: DesktopRuntimeBuilder;
 }
 
@@ -95,7 +137,7 @@ export async function packageCommand(
 
   if (bundle === undefined) {
     return diagnosticResult(
-      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--runtime bevy|webview] [--format portable|archive|installer] [--out <path>] [--json]" },
+      { code: "TN_PACKAGE_USAGE", message: "Usage: tn package --bundle <game.bundle> [--target desktop] [--runtime bevy|webview] [--format portable|archive|installer|appimage] [--out <path>] [--json]" },
       { exitCode: 1, json, stderr: true },
     );
   }
@@ -116,13 +158,13 @@ export async function packageCommand(
     );
   }
 
-  if (!["portable", "archive", "installer"].includes(format)) {
+  if (!["portable", "archive", "installer", "appimage"].includes(format)) {
     return diagnosticResult(
       {
         code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
         message: `Desktop package format '${format}' is not supported.`,
         severity: "error",
-        suggestion: "Use '--format portable', '--format archive', or '--format installer'.",
+        suggestion: "Use '--format portable', '--format archive', '--format installer', or '--format appimage'.",
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -135,6 +177,28 @@ export async function packageCommand(
         message: `Desktop runtime '${runtime}' is not supported.`,
         severity: "error",
         suggestion: "Use '--runtime bevy' or '--runtime webview'.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (format === "appimage" && runtime !== "bevy") {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
+        message: "The AppImage format is available only for the native Bevy runtime.",
+        severity: "error",
+        suggestion: "Use '--runtime bevy --format appimage' or choose a portable webview format.",
+      },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
+  if (format === "appimage" && (process.platform !== "linux" || process.arch !== "x64")) {
+    return diagnosticResult(
+      {
+        code: "TN_PACKAGE_FORMAT_UNSUPPORTED",
+        message: `AppImage packaging is currently supported only on linux-x64, not ${platformTag()}.`,
+        severity: "error",
+        suggestion: "Use '--format portable' on this platform until platform-specific CEF evidence is available.",
       },
       { exitCode: 1, json, stderr: true },
     );
@@ -167,6 +231,7 @@ export async function packageCommand(
     await mkdir(packageRoot, { recursive: true });
     let builtRuntimePath: string;
     let files: string[];
+    let nativeOverlay: ICefPackageReport | undefined;
     if (runtime === "webview") {
       builtRuntimePath = await buildWebviewRuntime({ bundlePath, outputPath: resolve(packageRoot, "threenative_webview_runtime"), packageRoot });
       files = await listRelativeFiles(resolve(packageRoot, "app"));
@@ -174,6 +239,14 @@ export async function packageCommand(
       await cp(bundlePath, packagedBundlePath, { force: true, recursive: true });
       files = await listRelativeFiles(packagedBundlePath);
       builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({ outputPath: resolve(packageRoot, runtimeExecutableName()) });
+      if (await bundleRequiresCefOverlay(bundlePath)) {
+        nativeOverlay = await packageCefPayload({
+          manifest: options.cefPayloadManifest ?? await readCefPayloadManifest(),
+          packageRoot,
+          runtimeDir: options.cefRuntimeDir ?? process.env.THREENATIVE_CEF_RUNTIME_DIR,
+        });
+        builtRuntimePath = await installCefRuntimeWrapper(packageRoot, builtRuntimePath, basename(packagedBundlePath));
+      }
     }
     const manifestPath = resolve(packageRoot, "package.manifest.json");
     const runtimeArgsPath = resolve(packageRoot, "runtime.args.json");
@@ -218,6 +291,7 @@ export async function packageCommand(
       )}\n`,
     );
     const archivePath = format === "archive" || format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${runtime}-${platformTag()}.tar.gz`) : undefined;
+    const appImagePath = format === "appimage" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${runtime}-${platformTag()}.AppImage`) : undefined;
     if (webviewInspectionPath !== undefined) {
       await writeWebviewInspectionReport({
         archivePath,
@@ -229,10 +303,7 @@ export async function packageCommand(
         webviewInspectionPath,
       });
     }
-    if (archivePath !== undefined) {
-      await createTarGz({ archivePath, cwd: artifactRoot, entry: packageDirName });
-    }
-    const installerPath = format === "installer" ? await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot, packageDirName, runtimeExecutableName: basename(builtRuntimePath) }) : undefined;
+    const installerPath = format === "installer" ? resolve(artifactRoot, `${packageSlug(bundlePath)}-${platformTag()}-installer.sh`) : undefined;
     if (webviewInspectionPath !== undefined) {
       await writeWebviewInspectionReport({
         archivePath,
@@ -246,7 +317,7 @@ export async function packageCommand(
     }
     const report: IPackageReport = {
       artifactDir: packageRoot,
-      artifacts: { archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath, webviewInspectionPath },
+      artifacts: { appImagePath, archivePath, installerPath, manifestPath, packageReportPath, packagedBundlePath, runtimeArgsPath, runtimeExecutablePath: builtRuntimePath, webviewInspectionPath },
       bundlePath: packagedBundlePath,
       code: "TN_PACKAGE_OK",
       files,
@@ -258,8 +329,33 @@ export async function packageCommand(
       sourceBundlePath: bundlePath,
       target,
       version: "0.1.0",
+      nativeOverlay,
     };
     await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
+    if (archivePath !== undefined) {
+      await createTarGz({ archivePath, cwd: artifactRoot, entry: packageDirName });
+    }
+    if (format === "installer") {
+      report.artifacts.installerPath = await createInstallerScript({ archivePath: archivePath!, bundleName: basename(bundlePath), outputDir: artifactRoot, packageDirName, runtimeExecutableName: basename(builtRuntimePath) });
+    }
+    if (appImagePath !== undefined) {
+      if (nativeOverlay === undefined) {
+        throw new PackageDiagnosticError({
+          code: "TN_OVERLAY_CEF_HELPER_MISSING",
+          message: "AppImage output currently requires a desktop CEF overlay bundle and its validated runtime payload.",
+          severity: "error",
+          suggestion: "Declare a desktop overlay or use '--format portable'.",
+        });
+      }
+      await prepareAppImageMetadata(packageRoot, basename(packagedBundlePath));
+      report.artifacts.appImagePath = await (options.appImageBuilder ?? buildAppImage)({ appDir: packageRoot, outputPath: appImagePath });
+      nativeOverlay.mountedPackage = {
+        bytes: (await stat(report.artifacts.appImagePath)).size,
+        path: report.artifacts.appImagePath,
+        sha256: await sha256File(report.artifacts.appImagePath),
+      };
+      await writeFile(packageReportPath, `${JSON.stringify(report, null, 2)}\n`);
+    }
     return {
       exitCode: 0,
       stdout: json ? `${JSON.stringify(report, null, 2)}\n` : packageMessage(report),
@@ -475,8 +571,194 @@ async function listRelativeFiles(root: string, prefix = ""): Promise<string[]> {
   return files.flat().sort();
 }
 
+async function bundleRequiresCefOverlay(bundlePath: string): Promise<boolean> {
+  const manifest = JSON.parse(await readFile(resolve(bundlePath, "manifest.json"), "utf8")) as {
+    entry?: { overlays?: unknown };
+  };
+  const overlaysPath = manifest.entry?.overlays;
+  if (typeof overlaysPath !== "string") return false;
+  const pathValidation = validateBundleRelativePath(overlaysPath);
+  if (!pathValidation.ok) return false;
+  const overlays = JSON.parse(await readFile(resolve(bundlePath, overlaysPath), "utf8")) as {
+    overlays?: Array<{ targetProfiles?: unknown }>;
+  };
+  return overlays.overlays?.some((overlay) =>
+    Array.isArray(overlay.targetProfiles) && overlay.targetProfiles.includes("desktop")) ?? false;
+}
+
+async function readCefPayloadManifest(): Promise<ICefPayloadManifest> {
+  const path = resolve(fileURLToPath(new URL("../runtime-bevy/cef-runtime-manifest.json", import.meta.url)));
+  try {
+    const manifest = JSON.parse(await readFile(path, "utf8")) as ICefPayloadManifest;
+    if (manifest.schema !== "threenative.native-overlay-backend"
+      || manifest.backend !== "cef-osr"
+      || manifest.cargoFeature !== "native-overlay-cef"
+      || !Array.isArray(manifest.payload)
+      || manifest.payload.length === 0) {
+      throw new Error("manifest fields are incomplete");
+    }
+    return manifest;
+  } catch (error) {
+    throw new PackageDiagnosticError({
+      code: "TN_OVERLAY_CEF_HELPER_MISSING",
+      message: `CEF backend package manifest '${path}' is unavailable or invalid: ${error instanceof Error ? error.message : String(error)}`,
+      path,
+      severity: "error",
+      suggestion: "Reinstall the CLI or restore the descriptor-owned CEF package manifest.",
+    });
+  }
+}
+
+async function packageCefPayload(options: {
+  manifest: ICefPayloadManifest;
+  packageRoot: string;
+  runtimeDir: string | undefined;
+}): Promise<ICefPackageReport> {
+  if (options.manifest.platform !== "linux-x86_64" || process.platform !== "linux" || process.arch !== "x64") {
+    throw new PackageDiagnosticError({
+      code: "TN_OVERLAY_CEF_HELPER_MISSING",
+      message: `CEF backend '${options.manifest.backend}' has no proved payload for ${platformTag()}.`,
+      severity: "error",
+      suggestion: "Use retained UI on this platform or add platform-specific CEF package evidence.",
+    });
+  }
+  if (options.runtimeDir === undefined || options.runtimeDir.trim() === "") {
+    throw new PackageDiagnosticError({
+      code: "TN_OVERLAY_CEF_HELPER_MISSING",
+      message: "A desktop CEF overlay requires THREENATIVE_CEF_RUNTIME_DIR to point at the pinned CEF distribution payload.",
+      path: "THREENATIVE_CEF_RUNTIME_DIR",
+      severity: "error",
+      suggestion: `Provide the files declared by cef-runtime-manifest.json for CEF ${options.manifest.cefDistribution}.`,
+    });
+  }
+  const runtimeRoot = resolve(options.runtimeDir);
+  const bundledRuntimeRoot = resolve(fileURLToPath(new URL("../runtime-bevy/", import.meta.url)));
+  const files: ICefPackageReport["files"] = [];
+  for (const artifact of options.manifest.payload) {
+    const relativeValidation = validateBundleRelativePath(artifact.path);
+    if (!relativeValidation.ok) {
+      throw new PackageDiagnosticError({
+        code: "TN_OVERLAY_CEF_RESOURCE_REJECTED",
+        message: `CEF package manifest contains unsafe path '${artifact.path}'.`,
+        path: artifact.path,
+        severity: "error",
+        suggestion: "Use normalized relative payload paths in the backend manifest.",
+      });
+    }
+    const sourcePath = artifact.source === "repository"
+      ? resolve(bundledRuntimeRoot, artifact.repositoryPath ?? "")
+      : resolve(runtimeRoot, artifact.path);
+    if (!await pathExists(sourcePath)) {
+      throw new PackageDiagnosticError({
+        code: "TN_OVERLAY_CEF_HELPER_MISSING",
+        message: `Required CEF package artifact '${artifact.path}' is missing at '${sourcePath}'.`,
+        path: sourcePath,
+        severity: "error",
+        suggestion: `Restore the pinned CEF ${options.manifest.cefDistribution} payload before packaging.`,
+      });
+    }
+    const sourceHash = await sha256File(sourcePath);
+    if (sourceHash !== artifact.sha256 && sourceHash !== artifact.sourceSha256) {
+      throw new PackageDiagnosticError({
+        code: "TN_OVERLAY_CEF_RESOURCE_REJECTED",
+        message: `CEF artifact '${artifact.path}' checksum mismatch: expected ${artifact.sourceSha256 ?? artifact.sha256}, received ${sourceHash}.`,
+        path: sourcePath,
+        severity: "error",
+        suggestion: "Use the exactly pinned CEF distribution; do not package an unreviewed Chromium update.",
+      });
+    }
+    const destinationPath = resolve(options.packageRoot, artifact.path);
+    await mkdir(dirname(destinationPath), { recursive: true });
+    await cp(sourcePath, destinationPath, { force: true });
+    if (artifact.transform === "strip-unneeded" && sourceHash === artifact.sourceSha256) {
+      await runCommand("strip", ["--strip-unneeded", destinationPath]);
+    }
+    const destinationHash = await sha256File(destinationPath);
+    if (destinationHash !== artifact.sha256) {
+      throw new PackageDiagnosticError({
+        code: "TN_OVERLAY_CEF_RESOURCE_REJECTED",
+        message: `Packaged CEF artifact '${artifact.path}' checksum mismatch after preparation: expected ${artifact.sha256}, received ${destinationHash}.`,
+        path: destinationPath,
+        severity: "error",
+        suggestion: "Use the supported strip toolchain or provide the reviewed stripped payload.",
+      });
+    }
+    if (artifact.executable === true) await chmod(destinationPath, 0o755);
+    files.push({ bytes: (await stat(destinationPath)).size, path: artifact.path, sha256: destinationHash });
+  }
+  await writeFile(
+    resolve(options.packageRoot, "cef-runtime-manifest.json"),
+    `${JSON.stringify(options.manifest, null, 2)}\n`,
+  );
+  return {
+    backend: options.manifest.backend,
+    cefDistribution: options.manifest.cefDistribution,
+    chromium: options.manifest.chromium,
+    files,
+    logicalPayloadBytes: files.reduce((total, file) => total + file.bytes, 0),
+    packageManifestPath: "cef-runtime-manifest.json",
+  };
+}
+
+async function installCefRuntimeWrapper(
+  packageRoot: string,
+  runtimeExecutablePath: string,
+  _bundleName: string,
+): Promise<string> {
+  const runtimeName = basename(runtimeExecutablePath);
+  const binaryName = `${runtimeName}.bin`;
+  await rename(runtimeExecutablePath, resolve(packageRoot, binaryName));
+  await writeFile(runtimeExecutablePath, `#!/usr/bin/env sh
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+export LD_LIBRARY_PATH="$HERE\${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$HERE/${binaryName}" "$@"
+`, { mode: 0o755 });
+  return runtimeExecutablePath;
+}
+
+async function prepareAppImageMetadata(packageRoot: string, bundleName: string): Promise<void> {
+  await writeFile(resolve(packageRoot, "AppRun"), `#!/usr/bin/env sh
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+exec "$HERE/threenative_runtime" "$HERE/${bundleName}" "$@"
+`, { mode: 0o755 });
+  await writeFile(resolve(packageRoot, "threenative.desktop"), `[Desktop Entry]
+Type=Application
+Name=ThreeNative Game
+Exec=AppRun
+Icon=threenative
+Categories=Game;
+Terminal=false
+`);
+  await writeFile(resolve(packageRoot, "threenative.svg"), `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128"><rect width="128" height="128" rx="24" fill="#17140f"/><path d="M24 34h80v16H72v54H56V50H24z" fill="#d6aa55"/></svg>\n`);
+}
+
+async function buildAppImage(options: { appDir: string; outputPath: string }): Promise<string> {
+  await runCommand("appimagetool", ["--comp", "zstd", options.appDir, options.outputPath], {
+    ...process.env,
+    ARCH: "x86_64",
+  });
+  await chmod(options.outputPath, 0o755);
+  return options.outputPath;
+}
+
+async function sha256File(path: string): Promise<string> {
+  const hash = createHash("sha256");
+  await new Promise<void>((resolvePromise, reject) => {
+    const stream = createReadStream(path);
+    stream.on("data", (chunk) => hash.update(chunk));
+    stream.on("error", reject);
+    stream.on("end", resolvePromise);
+  });
+  return hash.digest("hex");
+}
+
 
 function packageMessage(report: IPackageReport): string {
+  if (report.format === "appimage" && report.artifacts.appImagePath !== undefined) {
+    return `Packaged desktop AppImage at '${report.artifacts.appImagePath}'.\n`;
+  }
   if (report.format === "installer" && report.artifacts.installerPath !== undefined) {
     return `Packaged desktop installer at '${report.artifacts.installerPath}'.\n`;
   }
@@ -658,6 +940,8 @@ async function buildDesktopRuntime(options: { outputPath: string }): Promise<str
     "threenative_runtime",
     "--bin",
     "threenative_runtime",
+    "--features",
+    "native-overlay-cef",
     "--release",
   ]);
 
@@ -670,9 +954,13 @@ function runtimeExecutableName(): string {
   return process.platform === "win32" ? "threenative_runtime.exe" : "threenative_runtime";
 }
 
-async function runCommand(command: string, args: readonly string[]): Promise<void> {
+async function runCommand(
+  command: string,
+  args: readonly string[],
+  env: NodeJS.ProcessEnv = process.env,
+): Promise<void> {
   await new Promise<void>((resolvePromise, reject) => {
-    const child = spawn(command, args, { stdio: "inherit" });
+    const child = spawn(command, args, { env, stdio: "inherit" });
     child.on("error", reject);
     child.on("exit", (code, signal) => {
       if (code === 0) {

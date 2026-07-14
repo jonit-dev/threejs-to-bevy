@@ -46,11 +46,13 @@ pub struct NativeOverlayHostPlanResource(pub NativeOverlayHostPlan);
 pub struct NativeOverlayBackendDescriptor {
     pub cargo_feature: &'static str,
     pub id: &'static str,
+    pub package_manifest: &'static str,
 }
 
 pub const CEF_OSR_BACKEND: NativeOverlayBackendDescriptor = NativeOverlayBackendDescriptor {
     cargo_feature: "native-overlay-cef",
     id: "cef-osr",
+    package_manifest: "cef-runtime-manifest.json",
 };
 
 #[derive(Debug, Resource)]

@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.native-overlay-backend",
+  "version": "0.1.0",
+  "backend": "cef-osr",
+  "cargoFeature": "native-overlay-cef",
+  "cefCrate": "150.0.0+150.0.10",
+  "cefDistribution": "150.0.10+g8042e43",
+  "chromium": "150.0.7871.101",
+  "platform": "linux-x86_64",
+  "helperModel": "runtime-reexec-before-bevy",
+  "locales": ["en-US"],
+  "payload": [
+    { "path": "libcef.so", "sha256": "2066b8b16de03691464645b6b54d68faf3e3ecb2749ed06e2733f3c73705c15e", "sourceSha256": "3d62a2762edc3d246f12b8dfa66498e9ed45c5d88998cf793ce08a86e909ae09", "transform": "strip-unneeded", "executable": true, "source": "distribution" },
+    { "path": "icudtl.dat", "sha256": "bd8c145abdf3f8383276ce01dfa4ae48709bef9fef1c0711eb7c3fab4f6eb7c2", "source": "distribution" },
+    { "path": "resources.pak", "sha256": "17dba515081e1b77be6f6e68ad6373b2bfdfb3ab3e6a78ccfe5c55bfb5687dda", "source": "distribution" },
+    { "path": "v8_context_snapshot.bin", "sha256": "c69d382f694dffe70e3578554991e49e919b978a3d86edca11deff39a2ed1b8e", "source": "distribution" },
+    { "path": "chrome-sandbox", "sha256": "a9934039f27c18f0806d5aba82a6a5492f3e309c3ca1996d37778e5b79285f52", "executable": true, "source": "distribution" },
+    { "path": "chrome_100_percent.pak", "sha256": "5be372f120756ebac71ca892138ad267777326b1f6a1d99b0bfe46fe54b8971b", "source": "distribution" },
+    { "path": "chrome_200_percent.pak", "sha256": "092785dfe0301e6cf0a54eb112f0993ff17cbfe20a34a035031e8873f3b4e429", "source": "distribution" },
+    { "path": "libEGL.so", "sha256": "58617fac341664f145279b62ecec18e0d6b230047c103e0ae5bae2f34562eb41", "executable": true, "source": "distribution" },
+    { "path": "libGLESv2.so", "sha256": "dfee6adda6f2f7476c1c3e58c103bd673377c2fcd07867b264260a4a77f31ea0", "executable": true, "source": "distribution" },
+    { "path": "libvk_swiftshader.so", "sha256": "40c5b56a34611cb96537325974a0e20b97573f926dd0debcae18bc22e514ad59", "executable": true, "source": "distribution" },
+    { "path": "libvulkan.so.1", "sha256": "4141aa9918086067ab9e9475169cf5064ec694c5899dccb98d1e23b5fe9fce70", "executable": true, "source": "distribution" },
+    { "path": "vk_swiftshader_icd.json", "sha256": "c9eef28b6b984fec220ef0abfecc40b502d46946706e47bfe97707027cb818bd", "source": "distribution" },
+    { "path": "locales/en-US.pak", "sha256": "22b9e8ceb43f1f452fad75c8ae2d432873d12513b1bc74f4eb6d8d989eec0ca4", "source": "distribution" },
+    { "path": "CREDITS.html", "sha256": "496533b09217fe29c4b142e23e796b9d6b95bfdb3208d02d54b487535b341480", "source": "distribution" },
+    { "path": "LICENSE.txt", "sha256": "058c3827ffb827ff3edda471ae7e1bb1d1aa5931985f0126043ccd33409e792f", "source": "repository", "repositoryPath": "third_party/cef/LICENSE.txt" }
+  ]
+}

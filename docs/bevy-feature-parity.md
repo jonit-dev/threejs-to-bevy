@@ -511,7 +511,10 @@ Current UI rows use these labels:
       covered; keyboard/IME/focus, complete game-input ownership, multiple
       overlay layout, other compositors, and Windows/macOS remain unpromoted
       (`tools/verify/artifacts/native-overlay-cef/spike-report.json`,
-      `examples/chess/playtests/chess-overlay-native.playtest.json`)
+      `tools/verify/artifacts/native-overlay-cef/verification-report.json`,
+      `tools/verify/artifacts/native-overlay-cef/package-report.json`,
+      `examples/chess/playtests/chess-overlay-native.playtest.json`; gate:
+      `pnpm verify:focused verify:native-overlay-cef`)
 - [x] `P1` Native Bevy `Minimap` UI nodes render static paths and live resource-bound markers
 - [x] `P1` UI min/max size constraints
 - [x] `P1` Basic vertical UI scrolling containers

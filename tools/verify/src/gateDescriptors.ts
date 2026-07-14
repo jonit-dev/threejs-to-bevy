@@ -43,6 +43,24 @@ export interface GateDescriptorMigrationGap {
 
 const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
   {
+    artifact: { reportPath: "tools/verify/artifacts/native-overlay-cef/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "--test", "tools/verify/dist/nativeOverlayCefGate.test.js"],
+        ["node", "tools/verify/dist/nativeOverlayCefGate.js"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Native CEF off-screen overlay compositor evidence gate.",
+    focused: { profile: "release" },
+    name: "verify:native-overlay-cef",
+    owner: "tools/verify native CEF overlay gate",
+    protects: "CEF chooser, hover, Black-side start, HUD, modal removal, bridge, one-window, startup, and mounted-package evidence.",
+    reason: "Rejects stale, blank, wrong-region, or drifted native overlay pixels so bridge-only state cannot promote a broken compositor path.",
+    release: { enrolled: true, name: "verify native overlay CEF", timingCategory: "visual-native" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/overlay-scaffold/verification-report.json" },
     command: {
       commands: [

@@ -36,6 +36,10 @@ Current support:
 - Linux NVIDIA/Xwayland compositor evidence covers first paint, chooser hover,
   choosing Black, snapshot delivery, and ten settings modal open/close cycles.
   Other Linux compositor families and Windows/macOS are not yet promoted.
+- Linux x86-64 packaging derives the CEF libraries, resources, locale, notices,
+  hashes, and feature ID from one backend manifest. `tn package --runtime bevy
+  --format appimage` validates and mounts the compressed payload; the real chess
+  package is 160,516,600 bytes and passed an offline local-asset launch.
 - The native launcher capability-checks cached runtime binaries before reuse;
   binaries missing the descriptor-owned `native-overlay-cef` Cargo feature fall
   back to a feature-complete Cargo launch. Native proof harness startup fails
@@ -107,6 +111,7 @@ Verification:
 - `node examples/chess/bin/tn playtest --project examples/chess --scenario playtests/chess-overlay-native.playtest.json --target desktop --json`
 - `cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime native_ui`
 - `pnpm verify:conformance`
+- `pnpm verify:focused verify:native-overlay-cef`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

@@ -27,6 +27,8 @@
     "@threenative/ir": "workspace:*",
     "@threenative/runtime-web-three": "workspace:*",
     "@types/node": "^20.19.25",
-    "playwright": "^1.60.0"
+    "@types/pngjs": "^6.0.5",
+    "playwright": "^1.60.0",
+    "pngjs": "^7.0.0"
   }
 }

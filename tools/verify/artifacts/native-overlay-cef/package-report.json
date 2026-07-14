@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.verify.native-overlay-cef-package",
+  "version": "0.1.0",
+  "generatedAt": "2026-07-13",
+  "command": "tn package --bundle dist/chess.bundle --runtime bevy --format appimage",
+  "backend": "cef-osr",
+  "cefDistribution": "150.0.10+g8042e43",
+  "chromium": "150.0.7871.101",
+  "package": {
+    "format": "appimage",
+    "physicalBytes": 160516600,
+    "sha256": "01891249fcb547f7c4e5a8e99496aa7b24d4edbda6a27724a6031f20c03e86a3",
+    "logicalCefPayloadBytes": 349022139,
+    "requiredPayloadFiles": 15,
+    "directMountedExecution": true
+  },
+  "launch": {
+    "exitCode": 0,
+    "firstNonblankPaintMs": 1248.16,
+    "chooseBlackDelivered": true,
+    "snapshotDelivered": true,
+    "modalTransitions": 10,
+    "windowCount": 1,
+    "remainingCefProcesses": 0
+  }
+}

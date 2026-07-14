@@ -1,0 +1,49 @@
+{
+  "artifacts": {
+    "chooser": "tools/verify/artifacts/native-overlay-cef/frames/chooser-cef-clean.png",
+    "hoverAfter": "tools/verify/artifacts/native-overlay-cef/frames/chooser-hover-black.png",
+    "hoverBefore": "tools/verify/artifacts/native-overlay-cef/frames/chooser-hover-before.png",
+    "hud": "tools/verify/artifacts/native-overlay-cef/frames/hud-cef-native-bridge-clean.png",
+    "settingsClosed": "tools/verify/artifacts/native-overlay-cef/frames/settings-closed-after-10-cef-raw.png",
+    "settingsOpen": "tools/verify/artifacts/native-overlay-cef/frames/settings-open-after-10-cef-raw.png",
+    "package": "tools/verify/artifacts/native-overlay-cef/package-report.json",
+    "spike": "tools/verify/artifacts/native-overlay-cef/spike-report.json"
+  },
+  "code": "TN_VERIFY_NATIVE_OVERLAY_CEF_OK",
+  "diagnostics": [],
+  "generatedBy": "@threenative/verify-tools nativeOverlayCefGate",
+  "measurements": {
+    "hoverDifferenceRatio": 0.5917142857142857,
+    "modalDifferenceRatio": 1,
+    "stateDifferenceRatio": 1,
+    "hashes": {
+      "chooser": "da91cb348bb8eb5d1ad2f877544cb3d969fbd2c38a8220243d7418360c7a9612",
+      "hoverAfter": "f45a35c2b5b214193616d9e098b8282141850b3db82889c6ef223813509b1786",
+      "hoverBefore": "15a37e9bddae718c7f6d55ad728d75f538e85f858b4f6444fe6e4cbb931a55f3",
+      "hud": "7be617e0bb95cdd6b716d26ba2d125cb82d422851094a79bee72699a5cbf19c0",
+      "settingsClosed": "2ee25ea7b048768da2d8753a60ea4f2a26ddd2a52232e33062f22678a9a6cff6",
+      "settingsOpen": "084c0e7c8f565aa47056d4419b9a1fb690357ae52dc2059689c28fb7319005eb"
+    },
+    "package": {
+      "format": "appimage",
+      "physicalBytes": 160516600,
+      "sha256": "01891249fcb547f7c4e5a8e99496aa7b24d4edbda6a27724a6031f20c03e86a3",
+      "logicalCefPayloadBytes": 349022139,
+      "requiredPayloadFiles": 15,
+      "directMountedExecution": true
+    },
+    "packageLaunch": {
+      "exitCode": 0,
+      "firstNonblankPaintMs": 1248.16,
+      "chooseBlackDelivered": true,
+      "snapshotDelivered": true,
+      "modalTransitions": 10,
+      "windowCount": 1,
+      "remainingCefProcesses": 0
+    }
+  },
+  "ok": true,
+  "schema": "threenative.verify.native-overlay-cef",
+  "status": "pass",
+  "version": "0.1.0"
+}
