@@ -24,10 +24,12 @@ Current support:
   adapter uses one window and one compositor, so overlay hover and removed DOM
   pixels no longer depend on transparent GTK/WebKit windows or X11 input
   shaping. A bundle-local `threenative-overlay://bundle/` scheme serves assets;
-  traversal, remote navigation, remote subresources, and popups are rejected.
+  traversal, remote navigation, remote subresources, popups, downloads, and
+  browser/media permission prompts are rejected.
 - The CEF bridge exposes send and subscribe, replays retained snapshots, and
-  applies visibility and input-mode control through adapter-private script
-  evaluation. Paint delivery is bounded and latest-frame-wins; resize
+  carries overlay-to-game JSON through CEF renderer-to-browser process messages;
+  game-to-overlay snapshots and visibility/input controls use adapter-private
+  script evaluation. Paint delivery is bounded and latest-frame-wins; resize
   generations prevent stale-size paint callbacks from replacing the current
   texture. Native routing covers pointer move/button/wheel, keyboard key and
   character events, window focus, live pointer islands, and modal suppression
@@ -36,11 +38,14 @@ Current support:
   the single-overlay host applies authored bounds and z-order.
 - Linux NVIDIA/Xwayland compositor evidence covers first paint, chooser hover,
   choosing Black, snapshot delivery, and ten settings modal open/close cycles.
+  A release stress run completed 300 modal transitions, then held full
+  process-tree RSS within a 136 KiB range during a five-second settle window.
   Other Linux compositor families and Windows/macOS are not yet promoted.
 - Linux x86-64 packaging derives the CEF libraries, resources, locale, notices,
   hashes, and feature ID from one backend manifest. `tn package --runtime bevy
   --format appimage` validates and mounts the compressed payload; the real chess
-  package is 160,516,600 bytes and passed an offline local-asset launch.
+  package is 156,809,720 bytes and passed an offline local-asset launch. Bundles
+  without a desktop HTML overlay compile without the CEF feature or payload.
 - The native launcher capability-checks cached runtime binaries before reuse;
   binaries missing the descriptor-owned `native-overlay-cef` Cargo feature fall
   back to a feature-complete Cargo launch. Native proof harness startup fails

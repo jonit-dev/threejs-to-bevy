@@ -26,15 +26,15 @@
     },
     "package": {
       "format": "appimage",
-      "physicalBytes": 160516600,
-      "sha256": "01891249fcb547f7c4e5a8e99496aa7b24d4edbda6a27724a6031f20c03e86a3",
+      "physicalBytes": 156809720,
+      "sha256": "4b9222841d899fda86302321a3661b052731f25f15dbaa2339497a571dc85247",
       "logicalCefPayloadBytes": 349022139,
       "requiredPayloadFiles": 15,
       "directMountedExecution": true
     },
     "packageLaunch": {
       "exitCode": 0,
-      "firstNonblankPaintMs": 1248.16,
+      "firstNonblankPaintMs": 2195.69,
       "chooseBlackDelivered": true,
       "snapshotDelivered": true,
       "modalTransitions": 10,

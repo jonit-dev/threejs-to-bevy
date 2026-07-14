@@ -95,7 +95,10 @@ export interface IPackagePreflightReport {
   version: "0.1.0";
 }
 
-export type DesktopRuntimeBuilder = (options: { outputPath: string }) => Promise<string>;
+export type DesktopRuntimeBuilder = (options: {
+  cargoFeatures: string[];
+  outputPath: string;
+}) => Promise<string>;
 export type AppImageBuilder = (options: { appDir: string; outputPath: string }) => Promise<string>;
 
 export interface IPackageCommandOptions {
@@ -238,8 +241,12 @@ export async function packageCommand(
     } else {
       await cp(bundlePath, packagedBundlePath, { force: true, recursive: true });
       files = await listRelativeFiles(packagedBundlePath);
-      builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({ outputPath: resolve(packageRoot, runtimeExecutableName()) });
-      if (await bundleRequiresCefOverlay(bundlePath)) {
+      const requiresCefOverlay = await bundleRequiresCefOverlay(bundlePath);
+      builtRuntimePath = await (options.runtimeBuilder ?? buildDesktopRuntime)({
+        cargoFeatures: requiresCefOverlay ? ["native-overlay-cef"] : [],
+        outputPath: resolve(packageRoot, runtimeExecutableName()),
+      });
+      if (requiresCefOverlay) {
         nativeOverlay = await packageCefPayload({
           manifest: options.cefPayloadManifest ?? await readCefPayloadManifest(),
           packageRoot,
@@ -924,7 +931,7 @@ async function pathExists(path: string): Promise<boolean> {
   }
 }
 
-async function buildDesktopRuntime(options: { outputPath: string }): Promise<string> {
+async function buildDesktopRuntime(options: { cargoFeatures: string[]; outputPath: string }): Promise<string> {
   const envBinary = process.env.THREENATIVE_RUNTIME_BINARY?.trim();
   if (envBinary !== undefined && envBinary !== "") {
     await cp(resolve(envBinary), options.outputPath, { force: true });
@@ -932,7 +939,7 @@ async function buildDesktopRuntime(options: { outputPath: string }): Promise<str
   }
 
   const manifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
-  await runCommand("cargo", [
+  const args = [
     "build",
     "--manifest-path",
     manifestPath,
@@ -940,13 +947,18 @@ async function buildDesktopRuntime(options: { outputPath: string }): Promise<str
     "threenative_runtime",
     "--bin",
     "threenative_runtime",
-    "--features",
-    "native-overlay-cef",
     "--release",
-  ]);
+  ];
+  if (options.cargoFeatures.length > 0) {
+    args.push("--features", options.cargoFeatures.join(","));
+  }
+  await runCommand("cargo", args);
 
   const builtBinary = resolve(fileURLToPath(new URL("../runtime-bevy/target/release/", import.meta.url)), runtimeExecutableName());
   await cp(builtBinary, options.outputPath, { force: true });
+  if (process.platform === "linux") {
+    await runCommand("strip", ["--strip-unneeded", options.outputPath]);
+  }
   return options.outputPath;
 }
 

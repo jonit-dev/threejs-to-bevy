@@ -28,6 +28,12 @@ Use this when validating native renderer parity, native APIs, and final native-g
 
 ### CEF overlay payload size
 
+CEF is opt-in at the bundle boundary. A Bevy package with retained/native UI
+and no desktop HTML overlay is compiled without `native-overlay-cef`, has no
+`libcef` dependency, and does not copy the CEF payload. On the Linux reference
+machine that runtime reported `cargoFeatures: []`; its release executable was
+87 MB before packaging and 62 MB after `strip --strip-unneeded`.
+
 Native games that declare a desktop React overlay require the CEF off-screen
 runtime payload. On Linux, the required files plus one locale occupy
 349,022,139 logical bytes; stripping `libcef.so` alone does not bring that
@@ -52,9 +58,9 @@ THREENATIVE_CEF_RUNTIME_DIR=/opt/cef-150-runtime \
 
 The descriptor-owned `runtime-bevy/cef-runtime-manifest.json` validates every
 library, resource, locale, and license hash, strips the reviewed stock
-`libcef.so` when needed, writes both logical and mounted sizes to
+`libcef.so` and packaged runtime executable when needed, writes both logical and mounted sizes to
 `package.report.json`, and fails on a missing or unpinned file. The real chess
-package measured 160,516,600 bytes and launched directly from its mounted
+package measured 156,809,720 bytes and launched directly from its mounted
 filesystem with first paint, Black-side selection, snapshot delivery, ten
 modal transitions, and clean CEF shutdown.
 

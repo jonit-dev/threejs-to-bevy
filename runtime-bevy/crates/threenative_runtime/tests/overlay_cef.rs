@@ -142,6 +142,25 @@ fn should_bound_paint_timing_samples() {
 }
 
 #[test]
+fn should_reuse_a_recycled_full_frame_buffer() {
+    let mut queue = CefPaintQueue::default();
+    queue
+        .push_bgra_premultiplied(2, 1, &[1, 2, 3, 255, 4, 5, 6, 255])
+        .unwrap();
+    let first = queue.take_latest().unwrap();
+    let allocation = first.rgba.as_ptr();
+    queue.recycle(first.rgba);
+
+    queue
+        .push_bgra_premultiplied(2, 1, &[7, 8, 9, 255, 10, 11, 12, 255])
+        .unwrap();
+    let second = queue.take_latest().unwrap();
+
+    assert_eq!(second.rgba.as_ptr(), allocation);
+    assert_eq!(second.rgba, vec![9, 8, 7, 255, 12, 11, 10, 255]);
+}
+
+#[test]
 fn should_reject_malformed_paint_buffers() {
     let error = CefPaintQueue::default()
         .push_bgra_premultiplied(2, 2, &[0; 15])
@@ -344,7 +363,8 @@ fn should_route_a_cef_side_choice_into_the_native_game_bridge() {
 fn should_install_a_real_cef_bridge_without_fabricating_game_snapshots() {
     let script = cef_spike_bridge_script("chess-side-select").unwrap();
 
-    assert!(script.contains("TN_OVERLAY_CEF_IPC:"));
+    assert!(script.contains("__threenativeOverlaySend"));
+    assert!(!script.contains("console.info(`TN_OVERLAY_CEF_IPC:"));
     assert!(script.contains("chess-side-select"));
     assert!(script.contains("__threenativeDispatchOverlaySnapshot"));
     assert!(!script.contains("playerSide: payload.side"));
@@ -355,9 +375,9 @@ fn should_install_a_real_cef_bridge_without_fabricating_game_snapshots() {
 fn should_require_ten_complete_modal_probe_transitions() {
     let script = cef_spike_modal_probe_script();
 
-    assert!(script.contains("transition < 10"));
+    assert!(script.contains("transitionCount = 10"));
     assert!(script.contains("settings removal"));
-    assert!(script.contains("transitions: 10"));
+    assert!(script.contains("transitions: transitionCount"));
     assert!(script.contains("completed: false"));
 }
 
@@ -365,8 +385,8 @@ fn should_require_ten_complete_modal_probe_transitions() {
 fn should_generate_a_hundred_transition_memory_probe() {
     let script = cef_modal_probe_script(100);
 
-    assert!(script.contains("transition < 100"));
-    assert!(script.contains("transitions: 100"));
+    assert!(script.contains("transitionCount = 100"));
+    assert!(script.contains("transitionCount >= 100"));
 }
 
 #[test]

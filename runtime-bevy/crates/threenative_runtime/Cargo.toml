@@ -12,11 +12,6 @@ name = "threenative_runtime"
 path = "src/main.rs"
 
 [[bin]]
-name = "native_overlay_cef_spike"
-path = "src/bin/native_overlay_cef_spike.rs"
-required-features = ["native-overlay-cef"]
-
-[[bin]]
 name = "threenative_capture"
 path = "src/capture.rs"
 

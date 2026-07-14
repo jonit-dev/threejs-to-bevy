@@ -15,9 +15,11 @@ test("package should copy a desktop bundle into stable artifact layout", async (
   const root = await mkdtemp(join(tmpdir(), "tn-package-"));
   try {
     await writeBundle(root, ["web", "desktop"]);
+    let runtimeFeatures: string[] | undefined;
 
     const result = await packageCommand(["--bundle", "game.bundle", "--outDir", "artifacts/package", "--json"], root, {
-      runtimeBuilder: async ({ outputPath }) => {
+      runtimeBuilder: async ({ cargoFeatures, outputPath }) => {
+        runtimeFeatures = cargoFeatures;
         await writeFile(outputPath, "#!/usr/bin/env sh\necho threenative runtime\n", { mode: 0o755 });
         return outputPath;
       },
@@ -26,6 +28,7 @@ test("package should copy a desktop bundle into stable artifact layout", async (
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_PACKAGE_OK");
+    assert.deepEqual(runtimeFeatures, []);
     assert.equal(payload.target, "desktop");
     assert.equal(payload.artifacts.packagedBundlePath.endsWith("artifacts/package/desktop/game.bundle"), true);
     assert.equal(payload.artifacts.runtimeExecutablePath.endsWith("artifacts/package/desktop/threenative_runtime"), true);
@@ -93,6 +96,7 @@ test("package should build a validated mounted CEF AppImage", { skip: process.pl
     const bytes = Buffer.from("pinned-cef-runtime");
     await writeFile(join(cefRuntimeDir, "libcef.so"), bytes);
     const manifest = testCefManifest("libcef.so", bytes);
+    let runtimeFeatures: string[] | undefined;
 
     const result = await packageCommand(
       ["--bundle", "game.bundle", "--outDir", "artifacts/appimage", "--format", "appimage", "--json"],
@@ -100,7 +104,8 @@ test("package should build a validated mounted CEF AppImage", { skip: process.pl
       {
         cefPayloadManifest: manifest,
         cefRuntimeDir,
-        runtimeBuilder: async ({ outputPath }) => {
+        runtimeBuilder: async ({ cargoFeatures, outputPath }) => {
+          runtimeFeatures = cargoFeatures;
           await writeFile(outputPath, "fake-runtime", { mode: 0o755 });
           return outputPath;
         },
@@ -119,6 +124,7 @@ test("package should build a validated mounted CEF AppImage", { skip: process.pl
     assert.equal(result.exitCode, 0);
     assert.equal(payload.format, "appimage");
     assert.equal(payload.nativeOverlay.backend, "cef-osr");
+    assert.deepEqual(runtimeFeatures, ["native-overlay-cef"]);
     assert.equal(payload.nativeOverlay.logicalPayloadBytes, bytes.length);
     assert.equal(payload.nativeOverlay.mountedPackage.bytes, Buffer.byteLength("mounted-appimage"));
     assert.equal(payload.nativeOverlay.mountedPackage.sha256, createHash("sha256").update("mounted-appimage").digest("hex"));

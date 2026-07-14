@@ -40,7 +40,7 @@
       "sha1": "74a1186c566cbbac38c6b0f5298fc0bcfc1b9606",
       "sha256": "6c1d4891ef3886e3ccf65d09288d8304e3f7e3724a47c93293e2bd63e76528e4"
     },
-    "helperModel": "Linux spike re-executes native_overlay_cef_spike and dispatches cef_execute_process before argument parsing or Bevy initialization.",
+    "helperModel": "The production threenative_runtime executable re-executes itself and dispatches cef_execute_process before argument parsing or Bevy initialization.",
     "supportedTargets": [
       {
         "target": "linux-x86_64",
@@ -166,7 +166,7 @@
     {
       "command": "cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --test overlay_cef --features native-overlay-cef",
       "status": "pass",
-      "assertions": 14
+      "assertions": 24
     },
     {
       "command": "cargo test --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --features native-overlay-cef --test overlay --test overlay_host",
@@ -179,18 +179,18 @@
       "assertions": 3
     },
     {
-      "command": "cargo run --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --bin native_overlay_cef_spike --features native-overlay-cef -- examples/chess/dist/chess.bundle",
-      "status": "partial",
-      "firstNonblankPaintMsFromProcessEntry": 1997.57
+      "command": "cargo run --manifest-path runtime-bevy/Cargo.toml -p threenative_runtime --bin threenative_runtime --features native-overlay-cef -- examples/chess/dist/chess.bundle",
+      "status": "pass",
+      "firstNonblankPaintMsFromProcessEntry": 858.83
     },
     {
-      "command": "TN_OVERLAY_CEF_SPIKE_EXIT_AFTER_FIRST_PAINT=1 native_overlay_cef_spike examples/chess/dist/chess.bundle (10 sequential warm runs)",
+      "command": "TN_OVERLAY_CEF_SPIKE_EXIT_AFTER_FIRST_PAINT=1 threenative_runtime examples/chess/dist/chess.bundle (10 sequential warm runs)",
       "status": "pass",
       "exitCodes": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       "remainingCefProcesses": 0
     },
     {
-      "command": "TN_OVERLAY_CEF_SPIKE_MODAL_PROBE=1 TN_OVERLAY_CEF_SPIKE_CAPTURE_DIR=/tmp/cef-modal-captures native_overlay_cef_spike examples/chess/dist/chess.bundle",
+      "command": "TN_OVERLAY_CEF_SPIKE_MODAL_PROBE=1 TN_OVERLAY_CEF_SPIKE_CAPTURE_DIR=/tmp/cef-modal-captures threenative_runtime examples/chess/dist/chess.bundle",
       "status": "pass",
       "modalTransitions": 10,
       "capturedPaints": 20,
@@ -234,8 +234,8 @@
     "frameCost": {
       "status": "pass-release",
       "threshold": "p95 overlay-host CPU cost <= 3 ms and no > 5 ms sustained regression over the no-overlay native baseline",
-      "observed": {"cpuBgraNormalizeP95Micros": 1937, "bevyImageReplacementP95Micros": 1, "releasePaintSamples": 203, "baselineFrameP95Ms": 18.096, "overlayFrameP95Ms": 17.514, "totalFrameP95DeltaMs": -0.582, "note": "The optimized lookup conversion was measured in the 100-transition release probe; the paired 600-frame baseline/overlay distribution retained the identical debug sampling policy."},
-      "sampleCount": 203
+      "observed": {"cpuBgraNormalizeP95Micros": 1493, "bevyImageReplacementP95Micros": 0, "releasePaintSamples": 603, "baselineFrameP95Ms": 18.096, "overlayFrameP95Ms": 17.514, "totalFrameP95DeltaMs": -0.582, "note": "The recycled-buffer lookup conversion was measured in the 300-transition release probe; the paired 600-frame baseline/overlay distribution retained the identical debug sampling policy."},
+      "sampleCount": 603
     },
     "paintQueue": {
       "status": "pass",
@@ -244,10 +244,10 @@
       "sampleCount": 5
     },
     "memory": {
-      "status": "measured",
-      "threshold": "Record parent and child working set after settle",
-      "observed": {"parentAndDirectChildrenRssKiB": 1460520, "fullObservedProcessTreeRssKiB": 2029992, "settledElapsedSeconds": 181, "note": "No 100-transition monotonic-growth series yet"},
-      "sampleCount": 1
+      "status": "pass-settled",
+      "threshold": "No sustained process-tree RSS growth after 300 chooser/HUD/settings transitions and a five-second settle window",
+      "observed": {"sampleCount": 281, "settleSamples": 18, "settleMeanRssKiB": 1899746.7, "settleMinRssKiB": 1899724, "settleMaxRssKiB": 1899860, "settleSlopeKiBPerSample": -6.32, "settleDeltaKiB": -136, "note": "Sampler excludes Linux thread IDs and the final shutdown sample. Chromium caches grew during active repaint churn, then remained flat through the required post-stress settle window."},
+      "sampleCount": 281
     },
     "installedSize": {
       "status": "pass-linux-mounted-package",

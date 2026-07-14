@@ -21,17 +21,24 @@ use bevy::{
 };
 use cef::rc::Rc as _;
 use cef::{
-    App, Browser, BrowserSettings, CefString, Client, CommandLine, DictionaryValue, DisplayHandler,
-    ImplApp, ImplBrowser, ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler,
-    ImplFrame, ImplLifeSpanHandler, ImplRenderHandler, ImplRequest, ImplRequestHandler,
-    ImplResourceRequestHandler, ImplSchemeHandlerFactory, ImplSchemeRegistrar, KeyEvent,
-    KeyEventType, LifeSpanHandler, LogSeverity, MouseButtonType, MouseEvent, PopupFeatures, Rect,
-    RenderHandler, Request, RequestHandler, ResourceHandler, ResourceRequestHandler,
-    SchemeHandlerFactory, SchemeOptions, SchemeRegistrar, Settings, WindowInfo,
-    WindowOpenDisposition, WrapApp, WrapClient, WrapDisplayHandler, WrapLifeSpanHandler,
-    WrapRenderHandler, WrapRequestHandler, WrapResourceRequestHandler, WrapSchemeHandlerFactory,
+    App, BeforeDownloadCallback, Browser, BrowserSettings, CefString, Client, CommandLine,
+    DictionaryValue, DisplayHandler, DownloadHandler, DownloadItem, Frame, ImplApp, ImplBrowser,
+    ImplBrowserHost, ImplClient, ImplCommandLine, ImplDisplayHandler, ImplDownloadHandler,
+    ImplFrame, ImplLifeSpanHandler, ImplListValue, ImplMediaAccessCallback, ImplPermissionHandler,
+    ImplPermissionPromptCallback, ImplProcessMessage, ImplRenderHandler, ImplRenderProcessHandler,
+    ImplRequest, ImplRequestHandler, ImplResourceRequestHandler, ImplSchemeHandlerFactory,
+    ImplSchemeRegistrar, ImplV8Context, ImplV8Handler, ImplV8Value, KeyEvent, KeyEventType,
+    LifeSpanHandler, LogSeverity, MediaAccessCallback, MouseButtonType, MouseEvent,
+    PermissionHandler, PermissionPromptCallback, PermissionRequestResult, PopupFeatures, ProcessId,
+    ProcessMessage, Rect, RenderHandler, RenderProcessHandler, Request, RequestHandler,
+    ResourceHandler, ResourceRequestHandler, SchemeHandlerFactory, SchemeOptions, SchemeRegistrar,
+    Settings, V8Context, V8Handler, V8Propertyattribute, V8Value, WindowInfo,
+    WindowOpenDisposition, WrapApp, WrapClient, WrapDisplayHandler, WrapDownloadHandler,
+    WrapLifeSpanHandler, WrapPermissionHandler, WrapRenderHandler, WrapRenderProcessHandler,
+    WrapRequestHandler, WrapResourceRequestHandler, WrapSchemeHandlerFactory, WrapV8Handler,
     api_hash, browser_host_create_browser_sync, execute_process, initialize,
-    register_scheme_handler_factory, shutdown, stream_reader_create_for_file, sys,
+    process_message_create, register_scheme_handler_factory, shutdown,
+    stream_reader_create_for_file, sys, v8_value_create_function,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -44,7 +51,7 @@ pub const CEF_DESKTOP_BLINK_SETTINGS: &str =
     "primaryHoverType=2,availableHoverTypes=2,primaryPointerType=4,availablePointerTypes=4";
 const MAX_METRIC_SAMPLES: usize = 2_048;
 const MAX_PENDING_BRIDGE_MESSAGES: usize = 64;
-const CEF_SPIKE_IPC_PREFIX: &str = "TN_OVERLAY_CEF_IPC:";
+const CEF_OVERLAY_PROCESS_MESSAGE: &str = "threenative.overlay.send";
 const CEF_OVERLAY_SCHEME: &str = "threenative-overlay";
 const CEF_OVERLAY_ORIGIN: &str = "threenative-overlay://bundle/";
 
@@ -159,6 +166,7 @@ pub struct CefPaintQueueMetrics {
 pub struct CefPaintQueue {
     latest: Option<CefPaintFrame>,
     metrics: CefPaintQueueMetrics,
+    spare: Option<Vec<u8>>,
 }
 
 impl CefPaintQueue {
@@ -185,11 +193,15 @@ impl CefPaintQueue {
                 bgra.len()
             ));
         }
-        if self.latest.is_some() {
+        let mut rgba = if let Some(frame) = self.latest.take() {
             self.metrics.dropped += 1;
-        }
+            frame.rgba
+        } else {
+            self.spare.take().unwrap_or_default()
+        };
+        rgba.resize(expected, 0);
         let copy_started = Instant::now();
-        let rgba = normalize_bgra_premultiplied_to_rgba(bgra);
+        normalize_bgra_premultiplied_to_rgba_into(bgra, &mut rgba);
         record_bounded_sample(
             &mut self.metrics.copy_micros,
             self.metrics.accepted,
@@ -209,6 +221,13 @@ impl CefPaintQueue {
         self.latest.take()
     }
 
+    pub fn recycle(&mut self, mut rgba: Vec<u8>) {
+        rgba.clear();
+        if self.spare.is_none() {
+            self.spare = Some(rgba);
+        }
+    }
+
     pub fn pending_len(&self) -> usize {
         usize::from(self.latest.is_some())
     }
@@ -219,8 +238,13 @@ impl CefPaintQueue {
 }
 
 pub fn normalize_bgra_premultiplied_to_rgba(bgra: &[u8]) -> Vec<u8> {
-    let table = unpremultiply_table();
     let mut rgba = vec![0; bgra.len()];
+    normalize_bgra_premultiplied_to_rgba_into(bgra, &mut rgba);
+    rgba
+}
+
+fn normalize_bgra_premultiplied_to_rgba_into(bgra: &[u8], rgba: &mut [u8]) {
+    let table = unpremultiply_table();
     for (pixel, output) in bgra.chunks_exact(4).zip(rgba.chunks_exact_mut(4)) {
         let alpha = pixel[3];
         output[0] = table[alpha as usize][pixel[2] as usize];
@@ -228,7 +252,6 @@ pub fn normalize_bgra_premultiplied_to_rgba(bgra: &[u8]) -> Vec<u8> {
         output[2] = table[alpha as usize][pixel[0] as usize];
         output[3] = alpha;
     }
-    rgba
 }
 
 fn unpremultiply_table() -> &'static [[u8; 256]] {
@@ -395,7 +418,10 @@ cef::wrap_client! {
         render_handler: RenderHandler,
         life_span_handler: LifeSpanHandler,
         display_handler: DisplayHandler,
+        download_handler: DownloadHandler,
+        permission_handler: PermissionHandler,
         request_handler: RequestHandler,
+        ipc_queue: Rc<RefCell<VecDeque<String>>>,
     }
 
     impl Client {
@@ -414,13 +440,109 @@ cef::wrap_client! {
         fn display_handler(&self) -> Option<DisplayHandler> {
             Some(self.display_handler.clone())
         }
+
+        fn download_handler(&self) -> Option<DownloadHandler> {
+            Some(self.download_handler.clone())
+        }
+
+        fn permission_handler(&self) -> Option<PermissionHandler> {
+            Some(self.permission_handler.clone())
+        }
+
+        fn on_process_message_received(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            source_process: ProcessId,
+            message: Option<&mut ProcessMessage>,
+        ) -> i32 {
+            if source_process != ProcessId::RENDERER {
+                return 0;
+            }
+            let Some(message) = message else {
+                return 0;
+            };
+            if CefString::from(&message.name()).to_string() != CEF_OVERLAY_PROCESS_MESSAGE {
+                return 0;
+            }
+            let Some(arguments) = message.argument_list() else {
+                return 1;
+            };
+            let payload = CefString::from(&arguments.string(0)).to_string();
+            let mut queue = self.ipc_queue.borrow_mut();
+            if queue.len() == MAX_PENDING_BRIDGE_MESSAGES {
+                queue.pop_front();
+            }
+            queue.push_back(payload);
+            1
+        }
+    }
+}
+
+cef::wrap_download_handler! {
+    struct CefDeniedDownloadHandler {}
+
+    impl DownloadHandler {
+        fn can_download(
+            &self,
+            _browser: Option<&mut Browser>,
+            _url: Option<&CefString>,
+            _request_method: Option<&CefString>,
+        ) -> i32 {
+            0
+        }
+
+        fn on_before_download(
+            &self,
+            _browser: Option<&mut Browser>,
+            _download_item: Option<&mut DownloadItem>,
+            _suggested_name: Option<&CefString>,
+            _callback: Option<&mut BeforeDownloadCallback>,
+        ) -> i32 {
+            eprintln!("TN_OVERLAY_CEF_RESOURCE_REJECTED: downloads are disabled");
+            1
+        }
+    }
+}
+
+cef::wrap_permission_handler! {
+    struct CefDeniedPermissionHandler {}
+
+    impl PermissionHandler {
+        fn on_request_media_access_permission(
+            &self,
+            _browser: Option<&mut Browser>,
+            _frame: Option<&mut Frame>,
+            _requesting_origin: Option<&CefString>,
+            _requested_permissions: u32,
+            callback: Option<&mut MediaAccessCallback>,
+        ) -> i32 {
+            if let Some(callback) = callback {
+                callback.cancel();
+            }
+            eprintln!("TN_OVERLAY_CEF_RESOURCE_REJECTED: media permissions are disabled");
+            1
+        }
+
+        fn on_show_permission_prompt(
+            &self,
+            _browser: Option<&mut Browser>,
+            _prompt_id: u64,
+            _requesting_origin: Option<&CefString>,
+            _requested_permissions: u32,
+            callback: Option<&mut PermissionPromptCallback>,
+        ) -> i32 {
+            if let Some(callback) = callback {
+                callback.cont(PermissionRequestResult::DENY);
+            }
+            eprintln!("TN_OVERLAY_CEF_RESOURCE_REJECTED: browser permissions are disabled");
+            1
+        }
     }
 }
 
 cef::wrap_display_handler! {
-    struct CefSpikeDisplayHandler {
-        ipc_queue: Rc<RefCell<VecDeque<String>>>,
-    }
+    struct CefSpikeDisplayHandler {}
 
     impl DisplayHandler {
         fn on_console_message(
@@ -432,18 +554,87 @@ cef::wrap_display_handler! {
             line: i32,
         ) -> i32 {
             let message_text = message.map(ToString::to_string).unwrap_or_default();
-            if let Some(payload) = message_text.strip_prefix(CEF_SPIKE_IPC_PREFIX) {
-                let mut queue = self.ipc_queue.borrow_mut();
-                if queue.len() == MAX_PENDING_BRIDGE_MESSAGES {
-                    queue.pop_front();
+            eprintln!("TN_OVERLAY_CEF_CONSOLE: {level:?}: {message_text} ({source:?}:{line})");
+            1
+        }
+    }
+}
+
+cef::wrap_v8_handler! {
+    struct CefOverlayV8Handler {
+        frame: Frame,
+    }
+
+    impl V8Handler {
+        fn execute(
+            &self,
+            name: Option<&CefString>,
+            _object: Option<&mut V8Value>,
+            arguments: Option<&[Option<V8Value>]>,
+            _retval: Option<&mut Option<V8Value>>,
+            exception: Option<&mut CefString>,
+        ) -> i32 {
+            if name.map(ToString::to_string).as_deref() != Some("__threenativeOverlaySend") {
+                return 0;
+            }
+            let payload = arguments
+                .and_then(|arguments| arguments.first())
+                .and_then(Option::as_ref)
+                .filter(|value| value.is_string() == 1)
+                .map(|value| CefString::from(&value.string_value()).to_string());
+            let Some(payload) = payload else {
+                if let Some(exception) = exception {
+                    *exception = "ThreeNative overlay messages must be JSON strings".into();
                 }
-                queue.push_back(payload.to_string());
-            } else {
-                eprintln!(
-                    "TN_OVERLAY_CEF_CONSOLE: {level:?}: {message_text} ({source:?}:{line})"
-                );
+                return 1;
+            };
+            let Some(mut message) = process_message_create(Some(&CEF_OVERLAY_PROCESS_MESSAGE.into())) else {
+                if let Some(exception) = exception {
+                    *exception = "ThreeNative could not allocate an overlay process message".into();
+                }
+                return 1;
+            };
+            if let Some(arguments) = message.argument_list() {
+                arguments.set_string(0, Some(&payload.as_str().into()));
+                self.frame
+                    .send_process_message(ProcessId::BROWSER, Some(&mut message));
             }
             1
+        }
+    }
+}
+
+cef::wrap_render_process_handler! {
+    struct CefOverlayRenderProcessHandler {}
+
+    impl RenderProcessHandler {
+        fn on_context_created(
+            &self,
+            _browser: Option<&mut Browser>,
+            frame: Option<&mut Frame>,
+            context: Option<&mut V8Context>,
+        ) {
+            let (Some(frame), Some(context)) = (frame, context) else {
+                return;
+            };
+            if frame.is_main() != 1 {
+                return;
+            }
+            let Some(global) = context.global() else {
+                return;
+            };
+            let mut handler = CefOverlayV8Handler::new(frame.clone());
+            let Some(mut function) = v8_value_create_function(
+                Some(&"__threenativeOverlaySend".into()),
+                Some(&mut handler),
+            ) else {
+                return;
+            };
+            global.set_value_bykey(
+                Some(&"__threenativeOverlaySend".into()),
+                Some(&mut function),
+                V8Propertyattribute::default(),
+            );
         }
     }
 }
@@ -484,9 +675,14 @@ cef::wrap_scheme_handler_factory! {
 }
 
 cef::wrap_app! {
-    struct CefSpikeApp {}
+    struct CefSpikeApp {
+        render_process_handler: RenderProcessHandler,
+    }
 
     impl App {
+        fn render_process_handler(&self) -> Option<RenderProcessHandler> {
+            Some(self.render_process_handler.clone())
+        }
         fn on_register_custom_schemes(&self, registrar: Option<&mut SchemeRegistrar>) {
             let Some(registrar) = registrar else {
                 return;
@@ -526,7 +722,7 @@ cef::wrap_app! {
 pub fn dispatch_cef_subprocess() -> Option<i32> {
     let _ = api_hash(sys::CEF_API_VERSION_LAST, 0);
     let args = cef::args::Args::new();
-    let mut app = CefSpikeApp::new();
+    let mut app = CefSpikeApp::new(CefOverlayRenderProcessHandler::new());
     let exit_code = execute_process(
         Some(args.as_main_args()),
         Some(&mut app),
@@ -632,7 +828,7 @@ impl CefOsrRuntime {
         })?;
         let _ = api_hash(sys::CEF_API_VERSION_LAST, 0);
         let args = cef::args::Args::new();
-        let mut app = CefSpikeApp::new();
+        let mut app = CefSpikeApp::new(CefOverlayRenderProcessHandler::new());
         let settings = Settings {
             no_sandbox: 0,
             root_cache_path: cache_path.to_string_lossy().as_ref().into(),
@@ -688,13 +884,18 @@ impl CefOsrRuntime {
             surface_generation.clone(),
         );
         let life_span_handler = CefSpikeLifeSpanHandler::new(closed.clone());
-        let display_handler = CefSpikeDisplayHandler::new(ipc_queue.clone());
+        let display_handler = CefSpikeDisplayHandler::new();
+        let download_handler = CefDeniedDownloadHandler::new();
+        let permission_handler = CefDeniedPermissionHandler::new();
         let request_handler = CefOverlayRequestHandler::new();
         let mut client = CefSpikeClient::new(
             render_handler,
             life_span_handler,
             display_handler,
+            download_handler,
+            permission_handler,
             request_handler,
+            ipc_queue.clone(),
         );
         let browser = browser_host_create_browser_sync(
             Some(&WindowInfo {
@@ -745,6 +946,10 @@ impl CefOsrRuntime {
 
     pub fn take_latest_paint(&mut self) -> Option<CefPaintFrame> {
         self.queue.borrow_mut().take_latest()
+    }
+
+    pub fn recycle_paint_buffer(&mut self, rgba: Vec<u8>) {
+        self.queue.borrow_mut().recycle(rgba);
     }
 
     pub fn metrics(&self) -> CefPaintQueueMetrics {
@@ -1041,9 +1246,10 @@ pub fn cef_spike_modal_probe_script() -> &'static str {
            throw new Error(`timed out waiting for ${label}`);
          };
          try {
+           const transitionCount = 10;
            (await waitFor(() => button("Play Black"), "Play Black button")).click();
            await waitFor(() => button("Settings"), "Settings button");
-           for (let transition = 0; transition < 10; transition += 1) {
+           for (let transition = 0; transition < transitionCount; transition += 1) {
              button("Settings").click();
              await waitFor(() => document.querySelector("[role='dialog']"), "settings dialog");
              await delay(100);
@@ -1052,7 +1258,8 @@ pub fn cef_spike_modal_probe_script() -> &'static str {
              await delay(100);
            }
            await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-           window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: true, transitions: 10 });
+           if (transitionCount >= 100) await delay(5000);
+           window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: true, transitions: transitionCount });
          } catch (error) {
            window.threenativeOverlayBridge.send("overlay:spike-modal-probe", { completed: false, error: String(error) });
          }
@@ -1060,9 +1267,10 @@ pub fn cef_spike_modal_probe_script() -> &'static str {
 }
 
 pub fn cef_modal_probe_script(transitions: usize) -> String {
-    cef_spike_modal_probe_script()
-        .replace("transition < 10", &format!("transition < {transitions}"))
-        .replace("transitions: 10", &format!("transitions: {transitions}"))
+    cef_spike_modal_probe_script().replace(
+        "transitionCount = 10",
+        &format!("transitionCount = {transitions}"),
+    )
 }
 
 pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
@@ -1075,7 +1283,7 @@ pub fn cef_spike_bridge_script(overlay_id: &str) -> Result<String, String> {
           window.ipc = window.ipc || {};
           window.threenativeOverlayBridge = {
             send(type, payload) {
-              console.info(`TN_OVERLAY_CEF_IPC:${JSON.stringify({ overlayId, type, payload })}`);
+              window.__threenativeOverlaySend(JSON.stringify({ overlayId, type, payload }));
               return true;
             },
             subscribe(listener) {
@@ -1186,30 +1394,6 @@ pub fn install_cef_spike_frame_probe(
         sample_cef_spike_frame_probe.before(bevy::time::TimeSystem),
     );
     Ok(())
-}
-
-pub fn install_cef_spike_surface(
-    app: &mut bevy::prelude::App,
-    runtime: CefOsrRuntime,
-    overlays: OverlaysIr,
-    width: u32,
-    height: u32,
-) {
-    install_cef_surface(
-        app,
-        runtime,
-        overlays,
-        CefSurfaceConfig {
-            bounds: crate::overlay_host::NativeOverlayBounds {
-                height,
-                width,
-                x: 0,
-                y: 0,
-            },
-            fills_window: true,
-            z_index: i32::MAX as u32,
-        },
-    );
 }
 
 pub fn install_cef_surface(
@@ -1370,6 +1554,7 @@ fn pump_cef_spike_surface(
             "TN_OVERLAY_CEF_STALE_PAINT_DROPPED: paintGeneration={}, surfaceGeneration={}",
             frame.generation, texture.generation
         );
+        runtime.recycle_paint_buffer(frame.rgba);
         return;
     }
     if texture.first_paint_ms.is_none() {
@@ -1430,7 +1615,8 @@ fn pump_cef_spike_surface(
     }
     if let Some(image) = images.get_mut(&texture.handle) {
         let upload_started = Instant::now();
-        apply_paint_to_image(image, frame);
+        let recycled = apply_paint_to_image(image, frame);
+        runtime.recycle_paint_buffer(recycled);
         let upload_sequence = texture.uploads;
         record_bounded_sample(
             &mut texture.upload_micros,
@@ -1487,7 +1673,7 @@ fn drain_cef_spike_ipc(
             "overlay:set-visible" => {
                 if let Some(visible) = envelope.payload.get("visible").and_then(Value::as_bool) {
                     runtime.set_visible(visible);
-                    info!("TN_OVERLAY_CEF_VISIBILITY: visible={visible}");
+                    debug!("TN_OVERLAY_CEF_VISIBILITY: visible={visible}");
                 }
             }
             "overlay:set-input" => {
@@ -1496,7 +1682,7 @@ fn drain_cef_spike_ipc(
                 {
                     warn!("TN_OVERLAY_NATIVE_IPC_REJECTED: invalid input mode {mode:?}");
                 } else if let Some(mode) = envelope.payload.get("mode").and_then(Value::as_str) {
-                    info!("TN_OVERLAY_CEF_INPUT_MODE: mode={mode}");
+                    debug!("TN_OVERLAY_CEF_INPUT_MODE: mode={mode}");
                 }
             }
             "overlay:set-input-regions" => {
@@ -1512,7 +1698,7 @@ fn drain_cef_spike_ipc(
                 regions.sort_by_key(|region| (region.y, region.x, region.height, region.width));
                 regions.dedup();
                 runtime.input_regions = regions;
-                info!(
+                debug!(
                     "TN_OVERLAY_CEF_INPUT_REGIONS: count={}",
                     runtime.input_regions.len()
                 );
@@ -1576,7 +1762,7 @@ fn deliver_cef_spike_snapshots(
     let cursor = advance_snapshot_delivery(delivered_sequence, &pending, |snapshot| {
         let delivered = runtime.deliver_snapshot(snapshot);
         if delivered {
-            info!(
+            debug!(
                 "delivered CEF overlay '{}' snapshot '{}' sequence {}",
                 snapshot.overlay_id, snapshot.message_type, snapshot.sequence
             );
@@ -1888,17 +2074,20 @@ fn record_bounded_sample(samples: &mut Vec<u64>, sequence: u64, sample: u64) {
     samples[sequence as usize % MAX_METRIC_SAMPLES] = sample;
 }
 
-pub fn apply_paint_to_image(image: &mut Image, frame: CefPaintFrame) {
+pub fn apply_paint_to_image(image: &mut Image, frame: CefPaintFrame) -> Vec<u8> {
     // Authored texture loading may generate a mip chain for every newly added
     // RGBA image. CEF replaces only the complete base level, so keep this
     // dynamic surface explicitly single-mip before replacing its bytes.
     image.texture_descriptor.mip_level_count = 1;
-    image.resize(Extent3d {
+    let extent = Extent3d {
         width: frame.width,
         height: frame.height,
         depth_or_array_layers: 1,
-    });
-    image.data = frame.rgba;
+    };
+    if image.texture_descriptor.size != extent {
+        image.resize(extent);
+    }
+    std::mem::replace(&mut image.data, frame.rgba)
 }
 
 pub fn apply_paint_to_image_if_current(
@@ -1909,7 +2098,7 @@ pub fn apply_paint_to_image_if_current(
     if frame.generation != surface_generation {
         return false;
     }
-    apply_paint_to_image(image, frame);
+    let _ = apply_paint_to_image(image, frame);
     true
 }
 
