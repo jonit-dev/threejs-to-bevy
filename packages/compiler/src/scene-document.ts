@@ -538,7 +538,13 @@ function toWorldTransform(transform: VisualTransform): WorldTransform {
 function meshFromEntity(entityId: string, prefab: IScenePrefab | undefined, transform: ReturnType<typeof normalizeTransform>): Mesh {
   const primitive = prefab?.primitive ?? "box";
   const mesh = new Mesh({
-    ...(prefab?.asset === undefined ? {} : { assetRefs: [modelAsset(`scene.prefab.${prefab.id}`, prefab.asset)] }),
+    ...(prefab?.asset === undefined
+      ? {}
+      : {
+          assetRefs: [modelAsset(`scene.prefab.${prefab.id}`, prefab.asset, {
+            materialOwnership: prefab.color === undefined && prefab.primitive === undefined ? "source" : "renderer",
+          })],
+        }),
     geometry: geometryForPrimitive(primitive),
     id: entityId,
     material: new MeshStandardMaterial({ color: prefab?.color ?? "#2f80ed", roughness: 0.55 }),

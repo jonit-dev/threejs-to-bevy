@@ -73,6 +73,7 @@ export {
 } from "./runner.js";
 export { runPackageTests } from "./runTests.js";
 export { runBlenderToolGate, validateBlenderToolEvidence, type IBlenderToolGateEvidence, type IBlenderToolGateResult } from "./blenderToolGate.js";
+export { runModelTestMaterialGate, type IModelTestMaterialGateReport } from "./modelTestMaterialGate.js";
 
 export function printScriptAliasWarning(scriptName: string): void {
   const resolution = resolveScriptAlias(scriptName);
