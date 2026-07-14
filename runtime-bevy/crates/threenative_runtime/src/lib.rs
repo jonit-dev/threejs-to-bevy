@@ -184,22 +184,11 @@ pub fn app_from_bundle_with_options(
         ) {
             let diagnostic = &diagnostics[0];
             return Err(RuntimeError::SceneReadiness(format!(
-                "{}: {} Rebuild threenative_runtime with --features native-webview.",
+                "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
                 diagnostic.code, diagnostic.message
             )));
         }
     }
-    #[cfg(feature = "native-webview")]
-    let native_overlay_init_error = match overlay_host::create_native_overlay_host_plan(
-        bundle.overlays.as_ref(),
-        &bundle.bundle_path,
-    ) {
-        Ok(Some(plan)) if plan.backend == overlay_host::WRY_BACKEND.id => {
-            overlay_host::initialize_native_webview_backend().err()
-        }
-        Ok(None) | Err(_) => None,
-        Ok(Some(_)) => None,
-    };
     let mut app = App::new();
     app.insert_resource(ClearColor(default_clear_color_for_bundle(&bundle)))
         .add_plugins(
@@ -342,34 +331,12 @@ pub fn app_from_bundle_with_options(
                     ),
                 }
             }
-            #[cfg(feature = "native-webview")]
-            if plan.backend == overlay_host::WRY_BACKEND.id {
-                if let Some(overlays) = bundle.overlays.clone() {
-                    app.insert_resource(overlay_host::NativeOverlayBridgeResource::new(overlays));
-                }
-                if let Some(error) = native_overlay_init_error.as_ref() {
-                    warn!("TN_OVERLAY_NATIVE_INIT_FAILED: {error}");
-                } else {
-                    app.insert_resource(overlay_host::NativeOverlayHostPlanResource(plan));
-                    app.add_systems(
-                        Update,
-                        (
-                            overlay_host::mount_native_overlay_webviews,
-                            overlay_host::synchronize_native_overlay_webviews,
-                            overlay_host::resize_native_overlay_webviews,
-                            overlay_host::pump_native_overlay_webview_events
-                                .before(run_scripted_runtime_systems),
-                        )
-                            .chain(),
-                    );
-                }
-            }
         }
         Ok(None) => {}
         Err(diagnostics) => {
             for diagnostic in diagnostics {
                 warn!(
-                    "{}: {} Rebuild threenative_runtime with --features native-webview.",
+                    "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
                     diagnostic.code, diagnostic.message
                 );
             }

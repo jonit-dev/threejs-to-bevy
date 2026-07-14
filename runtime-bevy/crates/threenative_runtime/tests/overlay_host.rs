@@ -1,27 +1,9 @@
 use std::path::Path;
 use threenative_loader::{OverlayBridgeMessagesIr, OverlayIr, OverlayLayoutIr, OverlaysIr};
 
-#[cfg(feature = "native-webview")]
-use threenative_runtime::overlay_host::{
-    NativeWebviewAttachment, native_overlay_initialization_script, native_webview_attachment,
-};
 use threenative_runtime::overlay_host::{
     create_native_overlay_host_plan, input_capture_policy, native_overlay_bounds,
-    native_overlay_file_url, native_overlay_input_rectangles, native_overlay_snapshot_script,
-    overlay_host_diagnostics,
-};
-#[cfg(all(
-    feature = "native-webview",
-    any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd"
-    )
-))]
-use threenative_runtime::overlay_host::{
-    native_overlay_host_clear_color, native_overlay_screen_position,
+    native_overlay_input_rectangles, overlay_host_diagnostics,
 };
 #[cfg(not(feature = "native-overlay-cef"))]
 use threenative_runtime::overlay_host::{
@@ -126,34 +108,6 @@ fn limits_pointer_capture_to_reported_interactive_regions() {
 }
 
 #[test]
-fn builds_safe_snapshot_delivery_script_for_native_webview() {
-    let script = native_overlay_snapshot_script(
-        "chess:captures",
-        &serde_json::json!({ "white": "</script>" }),
-        42,
-    );
-
-    assert!(script.contains("__threenativeDispatchOverlaySnapshot"));
-    assert!(script.contains("\"chess:captures\""));
-    assert!(script.ends_with(", 42);"));
-}
-
-#[cfg(feature = "native-webview")]
-#[test]
-fn native_overlay_bridge_replays_snapshots_without_injecting_example_layout_css() {
-    let script = native_overlay_initialization_script("chess-side-select");
-
-    assert!(script.contains("for (const snapshot of this._snapshots.values())"));
-    assert!(script.contains("listener(snapshot.type, snapshot.payload"));
-    assert!(script.contains("[data-threenative-interactive]"));
-    assert!(script.contains("overlay:set-input-regions"));
-    assert!(!script.contains("reallocateSurface"));
-    assert!(!script.contains("forceFullRepaint"));
-    assert!(!script.contains("242px"));
-    assert!(!script.contains(".inventory"));
-}
-
-#[test]
 fn bounds_unpositioned_overlay_to_the_full_bevy_surface() {
     let plan = create_native_overlay_host_plan(Some(&make_overlays()), Path::new("/bundle"))
         .unwrap_or_else(|_| {
@@ -205,7 +159,7 @@ fn uses_authored_native_overlay_layout_rectangle() {
     );
 }
 
-#[cfg(not(any(feature = "native-overlay-cef", feature = "native-webview")))]
+#[cfg(not(feature = "native-overlay-cef"))]
 #[test]
 fn native_overlay_host_default_build_reports_unsupported() {
     let overlays = make_overlays();
@@ -218,54 +172,4 @@ fn native_overlay_host_default_build_reports_unsupported() {
         result.err().unwrap()[0].code,
         "TN_OVERLAY_TARGET_UNSUPPORTED"
     );
-}
-
-#[cfg(all(not(feature = "native-overlay-cef"), feature = "native-webview"))]
-#[test]
-fn native_overlay_host_feature_prepares_wry_mounts() {
-    let overlays = make_overlays();
-    let result = create_native_overlay_host_plan(Some(&overlays), Path::new("/bundle"))
-        .expect("host supported");
-    let plan = result.expect("desktop overlay plan");
-
-    assert!(native_webview_backend_available());
-    assert_eq!(native_webview_backend_name(), "wry");
-    assert_eq!(plan.backend, "wry");
-    assert_eq!(
-        plan.mounts[0].entry_path,
-        Path::new("/bundle/overlay/index.html")
-    );
-    let _builder = threenative_runtime::overlay_host::create_wry_webview_builder(&plan.mounts[0]);
-}
-
-#[test]
-fn native_overlay_host_uses_bundle_local_file_urls() {
-    assert_eq!(
-        native_overlay_file_url(Path::new("/bundle/overlay/dist/index.html")),
-        "file:///bundle/overlay/dist/index.html"
-    );
-}
-
-#[cfg(all(
-    feature = "native-webview",
-    any(
-        target_os = "linux",
-        target_os = "dragonfly",
-        target_os = "freebsd",
-        target_os = "netbsd",
-        target_os = "openbsd"
-    )
-))]
-#[test]
-fn native_overlay_webview_uses_a_synchronized_transparent_host_window() {
-    assert_eq!(
-        native_webview_attachment(),
-        NativeWebviewAttachment::SynchronizedOverlayWindow
-    );
-    assert_eq!(native_overlay_screen_position(120, 80, 14, 22), (134, 102));
-    assert_eq!(
-        native_overlay_host_clear_color(true),
-        Some([0.0, 0.0, 0.0, 0.0])
-    );
-    assert_eq!(native_overlay_host_clear_color(false), None);
 }
