@@ -20,6 +20,15 @@ front door and `docs/status/capabilities/*.md` for detailed capability status.
   argv, editor payloads, and verification coverage from it. If derivation is
   not practical yet, add the smallest consistency test that fails when one
   surface is missed.
+- Before coding, identify the durable owner for the behavior and extend it
+  rather than copying data, parsers, helpers, fallbacks, or proof into another
+  surface. Prefer complete bounded fixes; do not leave TODOs, disabled tests,
+  broad casts, silent fallbacks, weakened assertions, or untracked temporary
+  bridges. Record any unavoidable bridge's owner, removal condition, and test.
+- Fix durable source and prove behavior at the real boundary. Do not edit
+  generated artifacts or make unsupported APIs appear supported. Cross-runtime
+  changes need positive/negative tests and conformance evidence; systemic debt
+  needs a concise quality-status note and bounded follow-up.
 - Capability/release-gate changes must update the relevant
   `docs/status/capabilities/*.md` file plus the one-line index entry in
   `docs/STATUS.md`; update `docs/bevy-feature-parity.md` when Bevy parity

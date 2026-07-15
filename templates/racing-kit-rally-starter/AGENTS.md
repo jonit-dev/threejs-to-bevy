@@ -21,6 +21,13 @@ copies); read the matching skill when that kind of work comes up.
   relative helper, DOM, Node, timer, filesystem, network, Three.js, or Bevy
   imports from portable gameplay scripts.
 - Do not edit generated `dist/` output.
+- Extend the owning source document, script, manifest, or shared contract; do
+  not copy registry data, helpers, fallbacks, or proof logic into a second
+  surface. Do not weaken assertions, disable scenarios, or make unsupported
+  behavior look supported. Fix the durable owner and rerun the proof.
+- If a temporary bridge is unavoidable, record its owner, removal condition,
+  and verification in the plan or issue. Report missing capability explicitly
+  instead of adding a local workaround.
 - Prefer `tn ... --json` commands for scene, asset, and proof mutations.
 - For custom sound effects, probe with `tn game providers --project . --json`.
   When ElevenLabs is available, prefer one bounded

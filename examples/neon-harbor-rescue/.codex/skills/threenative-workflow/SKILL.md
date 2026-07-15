@@ -32,3 +32,14 @@ pnpm tn -- playtest report --latest --scenario <name> --json
 
 Keep durable edits in `content/**/*.json` and `src/scripts/**/*.ts`; do not edit
 `dist/**`, emitted bundle JSON, or `scripts.bundle.js`.
+
+## Technical-debt guardrails
+
+- Extend the owning source document, script, manifest, or shared contract; do
+  not copy registry data, helpers, fallbacks, or proof logic into a second
+  surface.
+- Do not repair generated output, weaken assertions, disable scenarios, or
+  silently accept unsupported behavior. Fix the durable owner and rerun the
+  diagnostic.
+- If a temporary bridge is unavoidable, record its owner, removal condition,
+  and verification in the plan or issue.

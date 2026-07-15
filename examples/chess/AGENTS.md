@@ -13,6 +13,18 @@ everything in context at once.
   Do not edit them as the fix.
 - Do not author raw Three.js scenes or Bevy/Rust gameplay.
 
+## Technical-debt guardrails
+
+- Extend the owning source document, script, manifest, or shared contract;
+  do not copy registry data, helpers, fallbacks, or proof logic into this
+  example.
+- Do not edit generated output, weaken assertions, disable scenarios, or make
+  unsupported behavior look supported. Fix the durable owner and rerun the
+  diagnostic/proof.
+- If a temporary bridge is unavoidable, record its owner, removal condition,
+  and verification in the plan or issue. Report missing capability explicitly
+  instead of adding a local workaround.
+
 ## Default Loop
 
 1. Before creating or substantially changing the game, open

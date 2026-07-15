@@ -40,6 +40,27 @@ Repo-wide instructions for AI coding agents working on ThreeNative.
   not practical yet, add the smallest consistency test that fails when one
   surface is missed.
 
+## Technical-Debt Guardrails
+
+- Before coding, identify the durable owner for the behavior: contract,
+  registry, manifest, source document, or script. Extend that owner instead of
+  copying its data, parser, helper, fallback, or proof into another surface.
+- Prefer complete, bounded fixes. Do not leave TODOs, commented-out code,
+  disabled tests, broad casts, silent fallbacks, weakened assertions, or
+  untracked compatibility shims as the solution. If a bridge is unavoidable,
+  record its owner, removal condition, and verification in the relevant PRD or
+  status entry.
+- Fix the owning source and prove the behavior at its real boundary. Never
+  edit generated artifacts, widen tolerances, or mark an unsupported API as
+  supported just to make a gate pass.
+- Cross-package, editor, compiler, or runtime changes require the relevant
+  positive and negative tests; shared web/Bevy behavior also requires
+  conformance evidence. Unsupported behavior must fail with an actionable
+  diagnostic.
+- When a task exposes systemic debt or a mixed-responsibility hotspot, add a
+  concise quality-status note and a bounded follow-up with an owner instead of
+  expanding the scope into an opportunistic refactor.
+
 ## Product Boundary
 
 ThreeNative flow:

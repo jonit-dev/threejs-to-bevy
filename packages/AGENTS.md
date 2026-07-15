@@ -12,6 +12,14 @@ Rules for TypeScript packages.
 - Prefer precise types over casts. Follow ESM `NodeNext` patterns.
 - Runtime packages consume IR schemas/bundles; they must not invent parallel
   game-state source formats.
+- Before adding a package feature, identify the owning contract or registry and
+  extend it instead of copying schemas, parsers, helpers, or capability lists.
+  Do not use broad casts, disabled tests, silent compatibility fallbacks, or
+  weakened assertions to hide a boundary mismatch; an unavoidable bridge must
+  have an owner, removal condition, and focused test.
+- Changes that cross SDK, IR, compiler, CLI, or runtime boundaries need both
+  acceptance and rejection coverage. For web/Bevy behavior, add conformance
+  evidence and keep unsupported behavior explicitly diagnostic.
 - When SDK, CLI, compiler, or authoring package changes alter a reusable
   authoring pattern or mutation workflow, update `docs/cookbook` and run
   `pnpm verify:cookbook`.

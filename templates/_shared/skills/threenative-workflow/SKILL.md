@@ -44,6 +44,17 @@ pnpm tn -- iterate --project . --json
    default repair loop. Fix the owning durable source or script and rerun.
    Details and follow-ups live in the `threenative-verify` skill.
 
+## Technical-debt guardrails
+
+- Extend the owning source document, script, manifest, or contract. Do not
+  copy registry data, helpers, fallbacks, or proof logic into a second surface.
+- Do not repair generated output, weaken proof assertions, disable scenarios,
+  or silently accept unsupported behavior. Fix the durable owner and rerun the
+  diagnostic.
+- If a temporary compatibility bridge is unavoidable, record its owner,
+  removal condition, and verification in the project plan or issue. Report
+  missing capabilities explicitly instead of creating a local workaround.
+
 ## Scaffold-first stop rule
 
 When scaffold-first `tn game plan --apply` is followed by `TN_ITERATE_OK` and

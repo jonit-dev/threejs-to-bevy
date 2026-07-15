@@ -18,6 +18,14 @@ Rules for runnable examples.
   feed them, but fixtures are stable contract inputs.
 - Examples prove product workflows and emit portable IR/bundles. They must not
   introduce runtime-specific source of truth.
+- Before adding example-specific behavior, identify the owning source,
+  manifest, cookbook recipe, or shared contract. Do not copy registry entries,
+  proof logic, helpers, or fallback data into the example. If the example
+  exposes a missing capability, keep it diagnostic and record the bounded
+  follow-up rather than adding a local workaround.
+- Do not make a gate green by editing generated output, fabricating evidence,
+  weakening assertions, or leaving disabled scenarios. Fix durable source and
+  keep the proof at the behavior boundary.
 - For repeated entities, prefer prefab defaults plus compact scene instances.
   Use `tn scene inspect --json` before large scene edits, then validate and
   build the durable source instead of expanding repeated component blocks by
