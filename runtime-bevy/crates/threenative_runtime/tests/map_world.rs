@@ -299,6 +299,10 @@ fn stylized_nature_runtime_defaults_should_match_shared_contract() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "source grass, trunk, leaves, materials, shadows, and mesh density form one asset-compatibility scenario"
+)]
 fn stylized_nature_should_use_native_compatible_source_assets() {
     let root = temp_bundle_root("tn-stylized-source-compatible");
     write_glb(

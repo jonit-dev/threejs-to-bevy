@@ -13,16 +13,16 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiDisabled,
-    NativeUiEffectLayer, NativeUiEffectState, NativeUiGradient, NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker,
-    NativeUiMinimapPathPoint, NativeUiRenderedGradient, NativeUiRenderedShadow,
-    NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
-    NativeUiVisualLayer, NativeUiWidget, build_native_ui, diagnose_native_ui_visual_support,
-    dispatch_native_ui_actions, install_native_ui_overlay_camera, map_ui_into_world,
-    queue_native_ui_text_input_value, route_native_ui_to_active_scene_camera,
-    sync_native_ui_effect_layers, sync_native_ui_effect_states,
-    sync_native_ui_focus_from_interaction, trace_native_ui_affordances,
-    trace_native_ui_attachment_projection, trace_native_ui_effect_presets,
-    trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
+    NativeUiEffectLayer, NativeUiEffectState, NativeUiGradient, NativeUiImageSrc, NativeUiKind,
+    NativeUiMinimapMarker, NativeUiMinimapPathPoint, NativeUiRenderedGradient,
+    NativeUiRenderedShadow, NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow,
+    NativeUiStyle, NativeUiVisualLayer, NativeUiWidget, build_native_ui,
+    diagnose_native_ui_visual_support, dispatch_native_ui_actions,
+    install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
+    route_native_ui_to_active_scene_camera, sync_native_ui_effect_layers,
+    sync_native_ui_effect_states, sync_native_ui_focus_from_interaction,
+    trace_native_ui_affordances, trace_native_ui_attachment_projection,
+    trace_native_ui_effect_presets, trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
     trace_native_ui_virtual_list_range, trace_native_ui_visual_effects, trace_ui_navigation,
 };
 
@@ -89,6 +89,10 @@ fn ui_should_build_bevy_hud_from_ui_ir() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "entity kinds, stable IDs, styles, metadata, and hierarchy form one UI construction contract"
+)]
 fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     let root = write_ui_bundle();
     let bundle = load_bundle(&root).expect("ui bundle should load");
@@ -456,28 +460,43 @@ fn ui_pulse_should_start_when_its_trigger_becomes_active() {
                 "fallback": "outline"
             }]
         }
-    })).expect("pulse UI should deserialize");
+    }))
+    .expect("pulse UI should deserialize");
     let mut app = App::new();
     app.init_resource::<Time>();
     map_ui_into_world(app.world_mut(), &ui).expect("pulse UI should map");
     app.add_systems(Update, sync_native_ui_effect_layers);
 
-    app.world_mut().resource_mut::<Time>().advance_by(Duration::from_secs(10));
+    app.world_mut()
+        .resource_mut::<Time>()
+        .advance_by(Duration::from_secs(10));
     app.update();
     let owner = collect_ui_entities(app.world_mut())["late-pulse"];
-    app.world_mut().entity_mut(owner).get_mut::<NativeUiEffectState>().unwrap().selected = true;
+    app.world_mut()
+        .entity_mut(owner)
+        .get_mut::<NativeUiEffectState>()
+        .unwrap()
+        .selected = true;
     app.update();
-    app.world_mut().resource_mut::<Time>().advance_by(Duration::from_millis(250));
+    app.world_mut()
+        .resource_mut::<Time>()
+        .advance_by(Duration::from_millis(250));
     app.update();
 
-    let alpha = app.world_mut().query::<(&NativeUiEffectLayer, &BorderColor)>()
+    let alpha = app
+        .world_mut()
+        .query::<(&NativeUiEffectLayer, &BorderColor)>()
         .iter(app.world())
         .next()
         .expect("pulse outline should render")
-        .1.0
+        .1
+        .0
         .to_srgba()
         .alpha;
-    assert!((alpha - 0.55).abs() < 0.02, "late pulse should be a quarter-cycle after activation, got {alpha}");
+    assert!(
+        (alpha - 0.55).abs() < 0.02,
+        "late pulse should be a quarter-cycle after activation, got {alpha}"
+    );
 }
 
 #[test]
@@ -495,18 +514,28 @@ fn ui_tint_should_modulate_authored_color_by_intensity() {
     app.init_resource::<Time>();
     map_ui_into_world(app.world_mut(), &ui).expect("tint UI should map");
     let owner = collect_ui_entities(app.world_mut())["tint"];
-    app.world_mut().entity_mut(owner).get_mut::<NativeUiEffectState>().unwrap().selected = true;
+    app.world_mut()
+        .entity_mut(owner)
+        .get_mut::<NativeUiEffectState>()
+        .unwrap()
+        .selected = true;
     app.add_systems(Update, sync_native_ui_effect_layers);
     app.update();
 
-    let alpha = app.world_mut().query::<(&NativeUiEffectLayer, &BackgroundColor)>()
+    let alpha = app
+        .world_mut()
+        .query::<(&NativeUiEffectLayer, &BackgroundColor)>()
         .iter(app.world())
         .next()
         .expect("tint layer should render")
-        .1.0
+        .1
+        .0
         .to_srgba()
         .alpha;
-    assert!((alpha - 0.25).abs() < 0.01, "tint intensity should control overlay alpha, got {alpha}");
+    assert!(
+        (alpha - 0.25).abs() < 0.01,
+        "tint intensity should control overlay alpha, got {alpha}"
+    );
 }
 
 #[test]
@@ -667,6 +696,10 @@ fn ui_should_route_roots_to_scene_camera_for_interactive_native_rendering() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "button and touch-control actions are paired dispatch paths in one input scenario"
+)]
 fn ui_should_dispatch_native_button_and_touch_actions() {
     let ui = UiIr {
         fonts: Vec::new(),

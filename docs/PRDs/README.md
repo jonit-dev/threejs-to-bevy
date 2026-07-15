@@ -196,11 +196,10 @@ Links under `done/` are historical implementation evidence, not active backlog.
   batches five focused PRDs for interaction executor parity, durable local
   data, public script context typing, UI/accessibility proof tiers, and
   relocatable material-aware model-test evidence.
-- [Rust Static Analysis And Code-Smell Quality Ratchet](other/rust-static-analysis-quality-ratchet-2026-07-13.md):
-  turns the documented-but-missing `pnpm check:rust` into one workspace-owned
-  rustfmt/Clippy policy, adds a structured lint/path debt ratchet, wires it
-  into pre-push and CI, and closes toward `--all-targets -- -D warnings` in
-  bounded verified slices.
+- [Rust Static Analysis And Code-Smell Quality Ratchet](done/rust-static-analysis-quality-ratchet-2026-07-13.md) - done:
+  makes `pnpm check:rust` the workspace owner for rustfmt and metadata-derived
+  all-target Clippy, closes the 201-warning baseline, and enforces `-D warnings`
+  in pre-push and CI.
 - [Agent Token Efficiency IO Budget](done/other/agent-token-efficiency-io-budget.md) - done:
   makes agent-facing CLI output compact by default, removes playtest
   `effectLog`/full `observations` from stdout, keeps deep logs as artifacts,

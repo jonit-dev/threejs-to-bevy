@@ -281,6 +281,10 @@ fn should_report_v9_environment_lighting_budgets_and_renderer_quality() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "the promoted render-look report is validated as one atomic cross-feature contract"
+)]
 fn should_report_promoted_render_look_profile() {
     let mut fixture = load_conformance_fixture("basic-scene");
     fixture.bundle.runtime_config = Some(RuntimeConfigIr {

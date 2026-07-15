@@ -498,6 +498,10 @@ fn character_trace_should_report_ledges_and_moving_platforms() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "walkable and blocking slopes are paired halves of one slope-limit scenario"
+)]
 fn character_trace_should_apply_slope_limits() {
     let root = write_character_bundle();
     write(
@@ -688,6 +692,10 @@ fn character_trace_should_walk_humanoid_course_ramp_dimensions() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "light-body push and heavy-body block are paired outcomes of one push-policy scenario"
+)]
 fn character_trace_should_push_light_dynamic_bodies_and_block_heavy_bodies() {
     let root = write_character_bundle();
     write(

@@ -711,7 +711,7 @@ fn rendering_should_map_procedural_mesh_binary_attributes() {
 
     map_bundle_into_world(app.world_mut(), &fixture.bundle).expect("bundle should map");
 
-    assert_procedural_mesh_attributes(app.world_mut(), "prop.tree.pine");
+    assert_procedural_mesh_attributes(app.world_mut(), "prop.pineTree");
 }
 
 #[test]
@@ -1321,6 +1321,10 @@ fn write_shader_material_bundle() -> PathBuf {
     root
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the fixture files jointly define one reusable rendering bundle and must remain visibly synchronized"
+)]
 fn write_rendering_bundle() -> PathBuf {
     let root = std::env::temp_dir().join(format!(
         "tn-rendering-{}",

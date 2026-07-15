@@ -153,6 +153,10 @@ fn native_audio_execution_event_one_shot() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "the script-play, stop, and preset-play assertions form one ordered audio queue lifecycle"
+)]
 fn native_audio_execution_script_playback() {
     let root =
         std::env::temp_dir().join(format!("tn-native-audio-execution-{}", std::process::id()));

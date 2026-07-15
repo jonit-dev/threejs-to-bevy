@@ -885,46 +885,54 @@ pub fn apply_native_ui_service_effects(
             else {
                 continue;
             };
-            let clear_focus = disabled
-                && world
-                    .get_resource::<bevy::a11y::Focus>()
-                    .is_some_and(|focus| focus.0 == Some(entity));
-            {
-                let mut entity_mut = world.entity_mut(entity);
-                entity_mut.insert(NativeUiDisabled(disabled));
-                if let Some(mut accessibility) = entity_mut.get_mut::<AccessibilityNode>() {
-                    if disabled {
-                        accessibility.set_disabled();
-                    } else {
-                        accessibility.clear_disabled();
-                    }
-                }
-            }
-            if clear_focus {
-                world.insert_resource(bevy::a11y::Focus(None));
-            }
+            apply_native_ui_disabled_effect(world, entity, disabled);
             continue;
         }
         let Some(value) = request.get("value") else {
             continue;
         };
-        let mut entity = world.entity_mut(entity);
-        if let Some(mut widget) = entity.get_mut::<NativeUiWidget>() {
-            if let Some(number) = value.as_f64().filter(|number| number.is_finite()) {
-                widget.value = (number as f32).clamp(widget.min, widget.max);
-                widget.value_text = Some(number.to_string());
-            } else if let Some(text) = value.as_str() {
-                widget.value_text = Some(text.to_owned());
-            }
+        apply_native_ui_value_effect(world, entity, value);
+    }
+}
+
+fn apply_native_ui_disabled_effect(world: &mut World, entity: Entity, disabled: bool) {
+    let clear_focus = disabled
+        && world
+            .get_resource::<bevy::a11y::Focus>()
+            .is_some_and(|focus| focus.0 == Some(entity));
+    let mut entity_mut = world.entity_mut(entity);
+    entity_mut.insert(NativeUiDisabled(disabled));
+    if let Some(mut accessibility) = entity_mut.get_mut::<AccessibilityNode>() {
+        if disabled {
+            accessibility.set_disabled();
+        } else {
+            accessibility.clear_disabled();
         }
-        if let Some(mut accessibility) = entity.get_mut::<AccessibilityNode>() {
-            if let Some(number) = value.as_f64().filter(|number| number.is_finite()) {
-                accessibility.clear_value();
-                accessibility.set_numeric_value(number);
-            } else if let Some(text) = value.as_str() {
-                accessibility.clear_numeric_value();
-                accessibility.set_value(text.to_owned());
-            }
+    }
+    if clear_focus {
+        world.insert_resource(bevy::a11y::Focus(None));
+    }
+}
+
+fn apply_native_ui_value_effect(world: &mut World, entity: Entity, value: &serde_json::Value) {
+    let number = value.as_f64().filter(|number| number.is_finite());
+    let text = value.as_str();
+    let mut entity = world.entity_mut(entity);
+    if let Some(mut widget) = entity.get_mut::<NativeUiWidget>() {
+        if let Some(number) = number {
+            widget.value = (number as f32).clamp(widget.min, widget.max);
+            widget.value_text = Some(number.to_string());
+        } else if let Some(text) = text {
+            widget.value_text = Some(text.to_owned());
+        }
+    }
+    if let Some(mut accessibility) = entity.get_mut::<AccessibilityNode>() {
+        if let Some(number) = number {
+            accessibility.clear_value();
+            accessibility.set_numeric_value(number);
+        } else if let Some(text) = text {
+            accessibility.clear_numeric_value();
+            accessibility.set_value(text.to_owned());
         }
     }
 }

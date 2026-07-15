@@ -200,6 +200,10 @@ fn systems_effects_should_patch_builtin_components_into_typed_fields() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "partial physics patches and set replacement are paired halves of one lossless mutation contract"
+)]
 fn systems_effects_should_preserve_lossless_physics_patches_and_replace_on_set() {
     let root = write_bundle("lossless-physics-set-patch");
     let mut bundle = load_bundle(&root).expect("bundle should load");

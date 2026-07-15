@@ -262,6 +262,10 @@ fn systems_context_should_include_plugin_composition_metadata() {
     assert_eq!(snapshot.plugin_groups[0].plugins, vec!["core".to_owned()]);
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the fixture files jointly define one synchronized systems-context bundle"
+)]
 fn write_bundle(name: &str) -> PathBuf {
     let root = root(name);
     fs::create_dir_all(&root).expect("temp bundle should be created");

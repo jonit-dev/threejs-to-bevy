@@ -60,6 +60,9 @@ while color parity proof moves behind current focused gates. See
   done execution bundle from the 2026-07-09 system leverage report covering
   descriptor-owned surfaces, churn ratchets, runtime diagnostics, manifest
   ownership, a build-only forcing-function game, and visual metric bundles.
+- [Rust Static Analysis Quality Ratchet](PRDs/done/rust-static-analysis-quality-ratchet-2026-07-13.md):
+  done; root rustfmt and metadata-derived all-target Clippy now enforce zero
+  warnings in pre-push and CI.
 - [PRD index](PRDs/README.md): current and completed planning work.
 
 ## Current Gates

@@ -475,6 +475,10 @@ fn write_v3_bundle_with_model_asset(root: &Path) {
     );
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the JSON and binary files jointly define one synchronized heightmap-terrain fixture"
+)]
 fn write_heightmap_terrain_bundle(root: &Path) {
     write_json(
         root,

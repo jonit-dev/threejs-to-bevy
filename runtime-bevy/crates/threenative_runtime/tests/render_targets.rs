@@ -11,6 +11,10 @@ use threenative_runtime::{
 };
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "target creation, camera routing, image configuration, and conformance output form one render-target lifecycle"
+)]
 fn should_map_camera_target_to_bevy_image_output() {
     let mut bundle = load_bundle(cube_fixture()).expect("cube fixture should load");
     bundle.assets.assets.push(AssetIr {

@@ -1587,6 +1587,92 @@ fn effect_diagnostic(
     }
 }
 
+fn apply_spawn_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let Some(entity_id) = command.entity.as_ref() else {
+        return;
+    };
+    if bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.id == *entity_id)
+    {
+        return;
+    }
+    let mut components = EntityComponents::default();
+    if let Some(values) = command.components.as_ref().and_then(Value::as_object) {
+        for (component, value) in values {
+            apply_component_value(&mut components, component, value.clone());
+        }
+    }
+    bundle.world.entities.push(WorldEntity {
+        id: entity_id.clone(),
+        components,
+        tags: command.tags.clone().unwrap_or_default(),
+    });
+}
+
+fn apply_world_text_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let Some(entity_id) = command.entity.as_ref() else {
+        return;
+    };
+    if bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.id == *entity_id)
+    {
+        return;
+    }
+    let Some(value) = command.value.as_ref() else {
+        return;
+    };
+    let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok() else {
+        return;
+    };
+    bundle.world.entities.push(WorldEntity {
+        id: entity_id.clone(),
+        components: EntityComponents {
+            world_text: Some(world_text),
+            ..EntityComponents::default()
+        },
+        tags: Vec::new(),
+    });
+}
+
+fn apply_instantiate_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let (Some(prefab_id), Some(prefix)) = (command.prefab.as_ref(), command.prefix.as_ref()) else {
+        return;
+    };
+    let Some(prefabs) = bundle.prefabs.as_ref() else {
+        return;
+    };
+    let Some(prefab) = prefabs
+        .prefabs
+        .iter()
+        .find(|candidate| candidate.id == *prefab_id)
+    else {
+        return;
+    };
+    for template in &prefab.entities {
+        let id = format!("{prefix}.{}", template.id);
+        if bundle.world.entities.iter().any(|entity| entity.id == id) {
+            continue;
+        }
+        let mut components = template.components.clone();
+        if let Some(hierarchy) = components.hierarchy.as_mut()
+            && let Some(parent) = hierarchy.parent.as_ref()
+        {
+            hierarchy.parent = Some(format!("{prefix}.{parent}"));
+        }
+        bundle.world.entities.push(WorldEntity {
+            id,
+            components,
+            tags: template.tags.clone(),
+        });
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::Path;
@@ -1848,91 +1934,5 @@ mod tests {
             .and_then(|systems| systems.systems.iter().find(|system| system.name == name))
             .cloned()
             .unwrap_or_else(|| panic!("missing fixture system '{name}'"))
-    }
-}
-
-fn apply_spawn_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
-    let Some(entity_id) = command.entity.as_ref() else {
-        return;
-    };
-    if bundle
-        .world
-        .entities
-        .iter()
-        .any(|entity| entity.id == *entity_id)
-    {
-        return;
-    }
-    let mut components = EntityComponents::default();
-    if let Some(values) = command.components.as_ref().and_then(Value::as_object) {
-        for (component, value) in values {
-            apply_component_value(&mut components, component, value.clone());
-        }
-    }
-    bundle.world.entities.push(WorldEntity {
-        id: entity_id.clone(),
-        components,
-        tags: command.tags.clone().unwrap_or_default(),
-    });
-}
-
-fn apply_world_text_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
-    let Some(entity_id) = command.entity.as_ref() else {
-        return;
-    };
-    if bundle
-        .world
-        .entities
-        .iter()
-        .any(|entity| entity.id == *entity_id)
-    {
-        return;
-    }
-    let Some(value) = command.value.as_ref() else {
-        return;
-    };
-    let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok() else {
-        return;
-    };
-    bundle.world.entities.push(WorldEntity {
-        id: entity_id.clone(),
-        components: EntityComponents {
-            world_text: Some(world_text),
-            ..EntityComponents::default()
-        },
-        tags: Vec::new(),
-    });
-}
-
-fn apply_instantiate_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
-    let (Some(prefab_id), Some(prefix)) = (command.prefab.as_ref(), command.prefix.as_ref()) else {
-        return;
-    };
-    let Some(prefabs) = bundle.prefabs.as_ref() else {
-        return;
-    };
-    let Some(prefab) = prefabs
-        .prefabs
-        .iter()
-        .find(|candidate| candidate.id == *prefab_id)
-    else {
-        return;
-    };
-    for template in &prefab.entities {
-        let id = format!("{prefix}.{}", template.id);
-        if bundle.world.entities.iter().any(|entity| entity.id == id) {
-            continue;
-        }
-        let mut components = template.components.clone();
-        if let Some(hierarchy) = components.hierarchy.as_mut()
-            && let Some(parent) = hierarchy.parent.as_ref()
-        {
-            hierarchy.parent = Some(format!("{prefix}.{parent}"));
-        }
-        bundle.world.entities.push(WorldEntity {
-            id,
-            components,
-            tags: template.tags.clone(),
-        });
     }
 }

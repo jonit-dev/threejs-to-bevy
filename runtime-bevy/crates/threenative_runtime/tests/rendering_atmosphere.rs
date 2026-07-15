@@ -38,6 +38,10 @@ use threenative_runtime::{
 };
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "the atmosphere profile is validated as one atomic mapping and observation contract"
+)]
 fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
     let root = temp_bundle_dir();
     write_json(
@@ -372,6 +376,10 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "authored cascade controls and their report are paired parts of one shadow approximation contract"
+)]
 fn atmosphere_shadow_cascade_controls_should_map_and_report_native_approximation() {
     let root = temp_bundle_dir();
     write_json(
@@ -1074,6 +1082,10 @@ fn textured_gltf_materials_should_render_cutout_backfaces_for_foliage() {
 }
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "sky dome texture, geometry, material, transform, and observation assertions form one mapping scenario"
+)]
 fn equirect_skybox_should_spawn_native_sky_dome() {
     let root = temp_bundle_dir();
     write_json(

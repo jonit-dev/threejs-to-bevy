@@ -1,6 +1,7 @@
 # Rust Static Analysis Baseline (2026-07-13)
 
-Status: Phase 2 workspace policy captured; Phase 3 ratchet inventory installed.
+Status: COMPLETE — the captured debt reached zero and the temporary ratchet
+data was removed.
 
 ## Reproduction
 
@@ -75,17 +76,18 @@ scheduled for Phase 5.
 | Style / readability | Remaining Clippy lints | Apply safe, focused cleanups after higher-signal debt. |
 | Rust compiler | `dead_code` in test support | Test-only fixture fields remain ordinary warnings and must reach zero before `-D warnings`. |
 
-## Ratchet ownership
+## Final zero-debt evidence
 
-[scripts/rust-quality-policy.json](../../scripts/rust-quality-policy.json) is
-the structured source of truth for the 128 exact lint/path maxima. It was
-generated mechanically from the successful Phase 2 Cargo JSON capture using
-the normalization identity above. Expected targets are derived from Cargo
-metadata rather than duplicated in policy data.
+The temporary exact lint/path policy was reduced from 201 findings across 128
+pairs to zero, then deleted. `pnpm check:rust` now owns the production command
+and invokes Clippy as:
 
-Every allowance has a positive finite maximum, a concrete path, a reason, and
-a removal phase. Correctness, performance, style, and test debt expires in
-Phase 5. `too_many_arguments`, `type_complexity`, `too_many_lines`, and
-`excessive_nesting` expire in Phase 6. The policy contains no wildcard or
-duplicate entries; the checker rejects new pairs, increases, stale entries,
-and incomplete target analysis.
+```text
+cargo clippy --workspace --all-targets --message-format=json -- -D warnings
+```
+
+The checker still derives expected targets from Cargo metadata, normalizes and
+deduplicates Cargo JSON diagnostics, rejects compiler errors and incomplete
+analysis, runs rustfmt first, and emits stable structured diagnostics and
+artifacts. Final real-command evidence reported zero findings and zero errors;
+the direct all-target command also completed with warnings denied.

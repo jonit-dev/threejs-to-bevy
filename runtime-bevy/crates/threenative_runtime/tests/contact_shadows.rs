@@ -25,6 +25,10 @@ use threenative_runtime::{
 };
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "capture, blur, anchor, frame, and report assertions verify one ordered contact-shadow pipeline"
+)]
 fn native_contact_shadows_should_build_bounded_private_capture_and_blur_pipeline() {
     let root = write_contact_shadow_bundle();
     let bundle = load_bundle(&root).expect("contact shadow bundle should load");

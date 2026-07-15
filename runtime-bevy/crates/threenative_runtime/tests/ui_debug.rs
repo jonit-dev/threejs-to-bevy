@@ -8,6 +8,10 @@ use threenative_runtime::{
 };
 
 #[test]
+#[allow(
+    clippy::too_many_lines,
+    reason = "disabled, slider, focus, and accessibility assertions form one ordered AccessKit state scenario"
+)]
 fn should_report_native_accesskit_state_for_disabled_and_slider_nodes() {
     let mut ui = UiIr {
         fonts: Vec::new(),
