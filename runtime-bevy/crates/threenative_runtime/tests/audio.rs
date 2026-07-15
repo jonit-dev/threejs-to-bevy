@@ -498,6 +498,33 @@ fn audio_should_report_fixture_playback_observations() {
 }
 
 #[test]
+fn audio_observation_should_preserve_repeated_event_multiplicity() {
+    let mut fixture = load_conformance_fixture("audio-playback");
+    fixture.bundle.world.events.insert(
+        "DamageEvent".to_owned(),
+        json!([
+            { "amount": 1, "target": "player" },
+            { "amount": 2, "target": "player" },
+            { "amount": 3, "target": "player" }
+        ]),
+    );
+
+    let observation = observe_audio(&fixture.bundle).expect("audio observation should exist");
+    let damage_commands = observation
+        .commands
+        .iter()
+        .filter(|command| command.event.as_deref() == Some("DamageEvent"))
+        .collect::<Vec<_>>();
+
+    assert_eq!(damage_commands.len(), 3);
+    assert!(
+        damage_commands
+            .iter()
+            .all(|command| command.id == "sound.hit")
+    );
+}
+
+#[test]
 fn audio_lifecycle_trace_should_apply_playback_controls() {
     let audio = AudioIr {
         schema: "threenative.audio".to_owned(),

@@ -234,6 +234,17 @@ struct NativeContactShadowAnchor {
     owner: Entity,
 }
 
+type ContactShadowBounds = Option<(Vec3, Vec3)>;
+type ContactShadowCaster = (Entity, String, Handle<Mesh>, Transform, ContactShadowBounds);
+
+#[derive(Clone, Copy)]
+struct ContactShadowPassContext<'a> {
+    index: usize,
+    carrier: Entity,
+    owner: &'a str,
+    settings: &'a NativeContactShadows,
+}
+
 pub fn applied_contact_shadow_resolution(
     requested: u32,
     update_mode: &str,
@@ -278,7 +289,7 @@ pub fn refresh_native_contact_shadow_pipelines(world: &mut World) {
         .query::<(Entity, &ThreeNativeId, &NativeContactShadows, &Transform)>()
         .iter(world)
         .map(|(entity, id, settings, transform)| {
-            (entity, id.0.clone(), settings.clone(), transform.clone())
+            (entity, id.0.clone(), settings.clone(), *transform)
         })
         .collect::<Vec<_>>();
     if carriers.is_empty() {
@@ -295,9 +306,7 @@ pub fn refresh_native_contact_shadow_pipelines(world: &mut World) {
         )>()
         .iter(world)
         .filter(|(_, _, _, _, not_shadow_caster)| not_shadow_caster.is_none())
-        .map(|(entity, id, mesh, transform, _)| {
-            (entity, id.0.clone(), mesh.clone(), transform.clone())
-        })
+        .map(|(entity, id, mesh, transform, _)| (entity, id.0.clone(), mesh.clone(), *transform))
         .collect::<Vec<_>>();
     let meshes = world.resource::<Assets<Mesh>>();
     let casters = caster_entities
@@ -323,13 +332,7 @@ fn spawn_contact_shadow_pipeline(
     owner: String,
     settings: NativeContactShadows,
     carrier_transform: Transform,
-    casters: &[(
-        Entity,
-        String,
-        Handle<Mesh>,
-        Transform,
-        Option<(Vec3, Vec3)>,
-    )],
+    casters: &[ContactShadowCaster],
 ) {
     if settings.update_mode == "static" {
         spawn_static_contact_shadow_pipeline(
@@ -349,12 +352,107 @@ fn spawn_contact_shadow_pipeline(
     let horizontal_image = add_contact_shadow_image(world, settings.applied_resolution);
     let blurred_image = add_contact_shadow_image(world, settings.applied_resolution);
     let mut roles = Vec::new();
+    let pass = ContactShadowPassContext {
+        index,
+        carrier,
+        owner: &owner,
+        settings: &settings,
+    };
 
+    spawn_contact_shadow_capture_pass(
+        world,
+        pass,
+        carrier_transform,
+        capture_layer,
+        capture_image.clone(),
+    );
+    roles.push("capture-camera".to_owned());
+
+    let blur_mesh = world
+        .resource_mut::<Assets<Mesh>>()
+        .add(Rectangle::new(2.0, 2.0));
+    track_contact_shadow_mesh(world, &blur_mesh);
+    let horizontal_quad = spawn_contact_shadow_blur_pass(
+        world,
+        pass,
+        "horizontal",
+        horizontal_layer,
+        capture_image,
+        horizontal_image.clone(),
+        blur_mesh.clone(),
+    );
+    roles.push("horizontal-blur-quad".to_owned());
+    roles.push("horizontal-blur-camera".to_owned());
+    let vertical_quad = spawn_contact_shadow_blur_pass(
+        world,
+        pass,
+        "vertical",
+        vertical_layer,
+        horizontal_image,
+        blurred_image.clone(),
+        blur_mesh,
+    );
+    roles.push("vertical-blur-quad".to_owned());
+    roles.push("vertical-blur-camera".to_owned());
+
+    spawn_contact_shadow_composite(
+        world,
+        carrier,
+        &owner,
+        &settings,
+        carrier_transform,
+        blurred_image,
+    );
+    roles.push("composite-plane".to_owned());
+    spawn_contact_shadow_caster_proxies(
+        world,
+        &owner,
+        &settings,
+        carrier_transform,
+        capture_layer,
+        casters,
+        &mut roles,
+    );
+
+    let _ = (horizontal_quad, vertical_quad);
+    let private_entity_count = roles.len();
+    roles.sort();
+    world.entity_mut(carrier).insert(NativeContactShadowReport {
+        entity_id: owner,
+        requested_resolution: settings.requested_resolution,
+        applied_resolution: settings.applied_resolution,
+        update_mode: settings.update_mode,
+        height: settings.height,
+        opacity: settings.opacity,
+        size: settings.size,
+        softness: settings.softness,
+        blur_step: settings.softness / settings.applied_resolution as f32,
+        capture_count: 0,
+        update_count: 0,
+        active_pass_count: 3,
+        private_entity_count,
+        private_roles: roles,
+    });
+}
+
+fn spawn_contact_shadow_capture_pass(
+    world: &mut World,
+    pass: ContactShadowPassContext<'_>,
+    carrier_transform: Transform,
+    capture_layer: usize,
+    capture_image: Handle<Image>,
+) {
+    let ContactShadowPassContext {
+        index,
+        carrier,
+        owner,
+        settings,
+    } = pass;
     let capture_local = Transform::from_xyz(0.0, settings.height, 0.0)
         .with_rotation(Quat::from_rotation_x(-std::f32::consts::FRAC_PI_2));
     let capture_camera = spawn_contact_shadow_camera(
         world,
-        &owner,
+        owner,
         "capture-camera",
         capture_layer,
         capture_image.clone(),
@@ -382,90 +480,75 @@ fn spawn_contact_shadow_pipeline(
             owner: carrier,
         },
     ));
-    roles.push("capture-camera".to_owned());
+}
 
-    let blur_mesh = world
-        .resource_mut::<Assets<Mesh>>()
-        .add(Rectangle::new(2.0, 2.0));
-    track_contact_shadow_mesh(world, &blur_mesh);
-    let horizontal_material = world
+fn spawn_contact_shadow_blur_pass(
+    world: &mut World,
+    pass: ContactShadowPassContext<'_>,
+    axis: &str,
+    layer: usize,
+    input_image: Handle<Image>,
+    output_image: Handle<Image>,
+    blur_mesh: Handle<Mesh>,
+) -> Entity {
+    let ContactShadowPassContext {
+        index,
+        carrier,
+        owner,
+        settings,
+    } = pass;
+    let horizontal = axis == "horizontal";
+    let material = world
         .resource_mut::<Assets<NativeContactShadowBlurMaterial>>()
         .add(NativeContactShadowBlurMaterial {
-            input: capture_image.clone(),
-            texel_step: Vec2::new(settings.softness / settings.applied_resolution as f32, 0.0),
+            input: input_image,
+            texel_step: if horizontal {
+                Vec2::new(settings.softness / settings.applied_resolution as f32, 0.0)
+            } else {
+                Vec2::new(0.0, settings.softness / settings.applied_resolution as f32)
+            },
             opacity: 1.0,
             output_alpha: 0.0,
         });
-    track_contact_shadow_blur_material(world, &horizontal_material);
-    let horizontal_quad = spawn_blur_quad(
+    track_contact_shadow_blur_material(world, &material);
+    let quad = spawn_blur_quad(
         world,
-        &owner,
-        "horizontal-blur-quad",
-        horizontal_layer,
-        blur_mesh.clone(),
-        horizontal_material,
-        Transform::IDENTITY,
-    );
-    roles.push("horizontal-blur-quad".to_owned());
-    let horizontal_camera = spawn_contact_shadow_camera(
-        world,
-        &owner,
-        "horizontal-blur-camera",
-        horizontal_layer,
-        horizontal_image.clone(),
-        -29_999 + index as isize * 3,
-        unit_quad_projection(),
-        Transform::from_xyz(0.0, 0.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
-    );
-    world
-        .entity_mut(horizontal_camera)
-        .insert(NativeContactShadowPassCamera {
-            owner: carrier,
-            rendered_frames: 0,
-            update_mode: settings.update_mode.clone(),
-            counts_capture: false,
-        });
-    roles.push("horizontal-blur-camera".to_owned());
-
-    let vertical_material = world
-        .resource_mut::<Assets<NativeContactShadowBlurMaterial>>()
-        .add(NativeContactShadowBlurMaterial {
-            input: horizontal_image,
-            texel_step: Vec2::new(0.0, settings.softness / settings.applied_resolution as f32),
-            opacity: 1.0,
-            output_alpha: 0.0,
-        });
-    track_contact_shadow_blur_material(world, &vertical_material);
-    let vertical_quad = spawn_blur_quad(
-        world,
-        &owner,
-        "vertical-blur-quad",
-        vertical_layer,
+        owner,
+        &format!("{axis}-blur-quad"),
+        layer,
         blur_mesh,
-        vertical_material,
+        material,
         Transform::IDENTITY,
     );
-    roles.push("vertical-blur-quad".to_owned());
-    let vertical_camera = spawn_contact_shadow_camera(
+    let camera = spawn_contact_shadow_camera(
         world,
-        &owner,
-        "vertical-blur-camera",
-        vertical_layer,
-        blurred_image.clone(),
-        -29_998 + index as isize * 3,
+        owner,
+        &format!("{axis}-blur-camera"),
+        layer,
+        output_image,
+        -29_999 + index as isize * 3 + isize::from(!horizontal),
         unit_quad_projection(),
         Transform::from_xyz(0.0, 0.0, 2.0).looking_at(Vec3::ZERO, Vec3::Y),
     );
     world
-        .entity_mut(vertical_camera)
+        .entity_mut(camera)
         .insert(NativeContactShadowPassCamera {
             owner: carrier,
             rendered_frames: 0,
             update_mode: settings.update_mode.clone(),
             counts_capture: false,
         });
-    roles.push("vertical-blur-camera".to_owned());
+    quad
+}
 
+fn spawn_contact_shadow_composite(
+    world: &mut World,
+    carrier: Entity,
+    owner: &str,
+    settings: &NativeContactShadows,
+    carrier_transform: Transform,
+    blurred_image: Handle<Image>,
+) {
     let composite_mesh = world
         .resource_mut::<Assets<Mesh>>()
         .add(Rectangle::new(settings.size[0], settings.size[1]));
@@ -491,7 +574,7 @@ fn spawn_contact_shadow_pipeline(
                 ..Default::default()
             },
             NativeContactShadowPrivate {
-                owner: owner.clone(),
+                owner: owner.to_owned(),
                 role: "composite-plane".to_owned(),
             },
             NotShadowCaster,
@@ -502,15 +585,24 @@ fn spawn_contact_shadow_pipeline(
             },
         ))
         .id();
-    roles.push("composite-plane".to_owned());
+}
 
+fn spawn_contact_shadow_caster_proxies(
+    world: &mut World,
+    owner: &str,
+    settings: &NativeContactShadows,
+    carrier_transform: Transform,
+    capture_layer: usize,
+    casters: &[ContactShadowCaster],
+    roles: &mut Vec<String>,
+) {
     for (caster, caster_id, mesh, caster_transform, caster_bounds) in
         casters
             .iter()
             .filter(|(_, _, _, caster_transform, caster_bounds)| {
                 contact_shadow_region_intersects(
                     &carrier_transform,
-                    &settings,
+                    settings,
                     caster_transform,
                     *caster_bounds,
                 )
@@ -538,13 +630,13 @@ fn spawn_contact_shadow_pipeline(
                 MaterialMeshBundle {
                     mesh: mesh.clone(),
                     material: caster_material.clone(),
-                    transform: caster_transform.clone(),
+                    transform: *caster_transform,
                     visibility: Visibility::Visible,
                     ..Default::default()
                 },
                 RenderLayers::from_layers(&[capture_layer]),
                 NativeContactShadowPrivate {
-                    owner: owner.clone(),
+                    owner: owner.to_owned(),
                     role: format!("caster-proxy:{caster_id}"),
                 },
                 NotShadowCaster,
@@ -558,31 +650,6 @@ fn spawn_contact_shadow_pipeline(
             .id();
         roles.push(format!("caster-proxy:{caster_id}"));
     }
-
-    let _ = (
-        horizontal_quad,
-        horizontal_camera,
-        vertical_quad,
-        vertical_camera,
-    );
-    let private_entity_count = roles.len();
-    roles.sort();
-    world.entity_mut(carrier).insert(NativeContactShadowReport {
-        entity_id: owner,
-        requested_resolution: settings.requested_resolution,
-        applied_resolution: settings.applied_resolution,
-        update_mode: settings.update_mode,
-        height: settings.height,
-        opacity: settings.opacity,
-        size: settings.size,
-        softness: settings.softness,
-        blur_step: settings.softness / settings.applied_resolution as f32,
-        capture_count: 0,
-        update_count: 0,
-        active_pass_count: 3,
-        private_entity_count,
-        private_roles: roles,
-    });
 }
 
 fn spawn_static_contact_shadow_pipeline(
@@ -591,13 +658,7 @@ fn spawn_static_contact_shadow_pipeline(
     owner: String,
     settings: NativeContactShadows,
     carrier_transform: Transform,
-    casters: &[(
-        Entity,
-        String,
-        Handle<Mesh>,
-        Transform,
-        Option<(Vec3, Vec3)>,
-    )],
+    casters: &[ContactShadowCaster],
 ) {
     let mask = add_static_contact_shadow_image(world, &carrier_transform, &settings, casters);
     let composite_mesh = world
@@ -656,13 +717,7 @@ fn add_static_contact_shadow_image(
     world: &mut World,
     region_transform: &Transform,
     settings: &NativeContactShadows,
-    casters: &[(
-        Entity,
-        String,
-        Handle<Mesh>,
-        Transform,
-        Option<(Vec3, Vec3)>,
-    )],
+    casters: &[ContactShadowCaster],
 ) -> Handle<Image> {
     let resolution = settings.applied_resolution as usize;
     let mut mask = vec![0.0_f32; resolution * resolution];
@@ -756,20 +811,6 @@ fn contact_shadow_pixel(value: f32, extent: f32, resolution: usize) -> usize {
 fn mapped_contact_shadow_opacity(opacity: f32) -> f32 {
     (opacity.powf(NATIVE_CONTACT_SHADOW_OPACITY_EXPONENT) * NATIVE_CONTACT_SHADOW_OPACITY_SCALE)
         .min(1.0)
-}
-
-#[cfg(test)]
-mod contact_shadow_calibration_tests {
-    use super::*;
-
-    #[test]
-    fn native_opacity_curve_lifts_low_opacity_without_exceeding_full_coverage() {
-        let low = mapped_contact_shadow_opacity(0.25);
-        let high = mapped_contact_shadow_opacity(0.8);
-
-        assert!((low - 0.528_0).abs() < 0.001);
-        assert_eq!(high, 1.0);
-    }
 }
 
 fn mapped_contact_shadow_occupancy(occupancy: f32) -> f32 {
@@ -1132,10 +1173,10 @@ pub fn sync_native_contact_shadow_anchors(world: &mut World) {
     let anchors = world
         .query::<(Entity, &NativeContactShadowAnchor)>()
         .iter(world)
-        .map(|(entity, anchor)| (entity, anchor.owner, anchor.local.clone()))
+        .map(|(entity, anchor)| (entity, anchor.owner, anchor.local))
         .collect::<Vec<_>>();
     for (entity, owner, local) in anchors {
-        let Some(owner_transform) = world.get::<Transform>(owner).cloned() else {
+        let Some(owner_transform) = world.get::<Transform>(owner).copied() else {
             continue;
         };
         if let Some(mut transform) = world.get_mut::<Transform>(entity) {
@@ -1213,4 +1254,18 @@ pub fn trace_native_contact_shadows(world: &mut World) -> Vec<NativeContactShado
 
 pub fn invalidate_native_static_contact_shadows(world: &mut World) {
     refresh_native_contact_shadow_pipelines(world);
+}
+
+#[cfg(test)]
+mod contact_shadow_calibration_tests {
+    use super::*;
+
+    #[test]
+    fn native_opacity_curve_lifts_low_opacity_without_exceeding_full_coverage() {
+        let low = mapped_contact_shadow_opacity(0.25);
+        let high = mapped_contact_shadow_opacity(0.8);
+
+        assert!((low - 0.528_0).abs() < 0.001);
+        assert_eq!(high, 1.0);
+    }
 }

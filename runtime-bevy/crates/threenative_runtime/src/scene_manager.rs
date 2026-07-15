@@ -164,10 +164,10 @@ impl<'a> SceneLifecycleManager<'a> {
         self.state
             .stack
             .retain(|scene_id| Some(scene_id) == initial_scene.as_ref() || scene_id != &target);
-        if self.state.active_scene == target {
-            if let Some(active_scene) = self.state.stack.last() {
-                self.state.active_scene = active_scene.clone();
-            }
+        if self.state.active_scene == target
+            && let Some(active_scene) = self.state.stack.last()
+        {
+            self.state.active_scene = active_scene.clone();
         }
         exit_scene(&mut self.state.trace, &target, "unload");
         self.refresh_active_scopes();

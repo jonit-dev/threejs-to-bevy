@@ -322,6 +322,31 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
     world.insert_resource(NativeAtmosphereSignature(native_atmosphere_signature(
         bundle,
     )));
+    reset_native_atmosphere_entities(world);
+    let Some(profile) = bundle
+        .environment_scene
+        .as_ref()
+        .and_then(|scene| scene.atmosphere.as_ref())
+        .filter(|profile| profile.active)
+    else {
+        world.remove_resource::<NativeVolumetricsReport>();
+        return;
+    };
+    apply_native_volumetrics(world, profile);
+    world.insert_resource(ClearColor(color_to_bevy(&profile.sky.color)));
+    world.insert_resource(AmbientLight {
+        color: color_to_bevy(&profile.ambient.color),
+        brightness: profile.ambient.intensity
+            * THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY
+            * native_ssgi_ambient_multiplier(bundle.runtime_config.as_ref()),
+    });
+    world.insert_resource(DirectionalLightShadowMap {
+        size: profile.shadows.map_size.min(2048) as usize,
+    });
+    spawn_native_atmosphere_lights(world, bundle, profile);
+}
+
+fn reset_native_atmosphere_entities(world: &mut World) {
     let owned_suns = world
         .query_filtered::<Entity, With<NativeAtmosphereSun>>()
         .iter(world)
@@ -338,16 +363,9 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
             .entity_mut(entity)
             .remove::<bevy::pbr::VolumetricFogSettings>();
     }
-    let Some(profile) = bundle
-        .environment_scene
-        .as_ref()
-        .and_then(|scene| scene.atmosphere.as_ref())
-        .filter(|profile| profile.active)
-    else {
-        world.remove_resource::<NativeVolumetricsReport>();
-        return;
-    };
+}
 
+fn apply_native_volumetrics(world: &mut World, profile: &AtmosphereProfileIr) {
     let height_fog = profile
         .volumetrics
         .as_ref()
@@ -384,56 +402,52 @@ pub fn apply_atmosphere_to_world(world: &mut World, bundle: &LoadedBundle) {
             world.entity_mut(entity).insert(settings);
         }
     }
+}
 
-    world.insert_resource(ClearColor(color_to_bevy(&profile.sky.color)));
-    world.insert_resource(AmbientLight {
-        color: color_to_bevy(&profile.ambient.color),
-        brightness: profile.ambient.intensity
-            * THREE_COMPAT_ATMOSPHERE_AMBIENT_BRIGHTNESS_PER_INTENSITY
-            * native_ssgi_ambient_multiplier(bundle.runtime_config.as_ref()),
-    });
-    world.insert_resource(DirectionalLightShadowMap {
-        size: profile.shadows.map_size.min(2048) as usize,
-    });
+fn spawn_native_atmosphere_lights(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    profile: &AtmosphereProfileIr,
+) {
     let (cascade_shadow_config, cascade_profile) =
         resolve_atmosphere_shadow_cascade_config(&profile.shadows, bundle);
-    let mut sun = world.spawn(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            color: color_to_bevy(&profile.sun.color),
-            illuminance: profile.sun.intensity
-                * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
-            shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
-            shadow_depth_bias: atmosphere_shadow_depth_bias(profile.shadows.bias),
-            shadow_normal_bias: profile.shadows.normal_bias,
-            ..Default::default()
-        },
-        cascade_shadow_config,
-        transform: Transform::default().looking_to(
-            Vec3::new(
-                profile.sun.direction[0],
-                profile.sun.direction[1],
-                profile.sun.direction[2],
-            ),
-            Vec3::Y,
-        ),
-        ..Default::default()
-    });
-    sun.insert(Name::new(profile.sun.id.clone()));
-    sun.insert(NativeAtmosphereSun);
-    if let Some(cascade_profile) = cascade_profile {
-        sun.insert(cascade_profile);
-    }
-    if profile
-        .volumetrics
-        .as_ref()
-        .and_then(|volumetrics| volumetrics.god_rays.as_ref())
-        .is_some_and(|god_rays| god_rays.enabled)
-        && profile.sun.casts_shadow
-        && profile.shadows.enabled
     {
-        sun.insert(VolumetricLight);
+        let mut sun = world.spawn(DirectionalLightBundle {
+            directional_light: DirectionalLight {
+                color: color_to_bevy(&profile.sun.color),
+                illuminance: profile.sun.intensity
+                    * THREE_COMPAT_ATMOSPHERE_SUN_ILLUMINANCE_PER_INTENSITY,
+                shadows_enabled: profile.sun.casts_shadow && profile.shadows.enabled,
+                shadow_depth_bias: atmosphere_shadow_depth_bias(profile.shadows.bias),
+                shadow_normal_bias: profile.shadows.normal_bias,
+            },
+            cascade_shadow_config,
+            transform: Transform::default().looking_to(
+                Vec3::new(
+                    profile.sun.direction[0],
+                    profile.sun.direction[1],
+                    profile.sun.direction[2],
+                ),
+                Vec3::Y,
+            ),
+            ..Default::default()
+        });
+        sun.insert(Name::new(profile.sun.id.clone()));
+        sun.insert(NativeAtmosphereSun);
+        if let Some(cascade_profile) = cascade_profile {
+            sun.insert(cascade_profile);
+        }
+        if profile
+            .volumetrics
+            .as_ref()
+            .and_then(|volumetrics| volumetrics.god_rays.as_ref())
+            .is_some_and(|god_rays| god_rays.enabled)
+            && profile.sun.casts_shadow
+            && profile.shadows.enabled
+        {
+            sun.insert(VolumetricLight);
+        }
     }
-    drop(sun);
     if native_ssgi_settings(bundle.runtime_config.as_ref(), Some(profile)).is_some() {
         world
             .spawn(DirectionalLightBundle {
@@ -1009,6 +1023,16 @@ pub fn apply_environment_lighting_to_world(
             .diagnostics
             .push("TN_BEVY_ENVIRONMENT_TEXTURE_UNRESOLVED".to_owned());
     }
+    apply_baked_probe_lighting(world, bundle, scene, &mut observation);
+    observation
+}
+
+fn apply_baked_probe_lighting(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    scene: &threenative_loader::EnvironmentSceneIr,
+    observation: &mut EnvironmentLightingObservation,
+) {
     let baked_probes = scene
         .light_probes
         .iter()
@@ -1084,7 +1108,6 @@ pub fn apply_environment_lighting_to_world(
             }
         }
     }
-    observation
 }
 
 pub(crate) fn native_baked_probe_mode(bundle: &LoadedBundle) -> &'static str {

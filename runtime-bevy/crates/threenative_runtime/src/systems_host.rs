@@ -496,96 +496,12 @@ pub fn run_native_systems_frame_with_input(
 
     let mut run = NativeSystemsHostRun::default();
     if !state.paused {
-        state.accumulator += options.delta;
-        state.accumulator = state
-            .accumulator
-            .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
-
-        let mut frame_sensor_events = sensor_event_values(&state.sensor_state.events());
-        if !state.startup_complete {
-            if state.write_audit_enabled {
-                record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
-            }
-            let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
-            let startup_run = run_native_system_schedules_with_state(
-                bundle,
-                &["startup"],
-                time.clone(),
-                options.input,
-                state.frame as u32,
-                state.tick,
-                &frame_sensor_events,
-                state.write_audit_enabled.then_some(&mut state.write_ledger),
-                Some((
-                    &mut state.delayed_commands,
-                    &mut state.delayed_command_observations,
-                )),
-                Some(&mut state.lifecycle),
-                false,
-            )?;
-            state
-                .script_posed_entities
-                .extend(startup_run.transform_patches.iter().cloned());
-            run.transform_patches
-                .extend(startup_run.transform_patches.iter().cloned());
-            merge_emitted_events(&mut run.emitted_events, startup_run.emitted_events);
-            run.logs.extend(startup_run.logs);
-            state.startup_complete = true;
-        }
+        let mut frame_sensor_events = begin_active_systems_frame(state, &options);
+        run_startup_systems(bundle, state, &options, &frame_sensor_events, &mut run)?;
 
         while state.accumulator >= options.fixed_delta {
-            let before_fixed = snapshot_bundle_transforms(bundle);
-            let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
-                bundle,
-                state.elapsed,
-                &mut state.kinematic_mover_origins,
-            );
-            state.script_posed_entities.extend(
-                mover_observations
-                    .iter()
-                    .map(|observation| observation.entity.clone()),
-            );
-            let patrol_observations = crate::patrol::step_bundle_patrols(
-                bundle,
-                options.fixed_delta,
-                &mut state.patrol_runtime,
-            );
-            state.script_posed_entities.extend(
-                patrol_observations
-                    .iter()
-                    .map(|observation| observation.entity.clone()),
-            );
-            let time = loop_time_snapshot(
-                options.fixed_delta,
-                state.elapsed,
-                options.fixed_delta,
-                state.paused,
-            );
-            let fixed_run = run_native_system_schedules_with_state_filtered(
-                bundle,
-                &["fixedUpdate"],
-                time.clone(),
-                options.input,
-                state.frame as u32,
-                state.tick,
-                &frame_sensor_events,
-                state.write_audit_enabled.then_some(&mut state.write_ledger),
-                Some((
-                    &mut state.delayed_commands,
-                    &mut state.delayed_command_observations,
-                )),
-                Some(&mut state.lifecycle),
-                false,
-                Some(is_pre_physics_system),
-                false,
-            )?;
-            state
-                .script_posed_entities
-                .extend(fixed_run.transform_patches.iter().cloned());
-            run.transform_patches
-                .extend(fixed_run.transform_patches.iter().cloned());
-            merge_emitted_events(&mut run.emitted_events, fixed_run.emitted_events);
-            run.logs.extend(fixed_run.logs);
+            let (before_fixed, time) =
+                run_pre_physics_systems(bundle, state, &options, &frame_sensor_events, &mut run)?;
             let before_physics = snapshot_bundle_transforms(bundle);
             step_physics(bundle, options.fixed_delta, &state.script_posed_entities);
             if state.write_audit_enabled {
@@ -622,99 +538,230 @@ pub fn run_native_systems_frame_with_input(
             );
             let post_physics_run = run_native_system_schedules_with_state_filtered(
                 bundle,
-                &["fixedUpdate"],
-                time,
-                options.input,
-                state.frame as u32,
-                state.tick,
-                &sensor_events,
-                state.write_audit_enabled.then_some(&mut state.write_ledger),
-                Some((
-                    &mut state.delayed_commands,
-                    &mut state.delayed_command_observations,
-                )),
-                Some(&mut state.lifecycle),
-                false,
-                Some(is_post_physics_system),
-                true,
+                NativeSystemScheduleRequest {
+                    schedules: &["fixedUpdate"],
+                    time,
+                    input: options.input,
+                    frame: state.frame as u32,
+                    tick: state.tick,
+                    sensor_events: &sensor_events,
+                    capture_write_audit: false,
+                },
+                NativeSystemScheduleState {
+                    write_ledger: state.write_audit_enabled.then_some(&mut state.write_ledger),
+                    delayed_commands: Some(&mut state.delayed_commands),
+                    delayed_command_observations: Some(&mut state.delayed_command_observations),
+                    lifecycle: Some(&mut state.lifecycle),
+                },
+                NativeSystemScheduleFilter {
+                    system: Some(is_post_physics_system),
+                    complete_fixed_schedule: true,
+                },
             )?;
-            state
-                .script_posed_entities
-                .extend(post_physics_run.transform_patches.iter().cloned());
-            run.transform_patches
-                .extend(post_physics_run.transform_patches.iter().cloned());
-            merge_emitted_events(&mut run.emitted_events, post_physics_run.emitted_events);
-            run.logs.extend(post_physics_run.logs);
+            merge_system_schedule_run(&mut run, state, post_physics_run);
             record_fixed_transform_step(state, before_fixed, snapshot_bundle_transforms(bundle));
             state.tick += 1;
             state.accumulator -= options.fixed_delta;
         }
 
-        let raw_before_variable = snapshot_bundle_transforms(bundle);
-        let overlaid_entities = overlay_interpolated_fixed_transforms(
-            bundle,
-            state,
-            interpolation_alpha(state, options.fixed_delta),
-        );
-        let before_variable = snapshot_bundle_transforms(bundle);
-        let variable_time = loop_time_snapshot(
-            options.delta,
-            state.elapsed,
-            options.fixed_delta,
-            state.paused,
-        );
-        let variable_run = run_native_system_schedules_with_state(
-            bundle,
-            &["update", "postUpdate"],
-            variable_time,
-            options.input,
-            state.frame as u32,
-            state.tick,
-            &frame_sensor_events,
-            state.write_audit_enabled.then_some(&mut state.write_ledger),
-            Some((
-                &mut state.delayed_commands,
-                &mut state.delayed_command_observations,
-            )),
-            Some(&mut state.lifecycle),
-            false,
-        )?;
-        state
-            .script_posed_entities
-            .extend(variable_run.transform_patches.iter().cloned());
-        run.transform_patches
-            .extend(variable_run.transform_patches.iter().cloned());
-        merge_emitted_events(&mut run.emitted_events, variable_run.emitted_events);
-        run.logs.extend(variable_run.logs);
-        let after_variable = snapshot_bundle_transforms(bundle);
-        restore_unwritten_fixed_transforms(
-            bundle,
-            &raw_before_variable,
-            &before_variable,
-            &after_variable,
-            &overlaid_entities,
-        );
-        remove_variable_transform_writes(state, before_variable, after_variable);
+        run_variable_systems(bundle, state, &options, &frame_sensor_events, &mut run)?;
     }
+    finish_native_systems_frame(bundle, state, &options, &mut run)?;
+    Ok(run)
+}
+
+fn run_pre_physics_systems(
+    bundle: &mut LoadedBundle,
+    state: &mut NativeGameLoopState,
+    options: &NativeGameLoopRunOptions<'_>,
+    sensor_events: &[Value],
+    run: &mut NativeSystemsHostRun,
+) -> Result<(BTreeMap<String, TransformSample>, NativeSystemTimeSnapshot), SystemsHostError> {
+    let before_fixed = snapshot_bundle_transforms(bundle);
+    let mover_observations = crate::kinematic_mover::step_bundle_kinematic_movers(
+        bundle,
+        state.elapsed,
+        &mut state.kinematic_mover_origins,
+    );
+    state.script_posed_entities.extend(
+        mover_observations
+            .iter()
+            .map(|observation| observation.entity.clone()),
+    );
+    let patrol_observations =
+        crate::patrol::step_bundle_patrols(bundle, options.fixed_delta, &mut state.patrol_runtime);
+    state.script_posed_entities.extend(
+        patrol_observations
+            .iter()
+            .map(|observation| observation.entity.clone()),
+    );
+    let time = loop_time_snapshot(
+        options.fixed_delta,
+        state.elapsed,
+        options.fixed_delta,
+        state.paused,
+    );
+    let fixed_run = run_native_system_schedules_with_state_filtered(
+        bundle,
+        NativeSystemScheduleRequest {
+            schedules: &["fixedUpdate"],
+            time: time.clone(),
+            input: options.input,
+            frame: state.frame as u32,
+            tick: state.tick,
+            sensor_events,
+            capture_write_audit: false,
+        },
+        NativeSystemScheduleState {
+            write_ledger: state.write_audit_enabled.then_some(&mut state.write_ledger),
+            delayed_commands: Some(&mut state.delayed_commands),
+            delayed_command_observations: Some(&mut state.delayed_command_observations),
+            lifecycle: Some(&mut state.lifecycle),
+        },
+        NativeSystemScheduleFilter {
+            system: Some(is_pre_physics_system),
+            complete_fixed_schedule: false,
+        },
+    )?;
+    merge_system_schedule_run(run, state, fixed_run);
+    Ok((before_fixed, time))
+}
+
+fn finish_native_systems_frame(
+    bundle: &mut LoadedBundle,
+    state: &mut NativeGameLoopState,
+    options: &NativeGameLoopRunOptions<'_>,
+    run: &mut NativeSystemsHostRun,
+) -> Result<(), SystemsHostError> {
     state.frame += 1;
     if state.write_audit_enabled {
         run.write_observations = state.write_ledger.observations();
         run.write_diagnostics = state.write_ledger.diagnostics_all();
     }
-
     state.presentation.ingest_logs(bundle, &run.logs);
     state.presentation.step(bundle, options.delta);
     merge_emitted_events(&mut run.emitted_events, bundle.world.events.clone());
-
     crate::persistence::step_native_autosave(
         bundle,
         state.elapsed,
         &run.emitted_events,
         &mut state.persistence_runtime,
     )
-    .map_err(|message| host_error("TN_BEVY_PERSISTENCE_AUTOSAVE_FAILED", message))?;
+    .map(|_| ())
+    .map_err(|message| host_error("TN_BEVY_PERSISTENCE_AUTOSAVE_FAILED", message))
+}
 
-    Ok(run)
+fn begin_active_systems_frame(
+    state: &mut NativeGameLoopState,
+    options: &NativeGameLoopRunOptions<'_>,
+) -> Vec<Value> {
+    state.accumulator += options.delta;
+    state.accumulator = state
+        .accumulator
+        .min(options.fixed_delta * MAX_FIXED_STEPS_PER_FRAME);
+    sensor_event_values(&state.sensor_state.events())
+}
+
+fn run_variable_systems(
+    bundle: &mut LoadedBundle,
+    state: &mut NativeGameLoopState,
+    options: &NativeGameLoopRunOptions<'_>,
+    sensor_events: &[Value],
+    run: &mut NativeSystemsHostRun,
+) -> Result<(), SystemsHostError> {
+    let raw_before_variable = snapshot_bundle_transforms(bundle);
+    let overlaid_entities = overlay_interpolated_fixed_transforms(
+        bundle,
+        state,
+        interpolation_alpha(state, options.fixed_delta),
+    );
+    let before_variable = snapshot_bundle_transforms(bundle);
+    let variable_time = loop_time_snapshot(
+        options.delta,
+        state.elapsed,
+        options.fixed_delta,
+        state.paused,
+    );
+    let variable_run = run_native_system_schedules_with_state(
+        bundle,
+        NativeSystemScheduleRequest {
+            schedules: &["update", "postUpdate"],
+            time: variable_time,
+            input: options.input,
+            frame: state.frame as u32,
+            tick: state.tick,
+            sensor_events,
+            capture_write_audit: false,
+        },
+        NativeSystemScheduleState {
+            write_ledger: state.write_audit_enabled.then_some(&mut state.write_ledger),
+            delayed_commands: Some(&mut state.delayed_commands),
+            delayed_command_observations: Some(&mut state.delayed_command_observations),
+            lifecycle: Some(&mut state.lifecycle),
+        },
+    )?;
+    merge_system_schedule_run(run, state, variable_run);
+    let after_variable = snapshot_bundle_transforms(bundle);
+    restore_unwritten_fixed_transforms(
+        bundle,
+        &raw_before_variable,
+        &before_variable,
+        &after_variable,
+        &overlaid_entities,
+    );
+    remove_variable_transform_writes(state, before_variable, after_variable);
+    Ok(())
+}
+
+fn run_startup_systems(
+    bundle: &mut LoadedBundle,
+    state: &mut NativeGameLoopState,
+    options: &NativeGameLoopRunOptions<'_>,
+    sensor_events: &[Value],
+    run: &mut NativeSystemsHostRun,
+) -> Result<(), SystemsHostError> {
+    if state.startup_complete {
+        return Ok(());
+    }
+    if state.write_audit_enabled {
+        record_initial_runtime_writes(bundle, state.tick, &mut state.write_ledger);
+    }
+    let time = loop_time_snapshot(0.0, state.elapsed, options.fixed_delta, state.paused);
+    let startup_run = run_native_system_schedules_with_state(
+        bundle,
+        NativeSystemScheduleRequest {
+            schedules: &["startup"],
+            time,
+            input: options.input,
+            frame: state.frame as u32,
+            tick: state.tick,
+            sensor_events,
+            capture_write_audit: false,
+        },
+        NativeSystemScheduleState {
+            write_ledger: state.write_audit_enabled.then_some(&mut state.write_ledger),
+            delayed_commands: Some(&mut state.delayed_commands),
+            delayed_command_observations: Some(&mut state.delayed_command_observations),
+            lifecycle: Some(&mut state.lifecycle),
+        },
+    )?;
+    merge_system_schedule_run(run, state, startup_run);
+    state.startup_complete = true;
+    Ok(())
+}
+
+fn merge_system_schedule_run(
+    run: &mut NativeSystemsHostRun,
+    state: &mut NativeGameLoopState,
+    schedule_run: NativeSystemsHostRun,
+) {
+    state
+        .script_posed_entities
+        .extend(schedule_run.transform_patches.iter().cloned());
+    run.transform_patches
+        .extend(schedule_run.transform_patches.iter().cloned());
+    merge_emitted_events(&mut run.emitted_events, schedule_run.emitted_events);
+    run.logs.extend(schedule_run.logs);
 }
 
 fn merge_emitted_events(
@@ -921,17 +968,45 @@ fn run_native_system_schedules(
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     run_native_system_schedules_with_state(
         bundle,
-        schedules,
-        time,
-        input,
-        1,
-        1,
-        sensor_events,
-        write_ledger,
-        None,
-        lifecycle,
-        capture_write_audit,
+        NativeSystemScheduleRequest {
+            schedules,
+            time,
+            input,
+            frame: 1,
+            tick: 1,
+            sensor_events,
+            capture_write_audit,
+        },
+        NativeSystemScheduleState {
+            write_ledger,
+            delayed_commands: None,
+            delayed_command_observations: None,
+            lifecycle,
+        },
     )
+}
+
+struct NativeSystemScheduleRequest<'a> {
+    schedules: &'a [&'a str],
+    time: NativeSystemTimeSnapshot,
+    input: Option<&'a NativeInputState>,
+    frame: u32,
+    tick: u64,
+    sensor_events: &'a [Value],
+    capture_write_audit: bool,
+}
+
+struct NativeSystemScheduleState<'a> {
+    write_ledger: Option<&'a mut NativeRuntimeWriteLedger>,
+    delayed_commands: Option<&'a mut Vec<NativeDelayedCommand>>,
+    delayed_command_observations: Option<&'a mut Vec<NativeDelayedCommandObservation>>,
+    lifecycle: Option<&'a mut NativeEntityLifecycleRuntimeState>,
+}
+
+#[derive(Clone, Copy)]
+struct NativeSystemScheduleFilter {
+    system: Option<fn(&SystemIr) -> bool>,
+    complete_fixed_schedule: bool,
 }
 
 const PRE_PHYSICS_BODY_SERVICES: &[&str] = &[
@@ -961,54 +1036,25 @@ fn is_post_physics_system(system: &SystemIr) -> bool {
 
 fn run_native_system_schedules_with_state(
     bundle: &mut LoadedBundle,
-    schedules: &[&str],
-    time: NativeSystemTimeSnapshot,
-    input: Option<&NativeInputState>,
-    frame: u32,
-    tick: u64,
-    sensor_events: &[Value],
-    write_ledger: Option<&mut NativeRuntimeWriteLedger>,
-    delayed_state: Option<(
-        &mut Vec<NativeDelayedCommand>,
-        &mut Vec<NativeDelayedCommandObservation>,
-    )>,
-    lifecycle_state: Option<&mut NativeEntityLifecycleRuntimeState>,
-    capture_write_audit: bool,
+    request: NativeSystemScheduleRequest<'_>,
+    state: NativeSystemScheduleState<'_>,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     run_native_system_schedules_with_state_filtered(
         bundle,
-        schedules,
-        time,
-        input,
-        frame,
-        tick,
-        sensor_events,
-        write_ledger,
-        delayed_state,
-        lifecycle_state,
-        capture_write_audit,
-        None,
-        true,
+        request,
+        state,
+        NativeSystemScheduleFilter {
+            system: None,
+            complete_fixed_schedule: true,
+        },
     )
 }
 
 fn run_native_system_schedules_with_state_filtered(
     bundle: &mut LoadedBundle,
-    schedules: &[&str],
-    time: NativeSystemTimeSnapshot,
-    input: Option<&NativeInputState>,
-    frame: u32,
-    tick: u64,
-    sensor_events: &[Value],
-    mut write_ledger: Option<&mut NativeRuntimeWriteLedger>,
-    mut delayed_state: Option<(
-        &mut Vec<NativeDelayedCommand>,
-        &mut Vec<NativeDelayedCommandObservation>,
-    )>,
-    mut lifecycle_state: Option<&mut NativeEntityLifecycleRuntimeState>,
-    capture_write_audit: bool,
-    system_filter: Option<fn(&SystemIr) -> bool>,
-    complete_fixed_schedule: bool,
+    request: NativeSystemScheduleRequest<'_>,
+    mut state: NativeSystemScheduleState<'_>,
+    filter: NativeSystemScheduleFilter,
 ) -> Result<NativeSystemsHostRun, SystemsHostError> {
     ensure_native_system_host_supported(bundle)?;
     if bundle.manifest.entry.scripts.is_none() {
@@ -1025,33 +1071,22 @@ fn run_native_system_schedules_with_state_filtered(
         return Ok(NativeSystemsHostRun::default());
     }
 
-    if let Some(lifecycle) = lifecycle_state.as_deref_mut() {
-        lifecycle.begin_tick(bundle, tick);
+    if let Some(lifecycle) = state.lifecycle.as_deref_mut() {
+        lifecycle.begin_tick(bundle, request.tick);
         lifecycle.observe(bundle);
     }
 
-    let script_path = bundle
-        .manifest
-        .entry
-        .scripts
-        .as_ref()
-        .map(|entry| bundle.bundle_path.join(entry))
-        .ok_or_else(|| {
-            host_error(
-                "TN_BEVY_SYSTEM_SCRIPT_MISSING",
-                "Bundle does not reference scripts.bundle.js.",
-            )
-        })?;
+    let script_path = native_system_script_path(bundle)?;
     let mut logs = Vec::new();
     let mut resource_observations = Vec::new();
     let mut transform_patches = BTreeSet::new();
     let mut diff_cache = ComponentDiffCache::default();
 
     with_script_host(&script_path, |context| {
-        for schedule in schedules {
+        for schedule in request.schedules {
             let scheduled_systems = ordered_systems_for_schedule(&systems, schedule)
                 .into_iter()
-                .filter(|system| system_filter.is_none_or(|filter| filter(system)))
+                .filter(|system| filter.system.is_none_or(|filter| filter(system)))
                 .collect::<Vec<_>>();
             let tracked_components = scheduled_systems
                 .iter()
@@ -1062,7 +1097,8 @@ fn run_native_system_schedules_with_state_filtered(
             diff_cache.begin_schedule_stage(bundle, &tracked_components);
             for system in scheduled_systems {
                 let mut system_observations = declared_resource_load_observations(bundle, system);
-                let lifecycle = lifecycle_state
+                let lifecycle = state
+                    .lifecycle
                     .as_deref()
                     .map(NativeEntityLifecycleRuntimeState::snapshot)
                     .unwrap_or_default();
@@ -1070,26 +1106,37 @@ fn run_native_system_schedules_with_state_filtered(
                     context,
                     bundle,
                     system,
-                    time.clone(),
-                    BTreeMap::new(),
-                    input,
-                    Some(&diff_cache),
-                    sensor_events,
-                    lifecycle,
+                    NativeSystemInvocation {
+                        time: request.time.clone(),
+                        events: BTreeMap::new(),
+                        input: request.input,
+                        diff_cache: Some(&diff_cache),
+                        sensor_events: request.sensor_events,
+                        lifecycle,
+                    },
                 )?;
                 crate::persistence::apply_native_persistence_service_effects(bundle, &effects)
                     .map_err(|message| host_error("TN_BEVY_PERSISTENCE_SERVICE_FAILED", message))?;
                 system_observations.extend(native_resource_observations(system, &effects));
-                if let Some((pending, observations)) = delayed_state.as_mut() {
-                    enqueue_native_delayed_commands(pending, observations, system, &effects, tick);
+                if let (Some(pending), Some(observations)) = (
+                    state.delayed_commands.as_deref_mut(),
+                    state.delayed_command_observations.as_deref_mut(),
+                ) {
+                    enqueue_native_delayed_commands(
+                        pending,
+                        observations,
+                        system,
+                        &effects,
+                        request.tick,
+                    );
                 }
                 let applied = apply_system_effects_with_report_and_ledger(
                     bundle,
                     system,
                     &effects,
-                    frame,
-                    tick as u32,
-                    write_ledger.as_deref_mut(),
+                    request.frame,
+                    request.tick as u32,
+                    state.write_ledger.as_deref_mut(),
                 )
                 .map_err(|diagnostics| {
                     let first = diagnostics
@@ -1098,88 +1145,150 @@ fn run_native_system_schedules_with_state_filtered(
                         .expect("invalid effects should include diagnostics");
                     host_error(first.code, first.message)
                 })?;
-                if let Some(lifecycle_state) = lifecycle_state.as_deref_mut() {
+                if let Some(lifecycle_state) = state.lifecycle.as_deref_mut() {
                     lifecycle_state.observe(bundle);
                 }
                 logs.push(applied.log);
                 resource_observations.extend(system_observations);
                 transform_patches.extend(applied.transform_patches);
             }
-            if complete_fixed_schedule
-                && *schedule == "fixedUpdate"
-                && let Some((pending, observations)) = delayed_state.as_mut()
-            {
-                let ready = advance_native_delayed_commands(bundle, pending, observations, tick);
-                for command in ready {
-                    let Some(system) = systems
-                        .iter()
-                        .find(|candidate| candidate.name == command.system_name)
-                    else {
-                        continue;
-                    };
-                    let effects = NativeSystemEffects {
-                        commands: vec![native_command_effect(&command.command)],
-                        events: Vec::new(),
-                        observations: Vec::new(),
-                        patches: Vec::new(),
-                        resources: Vec::new(),
-                        schedules: Vec::new(),
-                        services: Vec::new(),
-                    };
-                    let applied = apply_system_effects_with_report_and_ledger_and_writer(
-                        bundle,
-                        system,
-                        &effects,
-                        frame,
-                        tick as u32,
-                        write_ledger.as_deref_mut(),
-                        "scheduler",
-                    )
-                    .map_err(|diagnostics| {
-                        let first = diagnostics
-                            .into_iter()
-                            .next()
-                            .expect("invalid delayed effects should include diagnostics");
-                        host_error(first.code, first.message)
-                    })?;
-                    if let Some(lifecycle_state) = lifecycle_state.as_deref_mut() {
-                        lifecycle_state.observe(bundle);
-                    }
-                    logs.push(applied.log);
-                    transform_patches.extend(applied.transform_patches);
-                }
-            }
+            apply_ready_delayed_commands(
+                bundle,
+                &systems,
+                schedule,
+                &request,
+                &mut state,
+                filter,
+                &mut logs,
+                &mut transform_patches,
+            )?;
         }
         Ok(())
     })?;
 
+    Ok(finish_native_system_schedule_run(
+        bundle,
+        &request,
+        &state,
+        logs,
+        resource_observations,
+        transform_patches,
+    ))
+}
+
+fn native_system_script_path(
+    bundle: &LoadedBundle,
+) -> Result<std::path::PathBuf, SystemsHostError> {
+    bundle
+        .manifest
+        .entry
+        .scripts
+        .as_ref()
+        .map(|entry| bundle.bundle_path.join(entry))
+        .ok_or_else(|| {
+            host_error(
+                "TN_BEVY_SYSTEM_SCRIPT_MISSING",
+                "Bundle does not reference scripts.bundle.js.",
+            )
+        })
+}
+
+fn finish_native_system_schedule_run(
+    bundle: &mut LoadedBundle,
+    request: &NativeSystemScheduleRequest<'_>,
+    state: &NativeSystemScheduleState<'_>,
+    logs: Vec<NativeSystemEffectLog>,
+    resource_observations: Vec<NativeResourceObservation>,
+    transform_patches: BTreeSet<String>,
+) -> NativeSystemsHostRun {
     let emitted_events = bundle.world.events.clone();
-    if schedules.iter().any(|schedule| *schedule == "postUpdate") {
+    if request.schedules.contains(&"postUpdate") {
         bundle.world.events.clear();
     }
-
-    Ok(NativeSystemsHostRun {
+    let (write_diagnostics, write_observations) = if request.capture_write_audit {
+        let diagnostics = state
+            .write_ledger
+            .as_deref()
+            .map(|ledger| ledger.diagnostics(request.tick))
+            .unwrap_or_default();
+        let observations = state
+            .write_ledger
+            .as_deref()
+            .map(NativeRuntimeWriteLedger::observations)
+            .unwrap_or_default();
+        (diagnostics, observations)
+    } else {
+        (Vec::new(), Vec::new())
+    };
+    NativeSystemsHostRun {
         emitted_events,
         logs,
         resource_observations,
         transform_patches,
-        write_diagnostics: if capture_write_audit {
-            write_ledger
-                .as_deref()
-                .map(|ledger| ledger.diagnostics(tick))
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        },
-        write_observations: if capture_write_audit {
-            write_ledger
-                .as_deref()
-                .map(NativeRuntimeWriteLedger::observations)
-                .unwrap_or_default()
-        } else {
-            Vec::new()
-        },
-    })
+        write_diagnostics,
+        write_observations,
+    }
+}
+
+fn apply_ready_delayed_commands(
+    bundle: &mut LoadedBundle,
+    systems: &[SystemIr],
+    schedule: &str,
+    request: &NativeSystemScheduleRequest<'_>,
+    state: &mut NativeSystemScheduleState<'_>,
+    filter: NativeSystemScheduleFilter,
+    logs: &mut Vec<NativeSystemEffectLog>,
+    transform_patches: &mut BTreeSet<String>,
+) -> Result<(), SystemsHostError> {
+    if !filter.complete_fixed_schedule || schedule != "fixedUpdate" {
+        return Ok(());
+    }
+    let (Some(pending), Some(observations)) = (
+        state.delayed_commands.as_deref_mut(),
+        state.delayed_command_observations.as_deref_mut(),
+    ) else {
+        return Ok(());
+    };
+    let ready = advance_native_delayed_commands(bundle, pending, observations, request.tick);
+    for command in ready {
+        let Some(system) = systems
+            .iter()
+            .find(|candidate| candidate.name == command.system_name)
+        else {
+            continue;
+        };
+        let effects = NativeSystemEffects {
+            commands: vec![native_command_effect(&command.command)],
+            events: Vec::new(),
+            observations: Vec::new(),
+            patches: Vec::new(),
+            resources: Vec::new(),
+            schedules: Vec::new(),
+            services: Vec::new(),
+        };
+        let applied = apply_system_effects_with_report_and_ledger_and_writer(
+            bundle,
+            system,
+            &effects,
+            request.frame,
+            request.tick as u32,
+            state.write_ledger.as_deref_mut(),
+            "scheduler",
+        )
+        .map_err(|diagnostics| {
+            let first = diagnostics
+                .into_iter()
+                .next()
+                .expect("invalid delayed effects should include diagnostics");
+            host_error(first.code, first.message)
+        })?;
+        if let Some(lifecycle) = state.lifecycle.as_deref_mut() {
+            lifecycle.observe(bundle);
+        }
+        logs.push(applied.log);
+        transform_patches.extend(applied.transform_patches);
+    }
+    Ok(())
 }
 
 fn enqueue_native_delayed_commands(
@@ -1614,23 +1723,27 @@ fn add_order_edge(
     outgoing: &mut BTreeMap<String, BTreeSet<String>>,
     indegree: &mut BTreeMap<String, usize>,
 ) {
-    if let Some(edges) = outgoing.get_mut(source) {
-        if edges.insert(target.to_owned()) {
-            *indegree.entry(target.to_owned()).or_insert(0) += 1;
-        }
+    if let Some(edges) = outgoing.get_mut(source)
+        && edges.insert(target.to_owned())
+    {
+        *indegree.entry(target.to_owned()).or_insert(0) += 1;
     }
+}
+
+struct NativeSystemInvocation<'a> {
+    time: NativeSystemTimeSnapshot,
+    events: BTreeMap<String, Vec<Value>>,
+    input: Option<&'a NativeInputState>,
+    diff_cache: Option<&'a ComponentDiffCache>,
+    sensor_events: &'a [Value],
+    lifecycle: NativeEntityLifecycleSnapshot,
 }
 
 fn call_system_export(
     context: &Context,
     bundle: &LoadedBundle,
     system: &SystemIr,
-    time: NativeSystemTimeSnapshot,
-    events: BTreeMap<String, Vec<Value>>,
-    input: Option<&NativeInputState>,
-    diff_cache: Option<&ComponentDiffCache>,
-    sensor_events: &[Value],
-    lifecycle: NativeEntityLifecycleSnapshot,
+    invocation: NativeSystemInvocation<'_>,
 ) -> Result<NativeSystemEffects, SystemsHostError> {
     crate::persistence::native_persistence_snapshot(bundle)
         .map_err(|message| host_error("TN_BEVY_PERSISTENCE_RESTORE_FAILED", message))?;
@@ -1647,12 +1760,12 @@ fn call_system_export(
     let snapshot = build_system_context_snapshot_with_sensor_events_and_lifecycle(
         bundle,
         system,
-        time,
-        events,
-        input,
-        diff_cache,
-        sensor_events,
-        lifecycle,
+        invocation.time,
+        invocation.events,
+        invocation.input,
+        invocation.diff_cache,
+        invocation.sensor_events,
+        invocation.lifecycle,
     );
     let payload_json = serde_json::to_string(&json!({
         "exportName": export_name,

@@ -4,6 +4,18 @@ struct NativeUiVisualAssetCache {
     shadow: Option<Handle<Image>>,
 }
 
+type NativeUiEffectLayers<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut NativeUiEffectLayer,
+        &'static mut Visibility,
+        Option<&'static mut UiImage>,
+        Option<&'static mut BorderColor>,
+        Option<&'static mut BackgroundColor>,
+    ),
+>;
+
 fn spawn_native_ui_visual_layers(world: &mut World, owner: Entity, node: &UiNodeIr) {
     world.init_resource::<Assets<Image>>();
     world.init_resource::<NativeUiVisualAssetCache>();
@@ -23,7 +35,9 @@ fn spawn_native_ui_visual_layers(world: &mut World, owner: Entity, node: &UiNode
         world.entity_mut(owner).push_children(&children);
     }
     if !node.effects.is_empty() {
-        world.entity_mut(owner).insert(NativeUiEffectState::default());
+        world
+            .entity_mut(owner)
+            .insert(NativeUiEffectState::default());
     }
 }
 
@@ -46,7 +60,10 @@ fn spawn_native_ui_effect_layer(
         effect: effect.id.clone(),
         kind: effect.kind.clone(),
         owner,
-        pulse_duration_seconds: effect.pulse.as_ref().map(|pulse| pulse.duration_ms / 1000.0),
+        pulse_duration_seconds: effect
+            .pulse
+            .as_ref()
+            .map(|pulse| pulse.duration_ms / 1000.0),
         pulse_iterations: effect.pulse.as_ref().and_then(|pulse| pulse.iterations),
         strategy: strategy.clone(),
         trigger: effect.trigger.clone(),
@@ -55,7 +72,10 @@ fn spawn_native_ui_effect_layer(
         let alpha = color.to_srgba().alpha * effect.intensity.unwrap_or(0.5).clamp(0.0, 1.0);
         color = color.with_alpha(alpha);
     }
-    let layer = NativeUiEffectLayer { base_color: color, ..layer };
+    let layer = NativeUiEffectLayer {
+        base_color: color,
+        ..layer
+    };
     let visibility = if effect.trigger == "disabled" && node.disabled == Some(true) {
         Visibility::Visible
     } else {
@@ -76,7 +96,13 @@ fn spawn_native_ui_effect_layer(
             image.color = color;
             world
                 .spawn((
-                    ImageBundle { style, image, focus_policy: FocusPolicy::Pass, visibility, ..Default::default() },
+                    ImageBundle {
+                        style,
+                        image,
+                        focus_policy: FocusPolicy::Pass,
+                        visibility,
+                        ..Default::default()
+                    },
                     ImageScaleMode::Sliced(TextureSlicer {
                         border: BorderRect::square(8.0),
                         center_scale_mode: SliceScaleMode::Stretch,
@@ -90,7 +116,10 @@ fn spawn_native_ui_effect_layer(
         "tint" => world
             .spawn((
                 NodeBundle {
-                    style: Style { border: UiRect::ZERO, ..style },
+                    style: Style {
+                        border: UiRect::ZERO,
+                        ..style
+                    },
                     background_color: BackgroundColor(color),
                     focus_policy: FocusPolicy::Pass,
                     visibility,
@@ -106,7 +135,11 @@ fn spawn_native_ui_effect_layer(
                     background_color: BackgroundColor(Color::NONE),
                     border_color: BorderColor(color),
                     border_radius: BorderRadius::all(Val::Px(
-                        node.style.as_ref().and_then(|style| style.border_radius).unwrap_or(0.0) + radius,
+                        node.style
+                            .as_ref()
+                            .and_then(|style| style.border_radius)
+                            .unwrap_or(0.0)
+                            + radius,
                     )),
                     focus_policy: FocusPolicy::Pass,
                     visibility,
@@ -116,27 +149,31 @@ fn spawn_native_ui_effect_layer(
             ))
             .id(),
     };
-    world.entity_mut(entity).insert(Name::new(format!("{}.effect.{}", node.id, effect.id)));
+    world
+        .entity_mut(entity)
+        .insert(Name::new(format!("{}.effect.{}", node.id, effect.id)));
     Some(entity)
 }
 
 fn native_ui_effect_render_strategy(effect: &threenative_loader::UiEffectPresetIr) -> String {
     effect.fallback.clone().unwrap_or_else(|| {
-        if effect.kind == "tint" { "tint".to_owned() } else { "outline".to_owned() }
+        if effect.kind == "tint" {
+            "tint".to_owned()
+        } else {
+            "outline".to_owned()
+        }
     })
 }
 
 pub fn sync_native_ui_effect_layers(
     time: Res<Time>,
     focus: Option<Res<bevy::a11y::Focus>>,
-    owners: Query<(Option<&Interaction>, Option<&NativeUiDisabled>, Option<&NativeUiEffectState>)>,
-    mut layers: Query<(
-        &mut NativeUiEffectLayer,
-        &mut Visibility,
-        Option<&mut UiImage>,
-        Option<&mut BorderColor>,
-        Option<&mut BackgroundColor>,
+    owners: Query<(
+        Option<&Interaction>,
+        Option<&NativeUiDisabled>,
+        Option<&NativeUiEffectState>,
     )>,
+    mut layers: NativeUiEffectLayers,
 ) {
     for (mut layer, mut visibility, image, border, background) in &mut layers {
         let Ok((interaction, disabled, state)) = owners.get(layer.owner) else {
@@ -145,13 +182,21 @@ pub fn sync_native_ui_effect_layers(
         };
         let active = match layer.trigger.as_str() {
             "disabled" => disabled.is_some_and(|disabled| disabled.0),
-            "focus" => focus.as_ref().is_some_and(|focus| focus.0 == Some(layer.owner)),
+            "focus" => focus
+                .as_ref()
+                .is_some_and(|focus| focus.0 == Some(layer.owner)),
             "hover" => interaction.is_some_and(|interaction| *interaction != Interaction::None),
             "selected" => state.is_some_and(|state| state.selected),
-            "predicate" => state.is_some_and(|state| state.predicates.get(&layer.effect) == Some(&true)),
+            "predicate" => {
+                state.is_some_and(|state| state.predicates.get(&layer.effect) == Some(&true))
+            }
             _ => false,
         };
-        *visibility = if active { Visibility::Visible } else { Visibility::Hidden };
+        *visibility = if active {
+            Visibility::Visible
+        } else {
+            Visibility::Hidden
+        };
         if !active {
             layer.active_since_seconds = None;
             continue;
@@ -162,8 +207,12 @@ pub fn sync_native_ui_effect_layers(
         if layer.kind != "pulse" {
             continue;
         }
-        let duration = layer.pulse_duration_seconds.unwrap_or(1.0).max(f32::EPSILON);
-        let elapsed = time.elapsed_seconds() - layer.active_since_seconds.unwrap_or(time.elapsed_seconds());
+        let duration = layer
+            .pulse_duration_seconds
+            .unwrap_or(1.0)
+            .max(f32::EPSILON);
+        let elapsed =
+            time.elapsed_seconds() - layer.active_since_seconds.unwrap_or(time.elapsed_seconds());
         let completed = layer
             .pulse_iterations
             .is_some_and(|iterations| elapsed / duration >= iterations as f32);
@@ -187,15 +236,10 @@ pub fn sync_native_ui_effect_layers(
 
 pub fn sync_native_ui_focus_from_interaction(
     mut focus: ResMut<bevy::a11y::Focus>,
-    nodes: Query<
-        (Entity, &Interaction, Option<&NativeUiDisabled>),
-        Changed<Interaction>,
-    >,
+    nodes: Query<(Entity, &Interaction, Option<&NativeUiDisabled>), Changed<Interaction>>,
 ) {
     for (entity, interaction, disabled) in &nodes {
-        if *interaction == Interaction::Pressed
-            && !disabled.is_some_and(|disabled| disabled.0)
-        {
+        if *interaction == Interaction::Pressed && !disabled.is_some_and(|disabled| disabled.0) {
             focus.0 = Some(entity);
         }
     }
@@ -227,26 +271,46 @@ pub fn sync_native_ui_effect_states(world: &mut World, bundle: &LoadedBundle) {
             .map(|effect| {
                 (
                     effect.id.clone(),
-                    effect
-                        .predicate
-                        .as_ref()
-                        .is_some_and(|predicate| native_ui_effect_predicate_passes(bundle, predicate)),
+                    effect.predicate.as_ref().is_some_and(|predicate| {
+                        native_ui_effect_predicate_passes(bundle, predicate)
+                    }),
                 )
             })
             .collect();
-        world.entity_mut(entity).insert(NativeUiEffectState { predicates, selected });
+        world.entity_mut(entity).insert(NativeUiEffectState {
+            predicates,
+            selected,
+        });
     }
 }
 
-fn native_ui_effect_binding_value(bundle: &LoadedBundle, binding: &UiBindingIr) -> Option<serde_json::Value> {
+fn native_ui_effect_binding_value(
+    bundle: &LoadedBundle,
+    binding: &UiBindingIr,
+) -> Option<serde_json::Value> {
     match binding {
         UiBindingIr::Resource { name, field, .. } => {
             let value = bundle.world.resources.get(name)?;
-            field.as_ref().map_or_else(|| Some(value.clone()), |field| value.get(field).cloned())
+            field
+                .as_ref()
+                .map_or_else(|| Some(value.clone()), |field| value.get(field).cloned())
         }
-        UiBindingIr::Component { entity, component, field, .. } => {
-            let value = bundle.world.entities.iter().find(|candidate| candidate.id == *entity)?.components.value(component)?;
-            field.as_ref().map_or_else(|| Some(value.clone()), |field| value.get(field).cloned())
+        UiBindingIr::Component {
+            entity,
+            component,
+            field,
+            ..
+        } => {
+            let value = bundle
+                .world
+                .entities
+                .iter()
+                .find(|candidate| candidate.id == *entity)?
+                .components
+                .value(component)?;
+            field
+                .as_ref()
+                .map_or_else(|| Some(value.clone()), |field| value.get(field).cloned())
         }
     }
 }
@@ -257,7 +321,9 @@ fn native_ui_effect_predicate_passes(
 ) -> bool {
     let value = if let Some(resource) = predicate.resource.as_ref() {
         bundle.world.resources.get(resource).cloned()
-    } else if let (Some(entity), Some(component)) = (predicate.entity.as_ref(), predicate.component.as_ref()) {
+    } else if let (Some(entity), Some(component)) =
+        (predicate.entity.as_ref(), predicate.component.as_ref())
+    {
         bundle
             .world
             .entities
@@ -267,17 +333,20 @@ fn native_ui_effect_predicate_passes(
     } else {
         None
     };
-    let value = predicate
-        .field
-        .as_ref()
-        .map_or(value.clone(), |field| value.as_ref().and_then(|value| value.get(field)).cloned());
+    let value = predicate.field.as_ref().map_or(value.clone(), |field| {
+        value.as_ref().and_then(|value| value.get(field)).cloned()
+    });
     match predicate.equals.as_ref() {
         Some(expected) => value.as_ref() == Some(expected),
         None => value.is_some_and(|value| value.as_bool().unwrap_or(!value.is_null())),
     }
 }
 
-fn spawn_native_ui_shadow_layer(world: &mut World, node: &UiNodeIr, shadow: &NativeUiRenderedShadow) -> Entity {
+fn spawn_native_ui_shadow_layer(
+    world: &mut World,
+    node: &UiNodeIr,
+    shadow: &NativeUiRenderedShadow,
+) -> Entity {
     let blur = shadow.blur.unwrap_or(0.0).max(0.0);
     let spread = shadow.spread.unwrap_or(0.0);
     let extent = (blur + spread).max(0.0);
@@ -316,7 +385,11 @@ fn spawn_native_ui_shadow_layer(world: &mut World, node: &UiNodeIr, shadow: &Nat
         .id()
 }
 
-fn spawn_native_ui_gradient_layer(world: &mut World, node: &UiNodeIr, gradient: &NativeUiRenderedGradient) -> Entity {
+fn spawn_native_ui_gradient_layer(
+    world: &mut World,
+    node: &UiNodeIr,
+    gradient: &NativeUiRenderedGradient,
+) -> Entity {
     let texture = native_ui_gradient_texture(world, gradient);
     world
         .spawn((
@@ -370,10 +443,18 @@ fn native_ui_shadow_pixels() -> Vec<u8> {
     pixels
 }
 
-fn native_ui_gradient_texture(world: &mut World, gradient: &NativeUiRenderedGradient) -> Handle<Image> {
+fn native_ui_gradient_texture(
+    world: &mut World,
+    gradient: &NativeUiRenderedGradient,
+) -> Handle<Image> {
     let angle = gradient.angle.unwrap_or(180.0);
     let key = format!("{}|{}|{}", gradient.from, gradient.to, angle.to_bits());
-    if let Some(handle) = world.resource::<NativeUiVisualAssetCache>().gradients.get(&key).cloned() {
+    if let Some(handle) = world
+        .resource::<NativeUiVisualAssetCache>()
+        .gradients
+        .get(&key)
+        .cloned()
+    {
         return handle;
     }
     const SIZE: u32 = 64;
@@ -395,7 +476,10 @@ fn native_ui_gradient_texture(world: &mut World, gradient: &NativeUiRenderedGrad
                 (0.5 + position.dot(direction) / normalization).clamp(0.0, 1.0)
             };
             for channel in 0..4 {
-                pixels.push((from[channel] as f32 + (to[channel] as f32 - from[channel] as f32) * t).round() as u8);
+                pixels.push(
+                    (from[channel] as f32 + (to[channel] as f32 - from[channel] as f32) * t).round()
+                        as u8,
+                );
             }
         }
     }
@@ -407,9 +491,18 @@ fn native_ui_gradient_texture(world: &mut World, gradient: &NativeUiRenderedGrad
     handle
 }
 
-fn add_native_ui_image(world: &mut World, width: u32, height: u32, pixels: Vec<u8>) -> Handle<Image> {
+fn add_native_ui_image(
+    world: &mut World,
+    width: u32,
+    height: u32,
+    pixels: Vec<u8>,
+) -> Handle<Image> {
     let image = Image::new(
-        Extent3d { width, height, depth_or_array_layers: 1 },
+        Extent3d {
+            width,
+            height,
+            depth_or_array_layers: 1,
+        },
         TextureDimension::D2,
         pixels,
         TextureFormat::Rgba8UnormSrgb,
@@ -422,8 +515,14 @@ fn color_rgba8(value: &str) -> [u8; 4] {
     let value = value.strip_prefix('#').unwrap_or(value);
     match value.len() {
         6 | 8 => {
-            let channel = |offset| u8::from_str_radix(&value[offset..offset + 2], 16).unwrap_or(255);
-            [channel(0), channel(2), channel(4), if value.len() == 8 { channel(6) } else { 255 }]
+            let channel =
+                |offset| u8::from_str_radix(&value[offset..offset + 2], 16).unwrap_or(255);
+            [
+                channel(0),
+                channel(2),
+                channel(4),
+                if value.len() == 8 { channel(6) } else { 255 },
+            ]
         }
         _ => [255, 255, 255, 255],
     }

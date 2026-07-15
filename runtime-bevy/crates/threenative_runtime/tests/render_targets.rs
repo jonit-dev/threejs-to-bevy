@@ -142,7 +142,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         .find(|entity| entity.id == "camera.monitor")
         .and_then(|entity| entity.components.camera.as_ref())
         .expect("monitor camera");
-    let target = camera_render_target(camera, &registry).expect("render target");
+    let target = camera_render_target(camera, registry).expect("render target");
     assert!(matches!(target, RenderTarget::Image(_)));
     let depth_camera = bundle
         .world
@@ -151,7 +151,7 @@ fn should_map_camera_target_to_bevy_image_output() {
         .find(|entity| entity.id == "camera.depth")
         .and_then(|entity| entity.components.camera.as_ref())
         .expect("depth camera");
-    let depth_target = camera_render_target(depth_camera, &registry).expect("depth render target");
+    let depth_target = camera_render_target(depth_camera, registry).expect("depth render target");
     assert!(matches!(depth_target, RenderTarget::Image(_)));
     let depth_handle = registry.images.get("rt.depth").expect("depth target image");
     let depth_image = app

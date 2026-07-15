@@ -67,106 +67,7 @@ fn spawn_node(
             .id(),
     };
 
-    {
-        let mut entity_mut = world.entity_mut(entity);
-        entity_mut.insert((
-            ThreeNativeId(node.id.clone()),
-            NativeUiKind(node.kind.clone()),
-            Name::new(node.id.clone()),
-        ));
-        if let Some(action) = node.action.as_ref() {
-            entity_mut.insert(NativeUiAction(action.clone()));
-        }
-        if let Some(disabled) = node.disabled {
-            entity_mut.insert(NativeUiDisabled(disabled));
-        }
-        if let Some(accessibility) = accessibility_node(node) {
-            entity_mut.insert(accessibility);
-        }
-        if let Some(src) = node.src.as_ref() {
-            entity_mut.insert(NativeUiImageSrc(src.clone()));
-        }
-        if let Some(image) = node.image.as_ref() {
-            entity_mut.insert(native_ui_image_metadata(image));
-        }
-        if let Some(focusable) = node.focusable {
-            entity_mut.insert(NativeUiFocusable(focusable));
-        }
-        if let Some(navigation) = node.navigation.as_ref() {
-            entity_mut.insert(NativeUiNavigation {
-                down: navigation.down.clone(),
-                left: navigation.left.clone(),
-                right: navigation.right.clone(),
-                up: navigation.up.clone(),
-            });
-        }
-        if node.kind == "slider" || node.kind == "scrollbar" {
-            entity_mut.insert(NativeUiWidget {
-                kind: node.kind.clone(),
-                max: node.max.unwrap_or(1.0),
-                min: node.min.unwrap_or(0.0),
-                orientation: node
-                    .orientation
-                    .clone()
-                    .unwrap_or_else(|| "horizontal".to_owned()),
-                step: node.step,
-                value: node.value.unwrap_or(node.min.unwrap_or(0.0)),
-                value_text: node.value_text.clone(),
-            });
-        }
-        if node.kind == "textInput" {
-            entity_mut.insert(NativeUiWidget {
-                kind: node.kind.clone(),
-                max: 0.0,
-                min: 0.0,
-                orientation: "horizontal".to_owned(),
-                step: None,
-                value: 0.0,
-                value_text: node.text.clone().or_else(|| node.value_text.clone()),
-            });
-        }
-        if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
-            entity_mut.insert(ZIndex::Local(z_index));
-        }
-        if let Some(gradient) = node
-            .style
-            .as_ref()
-            .and_then(|style| style.gradient.as_ref())
-        {
-            entity_mut.insert(NativeUiRenderedGradient {
-                angle: gradient.angle,
-                from: gradient.from.clone(),
-                kind: gradient.kind.clone(),
-                to: gradient.to.clone(),
-            });
-        }
-        if let Some(shadow) = node.style.as_ref().and_then(|style| style.shadow.as_ref()) {
-            entity_mut.insert(NativeUiRenderedShadow {
-                blur: shadow.blur,
-                color: shadow.color.clone(),
-                offset_x: shadow.offset_x,
-                offset_y: shadow.offset_y,
-                spread: shadow.spread,
-            });
-        }
-        if let Some(text_style) = rendered_text_style(node, fonts) {
-            entity_mut.insert(text_style);
-        }
-        if node
-            .layout
-            .as_ref()
-            .and_then(|layout| layout.overflow.as_deref())
-            == Some("scroll")
-        {
-            entity_mut.insert(NativeUiScrollContainer { offset_y: 0.0 });
-        }
-        if node.kind == "bar" {
-            entity_mut.insert(NativeUiBar {
-                value: node.value.unwrap_or(0.0),
-                max: node.max.unwrap_or(1.0),
-            });
-        }
-    }
+    insert_ui_node_components(world, entity, node, fonts);
 
     spawn_native_ui_visual_layers(world, entity, node);
     spawn_runtime_children(world, entity, node, fonts);
@@ -315,7 +216,11 @@ fn accessibility_node(node: &UiNodeIr) -> Option<AccessibilityNode> {
     if let Some(value) = node.value {
         builder.set_numeric_value(f64::from(value));
     }
-    if let Some(value_text) = node.value_text.as_ref().or(node.text.as_ref().filter(|_| node.kind == "textInput")) {
+    if let Some(value_text) = node
+        .value_text
+        .as_ref()
+        .or(node.text.as_ref().filter(|_| node.kind == "textInput"))
+    {
         builder.set_value(value_text.clone());
     }
     Some(AccessibilityNode::from(builder))
@@ -459,5 +364,111 @@ fn apply_layout(style: &mut Style, layout: Option<&threenative_loader::UiLayoutI
             "scroll" => Overflow::clip_y(),
             _ => Overflow::visible(),
         };
+    }
+}
+
+fn insert_ui_node_components(
+    world: &mut World,
+    entity: Entity,
+    node: &UiNodeIr,
+    fonts: &[UiFontAssetIr],
+) {
+    let mut entity_mut = world.entity_mut(entity);
+    entity_mut.insert((
+        ThreeNativeId(node.id.clone()),
+        NativeUiKind(node.kind.clone()),
+        Name::new(node.id.clone()),
+    ));
+    if let Some(action) = node.action.as_ref() {
+        entity_mut.insert(NativeUiAction(action.clone()));
+    }
+    if let Some(disabled) = node.disabled {
+        entity_mut.insert(NativeUiDisabled(disabled));
+    }
+    if let Some(accessibility) = accessibility_node(node) {
+        entity_mut.insert(accessibility);
+    }
+    if let Some(src) = node.src.as_ref() {
+        entity_mut.insert(NativeUiImageSrc(src.clone()));
+    }
+    if let Some(image) = node.image.as_ref() {
+        entity_mut.insert(native_ui_image_metadata(image));
+    }
+    if let Some(focusable) = node.focusable {
+        entity_mut.insert(NativeUiFocusable(focusable));
+    }
+    if let Some(navigation) = node.navigation.as_ref() {
+        entity_mut.insert(NativeUiNavigation {
+            down: navigation.down.clone(),
+            left: navigation.left.clone(),
+            right: navigation.right.clone(),
+            up: navigation.up.clone(),
+        });
+    }
+    if node.kind == "slider" || node.kind == "scrollbar" {
+        entity_mut.insert(NativeUiWidget {
+            kind: node.kind.clone(),
+            max: node.max.unwrap_or(1.0),
+            min: node.min.unwrap_or(0.0),
+            orientation: node
+                .orientation
+                .clone()
+                .unwrap_or_else(|| "horizontal".to_owned()),
+            step: node.step,
+            value: node.value.unwrap_or(node.min.unwrap_or(0.0)),
+            value_text: node.value_text.clone(),
+        });
+    }
+    if node.kind == "textInput" {
+        entity_mut.insert(NativeUiWidget {
+            kind: node.kind.clone(),
+            max: 0.0,
+            min: 0.0,
+            orientation: "horizontal".to_owned(),
+            step: None,
+            value: 0.0,
+            value_text: node.text.clone().or_else(|| node.value_text.clone()),
+        });
+    }
+    if let Some(z_index) = node.layout.as_ref().and_then(|layout| layout.z_index) {
+        entity_mut.insert(ZIndex::Local(z_index));
+    }
+    if let Some(gradient) = node
+        .style
+        .as_ref()
+        .and_then(|style| style.gradient.as_ref())
+    {
+        entity_mut.insert(NativeUiRenderedGradient {
+            angle: gradient.angle,
+            from: gradient.from.clone(),
+            kind: gradient.kind.clone(),
+            to: gradient.to.clone(),
+        });
+    }
+    if let Some(shadow) = node.style.as_ref().and_then(|style| style.shadow.as_ref()) {
+        entity_mut.insert(NativeUiRenderedShadow {
+            blur: shadow.blur,
+            color: shadow.color.clone(),
+            offset_x: shadow.offset_x,
+            offset_y: shadow.offset_y,
+            spread: shadow.spread,
+        });
+    }
+    if let Some(text_style) = rendered_text_style(node, fonts) {
+        entity_mut.insert(text_style);
+    }
+    if node
+        .layout
+        .as_ref()
+        .and_then(|layout| layout.overflow.as_deref())
+        == Some("scroll")
+    {
+        entity_mut.insert(NativeUiScrollContainer { offset_y: 0.0 });
+    }
+    if node.kind == "bar" {
+        entity_mut.insert(NativeUiBar {
+            value: node.value.unwrap_or(0.0),
+            max: node.max.unwrap_or(1.0),
+        });
     }
 }

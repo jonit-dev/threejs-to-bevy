@@ -5,6 +5,7 @@ use std::{
 };
 
 use bevy::{
+    ecs::system::SystemParam,
     input::{
         ButtonInput,
         gamepad::{GamepadAxis, GamepadAxisType, GamepadButton, GamepadButtonType, Gamepads},
@@ -320,19 +321,17 @@ impl NativeTouchGestureTracker {
             }
             self.active_single = None;
         } else {
-            if self.previous_touch_count == 1 {
-                if let Some(active) = self.active_single.as_ref() {
-                    if let Some(event) = classify_single_touch(active, time_ms) {
-                        events.push(event);
-                    }
-                }
+            if self.previous_touch_count == 1
+                && let Some(active) = self.active_single.as_ref()
+                && let Some(event) = classify_single_touch(active, time_ms)
+            {
+                events.push(event);
             }
-            if self.previous_touch_count >= 2 {
-                if let Some(active) = self.active_pinch.as_ref() {
-                    if let Some(event) = classify_pinch(active, time_ms) {
-                        events.push(event);
-                    }
-                }
+            if self.previous_touch_count >= 2
+                && let Some(active) = self.active_pinch.as_ref()
+                && let Some(event) = classify_pinch(active, time_ms)
+            {
+                events.push(event);
             }
             self.active_single = None;
             self.active_pinch = None;
@@ -508,9 +507,7 @@ pub fn report_native_gamepad_capabilities(
         .map(|gamepads| {
             gamepads
                 .iter()
-                .map(|gamepad| NativeGamepadDeviceReport {
-                    index: gamepad.id as usize,
-                })
+                .map(|gamepad| NativeGamepadDeviceReport { index: gamepad.id })
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
@@ -909,32 +906,42 @@ fn gamepad_control_kind(control: &str) -> &'static str {
     "unknown"
 }
 
-pub fn capture_native_input(
-    input: Option<Res<NativeInputMap>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
-    mouse_buttons: Res<ButtonInput<MouseButton>>,
-    overlay_capture: Option<Res<crate::overlay_host::NativeOverlayInputCapture>>,
-    gamepads: Option<Res<Gamepads>>,
-    gamepad_buttons: Option<Res<ButtonInput<GamepadButton>>>,
-    gamepad_button_axes: Option<Res<Axis<GamepadButton>>>,
-    gamepad_axes: Option<Res<Axis<GamepadAxis>>>,
-    touch: Option<Res<NativeTouchState>>,
-    mut mouse_motion: EventReader<MouseMotion>,
-    mut cursor_moved: EventReader<CursorMoved>,
-    windows: Query<&Window, With<PrimaryWindow>>,
-    mut state: ResMut<NativeInputState>,
-) {
-    let Some(input) = input else {
+#[derive(SystemParam)]
+pub struct NativeInputCaptureParams<'w, 's> {
+    cursor_moved: EventReader<'w, 's, CursorMoved>,
+    gamepad_axes: Option<Res<'w, Axis<GamepadAxis>>>,
+    gamepad_button_axes: Option<Res<'w, Axis<GamepadButton>>>,
+    gamepad_buttons: Option<Res<'w, ButtonInput<GamepadButton>>>,
+    gamepads: Option<Res<'w, Gamepads>>,
+    input: Option<Res<'w, NativeInputMap>>,
+    keyboard: Res<'w, ButtonInput<KeyCode>>,
+    mouse_buttons: Res<'w, ButtonInput<MouseButton>>,
+    mouse_motion: EventReader<'w, 's, MouseMotion>,
+    overlay_capture: Option<Res<'w, crate::overlay_host::NativeOverlayInputCapture>>,
+    state: ResMut<'w, NativeInputState>,
+    touch: Option<Res<'w, NativeTouchState>>,
+    windows: Query<'w, 's, &'static Window, With<PrimaryWindow>>,
+}
+
+pub fn capture_native_input(mut params: NativeInputCaptureParams<'_, '_>) {
+    let Some(input) = params.input.as_deref() else {
         return;
     };
 
-    let pointer_delta = mouse_motion
+    let pointer_delta = params
+        .mouse_motion
         .read()
         .fold(Vec2::ZERO, |total, event| total + event.delta);
-    if let Some(position) = cursor_moved.read().last().map(|event| event.position) {
-        state.pointer_position = Some(position);
+    if let Some(position) = params
+        .cursor_moved
+        .read()
+        .last()
+        .map(|event| event.position)
+    {
+        params.state.pointer_position = Some(position);
     }
-    let captures_pointer = overlay_capture
+    let captures_pointer = params
+        .overlay_capture
         .as_deref()
         .is_some_and(|capture| capture.pointer);
     let pointer_delta = if captures_pointer {
@@ -943,22 +950,23 @@ pub fn capture_native_input(
         pointer_delta
     };
     let pointer_position = (!captures_pointer)
-        .then_some(state.pointer_position)
+        .then_some(params.state.pointer_position)
         .flatten();
-    let window_size = windows
+    let window_size = params
+        .windows
         .get_single()
         .ok()
         .map(|window| Vec2::new(window.width().max(1.0), window.height().max(1.0)));
 
-    let previous_actions = std::mem::take(&mut state.actions);
-    state.pressed_actions.clear();
-    state.released_actions.clear();
-    state.axes.clear();
+    let previous_actions = std::mem::take(&mut params.state.actions);
+    params.state.pressed_actions.clear();
+    params.state.released_actions.clear();
+    params.state.axes.clear();
     let gamepad = match (
-        &gamepads,
-        &gamepad_buttons,
-        &gamepad_button_axes,
-        &gamepad_axes,
+        &params.gamepads,
+        &params.gamepad_buttons,
+        &params.gamepad_button_axes,
+        &params.gamepad_axes,
     ) {
         (Some(gamepads), Some(buttons), Some(button_axes), Some(axes)) => Some(GamepadInput {
             gamepads,
@@ -970,60 +978,81 @@ pub fn capture_native_input(
     };
     let empty_keyboard = ButtonInput::<KeyCode>::default();
     let empty_mouse_buttons = ButtonInput::<MouseButton>::default();
-    let keyboard = if overlay_capture
+    let keyboard = if params
+        .overlay_capture
         .as_deref()
         .is_some_and(|capture| capture.keyboard)
     {
         &empty_keyboard
     } else {
-        keyboard.as_ref()
+        params.keyboard.as_ref()
     };
-    let mouse_buttons = if overlay_capture
+    let mouse_buttons = if params
+        .overlay_capture
         .as_deref()
         .is_some_and(|capture| capture.pointer)
     {
         &empty_mouse_buttons
     } else {
-        mouse_buttons.as_ref()
+        params.mouse_buttons.as_ref()
     };
 
-    for action in &input.0.actions {
-        if action.bindings.iter().any(|binding| {
-            binding_pressed(
-                binding,
-                keyboard,
-                mouse_buttons,
-                gamepad.as_ref(),
-                touch.as_deref(),
-            )
-        }) {
-            state.actions.insert(action.id.clone());
-        }
+    update_native_actions(
+        &input.0,
+        &mut params.state,
+        &previous_actions,
+        keyboard,
+        mouse_buttons,
+        gamepad.as_ref(),
+        params.touch.as_deref(),
+    );
+    update_native_axes(
+        &input.0,
+        &mut params.state,
+        NativeAxisInput {
+            gamepad: gamepad.as_ref(),
+            keyboard,
+            mouse_buttons,
+            pointer_delta,
+            pointer_position,
+            touch: params.touch.as_deref(),
+            window_size,
+        },
+    );
+}
 
-        if state.actions.contains(&action.id) && !previous_actions.contains(&action.id) {
-            state.pressed_actions.insert(action.id.clone());
-        }
-        if !state.actions.contains(&action.id) && previous_actions.contains(&action.id) {
-            state.released_actions.insert(action.id.clone());
-        }
-    }
-    for axis in &input.0.axes {
+struct NativeAxisInput<'a> {
+    gamepad: Option<&'a GamepadInput<'a>>,
+    keyboard: &'a ButtonInput<KeyCode>,
+    mouse_buttons: &'a ButtonInput<MouseButton>,
+    pointer_delta: Vec2,
+    pointer_position: Option<Vec2>,
+    touch: Option<&'a NativeTouchState>,
+    window_size: Option<Vec2>,
+}
+
+fn update_native_axes(
+    input_map: &InputIr,
+    state: &mut NativeInputState,
+    input: NativeAxisInput<'_>,
+) {
+    for axis in &input_map.axes {
         let positive = axis.positive.iter().any(|binding| {
             binding_pressed(
                 binding,
-                keyboard,
-                mouse_buttons,
-                gamepad.as_ref(),
-                touch.as_deref(),
+                input.keyboard,
+                input.mouse_buttons,
+                input.gamepad,
+                input.touch,
             )
         });
         let negative = axis.negative.iter().any(|binding| {
             binding_pressed(
                 binding,
-                keyboard,
-                mouse_buttons,
-                gamepad.as_ref(),
-                touch.as_deref(),
+                input.keyboard,
+                input.mouse_buttons,
+                input.gamepad,
+                input.touch,
             )
         });
         let digital_value = match (positive, negative) {
@@ -1037,33 +1066,33 @@ pub fn capture_native_input(
             .filter_map(|binding| {
                 binding_axis_value(
                     binding,
-                    pointer_delta,
-                    pointer_position,
-                    window_size,
-                    gamepad.as_ref(),
-                    touch.as_deref(),
+                    input.pointer_delta,
+                    input.pointer_position,
+                    input.window_size,
+                    input.gamepad,
+                    input.touch,
                 )
             })
             .chain(axis.positive.iter().filter_map(|binding| {
                 signed_binding_axis_value(
                     binding,
                     1.0,
-                    pointer_delta,
-                    pointer_position,
-                    window_size,
-                    gamepad.as_ref(),
-                    touch.as_deref(),
+                    input.pointer_delta,
+                    input.pointer_position,
+                    input.window_size,
+                    input.gamepad,
+                    input.touch,
                 )
             }))
             .chain(axis.negative.iter().filter_map(|binding| {
                 signed_binding_axis_value(
                     binding,
                     -1.0,
-                    pointer_delta,
-                    pointer_position,
-                    window_size,
-                    gamepad.as_ref(),
-                    touch.as_deref(),
+                    input.pointer_delta,
+                    input.pointer_position,
+                    input.window_size,
+                    input.gamepad,
+                    input.touch,
                 )
             }))
             .find(|value| *value != 0.0)
@@ -1082,6 +1111,32 @@ pub fn capture_native_input(
                     value
                 },
             );
+        }
+    }
+}
+
+fn update_native_actions(
+    input: &InputIr,
+    state: &mut NativeInputState,
+    previous_actions: &HashSet<String>,
+    keyboard: &ButtonInput<KeyCode>,
+    mouse_buttons: &ButtonInput<MouseButton>,
+    gamepad: Option<&GamepadInput<'_>>,
+    touch: Option<&NativeTouchState>,
+) {
+    for action in &input.actions {
+        if action
+            .bindings
+            .iter()
+            .any(|binding| binding_pressed(binding, keyboard, mouse_buttons, gamepad, touch))
+        {
+            state.actions.insert(action.id.clone());
+        }
+        if state.actions.contains(&action.id) && !previous_actions.contains(&action.id) {
+            state.pressed_actions.insert(action.id.clone());
+        }
+        if !state.actions.contains(&action.id) && previous_actions.contains(&action.id) {
+            state.released_actions.insert(action.id.clone());
         }
     }
 }

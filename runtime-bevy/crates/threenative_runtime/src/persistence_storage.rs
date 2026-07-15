@@ -10,7 +10,7 @@ use std::{
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use thiserror::Error;
-use threenative_loader::{LoadedBundle, LocalDataIr, WorldIr};
+use threenative_loader::{LoadedBundle, LocalDataIr, WorldEntity, WorldIr};
 
 pub const MAX_PERSISTENCE_RECORD_BYTES: usize = 1024 * 1024;
 pub const MAX_PERSISTENCE_SLOTS: usize = 32;
@@ -98,9 +98,12 @@ pub trait NativePersistenceStorage {
     ) -> Result<(), NativePersistenceStorageError>;
 }
 
+type NativePersistenceRecordKey = (String, String, String);
+type NativeMemoryPersistenceRecords = BTreeMap<NativePersistenceRecordKey, Vec<u8>>;
+
 #[derive(Clone, Debug, Default)]
 pub struct NativeMemoryPersistenceStorage {
-    records: Arc<Mutex<BTreeMap<(String, String, String), Vec<u8>>>>,
+    records: Arc<Mutex<NativeMemoryPersistenceRecords>>,
 }
 
 impl NativePersistenceStorage for NativeMemoryPersistenceStorage {
@@ -470,28 +473,36 @@ pub fn apply_record_to_world(
     let mut entities = world.entities.clone();
     for entity in &mut entities {
         if let Some(components) = record.components.get(&entity.id) {
-            for (name, value) in components {
-                let object = value.as_object().ok_or_else(|| {
-                    NativePersistenceStorageError::InvalidRecord(format!(
-                        "component '{name}' on entity '{}' is not an object",
-                        entity.id
-                    ))
-                })?;
-                if entity.components.storage(name) == Some("custom") {
-                    entity.components.extra.insert(name.clone(), value.clone());
-                } else {
-                    entity.components.patch(name, object).map_err(|error| {
-                        NativePersistenceStorageError::InvalidRecord(format!(
-                            "component '{name}' on entity '{}' cannot be restored: {error}",
-                            entity.id
-                        ))
-                    })?;
-                }
-            }
+            apply_saved_components(entity, components)?;
         }
     }
     world.resources = resources;
     world.entities = entities;
+    Ok(())
+}
+
+fn apply_saved_components(
+    entity: &mut WorldEntity,
+    components: &BTreeMap<String, Value>,
+) -> Result<(), NativePersistenceStorageError> {
+    for (name, value) in components {
+        let object = value.as_object().ok_or_else(|| {
+            NativePersistenceStorageError::InvalidRecord(format!(
+                "component '{name}' on entity '{}' is not an object",
+                entity.id
+            ))
+        })?;
+        if entity.components.storage(name) == Some("custom") {
+            entity.components.extra.insert(name.clone(), value.clone());
+        } else {
+            entity.components.patch(name, object).map_err(|error| {
+                NativePersistenceStorageError::InvalidRecord(format!(
+                    "component '{name}' on entity '{}' cannot be restored: {error}",
+                    entity.id
+                ))
+            })?;
+        }
+    }
     Ok(())
 }
 
@@ -620,15 +631,14 @@ fn validate_setting_value(
             setting.key, setting.kind
         )));
     }
-    if let Some(number) = value.as_f64() {
-        if setting.min.is_some_and(|minimum| number < minimum)
-            || setting.max.is_some_and(|maximum| number > maximum)
-        {
-            return Err(NativePersistenceStorageError::InvalidRecord(format!(
-                "setting '{}' is outside its declared range",
-                setting.key
-            )));
-        }
+    if let Some(number) = value.as_f64()
+        && (setting.min.is_some_and(|minimum| number < minimum)
+            || setting.max.is_some_and(|maximum| number > maximum))
+    {
+        return Err(NativePersistenceStorageError::InvalidRecord(format!(
+            "setting '{}' is outside its declared range",
+            setting.key
+        )));
     }
     if !setting.enum_values.is_empty()
         && !value.as_str().is_some_and(|value| {

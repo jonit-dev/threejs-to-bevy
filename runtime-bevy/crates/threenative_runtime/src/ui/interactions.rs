@@ -1,3 +1,15 @@
+type NativeUiActionInteractions<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static Interaction,
+        &'static NativeUiAction,
+        &'static ThreeNativeId,
+        Option<&'static NativeUiDisabled>,
+    ),
+    (Changed<Interaction>, With<Button>),
+>;
+
 pub fn scroll_native_ui(
     mut mouse_wheel_events: EventReader<MouseWheel>,
     mut containers: Query<(&mut NativeUiScrollContainer, &Children, &Node)>,
@@ -29,15 +41,7 @@ pub fn scroll_native_ui(
 
 pub fn dispatch_native_ui_actions(
     mut queue: ResMut<NativeUiActionQueue>,
-    interactions: Query<
-        (
-            &Interaction,
-            &NativeUiAction,
-            &ThreeNativeId,
-            Option<&NativeUiDisabled>,
-        ),
-        (Changed<Interaction>, With<Button>),
-    >,
+    interactions: NativeUiActionInteractions,
 ) {
     for (interaction, action, id, disabled) in &interactions {
         if *interaction == Interaction::Pressed && disabled.is_none_or(|disabled| !disabled.0) {
@@ -167,14 +171,14 @@ fn spawn_runtime_children(
     node: &UiNodeIr,
     fonts: &[UiFontAssetIr],
 ) {
-    if node.kind == "button" || node.kind == "textInput" || node.kind == "touchControl" {
-        if let Some(label) = node.label.as_ref() {
-            let label = world
-                .spawn(text_bundle(world, label.clone(), node, fonts))
-                .insert(Name::new(format!("{}.label", node.id)))
-                .id();
-            world.entity_mut(parent).push_children(&[label]);
-        }
+    if (node.kind == "button" || node.kind == "textInput" || node.kind == "touchControl")
+        && let Some(label) = node.label.as_ref()
+    {
+        let label = world
+            .spawn(text_bundle(world, label.clone(), node, fonts))
+            .insert(Name::new(format!("{}.label", node.id)))
+            .id();
+        world.entity_mut(parent).push_children(&[label]);
     }
 
     if node.kind == "bar" {
@@ -240,7 +244,7 @@ fn spawn_minimap_children(world: &mut World, parent: Entity, node: &UiNodeIr) {
             children.push(dot);
         }
     }
-    let static_markers = minimap.markers.iter().cloned().collect::<Vec<_>>();
+    let static_markers = minimap.markers.to_vec();
     for index in 0..NATIVE_MINIMAP_MARKER_CAPACITY {
         let marker = static_markers.get(index);
         let radius = marker

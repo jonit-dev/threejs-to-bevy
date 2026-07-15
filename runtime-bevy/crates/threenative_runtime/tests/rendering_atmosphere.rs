@@ -176,6 +176,13 @@ fn rendering_should_map_atmosphere_profile_to_bevy_observation() {
             .count(),
         1
     );
+    let named_sun = app
+        .world_mut()
+        .query::<(&Name, &DirectionalLight)>()
+        .iter(app.world())
+        .find(|(name, _)| name.as_str() == "sun.forest")
+        .expect("authored atmosphere sun should retain its stable name");
+    assert!(named_sun.1.shadows_enabled);
     assert!(
         lights
             .iter()

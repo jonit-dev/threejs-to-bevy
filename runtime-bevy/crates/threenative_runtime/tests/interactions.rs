@@ -277,6 +277,65 @@ fn should_preserve_quaternion_rotation_in_set_transform() {
 }
 
 #[test]
+fn should_reject_the_whole_transform_patch_before_applying_valid_fields() {
+    let mut fixture = support::load_conformance_fixture("physics-events");
+    fixture.bundle.interactions = Some(interaction(
+        "atomic-transform",
+        json!({ "kind": "distance3d", "radius": 2, "source": { "entity": "player" }, "target": { "entity": "enemy" } }),
+        vec![
+            json!({ "kind": "setTransform", "target": "source", "position": [5, 6, 7], "rotation": [0, 1] }),
+        ],
+    ));
+    let original = fixture
+        .bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .unwrap()
+        .components
+        .transform
+        .clone();
+    let mut state = NativeInteractionRuntimeState::default();
+
+    let rejected = step_bundle_interactions(&mut fixture.bundle, 0, &[], &mut state, None, None);
+    assert!(rejected[0].effects.is_empty());
+    let after_rejected = fixture
+        .bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .unwrap()
+        .components
+        .transform
+        .as_ref()
+        .unwrap();
+    assert_eq!(after_rejected.position, original.as_ref().unwrap().position);
+    assert_eq!(after_rejected.rotation, original.as_ref().unwrap().rotation);
+    assert_eq!(after_rejected.scale, original.as_ref().unwrap().scale);
+
+    fixture.bundle.interactions.as_mut().unwrap().interactions[0].effects =
+        vec![json!({ "kind": "setTransform", "target": "source", "rotation": [0, 0, 0, 1] })];
+    let applied = step_bundle_interactions(&mut fixture.bundle, 1, &[], &mut state, None, None);
+    assert_eq!(applied[0].effects, vec!["setTransform"]);
+    let transform = fixture
+        .bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "player")
+        .unwrap()
+        .components
+        .transform
+        .as_ref()
+        .unwrap();
+    assert_eq!(transform.position, original.as_ref().unwrap().position);
+    assert_eq!(transform.scale, original.as_ref().unwrap().scale);
+    assert_eq!(transform.rotation, Some([0.0, 0.0, 0.0, 1.0]));
+}
+
+#[test]
 fn should_reject_an_invalid_typed_component_patch_without_consuming_the_gate() {
     let mut fixture = support::load_conformance_fixture("physics-events");
     fixture.bundle.interactions = Some(interaction(

@@ -7,6 +7,7 @@ use std::{
 
 use bevy::{
     app::AppExit,
+    ecs::system::SystemParam,
     pbr::PreviousGlobalTransform,
     prelude::*,
     render::view::screenshot::ScreenshotManager,
@@ -18,7 +19,7 @@ use bevy::{
 use image::GenericImageView;
 use serde::Serialize;
 use threenative_components::ThreeNativeId;
-use threenative_loader::{AssetsManifest, load_bundle};
+use threenative_loader::{AssetsManifest, LoadedBundle, load_bundle};
 use threenative_runtime::{
     NativeDeterministicCaptureClock, app_from_bundle,
     assets::{TextureAssetControlsRegistry, load_texture_asset},
@@ -149,43 +150,40 @@ struct ModelAssetsReady(bool);
 #[derive(Default, Resource)]
 struct RequiredModelAssets(Vec<Handle<Scene>>);
 
+struct CaptureArguments {
+    bookmark_id: String,
+    bundle_path: String,
+    captures: Vec<CaptureTarget>,
+    mesh_lod_trace: Option<CaptureMeshLodTraceOptions>,
+    trace: Option<CaptureTransformTraceOptions>,
+    ui_state: Option<CaptureUiStateOptions>,
+    viewport: Option<CaptureViewportOptions>,
+}
+
 fn main() -> ExitCode {
-    let mut args = env::args().collect::<Vec<_>>();
-    let trace_options = match take_transform_trace_options(&mut args) {
+    let options = match parse_capture_arguments(env::args().collect()) {
         Ok(options) => options,
         Err(code) => return code,
     };
-    let mesh_lod_trace_options = match take_mesh_lod_trace_options(&mut args) {
-        Ok(options) => options,
-        Err(code) => return code,
-    };
-    let viewport_options = match take_viewport_options(&mut args) {
-        Ok(options) => options,
-        Err(code) => return code,
-    };
-    let ui_state_options = match take_ui_state_options(&mut args) {
-        Ok(options) => options,
-        Err(code) => return code,
-    };
+    run_capture(options)
+}
+
+fn parse_capture_arguments(mut args: Vec<String>) -> Result<CaptureArguments, ExitCode> {
+    let trace = take_transform_trace_options(&mut args)?;
+    let mesh_lod_trace = take_mesh_lod_trace_options(&mut args)?;
+    let viewport = take_viewport_options(&mut args)?;
+    let ui_state = take_ui_state_options(&mut args)?;
     if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
             "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--ui-state <node-id> <focus|hover|selected>] [--transform-trace <entity-id> <output-json>] [--mesh-lod-trace <output-json>]"
         );
-        return ExitCode::from(2);
+        return Err(ExitCode::from(2));
     }
 
-    let bundle_path = &args[1];
-    let bookmark_id = &args[2];
     let first_output = PathBuf::from(&args[3]);
-    let first_frame = match parse_frame(args.get(4), 120) {
-        Ok(frame) => frame,
-        Err(code) => return code,
-    };
+    let first_frame = parse_frame(args.get(4), 120)?;
     let captures = if args.len() == 7 {
-        let second_frame = match parse_frame(Some(&args[6]), first_frame.saturating_add(60)) {
-            Ok(frame) => frame,
-            Err(code) => return code,
-        };
+        let second_frame = parse_frame(Some(&args[6]), first_frame.saturating_add(60))?;
         vec![
             CaptureTarget {
                 assets_ready_at_request: None,
@@ -214,6 +212,30 @@ fn main() -> ExitCode {
             validated: false,
         }]
     };
+    Ok(CaptureArguments {
+        bookmark_id: args[2].clone(),
+        bundle_path: args[1].clone(),
+        captures,
+        mesh_lod_trace,
+        trace,
+        ui_state,
+        viewport,
+    })
+}
+
+fn run_capture(options: CaptureArguments) -> ExitCode {
+    let CaptureArguments {
+        bookmark_id,
+        bundle_path,
+        captures,
+        mesh_lod_trace,
+        trace,
+        ui_state,
+        viewport,
+    } = options;
+    let first_frame = captures
+        .first()
+        .map_or(MIN_CAPTURE_FRAME, |capture| capture.request_frame);
     let max_frame = captures
         .iter()
         .map(|capture| capture.request_frame.max(MIN_CAPTURE_FRAME))
@@ -221,7 +243,7 @@ fn main() -> ExitCode {
         .unwrap_or(first_frame.max(MIN_CAPTURE_FRAME))
         .saturating_add(600);
 
-    let bundle = match load_bundle(bundle_path) {
+    let bundle = match load_bundle(&bundle_path) {
         Ok(bundle) => bundle,
         Err(error) => {
             eprintln!("{error}");
@@ -232,14 +254,14 @@ fn main() -> ExitCode {
         .runtime_config
         .as_ref()
         .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
-    let mut app = match app_from_bundle(bundle_path) {
+    let mut app = match app_from_bundle(&bundle_path) {
         Ok(app) => app,
         Err(error) => {
             eprintln!("{error}");
             return ExitCode::from(1);
         }
     };
-    if let Some(viewport) = viewport_options {
+    if let Some(viewport) = viewport {
         let world = app.world_mut();
         let mut query = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
         if let Some(mut window) = query.iter_mut(world).next() {
@@ -247,20 +269,23 @@ fn main() -> ExitCode {
         }
     }
 
-    if !apply_environment_bookmark(app.world_mut(), &bundle, bookmark_id)
+    if !apply_environment_bookmark(app.world_mut(), &bundle, &bookmark_id)
         && !bundle
             .world
             .entities
             .iter()
-            .any(|entity| entity.id == *bookmark_id && entity.components.camera.is_some())
+            .any(|entity| entity.id == bookmark_id && entity.components.camera.is_some())
     {
         eprintln!("bookmark '{bookmark_id}' was not found or no camera could be updated");
         return ExitCode::from(1);
     }
-    if let Some(options) = ui_state_options
+    if let Some(options) = ui_state
         && !apply_capture_ui_state(app.world_mut(), &options)
     {
-        eprintln!("UI node '{}' was not found for capture state", options.node_id);
+        eprintln!(
+            "UI node '{}' was not found for capture state",
+            options.node_id
+        );
         return ExitCode::from(1);
     }
     for capture in &captures {
@@ -273,13 +298,29 @@ fn main() -> ExitCode {
         .iter()
         .map(|capture| capture.output_path.clone())
         .collect::<Vec<_>>();
-    let required_model_assets = app
-        .world()
-        .get_resource::<AssetServer>()
-        .map(|asset_server| {
-            required_model_assets(asset_server, &bundle.assets, &bundle.bundle_path)
-        })
-        .unwrap_or_default();
+    configure_capture_app(
+        &mut app,
+        &bundle,
+        captures,
+        max_frame,
+        trace,
+        mesh_lod_trace,
+        fixed_delta_seconds,
+    );
+    app.run();
+    capture_exit_code(&final_output_paths)
+}
+
+fn configure_capture_app(
+    app: &mut App,
+    bundle: &LoadedBundle,
+    captures: Vec<CaptureTarget>,
+    max_frame: u32,
+    trace: Option<CaptureTransformTraceOptions>,
+    mesh_lod_trace: Option<CaptureMeshLodTraceOptions>,
+    fixed_delta_seconds: f32,
+) {
+    let required_model_assets = required_capture_model_assets(app, bundle);
     let stylized_motion_time = env::var("THREENATIVE_CAPTURE_STYLIZED_TIME")
         .ok()
         .and_then(|raw| raw.parse::<f32>().ok())
@@ -308,7 +349,7 @@ fn main() -> ExitCode {
             request_screenshot,
         ),
     );
-    if let Some(options) = trace_options {
+    if let Some(options) = trace {
         app.insert_resource(CaptureTransformTraceState {
             capture_request: None,
             entity_id: options.entity_id,
@@ -322,7 +363,7 @@ fn main() -> ExitCode {
             record_capture_transform_trace.after(TransformSystem::TransformPropagate),
         );
     }
-    if let Some(options) = mesh_lod_trace_options {
+    if let Some(options) = mesh_lod_trace {
         app.insert_resource(CaptureMeshLodTraceState {
             output_path: options.output_path,
             traces: None,
@@ -332,7 +373,9 @@ fn main() -> ExitCode {
             record_capture_mesh_lod_trace.after(select_native_mesh_lod),
         );
     }
-    app.run();
+}
+
+fn capture_exit_code(final_output_paths: &[PathBuf]) -> ExitCode {
     let missing = final_output_paths
         .iter()
         .filter(|path| !screenshot_is_valid(path))
@@ -344,6 +387,15 @@ fn main() -> ExitCode {
         eprintln!("screenshot(s) were not written: {}", missing.join(", "));
         ExitCode::from(1)
     }
+}
+
+fn required_capture_model_assets(app: &App, bundle: &LoadedBundle) -> RequiredModelAssets {
+    app.world()
+        .get_resource::<AssetServer>()
+        .map(|asset_server| {
+            required_model_assets(asset_server, &bundle.assets, &bundle.bundle_path)
+        })
+        .unwrap_or_default()
 }
 
 fn take_transform_trace_options(
@@ -367,6 +419,25 @@ fn take_transform_trace_options(
         entity_id,
         output_path,
     }))
+}
+
+fn take_mesh_lod_trace_options(
+    args: &mut Vec<String>,
+) -> Result<Option<CaptureMeshLodTraceOptions>, ExitCode> {
+    let Some(index) = args.iter().position(|arg| arg == "--mesh-lod-trace") else {
+        return Ok(None);
+    };
+    if index + 1 >= args.len() || args[index + 1].starts_with("--") {
+        eprintln!("--mesh-lod-trace requires <output-json>");
+        return Err(ExitCode::from(2));
+    }
+    let output_path = PathBuf::from(&args[index + 1]);
+    args.drain(index..=index + 1);
+    if args.iter().any(|arg| arg == "--mesh-lod-trace") {
+        eprintln!("--mesh-lod-trace may only be provided once");
+        return Err(ExitCode::from(2));
+    }
+    Ok(Some(CaptureMeshLodTraceOptions { output_path }))
 }
 
 fn take_viewport_options(
@@ -448,7 +519,10 @@ fn apply_capture_ui_state(world: &mut World, options: &CaptureUiStateOptions) ->
             if let Some(mut state) = entity.get_mut::<NativeUiEffectState>() {
                 state.selected = true;
             } else {
-                entity.insert(NativeUiEffectState { selected: true, ..Default::default() });
+                entity.insert(NativeUiEffectState {
+                    selected: true,
+                    ..Default::default()
+                });
             }
         }
     }
@@ -467,23 +541,23 @@ fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
 }
 
 fn prepare_output_path(output_path: &PathBuf) -> Result<(), ExitCode> {
-    if let Some(parent) = output_path.parent() {
-        if let Err(error) = fs::create_dir_all(parent) {
-            eprintln!(
-                "failed to create screenshot directory '{}': {error}",
-                parent.display()
-            );
-            return Err(ExitCode::from(1));
-        }
+    if let Some(parent) = output_path.parent()
+        && let Err(error) = fs::create_dir_all(parent)
+    {
+        eprintln!(
+            "failed to create screenshot directory '{}': {error}",
+            parent.display()
+        );
+        return Err(ExitCode::from(1));
     }
-    if let Err(error) = fs::remove_file(output_path) {
-        if error.kind() != std::io::ErrorKind::NotFound {
-            eprintln!(
-                "failed to remove existing screenshot '{}': {error}",
-                output_path.display()
-            );
-            return Err(ExitCode::from(1));
-        }
+    if let Err(error) = fs::remove_file(output_path)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        eprintln!(
+            "failed to remove existing screenshot '{}': {error}",
+            output_path.display()
+        );
+        return Err(ExitCode::from(1));
     }
     Ok(())
 }
@@ -577,51 +651,55 @@ fn route_capture_ui_to_scene_camera(
     *routed = true;
 }
 
-fn request_screenshot(
-    mut frame: Local<u32>,
-    mut config: ResMut<CaptureConfig>,
-    textures_ready: Res<TextureAssetsReady>,
-    models_ready: Res<ModelAssetsReady>,
-    clock: Res<CaptureClock>,
-    windows: Query<Entity, With<PrimaryWindow>>,
-    mut screenshots: ResMut<ScreenshotManager>,
-    mut exit: EventWriter<AppExit>,
-    trace: Option<Res<CaptureTransformTraceState>>,
-    mesh_lod_trace: Option<Res<CaptureMeshLodTraceState>>,
-) {
-    *frame += 1;
-    if let Ok(window) = windows.get_single() {
-        for capture in &mut config.captures {
+#[derive(SystemParam)]
+struct CaptureRequestParams<'w, 's> {
+    clock: Res<'w, CaptureClock>,
+    config: ResMut<'w, CaptureConfig>,
+    exit: EventWriter<'w, AppExit>,
+    frame: Local<'s, u32>,
+    mesh_lod_trace: Option<Res<'w, CaptureMeshLodTraceState>>,
+    models_ready: Res<'w, ModelAssetsReady>,
+    screenshots: ResMut<'w, ScreenshotManager>,
+    textures_ready: Res<'w, TextureAssetsReady>,
+    trace: Option<Res<'w, CaptureTransformTraceState>>,
+    windows: Query<'w, 's, Entity, With<PrimaryWindow>>,
+}
+
+fn request_screenshot(mut params: CaptureRequestParams<'_, '_>) {
+    *params.frame += 1;
+    if let Ok(window) = params.windows.get_single() {
+        for capture in &mut params.config.captures {
             if capture.validated {
                 continue;
             }
-            let assets_ready = textures_ready.0 && models_ready.0;
-            let should_capture = assets_ready || clock.0.elapsed() >= ASSET_READINESS_GRACE;
+            let assets_ready = params.textures_ready.0 && params.models_ready.0;
+            let should_capture = assets_ready || params.clock.0.elapsed() >= ASSET_READINESS_GRACE;
             let trigger_frame = capture.request_frame.max(MIN_CAPTURE_FRAME);
             if capture.requested_at_frame.is_none()
-                && *frame >= trigger_frame
+                && *params.frame >= trigger_frame
                 && should_capture
                 && capture.retry_count <= MAX_CAPTURE_RETRIES
             {
-                if let Err(error) =
-                    screenshots.save_screenshot_to_disk(window, &capture.output_path)
+                if let Err(error) = params
+                    .screenshots
+                    .save_screenshot_to_disk(window, &capture.output_path)
                 {
                     error!("failed to request screenshot: {error}");
-                    exit.send(AppExit::error());
+                    params.exit.send(AppExit::error());
                     return;
                 }
-                capture.requested_at_frame = Some(*frame);
+                capture.requested_at_frame = Some(*params.frame);
                 capture.assets_ready_at_request = Some(assets_ready);
             }
 
             if let Some(requested_at) = capture.requested_at_frame {
-                if *frame >= requested_at.saturating_add(SCREENSHOT_VALIDATION_DELAY_FRAMES)
+                if *params.frame >= requested_at.saturating_add(SCREENSHOT_VALIDATION_DELAY_FRAMES)
                     && screenshot_is_valid(&capture.output_path)
                 {
                     capture.validated = true;
                     continue;
                 }
-                if *frame >= requested_at.saturating_add(SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES) {
+                if *params.frame >= requested_at.saturating_add(SCREENSHOT_ATTEMPT_TIMEOUT_FRAMES) {
                     let _ = fs::remove_file(&capture.output_path);
                     capture.requested_at_frame = None;
                     capture.retry_count += 1;
@@ -630,29 +708,35 @@ fn request_screenshot(
         }
     }
 
-    if config.captures.iter().all(|capture| capture.validated) {
-        if let Some(trace) = trace
+    if params
+        .config
+        .captures
+        .iter()
+        .all(|capture| capture.validated)
+    {
+        if let Some(trace) = params.trace
             && let Err(error) = write_capture_transform_trace(&trace)
         {
             error!("failed to write transform trace: {error}");
-            exit.send(AppExit::error());
+            params.exit.send(AppExit::error());
             return;
         }
-        if let Some(trace) = mesh_lod_trace {
+        if let Some(trace) = params.mesh_lod_trace {
             let Some(traces) = trace.traces.as_ref() else {
                 error!("mesh LOD trace was not recorded before capture completed");
-                exit.send(AppExit::error());
+                params.exit.send(AppExit::error());
                 return;
             };
             if let Err(error) = write_pretty_json_report(&trace.output_path, traces) {
                 error!("failed to write mesh LOD trace: {error}");
-                exit.send(AppExit::error());
+                params.exit.send(AppExit::error());
                 return;
             }
         }
-        exit.send(AppExit::Success);
-    } else if *frame >= config.max_frame {
-        let pending = config
+        params.exit.send(AppExit::Success);
+    } else if *params.frame >= params.config.max_frame {
+        let pending = params
+            .config
             .captures
             .iter()
             .filter(|capture| !capture.validated)
@@ -661,9 +745,9 @@ fn request_screenshot(
             .join(", ");
         error!(
             "screenshot(s) were not written before frame {}: {pending}",
-            config.max_frame
+            params.config.max_frame
         );
-        exit.send(AppExit::error());
+        params.exit.send(AppExit::error());
     }
 }
 

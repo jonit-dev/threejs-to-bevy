@@ -89,6 +89,8 @@ jobs:
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
 
       - name: Pre-push gate
         run: pnpm verify:pre-push

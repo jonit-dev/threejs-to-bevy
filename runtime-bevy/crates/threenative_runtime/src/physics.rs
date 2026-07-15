@@ -801,17 +801,17 @@ impl PersistentRapierWorld {
                 .active_collision_types(ActiveCollisionTypes::all())
                 .collision_groups(groups)
                 .solver_groups(groups);
-            if body_kind == "dynamic" {
-                if let Some(mass) = entity.mass {
-                    collider = collider.mass(mass);
-                }
+            if body_kind == "dynamic"
+                && let Some(mass) = entity.mass
+            {
+                collider = collider.mass(mass);
             }
             let (body_handle, collider_handle) = world.insert(body, collider);
-            if let Some(threshold) = entity.sleep_threshold.filter(|threshold| *threshold > 0.0) {
-                if let Some(body) = world.bodies.get_mut(body_handle) {
-                    body.activation_mut().normalized_linear_threshold = threshold;
-                    body.activation_mut().angular_threshold = threshold;
-                }
+            if let Some(threshold) = entity.sleep_threshold.filter(|threshold| *threshold > 0.0)
+                && let Some(body) = world.bodies.get_mut(body_handle)
+            {
+                body.activation_mut().normalized_linear_threshold = threshold;
+                body.activation_mut().angular_threshold = threshold;
             }
             handles.insert(entity.id.clone(), body_handle);
             collider_handles.insert(entity.id.clone(), collider_handle);
@@ -1123,10 +1123,10 @@ fn rapier_joint(
                 .local_axis2(local_axis);
             if let Some(limits) = joint.limits.as_ref() {
                 builder = builder.limits(JointAxis::LinX, [limits.min, limits.max]);
-            } else if joint.kind == "suspension" {
-                if let Some(travel) = joint.travel {
-                    builder = builder.limits(JointAxis::LinX, [-travel, travel]);
-                }
+            } else if joint.kind == "suspension"
+                && let Some(travel) = joint.travel
+            {
+                builder = builder.limits(JointAxis::LinX, [-travel, travel]);
             }
             if joint.kind == "suspension" {
                 builder = builder

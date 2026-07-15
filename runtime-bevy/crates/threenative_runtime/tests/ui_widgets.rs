@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 use threenative_components::ThreeNativeId;
@@ -120,7 +120,7 @@ fn write_widget_bundle() -> PathBuf {
     root
 }
 
-fn write(root: &PathBuf, file: &str, contents: &str) {
+fn write(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
 }
 

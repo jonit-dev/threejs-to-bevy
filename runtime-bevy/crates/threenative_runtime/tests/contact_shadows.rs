@@ -1,6 +1,6 @@
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -345,6 +345,6 @@ fn temp_bundle_dir() -> PathBuf {
     root
 }
 
-fn write(root: &PathBuf, name: &str, contents: &str) {
+fn write(root: &Path, name: &str, contents: &str) {
     fs::write(root.join(name), contents).expect("bundle file should be written");
 }

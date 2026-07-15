@@ -116,6 +116,16 @@ struct HorizontalResolution {
     too_heavy: Option<String>,
 }
 
+struct HorizontalContactContext<'a> {
+    blockers: &'a [&'a WorldEntity],
+    character_bounds_info: Option<&'a Bounds>,
+    character_half_extents: [f32; 3],
+    character_id: &'a str,
+    push_policy: Option<&'a CharacterPushPolicy>,
+    slope_limit: f32,
+    step_offset: f32,
+}
+
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct CharacterControllerComponent {
@@ -214,15 +224,17 @@ fn trace_character(
     let character_half_extents = half_extents(collider);
     let horizontal = if controller.blocking {
         resolve_horizontal_contact(
-            &entity.id,
-            character_bounds_info.as_ref(),
+            HorizontalContactContext {
+                blockers,
+                character_bounds_info: character_bounds_info.as_ref(),
+                character_half_extents,
+                character_id: &entity.id,
+                push_policy: controller.push_policy.as_ref(),
+                slope_limit: controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
+                step_offset: controller.step_offset.unwrap_or(0.0),
+            },
             add(start, offset),
             add(desired, offset),
-            character_half_extents,
-            blockers,
-            controller.step_offset.unwrap_or(0.0),
-            controller.slope_limit.unwrap_or(DEFAULT_SLOPE_LIMIT),
-            controller.push_policy.as_ref(),
         )
     } else {
         HorizontalResolution {
@@ -298,22 +310,16 @@ fn movement_delta(axis_x: f32, axis_z: f32, speed: f32, fixed_delta: f32) -> [f3
 }
 
 fn resolve_horizontal_contact(
-    character_id: &str,
-    character_bounds_info: Option<&Bounds>,
+    context: HorizontalContactContext<'_>,
     start: [f32; 3],
     desired: [f32; 3],
-    character_half_extents: [f32; 3],
-    blockers: &[&WorldEntity],
-    step_offset: f32,
-    slope_limit: f32,
-    push_policy: Option<&CharacterPushPolicy>,
 ) -> HorizontalResolution {
     let mut position = desired;
     let mut character_bounds = Bounds {
         center: position,
         contact_phases: Vec::new(),
-        half_extents: character_half_extents,
-        id: character_id.to_owned(),
+        half_extents: context.character_half_extents,
+        id: context.character_id.to_owned(),
         layer: None,
         mask: Vec::new(),
         material: None,
@@ -322,56 +328,69 @@ fn resolve_horizontal_contact(
     };
     let movement = [desired[0] - start[0], 0.0, desired[2] - start[2]];
     let mut contacts = Vec::new();
-    for blocker in blockers {
-        if blocker.id == character_id {
+    for blocker in context.blockers {
+        if blocker.id == context.character_id {
             continue;
         }
         let Some(bounds) = entity_bounds(blocker) else {
             continue;
         };
-        if !colliders_interact(character_bounds_info, &bounds)
+        if !colliders_interact(context.character_bounds_info, &bounds)
             || !penetrates(&character_bounds, &bounds)
-            || !is_side_blocker(position, character_half_extents, &bounds)
+            || !is_side_blocker(position, context.character_half_extents, &bounds)
         {
             continue;
         }
-        if bounds.slope.is_some() && can_walk_slope(position, &bounds, slope_limit) {
+        if bounds.slope.is_some() && can_walk_slope(position, &bounds, context.slope_limit) {
             add_contact(
                 &mut contacts,
-                character_bounds_info,
+                context.character_bounds_info,
                 &bounds,
                 "begin",
                 position,
                 contact_normal(movement),
             );
             let top = surface_top(position, &bounds);
-            position = [position[0], top + character_half_extents[1], position[2]];
+            position = [
+                position[0],
+                top + context.character_half_extents[1],
+                position[2],
+            ];
             character_bounds.center = position;
             continue;
         }
-        if can_step_onto(position, character_half_extents, &bounds, step_offset) {
+        if can_step_onto(
+            position,
+            context.character_half_extents,
+            &bounds,
+            context.step_offset,
+        ) {
             add_contact(
                 &mut contacts,
-                character_bounds_info,
+                context.character_bounds_info,
                 &bounds,
                 "begin",
                 position,
                 contact_normal(movement),
             );
             let top = surface_top(position, &bounds);
-            position = [position[0], top + character_half_extents[1], position[2]];
+            position = [
+                position[0],
+                top + context.character_half_extents[1],
+                position[2],
+            ];
             character_bounds.center = position;
             continue;
         }
         add_contact(
             &mut contacts,
-            character_bounds_info,
+            context.character_bounds_info,
             &bounds,
             "begin",
             position,
             contact_normal(movement),
         );
-        match resolve_push(push_policy, blocker, movement) {
+        match resolve_push(context.push_policy, blocker, movement) {
             PushResolution::Pushed(pushed) => {
                 return HorizontalResolution {
                     blocked_by: None,

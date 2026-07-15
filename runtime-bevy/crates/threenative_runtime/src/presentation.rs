@@ -64,10 +64,10 @@ impl NativePresentationRuntimeState {
                 if entry.command.as_deref() == Some("tween") {
                     self.enqueue_tween(bundle, entry.entity.as_deref(), entry.value.as_ref());
                 }
-                if entry.command.as_deref() == Some("despawn") {
-                    if let Some(entity) = entry.entity.as_deref() {
-                        self.cancel_entity(entity);
-                    }
+                if entry.command.as_deref() == Some("despawn")
+                    && let Some(entity) = entry.entity.as_deref()
+                {
+                    self.cancel_entity(entity);
                 }
                 if entry.service.as_deref() == Some("camera.shake") {
                     self.enqueue_shake(entry.payload.as_ref());
@@ -134,7 +134,7 @@ impl NativePresentationRuntimeState {
         let id = value
             .get("id")
             .and_then(Value::as_str)
-            .unwrap_or_else(|| "native-tween")
+            .unwrap_or("native-tween")
             .to_owned();
         let key = format!("{entity}\0{property}");
         if let Some(previous) = self.tweens.remove(&key) {
@@ -177,8 +177,7 @@ impl NativePresentationRuntimeState {
             Some(property.clone()),
         );
         if tween.duration == 0.0 {
-            let mut immediate = tween.clone();
-            apply_tween(bundle, &mut immediate, 1.0);
+            apply_tween(bundle, &tween, 1.0);
             self.push_log("complete", Some(entity.to_owned()), id, Some(property));
         } else {
             self.tweens.insert(key, tween);
@@ -219,22 +218,14 @@ impl NativePresentationRuntimeState {
                     1.0 - eased
                 },
             );
-            if progress >= 1.0 {
-                if tween.loops > 0 {
-                    tween.loops -= 1;
-                    tween.elapsed = 0.0;
-                    if tween.yoyo {
-                        tween.direction *= -1.0;
-                    }
-                } else {
-                    completed.push((
-                        key.clone(),
-                        "complete".to_owned(),
-                        tween.entity.clone(),
-                        tween.id.clone(),
-                        tween.property.clone(),
-                    ));
-                }
+            if finish_tween_iteration(tween, progress) {
+                completed.push((
+                    key.clone(),
+                    "complete".to_owned(),
+                    tween.entity.clone(),
+                    tween.id.clone(),
+                    tween.property.clone(),
+                ));
             }
         }
         for (key, kind, entity, id, property) in completed {
@@ -386,6 +377,21 @@ impl NativePresentationRuntimeState {
             self.logs.drain(0..overflow);
         }
     }
+}
+
+fn finish_tween_iteration(tween: &mut NativeTween, progress: f32) -> bool {
+    if progress < 1.0 {
+        return false;
+    }
+    if tween.loops == 0 {
+        return true;
+    }
+    tween.loops -= 1;
+    tween.elapsed = 0.0;
+    if tween.yoyo {
+        tween.direction *= -1.0;
+    }
+    false
 }
 
 fn apply_tween(bundle: &mut LoadedBundle, tween: &NativeTween, progress: f32) {
@@ -573,7 +579,7 @@ fn seed_value(value: &Value) -> f32 {
 
 #[cfg(test)]
 mod tests {
-    use super::{ease, envelope, slerp_quaternion};
+    use super::{NativeTween, ease, envelope, finish_tween_iteration, slerp_quaternion};
 
     #[test]
     fn tween_easing_and_shortest_rotation_are_deterministic() {
@@ -586,5 +592,28 @@ mod tests {
     fn shake_envelope_uses_elapsed_delta() {
         assert!((envelope(0.05, 0.2) - 0.75).abs() < 0.0001);
         assert_eq!(envelope(0.2, 0.2), 0.0);
+    }
+
+    #[test]
+    fn tween_iteration_preserves_loop_and_yoyo_progression() {
+        let mut tween = NativeTween {
+            direction: 1.0,
+            duration: 1.0,
+            elapsed: 1.0,
+            easing: "linear".to_owned(),
+            entity: "hero".to_owned(),
+            from: vec![0.0],
+            id: "pulse".to_owned(),
+            loops: 1,
+            property: "scale".to_owned(),
+            to: vec![1.0],
+            yoyo: true,
+        };
+
+        assert!(!finish_tween_iteration(&mut tween, 1.0));
+        assert_eq!(tween.loops, 0);
+        assert_eq!(tween.elapsed, 0.0);
+        assert_eq!(tween.direction, -1.0);
+        assert!(finish_tween_iteration(&mut tween, 1.0));
     }
 }

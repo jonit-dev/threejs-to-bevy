@@ -1066,7 +1066,7 @@ fn report_gltf_asset(asset: &GltfSceneAssetIr) -> ConformanceGltfAssetReport {
 
 fn sorted_values(values: &[serde_json::Value]) -> Vec<serde_json::Value> {
     let mut sorted = values.to_vec();
-    sorted.sort_by(|left, right| left.to_string().cmp(&right.to_string()));
+    sorted.sort_by_key(|value| value.to_string());
     sorted
 }
 
@@ -1947,37 +1947,7 @@ fn report_environment(
         .iter()
         .map(|asset| asset.id.clone())
         .collect::<Vec<_>>();
-    let mut debug_gizmos = environment
-        .source_assets
-        .iter()
-        .filter(|asset| {
-            asset
-                .debug
-                .as_ref()
-                .and_then(|debug| debug.gizmo)
-                .unwrap_or(false)
-        })
-        .map(|asset| format!("sourceAsset:{}", asset.id))
-        .chain(
-            environment
-                .instances
-                .iter()
-                .filter(|instance| {
-                    instance
-                        .debug
-                        .as_ref()
-                        .and_then(|debug| debug.gizmo)
-                        .unwrap_or(false)
-                })
-                .map(|instance| format!("instance:{}", instance.id)),
-        )
-        .chain(
-            environment
-                .light_probes
-                .iter()
-                .map(|probe| format!("lightProbe:{}", probe.id)),
-        )
-        .collect::<Vec<_>>();
+    let mut debug_gizmos = environment_debug_gizmos(environment);
     let hlod_fades = environment
         .source_assets
         .iter()
@@ -2033,41 +2003,7 @@ fn report_environment(
     scatter.sort();
     source_assets.sort();
 
-    let volumetrics = environment.atmosphere.as_ref().and_then(|atmosphere| {
-        atmosphere.volumetrics.as_ref().map(|volumetrics| {
-            let height_fog = volumetrics.height_fog.as_ref().map(|height_fog| {
-                ConformanceVolumetricFeatureReport {
-                    applied: height_fog.enabled,
-                    mode: if height_fog.enabled {
-                        "analytic-height-post-pass".to_owned()
-                    } else {
-                        "disabled".to_owned()
-                    },
-                    reason: None,
-                    requested: height_fog.enabled,
-                }
-            });
-            let god_rays = volumetrics.god_rays.as_ref().map(|god_rays| {
-                let applied =
-                    god_rays.enabled && atmosphere.sun.casts_shadow && atmosphere.shadows.enabled;
-                ConformanceVolumetricFeatureReport {
-                    applied,
-                    mode: if applied {
-                        "bevy-volumetric-light".to_owned()
-                    } else {
-                        "disabled".to_owned()
-                    },
-                    reason: (god_rays.enabled && !applied)
-                        .then(|| "shadow-map-unavailable".to_owned()),
-                    requested: god_rays.enabled,
-                }
-            });
-            ConformanceVolumetricsReport {
-                god_rays,
-                height_fog,
-            }
-        })
-    });
+    let volumetrics = report_environment_volumetrics(environment);
 
     ConformanceEnvironmentReport {
         atmosphere: environment
@@ -2101,6 +2037,80 @@ fn report_environment(
             .map(|terrain| terrain.id.clone()),
         volumetrics,
     }
+}
+
+fn environment_debug_gizmos(environment: &EnvironmentSceneIr) -> Vec<String> {
+    environment
+        .source_assets
+        .iter()
+        .filter(|asset| {
+            asset
+                .debug
+                .as_ref()
+                .and_then(|debug| debug.gizmo)
+                .unwrap_or(false)
+        })
+        .map(|asset| format!("sourceAsset:{}", asset.id))
+        .chain(
+            environment
+                .instances
+                .iter()
+                .filter(|instance| {
+                    instance
+                        .debug
+                        .as_ref()
+                        .and_then(|debug| debug.gizmo)
+                        .unwrap_or(false)
+                })
+                .map(|instance| format!("instance:{}", instance.id)),
+        )
+        .chain(
+            environment
+                .light_probes
+                .iter()
+                .map(|probe| format!("lightProbe:{}", probe.id)),
+        )
+        .collect::<Vec<_>>()
+}
+
+fn report_environment_volumetrics(
+    environment: &EnvironmentSceneIr,
+) -> Option<ConformanceVolumetricsReport> {
+    environment.atmosphere.as_ref().and_then(|atmosphere| {
+        atmosphere.volumetrics.as_ref().map(|volumetrics| {
+            let height_fog = volumetrics.height_fog.as_ref().map(|height_fog| {
+                ConformanceVolumetricFeatureReport {
+                    applied: height_fog.enabled,
+                    mode: if height_fog.enabled {
+                        "analytic-height-post-pass".to_owned()
+                    } else {
+                        "disabled".to_owned()
+                    },
+                    reason: None,
+                    requested: height_fog.enabled,
+                }
+            });
+            let god_rays = volumetrics.god_rays.as_ref().map(|god_rays| {
+                let applied =
+                    god_rays.enabled && atmosphere.sun.casts_shadow && atmosphere.shadows.enabled;
+                ConformanceVolumetricFeatureReport {
+                    applied,
+                    mode: if applied {
+                        "bevy-volumetric-light".to_owned()
+                    } else {
+                        "disabled".to_owned()
+                    },
+                    reason: (god_rays.enabled && !applied)
+                        .then(|| "shadow-map-unavailable".to_owned()),
+                    requested: god_rays.enabled,
+                }
+            });
+            ConformanceVolumetricsReport {
+                god_rays,
+                height_fog,
+            }
+        })
+    })
 }
 
 fn visibility_report(

@@ -426,7 +426,7 @@ fn should_preserve_support_profiler_fields_in_native_conformance_report() {
 
     assert!(profiler.entity_count > 0);
     assert!(profiler.draw_count > 0);
-    assert_eq!(profiler.gpu_timing_available, false);
+    assert!(!profiler.gpu_timing_available);
     assert_eq!(
         profiler
             .gpu_timing_warning

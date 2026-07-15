@@ -374,7 +374,7 @@ Default choices:
 | Schema fixtures | JSON snapshots plus validator tests |
 | Web runtime smoke tests | Playwright once rendering exists |
 | Bevy runtime tests | `cargo test` plus runtime smoke fixtures |
-| Rust lint/format | `cargo fmt`, `cargo clippy` |
+| Rust lint/format | Root-owned `pnpm check:rust` runs rustfmt and Clippy for the workspace and all targets, with a structured lint/path ratchet. |
 | Cross-runtime conformance | shared IR fixtures loaded by web and Bevy |
 
 The first conformance fixture should be one cube, one camera, one light. Every
@@ -383,16 +383,20 @@ conformance expectation.
 
 ## CI
 
-Initial CI should run:
+CI runs the repository gates through the pre-push aggregate after installing
+stable Rust with the `clippy` and `rustfmt` components. The Rust quality command
+contract is:
 
 ```bash
-pnpm install
-pnpm typecheck
-pnpm test
-pnpm lint
-pnpm build
 pnpm check:rust
+pnpm --silent check:rust -- --json
+pnpm verify:pre-push
 ```
+
+The silent JSON invocation emits one parseable report document and is the form
+used when another gate captures metadata. Pre-push runs Rust quality alongside
+TypeScript typechecking and blocks tests, conformance, and parity proof when
+either static check fails.
 
 Mobile builds should not block every early PR. Add Android/iOS smoke checks once
 the packaging pipeline exists and build time is understood.

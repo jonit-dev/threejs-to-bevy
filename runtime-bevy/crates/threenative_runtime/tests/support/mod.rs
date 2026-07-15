@@ -4,7 +4,11 @@ use threenative_loader::{LoadedBundle, load_bundle};
 
 pub struct SharedFixture {
     pub bundle: LoadedBundle,
+    // This shared module is compiled once per integration-test crate, while
+    // only the conformance and character targets inspect fixture metadata.
+    #[allow(dead_code)]
     pub bundle_path: PathBuf,
+    #[allow(dead_code)]
     pub name: String,
 }
 

@@ -156,72 +156,7 @@ impl NativeDragPickingTracker {
         }
 
         if frame.button_down {
-            if self.active.is_none() {
-                if let Some(target) = target.as_ref() {
-                    if !target.disabled {
-                        self.active = Some(ActiveDrag {
-                            entered_target_id: None,
-                            last_screen: frame.screen.clone(),
-                            path: vec![frame.screen.clone()],
-                            source_target_id: target.id.clone(),
-                            start_screen: frame.screen.clone(),
-                            started: false,
-                        });
-                    }
-                }
-            }
-            let Some(active) = self.active.as_mut() else {
-                return events;
-            };
-            active.path.push(frame.screen.clone());
-            let current_target_id = target.as_ref().map(|target| target.id.clone());
-            let total_distance = distance(&active.start_screen, &frame.screen);
-            if !active.started && total_distance >= self.move_threshold {
-                active.started = true;
-                self.push_event(
-                    NativeDragPickingPhase::DragStart,
-                    &frame,
-                    current_target_id.clone(),
-                    &mut events,
-                );
-            }
-            if self.active.as_ref().is_some_and(|active| active.started) {
-                let entered = self
-                    .active
-                    .as_ref()
-                    .and_then(|active| active.entered_target_id.clone());
-                if current_target_id != entered {
-                    if entered.is_some() {
-                        self.push_event(
-                            NativeDragPickingPhase::DragLeave,
-                            &frame,
-                            entered,
-                            &mut events,
-                        );
-                    }
-                    if current_target_id.is_some() {
-                        self.push_event(
-                            NativeDragPickingPhase::DragEnter,
-                            &frame,
-                            current_target_id.clone(),
-                            &mut events,
-                        );
-                    }
-                    if let Some(active) = self.active.as_mut() {
-                        active.entered_target_id = current_target_id.clone();
-                    }
-                }
-                self.push_event(
-                    NativeDragPickingPhase::DragMove,
-                    &frame,
-                    current_target_id,
-                    &mut events,
-                );
-            }
-            if let Some(active) = self.active.as_mut() {
-                active.last_screen = frame.screen;
-            }
-            return events;
+            return self.update_active_drag(frame, target.as_ref());
         }
 
         if self.active.is_some() {
@@ -249,6 +184,96 @@ impl NativeDragPickingTracker {
             self.active = None;
         }
         events
+    }
+
+    fn update_active_drag(
+        &mut self,
+        frame: NativeDragPickingFrame,
+        target: Option<&NativePickingTarget>,
+    ) -> Vec<NativeDragPickingEvent> {
+        let mut events = Vec::new();
+        self.start_drag_if_needed(&frame, target);
+        let Some(active) = self.active.as_mut() else {
+            return events;
+        };
+        active.path.push(frame.screen.clone());
+        let current_target_id = target.map(|target| target.id.clone());
+        let total_distance = distance(&active.start_screen, &frame.screen);
+        if !active.started && total_distance >= self.move_threshold {
+            active.started = true;
+            self.push_event(
+                NativeDragPickingPhase::DragStart,
+                &frame,
+                current_target_id.clone(),
+                &mut events,
+            );
+        }
+        if self.active.as_ref().is_some_and(|active| active.started) {
+            self.update_entered_target(&frame, current_target_id.clone(), &mut events);
+            self.push_event(
+                NativeDragPickingPhase::DragMove,
+                &frame,
+                current_target_id,
+                &mut events,
+            );
+        }
+        if let Some(active) = self.active.as_mut() {
+            active.last_screen = frame.screen;
+        }
+        events
+    }
+
+    fn start_drag_if_needed(
+        &mut self,
+        frame: &NativeDragPickingFrame,
+        target: Option<&NativePickingTarget>,
+    ) {
+        if self.active.is_some() {
+            return;
+        }
+        let Some(target) = target else {
+            return;
+        };
+        if target.disabled {
+            return;
+        }
+        self.active = Some(ActiveDrag {
+            entered_target_id: None,
+            last_screen: frame.screen.clone(),
+            path: vec![frame.screen.clone()],
+            source_target_id: target.id.clone(),
+            start_screen: frame.screen.clone(),
+            started: false,
+        });
+    }
+
+    fn update_entered_target(
+        &mut self,
+        frame: &NativeDragPickingFrame,
+        current_target_id: Option<String>,
+        events: &mut Vec<NativeDragPickingEvent>,
+    ) {
+        let entered = self
+            .active
+            .as_ref()
+            .and_then(|active| active.entered_target_id.clone());
+        if current_target_id == entered {
+            return;
+        }
+        if entered.is_some() {
+            self.push_event(NativeDragPickingPhase::DragLeave, frame, entered, events);
+        }
+        if current_target_id.is_some() {
+            self.push_event(
+                NativeDragPickingPhase::DragEnter,
+                frame,
+                current_target_id.clone(),
+                events,
+            );
+        }
+        if let Some(active) = self.active.as_mut() {
+            active.entered_target_id = current_target_id;
+        }
     }
 
     pub fn debug_report(&self) -> NativePickingDebugOverlayReport {

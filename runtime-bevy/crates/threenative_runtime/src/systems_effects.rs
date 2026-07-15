@@ -502,12 +502,12 @@ pub fn apply_system_effects_with_report_and_ledger_and_writer(
     effects: &NativeSystemEffects,
     frame: u32,
     tick: u32,
-    mut write_ledger: Option<&mut NativeRuntimeWriteLedger>,
+    write_ledger: Option<&mut NativeRuntimeWriteLedger>,
     writer: &str,
 ) -> Result<NativeSystemEffectsApplied, Vec<NativeSystemEffectDiagnostic>> {
     let diagnostics = validate_system_effects(system, effects);
     let log = native_effect_log(system, effects, frame, tick);
-    if let Some(ledger) = write_ledger.as_deref_mut() {
+    if let Some(ledger) = write_ledger {
         record_system_writes(
             bundle,
             system,
@@ -554,32 +554,16 @@ pub fn record_initial_runtime_writes(
         for (component, value) in entity.components.values() {
             record_value_fields(
                 ledger,
-                &component,
-                &entity.id,
-                "component",
-                None,
-                &value,
-                Some("startup"),
-                Some("initial-ir"),
-                tick,
-                "initial-ir",
-                false,
+                NativeWriteTarget::component(&component, &entity.id, None, &value),
+                NativeWriteContext::initial(tick),
             );
         }
     }
     for (resource, value) in &bundle.world.resources {
         record_value_fields(
             ledger,
-            "",
-            resource,
-            "resource",
-            None,
-            value,
-            Some("startup"),
-            Some("initial-ir"),
-            tick,
-            "initial-ir",
-            false,
+            NativeWriteTarget::resource(resource, None, value),
+            NativeWriteContext::initial(tick),
         );
     }
 }
@@ -602,16 +586,13 @@ fn record_system_writes(
             .and_then(|entity| component_value(&entity.components, &patch.component));
         record_value_fields(
             ledger,
-            &patch.component,
-            &patch.entity,
-            "component",
-            current.as_ref(),
-            &patch.value,
-            Some(&system.schedule),
-            Some(&system.name),
-            tick,
-            writer,
-            dropped,
+            NativeWriteTarget::component(
+                &patch.component,
+                &patch.entity,
+                current.as_ref(),
+                &patch.value,
+            ),
+            NativeWriteContext::system(system, tick, writer, dropped),
         );
     }
     for command in &effects.commands {
@@ -630,76 +611,118 @@ fn record_system_writes(
             .and_then(|candidate| component_value(&candidate.components, component));
         record_value_fields(
             ledger,
-            component,
-            entity,
-            "component",
-            current.as_ref(),
-            value,
-            Some(&system.schedule),
-            Some(&system.name),
-            tick,
-            writer,
-            dropped,
+            NativeWriteTarget::component(component, entity, current.as_ref(), value),
+            NativeWriteContext::system(system, tick, writer, dropped),
         );
     }
     for resource in &effects.resources {
         let current = bundle.world.resources.get(&resource.resource);
         record_value_fields(
             ledger,
-            "",
-            &resource.resource,
-            "resource",
-            current,
-            &resource.value,
-            Some(&system.schedule),
-            Some(&system.name),
+            NativeWriteTarget::resource(&resource.resource, current, &resource.value),
+            NativeWriteContext::system(system, tick, writer, dropped),
+        );
+    }
+}
+
+struct NativeWriteTarget<'a> {
+    component: &'a str,
+    id: &'a str,
+    kind: &'static str,
+    old_value: Option<&'a Value>,
+    value: &'a Value,
+}
+
+impl<'a> NativeWriteTarget<'a> {
+    fn component(
+        component: &'a str,
+        id: &'a str,
+        old: Option<&'a Value>,
+        value: &'a Value,
+    ) -> Self {
+        Self {
+            component,
+            id,
+            kind: "component",
+            old_value: old,
+            value,
+        }
+    }
+
+    fn resource(id: &'a str, old: Option<&'a Value>, value: &'a Value) -> Self {
+        Self {
+            component: "",
+            id,
+            kind: "resource",
+            old_value: old,
+            value,
+        }
+    }
+}
+
+struct NativeWriteContext<'a> {
+    dropped: bool,
+    schedule: Option<&'a str>,
+    system_name: Option<&'a str>,
+    tick: u64,
+    writer: &'a str,
+}
+
+impl<'a> NativeWriteContext<'a> {
+    fn initial(tick: u64) -> Self {
+        Self {
+            dropped: false,
+            schedule: Some("startup"),
+            system_name: Some("initial-ir"),
+            tick,
+            writer: "initial-ir",
+        }
+    }
+
+    fn system(system: &'a SystemIr, tick: u64, writer: &'a str, dropped: bool) -> Self {
+        Self {
+            dropped,
+            schedule: Some(&system.schedule),
+            system_name: Some(&system.name),
             tick,
             writer,
-            dropped,
-        );
+        }
     }
 }
 
 fn record_value_fields(
     ledger: &mut NativeRuntimeWriteLedger,
-    component: &str,
-    target_id: &str,
-    target_kind: &str,
-    old_value: Option<&Value>,
-    new_value: &Value,
-    schedule: Option<&str>,
-    system_name: Option<&str>,
-    tick: u64,
-    writer: &str,
-    dropped: bool,
+    target: NativeWriteTarget<'_>,
+    context: NativeWriteContext<'_>,
 ) {
-    for field in value_fields(new_value) {
-        let old_field = old_value.and_then(|value| {
+    for field in value_fields(target.value) {
+        let old_field = target.old_value.and_then(|value| {
             value
                 .as_object()
                 .and_then(|object| object.get(&field))
                 .cloned()
         });
-        let new_field = new_value
+        let new_field = target
+            .value
             .as_object()
             .and_then(|object| object.get(&field))
             .cloned()
-            .unwrap_or_else(|| new_value.clone());
+            .unwrap_or_else(|| target.value.clone());
         ledger.record(NativeRuntimeWriteInput {
-            disposition: dropped.then(|| "dropped".to_owned()),
+            disposition: context.dropped.then(|| "dropped".to_owned()),
             new_value: new_field,
             old_value: old_field,
-            path: if component.is_empty() {
+            path: if target.component.is_empty() {
                 field
             } else {
-                format!("{component}/{field}")
+                format!("{}/{field}", target.component)
             },
-            schedule: schedule.map(str::to_owned),
-            system: system_name.map(str::to_owned),
-            target_id: target_id.to_owned(),
-            target_kind: target_kind.to_owned(),
-            tick,
-            writer: writer.to_owned(),
+            schedule: context.schedule.map(str::to_owned),
+            system: context.system_name.map(str::to_owned),
+            target_id: target.id.to_owned(),
+            target_kind: target.kind.to_owned(),
+            tick: context.tick,
+            writer: context.writer.to_owned(),
         });
     }
 }
@@ -1092,93 +1115,10 @@ fn apply_patch(bundle: &mut LoadedBundle, patch: &NativeSystemPatchEffect) {
 
 fn apply_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
     match command.command.as_str() {
-        "spawn" => {
-            let Some(entity_id) = command.entity.as_ref() else {
-                return;
-            };
-            if bundle
-                .world
-                .entities
-                .iter()
-                .any(|entity| entity.id == *entity_id)
-            {
-                return;
-            }
-            let mut components = EntityComponents::default();
-            if let Some(values) = command.components.as_ref().and_then(Value::as_object) {
-                for (component, value) in values {
-                    apply_component_value(&mut components, component, value.clone());
-                }
-            }
-            bundle.world.entities.push(WorldEntity {
-                id: entity_id.clone(),
-                components,
-                tags: command.tags.clone().unwrap_or_default(),
-            });
-        }
-        "worldText" => {
-            let Some(entity_id) = command.entity.as_ref() else {
-                return;
-            };
-            if bundle
-                .world
-                .entities
-                .iter()
-                .any(|entity| entity.id == *entity_id)
-            {
-                return;
-            }
-            let Some(value) = command.value.as_ref() else {
-                return;
-            };
-            let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok()
-            else {
-                return;
-            };
-            bundle.world.entities.push(WorldEntity {
-                id: entity_id.clone(),
-                components: EntityComponents {
-                    world_text: Some(world_text),
-                    ..EntityComponents::default()
-                },
-                tags: Vec::new(),
-            });
-        }
+        "spawn" => apply_spawn_command(bundle, command),
+        "worldText" => apply_world_text_command(bundle, command),
         "tween" => {}
-        "instantiate" => {
-            let (Some(prefab_id), Some(prefix)) =
-                (command.prefab.as_ref(), command.prefix.as_ref())
-            else {
-                return;
-            };
-            let Some(prefabs) = bundle.prefabs.as_ref() else {
-                return;
-            };
-            let Some(prefab) = prefabs
-                .prefabs
-                .iter()
-                .find(|candidate| candidate.id == *prefab_id)
-            else {
-                return;
-            };
-            for template in &prefab.entities {
-                let id = format!("{prefix}.{}", template.id);
-                if bundle.world.entities.iter().any(|entity| entity.id == id) {
-                    continue;
-                }
-                let mut components = template.components.clone();
-                if let Some(hierarchy) = components.hierarchy.as_mut() {
-                    if let Some(parent) = hierarchy.parent.as_ref() {
-                        hierarchy.parent = Some(format!("{prefix}.{parent}"));
-                    }
-                }
-                bundle.world.entities.push(WorldEntity {
-                    id,
-                    components,
-                    tags: template.tags.clone(),
-                });
-            }
-        }
+        "instantiate" => apply_instantiate_command(bundle, command),
         "despawn" => {
             let Some(entity_id) = command.entity.as_ref() else {
                 return;
@@ -1566,14 +1506,7 @@ fn would_create_hierarchy_cycle(bundle: &LoadedBundle, child_id: &str, parent_id
 }
 
 fn read_mesh_renderer(value: &Value) -> Option<MeshRendererComponent> {
-    let material = value.get("material").and_then(Value::as_str)?;
-    Some(MeshRendererComponent {
-        cast_shadow: value.get("castShadow").and_then(Value::as_bool),
-        mesh: value.get("mesh").and_then(Value::as_str).map(str::to_owned),
-        material: material.to_owned(),
-        receive_shadow: value.get("receiveShadow").and_then(Value::as_bool),
-        visible: value.get("visible").and_then(Value::as_bool),
-    })
+    serde_json::from_value(value.clone()).ok()
 }
 
 fn remove_component(components: &mut EntityComponents, component: &str) {
@@ -1915,5 +1848,91 @@ mod tests {
             .and_then(|systems| systems.systems.iter().find(|system| system.name == name))
             .cloned()
             .unwrap_or_else(|| panic!("missing fixture system '{name}'"))
+    }
+}
+
+fn apply_spawn_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let Some(entity_id) = command.entity.as_ref() else {
+        return;
+    };
+    if bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.id == *entity_id)
+    {
+        return;
+    }
+    let mut components = EntityComponents::default();
+    if let Some(values) = command.components.as_ref().and_then(Value::as_object) {
+        for (component, value) in values {
+            apply_component_value(&mut components, component, value.clone());
+        }
+    }
+    bundle.world.entities.push(WorldEntity {
+        id: entity_id.clone(),
+        components,
+        tags: command.tags.clone().unwrap_or_default(),
+    });
+}
+
+fn apply_world_text_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let Some(entity_id) = command.entity.as_ref() else {
+        return;
+    };
+    if bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.id == *entity_id)
+    {
+        return;
+    }
+    let Some(value) = command.value.as_ref() else {
+        return;
+    };
+    let Some(world_text) = serde_json::from_value::<WorldTextComponent>(value.clone()).ok() else {
+        return;
+    };
+    bundle.world.entities.push(WorldEntity {
+        id: entity_id.clone(),
+        components: EntityComponents {
+            world_text: Some(world_text),
+            ..EntityComponents::default()
+        },
+        tags: Vec::new(),
+    });
+}
+
+fn apply_instantiate_command(bundle: &mut LoadedBundle, command: &NativeSystemCommandEffect) {
+    let (Some(prefab_id), Some(prefix)) = (command.prefab.as_ref(), command.prefix.as_ref()) else {
+        return;
+    };
+    let Some(prefabs) = bundle.prefabs.as_ref() else {
+        return;
+    };
+    let Some(prefab) = prefabs
+        .prefabs
+        .iter()
+        .find(|candidate| candidate.id == *prefab_id)
+    else {
+        return;
+    };
+    for template in &prefab.entities {
+        let id = format!("{prefix}.{}", template.id);
+        if bundle.world.entities.iter().any(|entity| entity.id == id) {
+            continue;
+        }
+        let mut components = template.components.clone();
+        if let Some(hierarchy) = components.hierarchy.as_mut()
+            && let Some(parent) = hierarchy.parent.as_ref()
+        {
+            hierarchy.parent = Some(format!("{prefix}.{parent}"));
+        }
+        bundle.world.entities.push(WorldEntity {
+            id,
+            components,
+            tags: template.tags.clone(),
+        });
     }
 }

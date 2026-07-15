@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 
 import { verifyBaselineVisualParityGate } from "./verify-baseline-visual-parity.mjs";
 import { resolveArtifactTargets } from "./artifact-paths.mjs";
+import { RUST_QUALITY_WRAPPER_TIMEOUT_MS } from "./check-rust-quality.mjs";
 import { runCommand, verifyConformance } from "./verify-conformance.mjs";
 import { summarize } from "./verify-v1.mjs";
 
@@ -31,6 +32,7 @@ export async function verifyPrePushGate(options = {}) {
   });
   const linkedReports = {
     gameplayParityReportPath: gameplayParityTargets.reportPath,
+    rustQualityReportPath: resolve(root, "tools/verify/artifacts/rust-quality/report.json"),
   };
 
   async function runParallel(tasks) {
@@ -49,11 +51,13 @@ export async function verifyPrePushGate(options = {}) {
     for (const [index, result] of results.entries()) {
       steps.push({ ...summarize(result), name: tasks[index]?.name ?? result.name ?? "unknown" });
     }
-    return results.every((result) => result.exitCode === 0);
+    return results;
   }
 
-  async function runPhase(name, tasks) {
-    const ok = await runParallel(tasks);
+  async function runPhase(name, tasks, onComplete) {
+    const results = await runParallel(tasks);
+    onComplete?.(results);
+    const ok = results.every((result) => result.exitCode === 0);
     if (!ok) {
       return writeGateReport({
         artifactDir,
@@ -93,7 +97,24 @@ export async function verifyPrePushGate(options = {}) {
       name: "typecheck",
       timeoutMs: 180000,
     },
-  ]);
+    {
+      args: ["--silent", "check:rust", "--", "--json"],
+      command: "pnpm",
+      name: "rust quality",
+      timeoutMs: RUST_QUALITY_WRAPPER_TIMEOUT_MS,
+    },
+  ], (results) => {
+    const rustQuality = results.find((result) => result.name === "rust quality");
+    try {
+      const metadata = JSON.parse(rustQuality?.stdout ?? "");
+      if (metadata.artifact?.report) {
+        linkedReports.rustQuality = metadata.artifact;
+        linkedReports.rustQualityReportPath = resolve(root, metadata.artifact.report);
+      }
+    } catch {
+      // The command result remains authoritative when malformed output accompanies failure.
+    }
+  });
   if (failedChecks !== null) {
     return failedChecks;
   }

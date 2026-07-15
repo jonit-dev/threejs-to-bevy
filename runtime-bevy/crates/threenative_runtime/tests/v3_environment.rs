@@ -233,11 +233,7 @@ fn heightmap_terrain_should_use_generated_chunk_mesh_and_heightfield_physics() {
         other => panic!("expected terrain position attribute, got {other:?}"),
     };
     assert_eq!(positions.len(), 9);
-    assert!(
-        positions
-            .iter()
-            .any(|position| *position == [1.0, 2.0, 1.0])
-    );
+    assert!(positions.contains(&[1.0, 2.0, 1.0]));
 
     let path_mesh_handle = app
         .world_mut()

@@ -58,8 +58,8 @@ use crate::cameras::{
     NativeRenderLayerMap, active_camera_ids, apply_camera_components, build_render_layer_map,
     camera_order, render_layers_for_names,
 };
-use crate::motion_blur_postprocess::NativeTemporalMotionBlur;
 use crate::mesh_lod::{NativeMeshLod, NativeMeshLodLevel};
+use crate::motion_blur_postprocess::NativeTemporalMotionBlur;
 use crate::render_targets::{
     NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
     camera_render_target,
@@ -671,21 +671,12 @@ pub fn spawn_world_entity(
     spawn_entity(
         world,
         entity,
-        &context.assets_by_id,
-        &context.materials_by_id,
-        &context.layer_map,
-        &context.active_cameras,
-        context.fallback_active_camera.as_deref(),
-        context.camera_color_management,
-        context.runtime_color_grading,
-        context.camera_atmosphere,
-        context.bloom_settings.as_ref(),
-        context.default_camera_clear_color,
-        context.runtime_config,
-        &context.render_target_registry,
-        material_handles,
-        shader_material_handles,
-        &bundle.bundle_path,
+        &mut EntitySpawnResources {
+            bundle_path: &bundle.bundle_path,
+            context,
+            material_handles,
+            shader_material_handles,
+        },
     )
 }
 
@@ -819,12 +810,9 @@ fn apply_runtime_config(world: &mut World, config: Option<&RuntimeConfigIr>) {
 }
 
 fn native_render_look_shadow_quality(config: Option<&RuntimeConfigIr>) -> Option<&str> {
-    let Some(render_look) = config
+    let render_look = config
         .and_then(|config| config.renderer.as_ref())
-        .and_then(|renderer| renderer.render_look.as_ref())
-    else {
-        return None;
-    };
+        .and_then(|renderer| renderer.render_look.as_ref())?;
     Some(
         render_look
             .overrides
@@ -982,7 +970,6 @@ fn bloom_settings_for_runtime(config: Option<&RuntimeConfigIr>) -> Option<BloomS
         prefilter_settings: BloomPrefilterSettings {
             threshold,
             threshold_softness: 0.32,
-            ..Default::default()
         },
         ..Default::default()
     })
@@ -1346,13 +1333,13 @@ fn json_color(value: &serde_json::Value, key: &str, fallback: &str) -> Color {
 
 fn color_from_hex(hex: &str) -> Color {
     let trimmed = hex.trim_start_matches('#');
-    if trimmed.len() == 6 {
-        if let Ok(value) = u32::from_str_radix(trimmed, 16) {
-            let r = ((value >> 16) & 0xff) as f32 / 255.0;
-            let g = ((value >> 8) & 0xff) as f32 / 255.0;
-            let b = (value & 0xff) as f32 / 255.0;
-            return Color::srgb(r, g, b);
-        }
+    if trimmed.len() == 6
+        && let Ok(value) = u32::from_str_radix(trimmed, 16)
+    {
+        let r = ((value >> 16) & 0xff) as f32 / 255.0;
+        let g = ((value >> 8) & 0xff) as f32 / 255.0;
+        let b = (value & 0xff) as f32 / 255.0;
+        return Color::srgb(r, g, b);
     }
     Color::srgb(1.0, 1.0, 1.0)
 }
@@ -1540,9 +1527,8 @@ mod tests {
     use threenative_loader::AssetIr;
 
     use super::{
-        Lcg, MapError, NativeMeshHandles, RuntimeConfigIr, SampledImage,
-        StylizedSourceGroundMaps, ambient_occlusion_intensity_approximation,
-        native_mesh_lod, resolve_mesh_handle,
+        Lcg, MapError, NativeMeshHandles, RuntimeConfigIr, SampledImage, StylizedSourceGroundMaps,
+        ambient_occlusion_intensity_approximation, native_mesh_lod, resolve_mesh_handle,
     };
 
     #[test]

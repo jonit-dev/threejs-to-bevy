@@ -107,7 +107,7 @@ The initial toolchain should assume:
 
 - Node.js for TypeScript SDK, compiler, CLI, examples, and web runtime.
 - A package manager chosen once for the monorepo, preferably `pnpm` for workspaces.
-- Rust stable for the Bevy runtime.
+- Rust stable with the `clippy` and `rustfmt` components for the Bevy runtime.
 - Bevy pinned to an explicit version.
 - Android tooling after mobile builds enter scope.
 - Xcode tooling after iOS builds enter scope.
@@ -121,12 +121,28 @@ pnpm test
 pnpm lint
 ```
 
-When Rust is introduced, top-level scripts should wrap Rust checks so developers do not need to know the crate layout:
+The root scripts own Rust checks so developers and CI do not need to know the
+crate layout:
 
 ```bash
 pnpm check:rust
+pnpm --silent check:rust -- --json
 pnpm test:rust
 ```
+
+`pnpm check:rust` runs rustfmt and Clippy across the complete Cargo workspace
+and all targets, applies the checked-in lint/path debt ratchet, and writes its
+report to `tools/verify/artifacts/rust-quality/report.json`. The `--json` form
+emits one machine-readable document; use `pnpm --silent` when capturing or
+parsing stdout so pnpm does not add its own output.
+
+The pre-push wrapper derives its Rust-quality timeout from the checker-owned
+per-command timeout; policy validation rejects a different value. The checker
+runs format, metadata, and Clippy sequentially, so the outer budget is three
+command timeouts plus one bounded minute for pnpm, JSON parsing, and report
+writes. This prevents the wrapper from preempting a valid checker run; the
+Phase 2 capture analyzed all 88 declared targets and normalized 201 findings,
+which is the observed all-target workload behind the budget.
 
 ## CLI Contract
 
@@ -572,7 +588,7 @@ After `pnpm install`, Husky installs local git hooks:
 | Hook | Command | Purpose |
 |------|---------|---------|
 | `pre-commit` | `pnpm verify:smoke` | Fast naming/docs drift check |
-| `pre-push` | `pnpm verify:pre-push` | Orchestrated workspace verify + gameplay parity smoke + conformance + structured-source visual parity (~2–3 min target). |
+| `pre-push` | `pnpm verify:pre-push` | Workspace setup, TypeScript and Rust static checks, then gameplay parity smoke, tests, conformance, and structured-source visual parity. |
 
 Run `pnpm verify:parity:smoke` explicitly when you need the one-scene web↔Bevy
 screenshot proof before pushing. The smoke checkpoint builds
@@ -585,6 +601,7 @@ Evidence:
 
 - smoke: `tools/verify/artifacts/parity-smoke/verification-report.json`
 - gameplay: `tools/verify/artifacts/gameplay-parity/verification-report.json`
+- Rust quality: `tools/verify/artifacts/rust-quality/report.json` (linked from the pre-push aggregate)
 - push: `tools/verify/artifacts/baseline-visual-parity/verification-report.json`
 
 Use `git commit --no-verify` or `git push --no-verify` to bypass hooks when

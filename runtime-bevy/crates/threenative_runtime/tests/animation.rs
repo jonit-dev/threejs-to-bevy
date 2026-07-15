@@ -94,7 +94,7 @@ fn should_return_active_runtime_state_when_animation_is_playing() {
     assert_eq!(started.entity, "player");
     assert_eq!(started.clip, "run");
     assert_eq!(started.source_clip, "Armature|Run");
-    assert_eq!(started.loop_, true);
+    assert!(started.loop_);
     assert_eq!(started.speed, 1.25);
     assert_eq!(started.normalized_time, 0.0);
     animation.advance(0.5);
@@ -149,8 +149,8 @@ fn should_execute_bounded_particle_burst_command() {
 
     let emitted = particles.execute("emit", "model.hero", "dust", Some(99), Some("impact"));
 
-    assert_eq!(emitted.accepted, true);
-    assert_eq!(emitted.active, true);
+    assert!(emitted.accepted);
+    assert!(emitted.active);
     assert_eq!(emitted.asset, "model.hero");
     assert_eq!(emitted.command, "emit");
     assert_eq!(emitted.count, 64);
@@ -160,11 +160,11 @@ fn should_execute_bounded_particle_burst_command() {
     assert_eq!(emitted.status, "emitted");
     let expired = particles.advance_fixed_ticks(30, 1.0 / 60.0);
     assert_eq!(expired.len(), 1);
-    assert_eq!(expired[0].active, false);
+    assert!(!expired[0].active);
     assert_eq!(expired[0].count, 0);
 
     let playing = particles.execute("play", "model.hero", "dust", None, Some("7"));
-    assert_eq!(playing.active, true);
+    assert!(playing.active);
     assert_eq!(playing.command, "play");
     assert_eq!(playing.count, 6);
     assert_eq!(playing.seed, 7);
@@ -172,7 +172,7 @@ fn should_execute_bounded_particle_burst_command() {
     assert_eq!(particles.advance_fixed_ticks(30, 1.0 / 60.0), vec![playing]);
 
     let cleared = particles.execute("clear", "model.hero", "dust", None, None);
-    assert_eq!(cleared.active, false);
+    assert!(!cleared.active);
     assert_eq!(cleared.count, 0);
     assert_eq!(cleared.status, "cleared");
     assert!(particles.snapshot().is_empty());

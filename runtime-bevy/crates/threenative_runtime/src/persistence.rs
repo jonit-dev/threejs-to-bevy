@@ -280,7 +280,7 @@ fn apply_native_migration_operation(
 ) -> Result<(), String> {
     let rename = operation.kind.starts_with("rename");
     let to = rename
-        .then(|| operation.to.as_deref())
+        .then_some(operation.to.as_deref())
         .flatten()
         .ok_or_else(|| {
             format!(
@@ -394,9 +394,9 @@ pub fn collect_native_autosave_triggers(
     }
     let debounce_seconds = (autosave.debounce_ms / 1000.0) as f32;
     for event in &autosave.checkpoint_events {
-        if !events
+        if events
             .get(event)
-            .is_some_and(|values| values.as_array().map_or(true, |values| !values.is_empty()))
+            .is_none_or(|values| values.as_array().is_some_and(Vec::is_empty))
         {
             continue;
         }

@@ -1,47 +1,98 @@
-fn spawn_stylized_nature(
+struct StylizedNatureSettings {
+    bark_color: Color,
+    grass_count: usize,
+    leaf_color: Color,
+    path_width: f32,
+    size: f32,
+    tree_count: usize,
+    wind_strength: f32,
+}
+
+impl StylizedNatureSettings {
+    fn from_component(component: &serde_json::Value) -> Self {
+        Self {
+            bark_color: json_color(
+                component,
+                "barkColor",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.bark_color,
+            ),
+            grass_count: json_usize(
+                component,
+                "grassCount",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.fallback_grass_count,
+            ),
+            leaf_color: json_color(
+                component,
+                "leafColor",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.leaf_color,
+            ),
+            path_width: json_f32(
+                component,
+                "pathWidth",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.path_width,
+            )
+            .max(0.1),
+            size: json_f32(component, "size", STYLIZED_NATURE_RUNTIME_DEFAULTS.size).max(0.1),
+            tree_count: json_usize(
+                component,
+                "treeCount",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.tree_count,
+            ),
+            wind_strength: json_f32(
+                component,
+                "windStrength",
+                STYLIZED_NATURE_RUNTIME_DEFAULTS.wind_strength,
+            )
+            .max(0.0),
+        }
+    }
+}
+
+struct StylizedNatureMaterials {
+    bark: Handle<StandardMaterial>,
+    cloud: Handle<StandardMaterial>,
+    cloud_shadow: Handle<StandardMaterial>,
+    grass: Handle<StandardMaterial>,
+    leaf: Handle<StandardMaterial>,
+    path_crack: Handle<StandardMaterial>,
+    path_pebble: Handle<StandardMaterial>,
+    sky: Handle<StandardMaterial>,
+    source_path: Handle<StandardMaterial>,
+    terrain: Handle<StandardMaterial>,
+}
+
+struct StylizedNatureMeshes {
+    cloud: Handle<Mesh>,
+    grass: (Handle<Mesh>, bool),
+    leaf: Handle<Mesh>,
+    path_crack: Handle<Mesh>,
+    path_pebble: Handle<Mesh>,
+    sky: Handle<Mesh>,
+    source_path: Handle<Mesh>,
+    terrain: Handle<Mesh>,
+    trunk: Handle<Mesh>,
+}
+
+struct PreparedStylizedNature {
+    materials: StylizedNatureMaterials,
+    meshes: StylizedNatureMeshes,
+    source_assets: crate::stylized_nature::StylizedSourceAssets,
+    source_backed: bool,
+}
+
+struct StylizedNatureSpawnContext<'a> {
+    entity_id: &'a str,
+    prepared: &'a PreparedStylizedNature,
+    settings: &'a StylizedNatureSettings,
+}
+
+fn prepare_stylized_nature(
     world: &mut World,
-    entity_id: &str,
     component: &serde_json::Value,
     assets_by_id: &HashMap<&str, &AssetIr>,
-    transform: Transform,
-    stable_id: ThreeNativeId,
-    name: Name,
     bundle_path: &Path,
-) -> Entity {
-    let size = json_f32(component, "size", STYLIZED_NATURE_RUNTIME_DEFAULTS.size).max(0.1);
-    let grass_count = json_usize(
-        component,
-        "grassCount",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.fallback_grass_count,
-    );
-    let tree_count = json_usize(
-        component,
-        "treeCount",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.tree_count,
-    );
-    let path_width = json_f32(
-        component,
-        "pathWidth",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.path_width,
-    )
-    .max(0.1);
-    let wind_strength = json_f32(
-        component,
-        "windStrength",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.wind_strength,
-    )
-    .max(0.0);
-    let bark_color = json_color(
-        component,
-        "barkColor",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.bark_color,
-    );
-    let leaf_color = json_color(
-        component,
-        "leafColor",
-        STYLIZED_NATURE_RUNTIME_DEFAULTS.leaf_color,
-    );
-
+    settings: &StylizedNatureSettings,
+) -> PreparedStylizedNature {
     let asset_server = world.get_resource::<AssetServer>().cloned();
     let source_assets =
         resolve_source_assets(component, assets_by_id, asset_server.as_ref(), bundle_path);
@@ -50,28 +101,65 @@ fn spawn_stylized_nature(
         || source_assets.trunk_scene.is_some();
     let source_ground_maps =
         StylizedSourceGroundMaps::load(component, assets_by_id, bundle_path, source_backed);
+    let materials = prepare_stylized_nature_materials(
+        world,
+        component,
+        assets_by_id,
+        bundle_path,
+        asset_server.as_ref(),
+        settings,
+        &source_assets,
+        source_backed,
+    );
+    let meshes = prepare_stylized_nature_meshes(
+        world,
+        component,
+        settings,
+        &source_assets,
+        source_backed,
+        source_ground_maps.as_ref(),
+    );
+    PreparedStylizedNature {
+        materials,
+        meshes,
+        source_assets,
+        source_backed,
+    }
+}
+
+struct StylizedNaturePreparationContext<'a> {
+    assets_by_id: &'a HashMap<&'a str, &'a AssetIr>,
+    asset_server: Option<&'a AssetServer>,
+    bundle_path: &'a Path,
+    component: &'a serde_json::Value,
+    source_assets: &'a crate::stylized_nature::StylizedSourceAssets,
+}
+
+fn prepare_stylized_nature_materials(
+    world: &mut World,
+    component: &serde_json::Value,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+    bundle_path: &Path,
+    asset_server: Option<&AssetServer>,
+    settings: &StylizedNatureSettings,
+    source_assets: &crate::stylized_nature::StylizedSourceAssets,
+    source_backed: bool,
+) -> StylizedNatureMaterials {
+    let context = StylizedNaturePreparationContext {
+        assets_by_id,
+        asset_server,
+        bundle_path,
+        component,
+        source_assets,
+    };
     let grass_color_texture = stylized_texture_handle(
         component,
         "grassColorMap",
         assets_by_id,
-        asset_server.as_ref(),
+        asset_server,
         bundle_path,
     );
-    let grass_normal_texture = stylized_texture_handle(
-        component,
-        "grassNormalMap",
-        assets_by_id,
-        asset_server.as_ref(),
-        bundle_path,
-    );
-    let grass_roughness_texture = stylized_texture_handle(
-        component,
-        "grassRoughnessMap",
-        assets_by_id,
-        asset_server.as_ref(),
-        bundle_path,
-    );
-    let terrain_material = add_stylized_surface_material(
+    let terrain = add_stylized_surface_material(
         world,
         Color::WHITE,
         0.88,
@@ -81,134 +169,95 @@ fn spawn_stylized_nature(
         } else {
             grass_color_texture
         },
-        grass_normal_texture,
-        grass_roughness_texture,
+        stylized_texture_handle(
+            component,
+            "grassNormalMap",
+            assets_by_id,
+            asset_server,
+            bundle_path,
+        ),
+        stylized_texture_handle(
+            component,
+            "grassRoughnessMap",
+            assets_by_id,
+            asset_server,
+            bundle_path,
+        ),
         8.0,
     );
-    let path_crack_material =
-        world
-            .resource_mut::<Assets<StandardMaterial>>()
-            .add(StandardMaterial {
-                base_color: Color::srgb(0.27, 0.16, 0.11),
-                perceptual_roughness: 1.0,
-                ..Default::default()
-            });
-    let path_pebble_material =
-        world
-            .resource_mut::<Assets<StandardMaterial>>()
-            .add(StandardMaterial {
-                base_color: Color::srgb(0.76, 0.49, 0.31),
-                perceptual_roughness: 1.0,
-                ..Default::default()
-            });
-    let grass_policy = grass_material_policy(component, &source_assets);
-    let grass_material = world
-        .resource_mut::<Assets<StandardMaterial>>()
-        .add(StandardMaterial {
-            base_color: grass_policy.base_color,
-            base_color_texture: grass_policy.base_color_texture_field.and_then(|key| {
-                stylized_texture_handle(
-                    component,
-                    key,
-                    assets_by_id,
-                    asset_server.as_ref(),
-                    bundle_path,
-                )
-            }),
-            normal_map_texture: grass_policy.normal_map_texture_field.and_then(|key| {
-                stylized_texture_handle(
-                    component,
-                    key,
-                    assets_by_id,
-                    asset_server.as_ref(),
-                    bundle_path,
-                )
-            }),
-            metallic_roughness_texture: grass_policy.roughness_texture_field.and_then(|key| {
-                stylized_texture_handle(
-                    component,
-                    key,
-                    assets_by_id,
-                    asset_server.as_ref(),
-                    bundle_path,
-                )
-            }),
-            double_sided: true,
-            cull_mode: None,
-            perceptual_roughness: grass_policy.roughness,
-            ..Default::default()
-        });
-    let source_path_material = add_stylized_surface_material(
-        world,
-        Color::WHITE,
-        0.9,
-        false,
-        stylized_texture_handle(
-            component,
-            "dirtColorMap",
-            assets_by_id,
-            asset_server.as_ref(),
-            bundle_path,
-        ),
-        stylized_texture_handle(
-            component,
-            "dirtNormalMap",
-            assets_by_id,
-            asset_server.as_ref(),
-            bundle_path,
-        ),
-        stylized_texture_handle(
-            component,
-            "dirtRoughnessMap",
-            assets_by_id,
-            asset_server.as_ref(),
-            bundle_path,
-        ),
-        1.0,
-    );
-    let bark_material = add_stylized_tree_material(world, bark_color, false, None, 0.95);
+    let path_crack = add_color_material(world, Color::srgb(0.27, 0.16, 0.11), 1.0);
+    let path_pebble = add_color_material(world, Color::srgb(0.76, 0.49, 0.31), 1.0);
+    let grass = prepare_stylized_grass_material(world, &context);
+    let source_path = prepare_stylized_path_material(world, &context);
+    let bark = add_stylized_tree_material(world, settings.bark_color, false, None, 0.95);
     let source_leaves_backed = source_assets.leaves_mesh.is_some();
-    let leaf_material_color = if source_leaves_backed {
-        source_leaf_native_color(leaf_color)
+    let leaf_color = if source_leaves_backed {
+        source_leaf_native_color(settings.leaf_color)
     } else {
-        leaf_color
+        settings.leaf_color
     };
-    let leaf_material = add_stylized_tree_material(
+    let leaf = add_stylized_tree_material(
         world,
-        leaf_material_color,
+        leaf_color,
         true,
         stylized_texture_handle(
             component,
             "leavesAlphaMap",
             assets_by_id,
-            asset_server.as_ref(),
+            asset_server,
             bundle_path,
         ),
         if source_leaves_backed { 0.8 } else { 0.82 },
     );
+    let (sky, cloud, cloud_shadow) = prepare_stylized_sky_materials(world, &context);
+    StylizedNatureMaterials {
+        bark,
+        cloud,
+        cloud_shadow,
+        grass,
+        leaf,
+        path_crack,
+        path_pebble,
+        sky,
+        source_path,
+        terrain,
+    }
+}
 
-    let sky_mesh = world
-        .resource_mut::<Assets<Mesh>>()
-        .add(Mesh::from(Rectangle::new(size * 2.4, size * 1.1)));
-    let cloud_mesh = world
-        .resource_mut::<Assets<Mesh>>()
-        .add(Mesh::from(Sphere { radius: 1.0 }));
-    let sky_material = world
+fn add_color_material(world: &mut World, color: Color, roughness: f32) -> Handle<StandardMaterial> {
+    world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: color,
+            perceptual_roughness: roughness,
+            ..Default::default()
+        })
+}
+
+fn prepare_stylized_sky_materials(
+    world: &mut World,
+    context: &StylizedNaturePreparationContext<'_>,
+) -> (
+    Handle<StandardMaterial>,
+    Handle<StandardMaterial>,
+    Handle<StandardMaterial>,
+) {
+    let sky = world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
             base_color: Color::WHITE,
             base_color_texture: texture_handle_by_id(
                 "tex.stylized-scene.sky",
-                assets_by_id,
-                asset_server.as_ref(),
-                bundle_path,
+                context.assets_by_id,
+                context.asset_server,
+                context.bundle_path,
             ),
             unlit: true,
             double_sided: true,
             cull_mode: None,
             ..Default::default()
         });
-    let cloud_material = world
+    let cloud = world
         .resource_mut::<Assets<StandardMaterial>>()
         .add(StandardMaterial {
             base_color: Color::srgba(0.95, 0.97, 0.96, 0.92),
@@ -218,39 +267,111 @@ fn spawn_stylized_nature(
             cull_mode: None,
             ..Default::default()
         });
-    let cloud_shadow_material =
-        world
-            .resource_mut::<Assets<StandardMaterial>>()
-            .add(StandardMaterial {
-                base_color: Color::srgba(0.68, 0.78, 0.82, 0.28),
-                unlit: true,
-                alpha_mode: AlphaMode::Blend,
-                double_sided: true,
-                cull_mode: None,
-                ..Default::default()
-            });
+    let cloud_shadow = world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: Color::srgba(0.68, 0.78, 0.82, 0.28),
+            unlit: true,
+            alpha_mode: AlphaMode::Blend,
+            double_sided: true,
+            cull_mode: None,
+            ..Default::default()
+        });
+    (sky, cloud, cloud_shadow)
+}
 
-    let path_crack_mesh = add_cuboid_mesh(world, 0.48, 0.018, 0.032);
-    let path_pebble_mesh = add_cuboid_mesh(world, 0.42, 0.045, 0.22);
-    let terrain_mesh = add_source_masked_terrain_mesh(
+fn prepare_stylized_grass_material(
+    world: &mut World,
+    context: &StylizedNaturePreparationContext<'_>,
+) -> Handle<StandardMaterial> {
+    let policy = grass_material_policy(context.component, context.source_assets);
+    let texture = |field| {
+        stylized_texture_handle(
+            context.component,
+            field,
+            context.assets_by_id,
+            context.asset_server,
+            context.bundle_path,
+        )
+    };
+    world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: policy.base_color,
+            base_color_texture: policy.base_color_texture_field.and_then(texture),
+            normal_map_texture: policy.normal_map_texture_field.and_then(texture),
+            metallic_roughness_texture: policy.roughness_texture_field.and_then(texture),
+            double_sided: true,
+            cull_mode: None,
+            perceptual_roughness: policy.roughness,
+            ..Default::default()
+        })
+}
+
+fn prepare_stylized_path_material(
+    world: &mut World,
+    context: &StylizedNaturePreparationContext<'_>,
+) -> Handle<StandardMaterial> {
+    let texture = |field| {
+        stylized_texture_handle(
+            context.component,
+            field,
+            context.assets_by_id,
+            context.asset_server,
+            context.bundle_path,
+        )
+    };
+    add_stylized_surface_material(
         world,
-        size,
+        Color::WHITE,
+        0.9,
+        false,
+        texture("dirtColorMap"),
+        texture("dirtNormalMap"),
+        texture("dirtRoughnessMap"),
+        1.0,
+    )
+}
+
+fn prepare_stylized_nature_meshes(
+    world: &mut World,
+    component: &serde_json::Value,
+    settings: &StylizedNatureSettings,
+    source_assets: &crate::stylized_nature::StylizedSourceAssets,
+    source_backed: bool,
+    source_ground_maps: Option<&StylizedSourceGroundMaps>,
+) -> StylizedNatureMeshes {
+    let sky = world
+        .resource_mut::<Assets<Mesh>>()
+        .add(Mesh::from(Rectangle::new(
+            settings.size * 2.4,
+            settings.size * 1.1,
+        )));
+    let cloud = world
+        .resource_mut::<Assets<Mesh>>()
+        .add(Mesh::from(Sphere { radius: 1.0 }));
+    let path_crack = add_cuboid_mesh(world, 0.48, 0.018, 0.032);
+    let path_pebble = add_cuboid_mesh(world, 0.42, 0.045, 0.22);
+    let terrain = add_source_masked_terrain_mesh(
+        world,
+        settings.size,
         if source_backed {
             THREE_COMPAT_SOURCE_TERRAIN_BAKE_SEGMENTS
         } else {
             256
         },
-        path_width,
+        settings.path_width,
         json_color(
             component,
             "groundColor",
             STYLIZED_NATURE_RUNTIME_DEFAULTS.native_ground_color,
         ),
         json_color(component, "pathColor", "#9b6543"),
-        source_ground_maps.as_ref(),
+        source_ground_maps,
     );
-    let source_path_mesh = add_source_path_ribbon_mesh(world, size, 120, path_width * 0.92);
-    let grass_mesh = match source_assets.grass_mesh.clone() {
+    let source_path =
+        add_source_path_ribbon_mesh(world, settings.size, 120, settings.path_width * 0.92);
+    let grass = match source_assets.grass_mesh.clone() {
         Some(mesh) => (mesh, true),
         None => (
             add_grass_blade_mesh(
@@ -269,12 +390,42 @@ fn spawn_stylized_nature(
             false,
         ),
     };
-    let trunk_mesh = world
+    let trunk = world
         .resource_mut::<Assets<Mesh>>()
         .add(Mesh::from(Cylinder::new(0.18, 1.45)));
-    let leaf_mesh = world
+    let leaf = world
         .resource_mut::<Assets<Mesh>>()
         .add(Mesh::from(Sphere { radius: 1.0 }));
+    StylizedNatureMeshes {
+        cloud,
+        grass,
+        leaf,
+        path_crack,
+        path_pebble,
+        sky,
+        source_path,
+        terrain,
+        trunk,
+    }
+}
+
+fn spawn_stylized_nature(
+    world: &mut World,
+    entity_id: &str,
+    component: &serde_json::Value,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+    transform: Transform,
+    stable_id: ThreeNativeId,
+    name: Name,
+    bundle_path: &Path,
+) -> Entity {
+    let settings = StylizedNatureSettings::from_component(component);
+    let prepared = prepare_stylized_nature(world, component, assets_by_id, bundle_path, &settings);
+    let context = StylizedNatureSpawnContext {
+        entity_id,
+        prepared: &prepared,
+        settings: &settings,
+    };
 
     let parent = world
         .spawn(SpatialBundle {
@@ -284,25 +435,42 @@ fn spawn_stylized_nature(
         .insert((stable_id, name))
         .id();
     let mut children = Vec::new();
+    spawn_stylized_sky_and_clouds(world, &context, &mut children);
+    spawn_stylized_terrain_and_path(world, &context, &mut children);
+    spawn_stylized_grass(world, &context, &mut children);
+    spawn_stylized_trees(world, &context, &mut children);
 
-    if !source_backed {
-        children.push(
-            world
-                .spawn(PbrBundle {
-                    mesh: sky_mesh,
-                    material: sky_material,
-                    transform: Transform::from_xyz(0.0, size * 0.18, -size * 0.38),
-                    ..Default::default()
-                })
-                .insert((
-                    Name::new(format!("{entity_id}.stylized-soft-sky-gradient")),
-                    NotShadowCaster,
-                    NotShadowReceiver,
-                ))
-                .id(),
-        );
+    world.entity_mut(parent).push_children(&children);
+    parent
+}
+
+fn spawn_stylized_sky_and_clouds(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    children: &mut Vec<Entity>,
+) {
+    if context.prepared.source_backed {
+        return;
     }
-
+    let entity_id = context.entity_id;
+    let size = context.settings.size;
+    let meshes = &context.prepared.meshes;
+    let materials = &context.prepared.materials;
+    children.push(
+        world
+            .spawn(PbrBundle {
+                mesh: meshes.sky.clone(),
+                material: materials.sky.clone(),
+                transform: Transform::from_xyz(0.0, size * 0.18, -size * 0.38),
+                ..Default::default()
+            })
+            .insert((
+                Name::new(format!("{entity_id}.stylized-soft-sky-gradient")),
+                NotShadowCaster,
+                NotShadowReceiver,
+            ))
+            .id(),
+    );
     let cloud_groups = [
         (-8.5, size * 0.24, -size * 0.34, 0.82),
         (5.5, size * 0.27, -size * 0.35, 0.68),
@@ -314,64 +482,72 @@ fn spawn_stylized_nature(
         (-0.55, 0.34, 0.03, 1.35, 0.48),
         (0.85, 0.26, 0.02, 1.18, 0.42),
     ];
-    if !source_backed {
-        for (cloud_index, (cx, cy, cz, group_scale)) in cloud_groups.iter().copied().enumerate() {
-            for (puff_index, (px, py, pz, sx, sy)) in cloud_puffs.iter().copied().enumerate() {
-                let transform =
-                    Transform::from_xyz(cx + px * group_scale, cy + py * group_scale, cz + pz)
-                        .with_scale(Vec3::new(sx * group_scale, sy * group_scale, 0.12));
+    for (cloud_index, (cx, cy, cz, group_scale)) in cloud_groups.iter().copied().enumerate() {
+        for (puff_index, (px, py, pz, sx, sy)) in cloud_puffs.iter().copied().enumerate() {
+            let transform =
+                Transform::from_xyz(cx + px * group_scale, cy + py * group_scale, cz + pz)
+                    .with_scale(Vec3::new(sx * group_scale, sy * group_scale, 0.12));
+            children.push(
+                world
+                    .spawn(PbrBundle {
+                        mesh: meshes.cloud.clone(),
+                        material: materials.cloud.clone(),
+                        transform,
+                        ..Default::default()
+                    })
+                    .insert((
+                        Name::new(format!("{entity_id}.soft-cloud-{cloud_index}-{puff_index}")),
+                        NotShadowCaster,
+                        NotShadowReceiver,
+                    ))
+                    .id(),
+            );
+            if puff_index == 0 || puff_index == 2 {
                 children.push(
                     world
                         .spawn(PbrBundle {
-                            mesh: cloud_mesh.clone(),
-                            material: cloud_material.clone(),
-                            transform,
+                            mesh: meshes.cloud.clone(),
+                            material: materials.cloud_shadow.clone(),
+                            transform: Transform::from_xyz(
+                                cx + px * group_scale + 0.08,
+                                cy + py * group_scale - 0.18,
+                                cz + pz - 0.02,
+                            )
+                            .with_scale(Vec3::new(
+                                sx * group_scale * 0.95,
+                                sy * group_scale * 0.48,
+                                0.08,
+                            )),
                             ..Default::default()
                         })
                         .insert((
-                            Name::new(format!("{entity_id}.soft-cloud-{cloud_index}-{puff_index}")),
+                            Name::new(format!(
+                                "{entity_id}.soft-cloud-shadow-{cloud_index}-{puff_index}"
+                            )),
                             NotShadowCaster,
                             NotShadowReceiver,
                         ))
                         .id(),
                 );
-                if puff_index == 0 || puff_index == 2 {
-                    children.push(
-                        world
-                            .spawn(PbrBundle {
-                                mesh: cloud_mesh.clone(),
-                                material: cloud_shadow_material.clone(),
-                                transform: Transform::from_xyz(
-                                    cx + px * group_scale + 0.08,
-                                    cy + py * group_scale - 0.18,
-                                    cz + pz - 0.02,
-                                )
-                                .with_scale(Vec3::new(
-                                    sx * group_scale * 0.95,
-                                    sy * group_scale * 0.48,
-                                    0.08,
-                                )),
-                                ..Default::default()
-                            })
-                            .insert((
-                                Name::new(format!(
-                                    "{entity_id}.soft-cloud-shadow-{cloud_index}-{puff_index}"
-                                )),
-                                NotShadowCaster,
-                                NotShadowReceiver,
-                            ))
-                            .id(),
-                    );
-                }
             }
         }
     }
+}
 
+fn spawn_stylized_terrain_and_path(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    children: &mut Vec<Entity>,
+) {
+    let entity_id = context.entity_id;
+    let settings = context.settings;
+    let meshes = &context.prepared.meshes;
+    let materials = &context.prepared.materials;
     children.push(
         world
             .spawn(PbrBundle {
-                mesh: terrain_mesh,
-                material: terrain_material,
+                mesh: meshes.terrain.clone(),
+                material: materials.terrain.clone(),
                 transform: Transform::IDENTITY,
                 ..Default::default()
             })
@@ -380,120 +556,84 @@ fn spawn_stylized_nature(
             )))
             .id(),
     );
-    if !source_backed {
+    if context.prepared.source_backed {
+        return;
+    }
+    children.push(
+        world
+            .spawn(PbrBundle {
+                mesh: meshes.source_path.clone(),
+                material: materials.source_path.clone(),
+                transform: Transform::from_xyz(0.0, 0.045, 0.0),
+                ..Default::default()
+            })
+            .insert(Name::new(format!("{entity_id}.source-dirt-path-ribbon")))
+            .id(),
+    );
+    let mut random = Lcg::new(2401);
+    for index in 0..96usize {
+        let z = settings.size / 2.0 - (index as f32 / 95.0) * settings.size
+            + (random.next() - 0.5) * 0.45;
+        let x = stylized_path_center(z) + (random.next() - 0.5) * settings.path_width * 0.72;
+        let y = stylized_terrain_height(x, z) + 0.09;
+        let yaw = random.next() * std::f32::consts::TAU;
+        let scale = Vec3::new(0.75 + random.next() * 0.85, 1.0, 0.7 + random.next() * 0.65);
         children.push(
             world
                 .spawn(PbrBundle {
-                    mesh: source_path_mesh,
-                    material: source_path_material,
-                    transform: Transform::from_xyz(0.0, 0.045, 0.0),
+                    mesh: meshes.path_pebble.clone(),
+                    material: materials.path_pebble.clone(),
+                    transform: Transform::from_xyz(x, y, z)
+                        .with_rotation(Quat::from_rotation_y(yaw))
+                        .with_scale(scale),
                     ..Default::default()
                 })
-                .insert(Name::new(format!("{entity_id}.source-dirt-path-ribbon")))
+                .insert(Name::new(format!("{entity_id}.path-pebble-{index}")))
                 .id(),
         );
-        let mut path_random = Lcg::new(2401);
-        for index in 0..96usize {
-            let z = size / 2.0 - (index as f32 / 95.0) * size + (path_random.next() - 0.5) * 0.45;
-            let center = stylized_path_center(z);
-            let x = center + (path_random.next() - 0.5) * path_width * 0.72;
-            let y = stylized_terrain_height(x, z) + 0.09;
-            let yaw = path_random.next() * std::f32::consts::TAU;
-            let sx = 0.75 + path_random.next() * 0.85;
-            let sz = 0.7 + path_random.next() * 0.65;
+        if index % 3 == 0 {
+            let crack_x = x + (random.next() - 0.5) * 0.18;
+            let crack_z = z + (random.next() - 0.5) * 0.18;
             children.push(
                 world
                     .spawn(PbrBundle {
-                        mesh: path_pebble_mesh.clone(),
-                        material: path_pebble_material.clone(),
-                        transform: Transform::from_xyz(x, y, z)
-                            .with_rotation(Quat::from_rotation_y(yaw))
-                            .with_scale(Vec3::new(sx, 1.0, sz)),
+                        mesh: meshes.path_crack.clone(),
+                        material: materials.path_crack.clone(),
+                        transform: Transform::from_xyz(crack_x, y + 0.018, crack_z)
+                            .with_rotation(Quat::from_rotation_y(yaw + random.next() * 0.65))
+                            .with_scale(Vec3::new(0.65 + random.next() * 0.55, 1.0, 0.7)),
                         ..Default::default()
                     })
-                    .insert(Name::new(format!("{entity_id}.path-pebble-{index}")))
+                    .insert(Name::new(format!("{entity_id}.path-crack-{index}")))
                     .id(),
             );
-            if index % 3 == 0 {
-                let crack_x = x + (path_random.next() - 0.5) * 0.18;
-                let crack_z = z + (path_random.next() - 0.5) * 0.18;
-                children.push(
-                    world
-                        .spawn(PbrBundle {
-                            mesh: path_crack_mesh.clone(),
-                            material: path_crack_material.clone(),
-                            transform: Transform::from_xyz(crack_x, y + 0.018, crack_z)
-                                .with_rotation(Quat::from_rotation_y(
-                                    yaw + path_random.next() * 0.65,
-                                ))
-                                .with_scale(Vec3::new(0.65 + path_random.next() * 0.55, 1.0, 0.7)),
-                            ..Default::default()
-                        })
-                        .insert(Name::new(format!("{entity_id}.path-crack-{index}")))
-                        .id(),
-                );
-            }
         }
     }
+}
+
+fn spawn_stylized_grass(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    children: &mut Vec<Entity>,
+) {
+    let settings = context.settings;
+    let grass_mesh = &context.prepared.meshes.grass;
+    let grass_material = &context.prepared.materials.grass;
     let mut random = Lcg::new(1337);
     let mut written = 0usize;
     let mut attempts = 0usize;
-    while written < grass_count && attempts < grass_count * 4 {
+    while written < settings.grass_count && attempts < settings.grass_count * 4 {
         attempts += 1;
-        if grass_mesh.1 {
-            let x = (random.next() - 0.5) * size;
-            let z = (random.next() - 0.5) * size;
-            if stylized_source_path_mask(x, z, size, path_width) > 0.16 {
-                continue;
-            }
-            let y = stylized_terrain_height(x, z);
-            let yaw = random.next() * std::f32::consts::TAU;
-            let instance_scale = 1.3 * (0.85 + random.next() * 0.35);
-            let base_transform = Transform::from_xyz(x, y, z)
-                .with_rotation(Quat::from_rotation_y(yaw))
-                .with_scale(Vec3::splat(instance_scale));
-            let index = written;
-            children.push(
-                world
-                    .spawn(PbrBundle {
-                        mesh: grass_mesh.0.clone(),
-                        material: grass_material.clone(),
-                        transform: base_transform,
-                        ..Default::default()
-                    })
-                    .insert((
-                        Name::new(format!("{entity_id}.source-grass-{index}")),
-                        NativeGrassWindMotion {
-                            base: base_transform,
-                            base_euler: Vec3::new(0.0, yaw, 0.0),
-                            phase: random.next() * std::f32::consts::TAU + x * 0.17 + z * 0.11,
-                            strength: wind_strength,
-                        },
-                    ))
-                    .id(),
-            );
-            written += 1;
+        let Some((base_transform, base_euler, name)) = stylized_grass_transform(
+            &mut random,
+            settings,
+            grass_mesh.1,
+            written,
+            context.entity_id,
+        ) else {
             continue;
-        }
-
-        let z_bias = random.next().powf(1.65);
-        let z = size / 2.0 - z_bias * size;
-        let x = (random.next() - 0.5) * size * (0.72 + z_bias * 0.32);
-        let path_mask = stylized_source_path_mask(x, z, size, path_width);
-        if path_mask > 0.14 + random.next() * 0.12 {
-            continue;
-        }
-        let y = stylized_terrain_height(x, z) + 0.035;
-        let pitch = (random.next() - 0.5) * 0.12;
-        let yaw = random.next() * std::f32::consts::TAU;
-        let roll = (random.next() - 0.5) * wind_strength;
-        let foreground_boost = if z > 0.0 { 1.55 } else { 1.1 };
-        let blade_scale = foreground_boost * (0.85 + random.next() * 1.25);
-        let height_scale = blade_scale * (0.9 + random.next() * 0.8);
-        let base_transform = Transform::from_xyz(x, y, z)
-            .with_rotation(Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll))
-            .with_scale(Vec3::new(blade_scale, height_scale, blade_scale));
-        let index = written;
+        };
+        let position = base_transform.translation;
         children.push(
             world
                 .spawn(PbrBundle {
@@ -503,129 +643,197 @@ fn spawn_stylized_nature(
                     ..Default::default()
                 })
                 .insert((
-                    Name::new(format!("{entity_id}.stylized-grass-{index}")),
+                    Name::new(name),
                     NativeGrassWindMotion {
                         base: base_transform,
-                        base_euler: Vec3::new(pitch, yaw, roll),
-                        phase: random.next() * std::f32::consts::TAU + x * 0.17 + z * 0.11,
-                        strength: wind_strength,
+                        base_euler,
+                        phase: random.next() * std::f32::consts::TAU
+                            + position.x * 0.17
+                            + position.z * 0.11,
+                        strength: settings.wind_strength,
                     },
                 ))
                 .id(),
         );
         written += 1;
     }
+}
 
-    let tree_anchors = [
+fn stylized_grass_transform(
+    random: &mut Lcg,
+    settings: &StylizedNatureSettings,
+    source_mesh: bool,
+    index: usize,
+    entity_id: &str,
+) -> Option<(Transform, Vec3, String)> {
+    if source_mesh {
+        let x = (random.next() - 0.5) * settings.size;
+        let z = (random.next() - 0.5) * settings.size;
+        if stylized_source_path_mask(x, z, settings.size, settings.path_width) > 0.16 {
+            return None;
+        }
+        let yaw = random.next() * std::f32::consts::TAU;
+        let scale = 1.3 * (0.85 + random.next() * 0.35);
+        return Some((
+            Transform::from_xyz(x, stylized_terrain_height(x, z), z)
+                .with_rotation(Quat::from_rotation_y(yaw))
+                .with_scale(Vec3::splat(scale)),
+            Vec3::new(0.0, yaw, 0.0),
+            format!("{entity_id}.source-grass-{index}"),
+        ));
+    }
+    let z_bias = random.next().powf(1.65);
+    let z = settings.size / 2.0 - z_bias * settings.size;
+    let x = (random.next() - 0.5) * settings.size * (0.72 + z_bias * 0.32);
+    if stylized_source_path_mask(x, z, settings.size, settings.path_width)
+        > 0.14 + random.next() * 0.12
+    {
+        return None;
+    }
+    let pitch = (random.next() - 0.5) * 0.12;
+    let yaw = random.next() * std::f32::consts::TAU;
+    let roll = (random.next() - 0.5) * settings.wind_strength;
+    let blade_scale = if z > 0.0 { 1.55 } else { 1.1 } * (0.85 + random.next() * 1.25);
+    let height_scale = blade_scale * (0.9 + random.next() * 0.8);
+    Some((
+        Transform::from_xyz(x, stylized_terrain_height(x, z) + 0.035, z)
+            .with_rotation(Quat::from_euler(EulerRot::XYZ, pitch, yaw, roll))
+            .with_scale(Vec3::new(blade_scale, height_scale, blade_scale)),
+        Vec3::new(pitch, yaw, roll),
+        format!("{entity_id}.stylized-grass-{index}"),
+    ))
+}
+
+fn spawn_stylized_trees(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    children: &mut Vec<Entity>,
+) {
+    let anchors = [
         (13.0, -13.0, 0.0, 1.0),
         (-13.0, -13.0, 2.1, 0.9),
         (-13.0, 13.0, 4.0, 1.1),
         (13.0, 13.0, 1.0, 0.95),
     ];
-    for (index, (x, z, yaw, tree_scale)) in tree_anchors
+    for (index, (x, z, yaw, scale)) in anchors
         .iter()
         .copied()
-        .take(tree_count.min(tree_anchors.len()))
+        .take(context.settings.tree_count.min(anchors.len()))
         .enumerate()
     {
         let tree_parent = world
             .spawn(SpatialBundle {
                 transform: Transform::from_xyz(x, stylized_terrain_height(x, z), z)
                     .with_rotation(Quat::from_rotation_y(yaw))
-                    .with_scale(Vec3::splat(tree_scale)),
+                    .with_scale(Vec3::splat(scale)),
                 ..Default::default()
             })
             .insert(Name::new(format!(
-                "{entity_id}.rounded-stylized-tree-{index}"
+                "{}.rounded-stylized-tree-{index}",
+                context.entity_id
             )))
             .id();
         let mut tree_children = Vec::new();
-        if let Some(source_trunk_scene) = source_assets.trunk_scene.as_ref() {
-            tree_children.push(
-                world
-                    .spawn(SceneBundle {
-                        scene: source_trunk_scene.clone(),
-                        transform: Transform::from_scale(Vec3::splat(12.0)),
-                        ..Default::default()
-                    })
-                    .insert(Name::new(format!("{entity_id}.tree-{index}.source-trunk")))
-                    .id(),
-            );
-        } else {
-            tree_children.push(
-                world
-                    .spawn(PbrBundle {
-                        mesh: trunk_mesh.clone(),
-                        material: bark_material.clone(),
-                        transform: Transform::from_xyz(0.0, 3.6, 0.0)
-                            .with_scale(Vec3::new(1.45, 5.0, 1.45)),
-                        ..Default::default()
-                    })
-                    .insert(Name::new(format!("{entity_id}.tree-{index}.trunk")))
-                    .id(),
-            );
-        }
-        let source_leaf_offsets = [
+        spawn_stylized_tree_trunk(world, context, index, &mut tree_children);
+        spawn_stylized_tree_leaves(world, context, index, &mut tree_children);
+        world.entity_mut(tree_parent).push_children(&tree_children);
+        children.push(tree_parent);
+    }
+}
+
+fn spawn_stylized_tree_trunk(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    index: usize,
+    children: &mut Vec<Entity>,
+) {
+    let entity_id = context.entity_id;
+    if let Some(source_scene) = context.prepared.source_assets.trunk_scene.as_ref() {
+        children.push(
+            world
+                .spawn(SceneBundle {
+                    scene: source_scene.clone(),
+                    transform: Transform::from_scale(Vec3::splat(12.0)),
+                    ..Default::default()
+                })
+                .insert(Name::new(format!("{entity_id}.tree-{index}.source-trunk")))
+                .id(),
+        );
+    } else {
+        children.push(
+            world
+                .spawn(PbrBundle {
+                    mesh: context.prepared.meshes.trunk.clone(),
+                    material: context.prepared.materials.bark.clone(),
+                    transform: Transform::from_xyz(0.0, 3.6, 0.0)
+                        .with_scale(Vec3::new(1.45, 5.0, 1.45)),
+                    ..Default::default()
+                })
+                .insert(Name::new(format!("{entity_id}.tree-{index}.trunk")))
+                .id(),
+        );
+    }
+}
+
+fn spawn_stylized_tree_leaves(
+    world: &mut World,
+    context: &StylizedNatureSpawnContext<'_>,
+    index: usize,
+    children: &mut Vec<Entity>,
+) {
+    let entity_id = context.entity_id;
+    let leaf_material = &context.prepared.materials.leaf;
+    if let Some(source_mesh) = context.prepared.source_assets.leaves_mesh.as_ref() {
+        let offsets = [
             (-0.47, 7.59, 0.48, 0.0, 0.85),
             (-3.87, 6.79, -4.47, 1.3, 0.76),
             (-2.08, 10.5, 0.18, 2.5, 0.9),
         ];
-        if let Some(source_leaves_mesh) = source_assets.leaves_mesh.as_ref() {
-            for (leaf_index, (lx, ly, lz, leaf_yaw, source_scale)) in
-                source_leaf_offsets.iter().copied().enumerate()
-            {
-                tree_children.push(
-                    world
-                        .spawn(PbrBundle {
-                            mesh: source_leaves_mesh.clone(),
-                            material: leaf_material.clone(),
-                            transform: Transform::from_xyz(lx, ly, lz)
-                                .with_rotation(Quat::from_rotation_y(leaf_yaw))
-                                .with_scale(Vec3::splat(source_scale)),
-                            ..Default::default()
-                        })
-                        .insert(Name::new(format!(
-                            "{entity_id}.tree-{index}.source-leaves-{leaf_index}"
-                        )))
-                        .insert(NotShadowReceiver)
-                        .id(),
-                );
-            }
-        } else {
-            let canopy_offsets = [
-                (-0.47, 7.35, 0.48, 0.0, Vec3::new(2.65, 1.85, 2.25)),
-                (-3.35, 6.55, -3.75, 1.3, Vec3::new(2.2, 1.55, 1.95)),
-                (-2.08, 9.55, 0.18, 2.5, Vec3::new(2.35, 1.72, 2.05)),
-                (1.15, 7.05, -2.1, 0.7, Vec3::new(1.7, 1.28, 1.55)),
-                (-1.65, 8.35, 2.35, 2.9, Vec3::new(1.55, 1.16, 1.42)),
-                (-4.35, 7.55, -0.85, 1.9, Vec3::new(1.45, 1.05, 1.35)),
-            ];
-            for (leaf_index, (lx, ly, lz, leaf_yaw, scale)) in
-                canopy_offsets.iter().copied().enumerate()
-            {
-                tree_children.push(
-                    world
-                        .spawn(PbrBundle {
-                            mesh: leaf_mesh.clone(),
-                            material: leaf_material.clone(),
-                            transform: Transform::from_xyz(lx, ly, lz)
-                                .with_rotation(Quat::from_rotation_y(leaf_yaw))
-                                .with_scale(scale),
-                            ..Default::default()
-                        })
-                        .insert(Name::new(format!(
-                            "{entity_id}.tree-{index}.leaf-{leaf_index}"
-                        )))
-                        .id(),
-                );
-            }
+        for (leaf_index, (x, y, z, yaw, scale)) in offsets.iter().copied().enumerate() {
+            children.push(
+                world
+                    .spawn(PbrBundle {
+                        mesh: source_mesh.clone(),
+                        material: leaf_material.clone(),
+                        transform: Transform::from_xyz(x, y, z)
+                            .with_rotation(Quat::from_rotation_y(yaw))
+                            .with_scale(Vec3::splat(scale)),
+                        ..Default::default()
+                    })
+                    .insert(Name::new(format!(
+                        "{entity_id}.tree-{index}.source-leaves-{leaf_index}"
+                    )))
+                    .insert(NotShadowReceiver)
+                    .id(),
+            );
         }
-        world.entity_mut(tree_parent).push_children(&tree_children);
-        children.push(tree_parent);
+        return;
     }
-
-    world.entity_mut(parent).push_children(&children);
-    parent
+    let offsets = [
+        (-0.47, 7.35, 0.48, 0.0, Vec3::new(2.65, 1.85, 2.25)),
+        (-3.35, 6.55, -3.75, 1.3, Vec3::new(2.2, 1.55, 1.95)),
+        (-2.08, 9.55, 0.18, 2.5, Vec3::new(2.35, 1.72, 2.05)),
+        (1.15, 7.05, -2.1, 0.7, Vec3::new(1.7, 1.28, 1.55)),
+        (-1.65, 8.35, 2.35, 2.9, Vec3::new(1.55, 1.16, 1.42)),
+        (-4.35, 7.55, -0.85, 1.9, Vec3::new(1.45, 1.05, 1.35)),
+    ];
+    for (leaf_index, (x, y, z, yaw, scale)) in offsets.iter().copied().enumerate() {
+        children.push(
+            world
+                .spawn(PbrBundle {
+                    mesh: context.prepared.meshes.leaf.clone(),
+                    material: leaf_material.clone(),
+                    transform: Transform::from_xyz(x, y, z)
+                        .with_rotation(Quat::from_rotation_y(yaw))
+                        .with_scale(scale),
+                    ..Default::default()
+                })
+                .insert(Name::new(format!(
+                    "{entity_id}.tree-{index}.leaf-{leaf_index}"
+                )))
+                .id(),
+        );
+    }
 }
 
 fn stylized_path_center(z: f32) -> f32 {

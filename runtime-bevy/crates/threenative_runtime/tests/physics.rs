@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeSet,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 
@@ -558,7 +558,7 @@ fn physics_should_trace_dynamic_mesh_ccd_against_track_collider() {
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }
 
-fn live_joint_bundle(root: &PathBuf, kind: &str) -> threenative_loader::LoadedBundle {
+fn live_joint_bundle(root: &Path, kind: &str) -> threenative_loader::LoadedBundle {
     let mut bundle = load_bundle(root).expect("joint bundle should load");
     let anchor = bundle
         .world
@@ -1067,6 +1067,6 @@ fn write_mesh_ccd_bundle() -> PathBuf {
     root
 }
 
-fn write(root: &PathBuf, file: &str, contents: &str) {
+fn write(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
 }

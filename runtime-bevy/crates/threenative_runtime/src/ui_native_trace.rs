@@ -458,10 +458,10 @@ fn native_ui_entity(world: &mut World, id: &str) -> Option<Entity> {
         .map(|(entity, _)| entity)
 }
 
-fn find_ui_node<'a>(
-    node: &'a UiNodeIr,
+fn find_ui_node(
+    node: &UiNodeIr,
     predicate: impl Fn(&UiNodeIr) -> bool + Copy,
-) -> Option<&'a UiNodeIr> {
+) -> Option<&UiNodeIr> {
     if predicate(node) {
         return Some(node);
     }

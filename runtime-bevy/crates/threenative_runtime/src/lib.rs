@@ -35,8 +35,8 @@ pub mod input_ui_polish;
 pub mod interactions;
 pub mod kinematic_mover;
 pub mod map_world;
-pub mod mesh_lod;
 pub mod mesh_bounds;
+pub mod mesh_lod;
 pub mod motion_blur_postprocess;
 pub mod native_ssr;
 pub mod native_volumetric;
@@ -179,17 +179,17 @@ pub fn app_from_bundle_with_options(
         .is_some_and(|config| config.time.paused);
     let asset_root = bundle.bundle_path.display().to_string();
     let window = bundle.runtime_config.as_ref().map(|config| &config.window);
-    if proof_harness_requested {
-        if let Err(diagnostics) = overlay_host::create_native_overlay_host_plan(
+    if proof_harness_requested
+        && let Err(diagnostics) = overlay_host::create_native_overlay_host_plan(
             bundle.overlays.as_ref(),
             &bundle.bundle_path,
-        ) {
-            let diagnostic = &diagnostics[0];
-            return Err(RuntimeError::SceneReadiness(format!(
-                "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
-                diagnostic.code, diagnostic.message
-            )));
-        }
+        )
+    {
+        let diagnostic = &diagnostics[0];
+        return Err(RuntimeError::SceneReadiness(format!(
+            "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
+            diagnostic.code, diagnostic.message
+        )));
     }
     let mut app = App::new();
     app.insert_resource(ClearColor(default_clear_color_for_bundle(&bundle)))
@@ -225,158 +225,14 @@ pub fn app_from_bundle_with_options(
         map_world::NativeEquirectSkyMaterialPlugin,
         map_world::NativePortableShaderMaterialPlugin,
     ));
-    // DefaultPlugins installs Bevy's physical-unit ambient default (80.0).
-    // ThreeNative owns ambient lighting through authored lights, atmosphere,
-    // environment maps, and baked probes, so start those adapters from a
-    // neutral baseline instead of conditionally inheriting Bevy's default.
-    reset_native_ambient_baseline(app.world_mut());
-    rendering::apply_atmosphere_to_world(app.world_mut(), &bundle);
-    let environment_lighting =
-        rendering::apply_environment_lighting_to_world(app.world_mut(), &bundle);
-    for diagnostic in environment_lighting.diagnostics {
-        warn!("{diagnostic}");
-    }
-    map_world::map_bundle_into_world(app.world_mut(), &bundle)?;
-    app.insert_resource(scene_ray_query::NativeSceneRayQuery::from_bundle(&bundle));
-    sync_default_camera_clear_color(app.world_mut());
-    environment::map_environment_into_world(app.world_mut(), &bundle);
-    for diagnostic in audio::spawn_startup_audio(app.world_mut(), &bundle) {
-        warn!("{}", diagnostic.message);
-    }
-    app.insert_resource(audio::NativeAudioRuntime::from_bundle(&bundle));
-    app.init_resource::<audio::NativeAudioServiceQueue>();
-    let mut audio_events = audio::NativeAudioEventQueue::default();
-    let mut audio_event_cursors = audio::NativeAudioEventCursors::default();
-    audio::queue_new_native_audio_events(
-        &mut audio_events,
-        &mut audio_event_cursors,
-        &bundle.world.events,
+    map_native_bundle_world(&mut app, &bundle)?;
+    configure_native_ui(&mut app, &bundle)?;
+    configure_native_overlays(
+        &mut app,
+        &bundle,
+        #[cfg(feature = "native-overlay-cef")]
+        process_started_at,
     );
-    app.insert_resource(audio_events);
-    app.insert_resource(audio_event_cursors);
-    app.init_resource::<audio::NativeAudioPlaybackStates>();
-    app.init_resource::<audio::NativeAudioDiagnostics>();
-    if let Some(ui) = bundle.ui.as_ref() {
-        ui::map_ui_into_world(app.world_mut(), ui)?;
-        ui::sync_native_ui_effect_states(app.world_mut(), &bundle);
-        app.init_resource::<bevy::a11y::Focus>();
-        if let Some(diagnostic) = ui::diagnose_native_ui_font_fallback(app.world()) {
-            warn!(
-                "{}: {} ({})",
-                diagnostic.code, diagnostic.message, diagnostic.path
-            );
-        }
-        for diagnostic in ui::diagnose_native_ui_font_weight_fallbacks(ui) {
-            warn!(
-                "{}: {} ({})",
-                diagnostic.code, diagnostic.message, diagnostic.path
-            );
-        }
-        let diagnostic = ui::diagnose_native_ui_scale_boundary(ui);
-        warn!(
-            "{}: {} ({})",
-            diagnostic.code, diagnostic.message, diagnostic.path
-        );
-        if !ui::route_native_ui_to_active_scene_camera(app.world_mut()) {
-            ui::install_native_ui_overlay_camera(app.world_mut());
-        }
-        app.init_resource::<ui::NativeUiActionQueue>();
-        app.init_resource::<ui::NativeUiServiceEffectQueue>();
-        app.add_systems(
-            Update,
-            (
-                ui::reconcile_native_ui_responsive_layout,
-                ui::scroll_native_ui,
-                ui::sync_native_ui_focus_from_interaction.before(ui::sync_native_ui_effect_layers),
-                ui::sync_native_ui_effect_layers,
-                ui::dispatch_native_ui_actions.before(run_scripted_runtime_systems),
-                ui::apply_queued_native_ui_service_effects.after(run_scripted_runtime_systems),
-            ),
-        );
-    }
-    match overlay_host::create_native_overlay_host_plan(
-        bundle.overlays.as_ref(),
-        &bundle.bundle_path,
-    ) {
-        Ok(Some(plan)) => {
-            info!(
-                "prepared {} native overlay mount(s) using {}",
-                plan.mounts.len(),
-                plan.backend
-            );
-            #[cfg(feature = "native-overlay-cef")]
-            if plan.backend == overlay_host::CEF_OSR_BACKEND.id {
-                let overlays = bundle.overlays.clone();
-                match overlays {
-                    Some(overlays) => {
-                        let parent_width = window.map_or(1280.0, |value| value.width);
-                        let parent_height = window.map_or(720.0, |value| value.height);
-                        let cache_path =
-                            std::env::temp_dir().join("threenative-native-overlay-cef");
-                        let mut configs = Vec::with_capacity(plan.mounts.len());
-                        let mut requests = Vec::with_capacity(plan.mounts.len());
-                        let mut invalid_entry = None;
-                        for mount in &plan.mounts {
-                            let bounds = overlay_host::native_overlay_bounds(
-                                mount,
-                                parent_width,
-                                parent_height,
-                            );
-                            let Some((resource_root, entry_name)) = mount
-                                .entry_path
-                                .parent()
-                                .zip(mount.entry_path.file_name().and_then(|name| name.to_str()))
-                            else {
-                                invalid_entry = Some(format!(
-                                    "TN_OVERLAY_CEF_RESOURCE_REJECTED: {}: use an entry file below a declared overlay root",
-                                    mount.entry_path.display()
-                                ));
-                                break;
-                            };
-                            requests.push(overlay_cef::CefBundleSurfaceInit {
-                                cache_path: &cache_path,
-                                entry_name,
-                                height: bounds.height,
-                                overlay_id: mount.id.clone(),
-                                process_started_at,
-                                resource_root,
-                                width: bounds.width,
-                            });
-                            configs.push(overlay_cef::CefSurfaceConfig {
-                                bounds,
-                                fills_window: mount.layout.is_none(),
-                                z_index: mount.z_index,
-                            });
-                        }
-                        match invalid_entry.map_or_else(
-                            || overlay_cef::CefOsrHost::initialize_bundles(&requests),
-                            Err,
-                        ) {
-                            Ok(mut host) => {
-                                for (runtime, mount) in host.surfaces.iter_mut().zip(&plan.mounts) {
-                                    runtime.set_input_policy(mount.input);
-                                }
-                                overlay_cef::install_cef_surfaces(
-                                    &mut app, host, overlays, configs,
-                                );
-                            }
-                            Err(error) => warn!("{error}"),
-                        }
-                    }
-                    None => warn!("TN_OVERLAY_CEF_INIT_FAILED: overlay IR is unavailable"),
-                }
-            }
-        }
-        Ok(None) => {}
-        Err(diagnostics) => {
-            for diagnostic in diagnostics {
-                warn!(
-                    "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
-                    diagnostic.code, diagnostic.message
-                );
-            }
-        }
-    }
     if let Some(input_map) = bundle.input.clone() {
         let input_map = input::apply_native_persisted_binding_overrides(
             &input_map,
@@ -397,6 +253,133 @@ pub fn app_from_bundle_with_options(
     if let Some(proof_harness) = options.proof_harness {
         proof_harness::install_native_proof_harness(&mut app, proof_harness, &bundle.assets)?;
     }
+    install_native_runtime_systems(&mut app, bundle, has_scripts, initially_paused);
+    Ok(app)
+}
+
+fn map_native_bundle_world(app: &mut App, bundle: &LoadedBundle) -> Result<(), RuntimeError> {
+    // DefaultPlugins installs Bevy's physical-unit ambient default (80.0).
+    // ThreeNative owns ambient lighting through authored lights, atmosphere,
+    // environment maps, and baked probes, so start those adapters from a
+    // neutral baseline instead of conditionally inheriting Bevy's default.
+    reset_native_ambient_baseline(app.world_mut());
+    rendering::apply_atmosphere_to_world(app.world_mut(), bundle);
+    let environment_lighting =
+        rendering::apply_environment_lighting_to_world(app.world_mut(), bundle);
+    for diagnostic in environment_lighting.diagnostics {
+        warn!("{diagnostic}");
+    }
+    map_world::map_bundle_into_world(app.world_mut(), bundle)?;
+    app.insert_resource(scene_ray_query::NativeSceneRayQuery::from_bundle(bundle));
+    sync_default_camera_clear_color(app.world_mut());
+    environment::map_environment_into_world(app.world_mut(), bundle);
+    for diagnostic in audio::spawn_startup_audio(app.world_mut(), bundle) {
+        warn!("{}", diagnostic.message);
+    }
+    app.insert_resource(audio::NativeAudioRuntime::from_bundle(bundle));
+    app.init_resource::<audio::NativeAudioServiceQueue>();
+    let mut audio_events = audio::NativeAudioEventQueue::default();
+    let mut audio_event_cursors = audio::NativeAudioEventCursors::default();
+    audio::queue_new_native_audio_events(
+        &mut audio_events,
+        &mut audio_event_cursors,
+        &bundle.world.events,
+    );
+    app.insert_resource(audio_events);
+    app.insert_resource(audio_event_cursors);
+    app.init_resource::<audio::NativeAudioPlaybackStates>();
+    app.init_resource::<audio::NativeAudioDiagnostics>();
+    Ok(())
+}
+
+fn configure_native_overlays(
+    _app: &mut App,
+    bundle: &LoadedBundle,
+    #[cfg(feature = "native-overlay-cef")] process_started_at: std::time::Instant,
+) {
+    let plan = match overlay_host::create_native_overlay_host_plan(
+        bundle.overlays.as_ref(),
+        &bundle.bundle_path,
+    ) {
+        Ok(Some(plan)) => plan,
+        Ok(None) => return,
+        Err(diagnostics) => {
+            for diagnostic in diagnostics {
+                warn!(
+                    "{}: {} Rebuild threenative_runtime with --features native-overlay-cef.",
+                    diagnostic.code, diagnostic.message
+                );
+            }
+            return;
+        }
+    };
+    info!(
+        "prepared {} native overlay mount(s) using {}",
+        plan.mounts.len(),
+        plan.backend
+    );
+    #[cfg(feature = "native-overlay-cef")]
+    if plan.backend == overlay_host::CEF_OSR_BACKEND.id {
+        let Some(overlays) = bundle.overlays.clone() else {
+            warn!("TN_OVERLAY_CEF_INIT_FAILED: overlay IR is unavailable");
+            return;
+        };
+        let window = bundle.runtime_config.as_ref().map(|config| &config.window);
+        let parent_width = window.map_or(1280.0, |value| value.width);
+        let parent_height = window.map_or(720.0, |value| value.height);
+        let cache_path = std::env::temp_dir().join("threenative-native-overlay-cef");
+        let mut configs = Vec::with_capacity(plan.mounts.len());
+        let mut requests = Vec::with_capacity(plan.mounts.len());
+        let mut invalid_entry = None;
+        for mount in &plan.mounts {
+            let bounds = overlay_host::native_overlay_bounds(mount, parent_width, parent_height);
+            let Some((resource_root, entry_name)) = mount
+                .entry_path
+                .parent()
+                .zip(mount.entry_path.file_name().and_then(|name| name.to_str()))
+            else {
+                invalid_entry = Some(format!(
+                    "TN_OVERLAY_CEF_RESOURCE_REJECTED: {}: use an entry file below a declared overlay root",
+                    mount.entry_path.display()
+                ));
+                break;
+            };
+            requests.push(overlay_cef::CefBundleSurfaceInit {
+                cache_path: &cache_path,
+                entry_name,
+                height: bounds.height,
+                overlay_id: mount.id.clone(),
+                process_started_at,
+                resource_root,
+                width: bounds.width,
+            });
+            configs.push(overlay_cef::CefSurfaceConfig {
+                bounds,
+                fills_window: mount.layout.is_none(),
+                z_index: mount.z_index,
+            });
+        }
+        match invalid_entry.map_or_else(
+            || overlay_cef::CefOsrHost::initialize_bundles(&requests),
+            Err,
+        ) {
+            Ok(mut host) => {
+                for (runtime, mount) in host.surfaces.iter_mut().zip(&plan.mounts) {
+                    runtime.set_input_policy(mount.input);
+                }
+                overlay_cef::install_cef_surfaces(_app, host, overlays, configs);
+            }
+            Err(error) => warn!("{error}"),
+        }
+    }
+}
+
+fn install_native_runtime_systems(
+    app: &mut App,
+    bundle: LoadedBundle,
+    has_scripts: bool,
+    initially_paused: bool,
+) {
     app.add_systems(
         Update,
         (
@@ -447,7 +430,49 @@ pub fn app_from_bundle_with_options(
                 .chain(),
         );
     }
-    Ok(app)
+}
+
+fn configure_native_ui(app: &mut App, bundle: &LoadedBundle) -> Result<(), RuntimeError> {
+    let Some(ui) = bundle.ui.as_ref() else {
+        return Ok(());
+    };
+    ui::map_ui_into_world(app.world_mut(), ui)?;
+    ui::sync_native_ui_effect_states(app.world_mut(), bundle);
+    app.init_resource::<bevy::a11y::Focus>();
+    if let Some(diagnostic) = ui::diagnose_native_ui_font_fallback(app.world()) {
+        warn!(
+            "{}: {} ({})",
+            diagnostic.code, diagnostic.message, diagnostic.path
+        );
+    }
+    for diagnostic in ui::diagnose_native_ui_font_weight_fallbacks(ui) {
+        warn!(
+            "{}: {} ({})",
+            diagnostic.code, diagnostic.message, diagnostic.path
+        );
+    }
+    let diagnostic = ui::diagnose_native_ui_scale_boundary(ui);
+    warn!(
+        "{}: {} ({})",
+        diagnostic.code, diagnostic.message, diagnostic.path
+    );
+    if !ui::route_native_ui_to_active_scene_camera(app.world_mut()) {
+        ui::install_native_ui_overlay_camera(app.world_mut());
+    }
+    app.init_resource::<ui::NativeUiActionQueue>();
+    app.init_resource::<ui::NativeUiServiceEffectQueue>();
+    app.add_systems(
+        Update,
+        (
+            ui::reconcile_native_ui_responsive_layout,
+            ui::scroll_native_ui,
+            ui::sync_native_ui_focus_from_interaction.before(ui::sync_native_ui_effect_layers),
+            ui::sync_native_ui_effect_layers,
+            ui::dispatch_native_ui_actions.before(run_scripted_runtime_systems),
+            ui::apply_queued_native_ui_service_effects.after(run_scripted_runtime_systems),
+        ),
+    );
+    Ok(())
 }
 
 pub fn default_clear_color_for_bundle(bundle: &LoadedBundle) -> Color {
@@ -669,87 +694,92 @@ struct ScriptedRuntimeParams<'w> {
     ui_service_effects: Option<ResMut<'w, ui::NativeUiServiceEffectQueue>>,
 }
 
-fn run_scripted_runtime_systems(
-    mut commands: Commands,
-    mut scripted: ScriptedRuntimeParams,
-    _main_thread: NonSend<ScriptedRuntimeMainThread>,
-    input: Option<Res<input::NativeInputState>>,
-    proof_harness: Option<Res<proof_harness::NativeProofHarnessState>>,
-    fast_forward: Option<Res<proof_harness::NativeProofHarnessFastForward>>,
-    material_handles: Option<Res<map_world::NativeMaterialHandles>>,
-    time: Res<Time>,
-    mut transforms: Query<(&ThreeNativeId, &mut Transform)>,
-    mut materials: Query<(&ThreeNativeId, &mut Handle<StandardMaterial>)>,
-    mut text_nodes: Query<(
-        &ThreeNativeId,
-        &mut Text,
-        Option<&world_text::NativeWorldText>,
-    )>,
-    ui_binding_targets: Option<Res<ui::NativeUiBindingTargets>>,
-    mut minimap_markers: Query<(
-        &ui::NativeUiMinimapMarker,
-        &mut Style,
-        &mut BackgroundColor,
-        &mut Visibility,
-    )>,
-    mut animation_queue: Option<ResMut<map_world::NativeAnimationServiceQueue>>,
-    mut ui_action_queue: Option<ResMut<ui::NativeUiActionQueue>>,
-    mut resource_observations: Option<ResMut<systems_host::NativeResourceObservationState>>,
-) {
+#[derive(SystemParam)]
+struct ScriptedRuntimeWorldParams<'w, 's> {
+    animation_queue: Option<ResMut<'w, map_world::NativeAnimationServiceQueue>>,
+    commands: Commands<'w, 's>,
+    fast_forward: Option<Res<'w, proof_harness::NativeProofHarnessFastForward>>,
+    input: Option<Res<'w, input::NativeInputState>>,
+    _main_thread: NonSend<'w, ScriptedRuntimeMainThread>,
+    material_handles: Option<Res<'w, map_world::NativeMaterialHandles>>,
+    materials: Query<
+        'w,
+        's,
+        (
+            &'static ThreeNativeId,
+            &'static mut Handle<StandardMaterial>,
+        ),
+    >,
+    minimap_markers: Query<
+        'w,
+        's,
+        (
+            &'static ui::NativeUiMinimapMarker,
+            &'static mut Style,
+            &'static mut BackgroundColor,
+            &'static mut Visibility,
+        ),
+    >,
+    proof_harness: Option<Res<'w, proof_harness::NativeProofHarnessState>>,
+    resource_observations: Option<ResMut<'w, systems_host::NativeResourceObservationState>>,
+    scripted: ScriptedRuntimeParams<'w>,
+    text_nodes: Query<
+        'w,
+        's,
+        (
+            &'static ThreeNativeId,
+            &'static mut Text,
+            Option<&'static world_text::NativeWorldText>,
+        ),
+    >,
+    time: Res<'w, Time>,
+    transforms: Query<'w, 's, (&'static ThreeNativeId, &'static mut Transform)>,
+    ui_action_queue: Option<ResMut<'w, ui::NativeUiActionQueue>>,
+    ui_binding_targets: Option<Res<'w, ui::NativeUiBindingTargets>>,
+}
+
+fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
+    let ScriptedRuntimeWorldParams {
+        mut animation_queue,
+        mut commands,
+        fast_forward,
+        input,
+        _main_thread,
+        material_handles,
+        mut materials,
+        mut minimap_markers,
+        proof_harness,
+        mut resource_observations,
+        mut scripted,
+        mut text_nodes,
+        time,
+        mut transforms,
+        mut ui_action_queue,
+        ui_binding_targets,
+    } = params;
     let Some(ref mut runtime) = scripted.runtime else {
         return;
     };
     let Some(ref mut loop_state) = scripted.loop_state else {
         return;
     };
-    let fixed_delta = runtime
-        .bundle
-        .runtime_config
-        .as_ref()
-        .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
-    let delta = if proof_harness.is_some() || scripted.deterministic_capture.is_some() {
-        fixed_delta
-    } else {
-        time.delta_seconds()
-    };
-    let paused = runtime
-        .bundle
-        .runtime_config
-        .as_ref()
-        .is_some_and(|config| config.time.paused);
-    let frame_count = if proof_harness.is_some() {
-        fast_forward.as_ref().map_or(1, |advance| advance.0.max(1))
-    } else {
-        1
-    };
-    let queued_ui_actions = ui_action_queue
-        .as_deref_mut()
-        .map(ui::drain_native_ui_action_ids)
-        .unwrap_or_default();
-    let input_snapshot = if queued_ui_actions.is_empty() {
-        input.as_deref().cloned()
-    } else if let Some(input) = input.as_deref() {
-        Some(input.with_additional_actions(queued_ui_actions.iter().map(String::as_str)))
-    } else {
-        Some(input::NativeInputState::from_action_ids(
-            queued_ui_actions.iter().map(String::as_str),
-        ))
-    };
+    let (fixed_delta, delta, paused) = scripted_runtime_timing(
+        &runtime.bundle,
+        proof_harness.is_some() || scripted.deterministic_capture.is_some(),
+        time.delta_seconds(),
+    );
+    let (frame_count, input_snapshot) = scripted_frame_input(
+        proof_harness.is_some(),
+        fast_forward.as_deref(),
+        input.as_deref(),
+        ui_action_queue.as_deref_mut(),
+    );
 
-    let audit_writes = proof_harness
-        .as_deref()
-        .is_some_and(proof_harness::NativeProofHarnessState::audit_writes);
-    loop_state.write_audit_enabled = audit_writes;
-    if !audit_writes {
-        loop_state.write_ledger.reset();
-    }
-    if let Some(audit) = scripted.write_audit.as_deref_mut() {
-        audit.enabled = audit_writes;
-        if !audit_writes {
-            audit.observations.clear();
-            audit.diagnostics.clear();
-        }
-    }
+    let audit_writes = prepare_scripted_audit(
+        proof_harness.as_deref(),
+        loop_state,
+        scripted.write_audit.as_deref_mut(),
+    );
 
     let mut requires_live_reconciliation = false;
     for _ in 0..frame_count {
@@ -778,50 +808,23 @@ fn run_scripted_runtime_systems(
             physics::step_bundle_physics_with_script_poses,
         );
         match run {
-            Ok(run) => {
-                if let Some(queue) = scripted.ui_service_effects.as_deref_mut() {
-                    ui::queue_native_ui_service_effects(queue, &run.logs);
-                }
-                if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
-                    let overlays = bridge.overlays.clone();
-                    bridge
-                        .bridge
-                        .publish_world_events(&overlays, &run.emitted_events);
-                }
-                requires_live_reconciliation |= run.logs.iter().any(|log| {
-                    log.entries
-                        .iter()
-                        .any(|entry| entry.reconciliation.is_some())
-                });
-                if let Some(observations) = resource_observations.as_deref_mut() {
-                    observations.observations.extend(run.resource_observations);
-                    let overflow = observations.observations.len().saturating_sub(200);
-                    if overflow > 0 {
-                        observations.observations.drain(0..overflow);
-                    }
-                }
-                if audit_writes {
-                    if let Some(audit) = scripted.write_audit.as_deref_mut() {
-                        audit.enabled = true;
-                        audit.observations = run.write_observations;
-                        audit.diagnostics = run.write_diagnostics;
-                    }
-                } else if let Some(audit) = scripted.write_audit.as_deref_mut() {
-                    audit.observations.clear();
-                    audit.diagnostics.clear();
-                }
-                if let Some(queue) = animation_queue.as_deref_mut() {
-                    map_world::queue_native_animation_service_effects(queue, &run.logs);
-                }
-                if let Some(queue) = scripted.audio_queue.as_deref_mut() {
-                    audio::queue_native_audio_service_effects(queue, &run.logs);
-                }
-                if let (Some(queue), Some(cursors)) = (
+            Ok(mut run) => {
+                apply_scripted_run_observations(
+                    scripted.ui_service_effects.as_deref_mut(),
+                    scripted.overlay_bridge.as_deref_mut(),
+                    resource_observations.as_deref_mut(),
+                    &mut requires_live_reconciliation,
+                    &mut run,
+                );
+                queue_scripted_run_effects(
+                    scripted.write_audit.as_deref_mut(),
+                    animation_queue.as_deref_mut(),
+                    scripted.audio_queue.as_deref_mut(),
                     scripted.audio_events.as_deref_mut(),
                     scripted.audio_event_cursors.as_deref_mut(),
-                ) {
-                    audio::queue_new_native_audio_events(queue, cursors, &run.emitted_events);
-                }
+                    audit_writes,
+                    run,
+                );
             }
             Err(error) => {
                 error!("{error}");
@@ -829,18 +832,13 @@ fn run_scripted_runtime_systems(
             }
         }
     }
-    if let Some(dirty_state) = scripted.dirty_state.as_deref_mut() {
-        dirty_state.live_reconciliation |= requires_live_reconciliation;
-    }
-    if fast_forward.is_some_and(|advance| advance.0 > 0) {
-        commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
-    }
-
-    let sync_loop_state = if proof_harness.is_some() {
-        None
-    } else {
-        Some(&**loop_state)
-    };
+    finish_scripted_frame(
+        scripted.dirty_state.as_deref_mut(),
+        fast_forward.as_deref(),
+        &mut commands,
+        requires_live_reconciliation,
+    );
+    let sync_loop_state = proof_harness.is_none().then_some(&**loop_state);
     let entities_by_id = runtime
         .bundle
         .world
@@ -863,6 +861,166 @@ fn run_scripted_runtime_systems(
     );
     world_text::sync_native_world_text(&runtime.bundle, &mut text_nodes);
     ui::sync_native_minimap_markers(&runtime.bundle, &mut minimap_markers);
+}
+
+fn finish_scripted_frame(
+    dirty_state: Option<&mut NativeRuntimeDirtyState>,
+    fast_forward: Option<&proof_harness::NativeProofHarnessFastForward>,
+    commands: &mut Commands<'_, '_>,
+    requires_live_reconciliation: bool,
+) {
+    if let Some(dirty_state) = dirty_state {
+        dirty_state.live_reconciliation |= requires_live_reconciliation;
+    }
+    if fast_forward.is_some_and(|advance| advance.0 > 0) {
+        commands.insert_resource(proof_harness::NativeProofHarnessFastForward::default());
+    }
+}
+
+fn scripted_input_snapshot(
+    input: Option<&input::NativeInputState>,
+    queued_ui_actions: Vec<String>,
+) -> Option<input::NativeInputState> {
+    if queued_ui_actions.is_empty() {
+        input.cloned()
+    } else if let Some(input) = input {
+        Some(input.with_additional_actions(queued_ui_actions.iter().map(String::as_str)))
+    } else {
+        Some(input::NativeInputState::from_action_ids(
+            queued_ui_actions.iter().map(String::as_str),
+        ))
+    }
+}
+
+fn scripted_frame_input(
+    proof_harness: bool,
+    fast_forward: Option<&proof_harness::NativeProofHarnessFastForward>,
+    input: Option<&input::NativeInputState>,
+    ui_action_queue: Option<&mut ui::NativeUiActionQueue>,
+) -> (u64, Option<input::NativeInputState>) {
+    let frame_count = if proof_harness {
+        fast_forward.map_or(1, |advance| advance.0.max(1))
+    } else {
+        1
+    };
+    let queued_ui_actions = ui_action_queue
+        .map(ui::drain_native_ui_action_ids)
+        .unwrap_or_default();
+    (
+        frame_count,
+        scripted_input_snapshot(input, queued_ui_actions),
+    )
+}
+
+fn scripted_runtime_timing(
+    bundle: &LoadedBundle,
+    deterministic_capture: bool,
+    frame_delta: f32,
+) -> (f32, f32, bool) {
+    let fixed_delta = bundle
+        .runtime_config
+        .as_ref()
+        .map_or(1.0 / 60.0, |config| config.time.fixed_delta);
+    let delta = if deterministic_capture {
+        fixed_delta
+    } else {
+        frame_delta
+    };
+    let paused = bundle
+        .runtime_config
+        .as_ref()
+        .is_some_and(|config| config.time.paused);
+    (fixed_delta, delta, paused)
+}
+
+fn setup_scripted_audit(
+    loop_state: &mut systems_host::NativeGameLoopState,
+    write_audit: Option<&mut systems_host::NativeRuntimeWriteAuditState>,
+    enabled: bool,
+) {
+    loop_state.write_audit_enabled = enabled;
+    if !enabled {
+        loop_state.write_ledger.reset();
+    }
+    if let Some(audit) = write_audit {
+        audit.enabled = enabled;
+        if !enabled {
+            audit.observations.clear();
+            audit.diagnostics.clear();
+        }
+    }
+}
+
+fn prepare_scripted_audit(
+    proof_harness: Option<&proof_harness::NativeProofHarnessState>,
+    loop_state: &mut systems_host::NativeGameLoopState,
+    write_audit: Option<&mut systems_host::NativeRuntimeWriteAuditState>,
+) -> bool {
+    let enabled = proof_harness.is_some_and(proof_harness::NativeProofHarnessState::audit_writes);
+    setup_scripted_audit(loop_state, write_audit, enabled);
+    enabled
+}
+
+fn apply_scripted_run_observations(
+    ui_service_effects: Option<&mut ui::NativeUiServiceEffectQueue>,
+    overlay_bridge: Option<&mut overlay_host::NativeOverlayBridgeResource>,
+    resource_observations: Option<&mut systems_host::NativeResourceObservationState>,
+    requires_live_reconciliation: &mut bool,
+    run: &mut systems_host::NativeSystemsHostRun,
+) {
+    if let Some(queue) = ui_service_effects {
+        ui::queue_native_ui_service_effects(queue, &run.logs);
+    }
+    if let Some(bridge) = overlay_bridge {
+        let overlays = bridge.overlays.clone();
+        bridge
+            .bridge
+            .publish_world_events(&overlays, &run.emitted_events);
+    }
+    *requires_live_reconciliation |= run.logs.iter().any(|log| {
+        log.entries
+            .iter()
+            .any(|entry| entry.reconciliation.is_some())
+    });
+    if let Some(observations) = resource_observations {
+        observations
+            .observations
+            .append(&mut run.resource_observations);
+        let overflow = observations.observations.len().saturating_sub(200);
+        if overflow > 0 {
+            observations.observations.drain(0..overflow);
+        }
+    }
+}
+
+fn queue_scripted_run_effects(
+    write_audit: Option<&mut systems_host::NativeRuntimeWriteAuditState>,
+    animation_queue: Option<&mut map_world::NativeAnimationServiceQueue>,
+    audio_queue: Option<&mut audio::NativeAudioServiceQueue>,
+    audio_events: Option<&mut audio::NativeAudioEventQueue>,
+    audio_event_cursors: Option<&mut audio::NativeAudioEventCursors>,
+    audit_writes: bool,
+    run: systems_host::NativeSystemsHostRun,
+) {
+    if let Some(audit) = write_audit {
+        if audit_writes {
+            audit.enabled = true;
+            audit.observations = run.write_observations;
+            audit.diagnostics = run.write_diagnostics;
+        } else {
+            audit.observations.clear();
+            audit.diagnostics.clear();
+        }
+    }
+    if let Some(queue) = animation_queue {
+        map_world::queue_native_animation_service_effects(queue, &run.logs);
+    }
+    if let Some(queue) = audio_queue {
+        audio::queue_native_audio_service_effects(queue, &run.logs);
+    }
+    if let (Some(queue), Some(cursors)) = (audio_events, audio_event_cursors) {
+        audio::queue_new_native_audio_events(queue, cursors, &run.emitted_events);
+    }
 }
 
 fn reconcile_scripted_runtime_world(world: &mut World) {
@@ -1012,13 +1170,13 @@ fn sync_scripted_transforms(
         {
             let interpolated =
                 transform_interpolation::interpolate_transform(*previous, *current, alpha);
-            let mut next = (*target).clone();
+            let mut next = *target;
             apply_transform_sample(&mut next, interpolated);
             if *target != next {
                 *target = next;
             }
         } else {
-            let mut next = (*target).clone();
+            let mut next = *target;
             apply_transform_component(&mut next, source);
             if *target != next {
                 *target = next;
@@ -1051,10 +1209,10 @@ fn apply_mesh_renderer_component(
     source: &MeshRendererComponent,
     material_handles: &map_world::NativeMaterialHandles,
 ) {
-    if let Some(material) = material_handles.0.get(&source.material) {
-        if *target != *material {
-            *target = material.clone();
-        }
+    if let Some(material) = material_handles.0.get(&source.material)
+        && *target != *material
+    {
+        *target = material.clone();
     }
 }
 
@@ -1080,10 +1238,10 @@ fn sync_scripted_ui_text(
             continue;
         };
         let rendered = value_to_ui_text(&value);
-        if let Some(section) = text.sections.first_mut() {
-            if section.value != rendered {
-                section.value = rendered;
-            }
+        if let Some(section) = text.sections.first_mut()
+            && section.value != rendered
+        {
+            section.value = rendered;
         }
     }
 }
@@ -1157,7 +1315,7 @@ fn format_ui_binding_value(format: &str, source: &serde_json::Value, fields: Vec
         let mut parts = token.splitn(2, ':');
         let field = parts.next().unwrap_or_default();
         let formatter = parts.next();
-        if fields.is_empty() || fields.iter().any(|candidate| *candidate == field) {
+        if fields.is_empty() || fields.contains(&field) {
             let value = source.get(field).unwrap_or(&serde_json::Value::Null);
             rendered.push_str(&format_ui_scalar(value, formatter));
         }

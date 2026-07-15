@@ -80,8 +80,7 @@ pub fn apply_gltf_scene_handle_operations(
         })
         .collect();
     let mut sorted_operations = operations.to_vec();
-    sorted_operations
-        .sort_by(|left, right| operation_sort_key(left).cmp(&operation_sort_key(right)));
+    sorted_operations.sort_by_key(operation_sort_key);
     let mut observations = Vec::new();
     for operation in sorted_operations {
         let handle_id = operation_handle(&operation);

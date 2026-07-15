@@ -639,13 +639,13 @@ fn passes_filter(
     {
         return false;
     }
-    if let Some(layer) = layer {
-        if let Some(collider_mask) = collider.get("mask").and_then(Value::as_array) {
-            return collider_mask
-                .iter()
-                .filter_map(Value::as_str)
-                .any(|value| value == layer);
-        }
+    if let Some(layer) = layer
+        && let Some(collider_mask) = collider.get("mask").and_then(Value::as_array)
+    {
+        return collider_mask
+            .iter()
+            .filter_map(Value::as_str)
+            .any(|value| value == layer);
     }
     true
 }

@@ -189,7 +189,7 @@ fn should_map_render_layer_names_consistently() {
     let camera_layers = render_layers_for_names(&layer_map, &["minimap".to_owned()]);
 
     assert_eq!(entity_layers, camera_layers);
-    assert!(layer_map.allocation.get("minimap").is_some());
+    assert!(layer_map.allocation.contains_key("minimap"));
     assert_eq!(layer_map.allocation.get("default"), Some(&0));
     assert_eq!(
         render_layers_for_names(&layer_map, &["unknown".to_owned()]),

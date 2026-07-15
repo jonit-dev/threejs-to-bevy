@@ -687,10 +687,10 @@ pub fn component_reflection_registry(bundle: &LoadedBundle) -> NativeComponentRe
     let mut components = Vec::new();
     if let Some(schema_file) = bundle.component_schemas.as_ref() {
         let mut component_entries = schema_file.schemas.iter().collect::<Vec<_>>();
-        component_entries.sort_by(|(left, _), (right, _)| left.cmp(right));
+        component_entries.sort_by_key(|(id, _)| *id);
         for (id, schema) in component_entries {
             let mut fields = schema.fields.iter().collect::<Vec<_>>();
-            fields.sort_by(|(left, _), (right, _)| left.cmp(right));
+            fields.sort_by_key(|(name, _)| *name);
             components.push(NativeComponentReflectionType {
                 fields: fields
                     .into_iter()

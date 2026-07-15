@@ -50,13 +50,11 @@ fn exposure_for_profile(
     color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
     runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Exposure {
-    let exposure_scale = match tone_mapping_name_for_profile(
-        color_management,
-        runtime_color_grading,
-    ) {
-        Some("aces") => THREE_COMPAT_ACES_EXPOSURE_SCALE,
-        _ => THREE_COMPAT_LINEAR_EXPOSURE_SCALE,
-    };
+    let exposure_scale =
+        match tone_mapping_name_for_profile(color_management, runtime_color_grading) {
+            Some("aces") => THREE_COMPAT_ACES_EXPOSURE_SCALE,
+            _ => THREE_COMPAT_LINEAR_EXPOSURE_SCALE,
+        };
     if let Some(exposure) = runtime_color_grading.and_then(|grading| grading.exposure) {
         let exposure = exposure * exposure_scale;
         return Exposure {
@@ -76,9 +74,7 @@ fn exposure_for_profile(
 
 fn tone_mapping_name_for_profile<'a>(
     color_management: Option<&'a threenative_loader::AtmosphereColorManagementIr>,
-    runtime_color_grading: Option<
-        &'a threenative_loader::RuntimeRendererColorGradingConfig,
-    >,
+    runtime_color_grading: Option<&'a threenative_loader::RuntimeRendererColorGradingConfig>,
 ) -> Option<&'a str> {
     runtime_color_grading
         .and_then(|grading| grading.tone_mapping.as_deref())
@@ -193,9 +189,7 @@ mod exposure_calibration_tests {
         );
         for section in mapped.all_sections() {
             assert!(
-                (section.contrast
-                    - (1.0 + 0.08 * THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE))
-                    .abs()
+                (section.contrast - (1.0 + 0.08 * THREE_COMPAT_COLOR_GRADING_CONTRAST_SCALE)).abs()
                     < f32::EPSILON
             );
         }
@@ -292,77 +286,9 @@ fn native_mesh_lod(
 
 pub(crate) fn scene_mesh_for_asset(asset: &AssetIr) -> Mesh {
     match asset.primitive.as_deref() {
-        Some("custom") => custom_mesh(asset),
-        Some("box") => three_box_mesh([
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.first())
-                .copied()
-                .unwrap_or(1.0),
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.get(1))
-                .copied()
-                .unwrap_or(1.0),
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.get(2))
-                .copied()
-                .unwrap_or(1.0),
-        ]),
-        Some("sphere") => Mesh::from(Sphere {
-            radius: asset
-                .size
-                .as_ref()
-                .and_then(|size| size.first())
-                .copied()
-                .unwrap_or(0.5),
-        }),
-        Some("cylinder") => Mesh::from(Cylinder::new(
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.first())
-                .copied()
-                .unwrap_or(0.5),
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.get(1))
-                .copied()
-                .unwrap_or(1.0),
-        )),
-        Some("capsule") => Mesh::from(Capsule3d::new(
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.first())
-                .copied()
-                .unwrap_or(0.5),
-            asset
-                .size
-                .as_ref()
-                .and_then(|size| size.get(1))
-                .copied()
-                .unwrap_or(1.0),
-        )),
-        Some("cone") => Mesh::from(Cone {
-            radius: asset
-                .size
-                .as_ref()
-                .and_then(|size| size.first())
-                .copied()
-                .unwrap_or(0.5),
-            height: asset
-                .size
-                .as_ref()
-                .and_then(|size| size.get(1))
-                .copied()
-                .unwrap_or(1.0),
-        }),
+        Some("custom" | "box" | "sphere" | "cylinder" | "capsule" | "cone") => {
+            common_scene_mesh(asset)
+        }
         Some("conicalFrustum") => Mesh::from(ConicalFrustum {
             radius_top: asset
                 .size
@@ -477,6 +403,83 @@ pub(crate) fn scene_mesh_for_asset(asset: &AssetIr) -> Mesh {
                 size.get(2).copied().unwrap_or(1.0),
             ))
         }
+    }
+}
+
+fn common_scene_mesh(asset: &AssetIr) -> Mesh {
+    match asset.primitive.as_deref() {
+        Some("custom") => custom_mesh(asset),
+        Some("box") => three_box_mesh([
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(1.0),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(2))
+                .copied()
+                .unwrap_or(1.0),
+        ]),
+        Some("sphere") => Mesh::from(Sphere {
+            radius: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+        }),
+        Some("cylinder") => Mesh::from(Cylinder::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
+        Some("capsule") => Mesh::from(Capsule3d::new(
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        )),
+        Some("cone") => Mesh::from(Cone {
+            radius: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.first())
+                .copied()
+                .unwrap_or(0.5),
+            height: asset
+                .size
+                .as_ref()
+                .and_then(|size| size.get(1))
+                .copied()
+                .unwrap_or(1.0),
+        }),
+        _ => unreachable!("common primitive was checked"),
     }
 }
 
@@ -1053,7 +1056,10 @@ mod material_calibration_tests {
         .expect("explicit specular material should deserialize");
 
         assert_eq!(reflectance_for_material(&implicit, false), 0.0);
-        assert!((reflectance_for_material(&explicit, false) - 0.5 * 0.7_f32.sqrt()).abs() < f32::EPSILON);
+        assert!(
+            (reflectance_for_material(&explicit, false) - 0.5 * 0.7_f32.sqrt()).abs()
+                < f32::EPSILON
+        );
     }
 
     #[test]
@@ -1078,7 +1084,10 @@ mod material_calibration_tests {
 
         assert_eq!(reflectance_for_material(&smooth, false), 0.5);
         assert_eq!(reflectance_for_material(&smooth, true), 0.0);
-        assert!((reflectance_for_material(&explicit, true) - 0.5 * 0.65_f32.sqrt()).abs() < f32::EPSILON);
+        assert!(
+            (reflectance_for_material(&explicit, true) - 0.5 * 0.65_f32.sqrt()).abs()
+                < f32::EPSILON
+        );
     }
 
     #[test]

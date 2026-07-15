@@ -44,14 +44,14 @@ fn main() {
     };
 
     if let Some(output_path) = args.get(3) {
-        if let Some(parent) = PathBuf::from(output_path).parent() {
-            if let Err(error) = fs::create_dir_all(parent) {
-                eprintln!(
-                    "failed to create output directory '{}': {error}",
-                    parent.display()
-                );
-                std::process::exit(1);
-            }
+        if let Some(parent) = PathBuf::from(output_path).parent()
+            && let Err(error) = fs::create_dir_all(parent)
+        {
+            eprintln!(
+                "failed to create output directory '{}': {error}",
+                parent.display()
+            );
+            std::process::exit(1);
         }
         if let Err(error) = fs::write(output_path, json) {
             eprintln!("failed to write conformance report '{output_path}': {error}");

@@ -63,11 +63,11 @@ fn main() -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    if let Some(parent) = output_path.parent() {
-        if let Err(error) = fs::create_dir_all(parent) {
-            eprintln!("{error}");
-            return ExitCode::from(1);
-        }
+    if let Some(parent) = output_path.parent()
+        && let Err(error) = fs::create_dir_all(parent)
+    {
+        eprintln!("{error}");
+        return ExitCode::from(1);
     }
     match fs::write(&output_path, json) {
         Ok(()) => ExitCode::SUCCESS,

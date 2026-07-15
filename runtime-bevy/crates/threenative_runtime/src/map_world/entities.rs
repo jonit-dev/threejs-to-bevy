@@ -1,22 +1,17 @@
+struct EntitySpawnResources<'a, 'bundle> {
+    bundle_path: &'a Path,
+    context: &'a NativeWorldEntitySpawnContext<'bundle>,
+    material_handles: &'a mut NativeMaterialHandles,
+    shader_material_handles: &'a mut NativeShaderMaterialHandles,
+}
+
 fn spawn_entity(
     world: &mut World,
     entity: &WorldEntity,
-    assets_by_id: &HashMap<&str, &AssetIr>,
-    materials_by_id: &HashMap<&str, &MaterialIr>,
-    layer_map: &NativeRenderLayerMap,
-    active_cameras: &std::collections::HashSet<String>,
-    fallback_active_camera: Option<&str>,
-    camera_color_management: Option<&threenative_loader::AtmosphereColorManagementIr>,
-    runtime_color_grading: Option<&threenative_loader::RuntimeRendererColorGradingConfig>,
-    camera_atmosphere: Option<&AtmosphereProfileIr>,
-    bloom_settings: Option<&BloomSettings>,
-    default_camera_clear_color: Option<Color>,
-    runtime_config: Option<&RuntimeConfigIr>,
-    render_target_registry: &NativeRenderTargetRegistry,
-    material_handles: &mut NativeMaterialHandles,
-    shader_material_handles: &mut NativeShaderMaterialHandles,
-    bundle_path: &Path,
+    resources: &mut EntitySpawnResources<'_, '_>,
 ) -> Result<Entity, MapError> {
+    let assets_by_id = &resources.context.assets_by_id;
+    let bundle_path = resources.bundle_path;
     let transform = map_transform(entity);
     let name = Name::new(entity.id.clone());
     let stable_id = ThreeNativeId(entity.id.clone());
@@ -33,7 +28,7 @@ fn spawn_entity(
                 name,
                 crate::rendering::contact_shadows::NativeContactShadows::from_ir(
                     contact_shadows,
-                    runtime_config,
+                    resources.context.runtime_config,
                 ),
             ))
             .id());
@@ -90,66 +85,50 @@ fn spawn_entity(
         ));
     }
 
+    if entity.components.mesh_renderer.is_some() {
+        return spawn_mesh_entity(world, entity, resources, transform);
+    }
+    if entity.components.camera.is_some() {
+        return spawn_camera_entity(world, entity, resources.context, transform);
+    }
+    if entity.components.light.is_some() {
+        return Ok(spawn_light_or_spatial(
+            world,
+            entity,
+            resources.context,
+            transform,
+        ));
+    }
+
+    Ok(spawn_spatial_entity(world, entity, transform))
+}
+
+fn spawn_mesh_entity(
+    world: &mut World,
+    entity: &WorldEntity,
+    resources: &mut EntitySpawnResources<'_, '_>,
+    transform: Transform,
+) -> Result<Entity, MapError> {
+    let stable_id = ThreeNativeId(entity.id.clone());
+    let name = Name::new(entity.id.clone());
+    let NativeWorldEntitySpawnContext {
+        assets_by_id,
+        layer_map,
+        render_target_registry,
+        runtime_config,
+        ..
+    } = resources.context;
+    let material_handles = &mut resources.material_handles;
+    let shader_material_handles = &mut resources.shader_material_handles;
+    let runtime_config = *runtime_config;
     if let Some(renderer) = &entity.components.mesh_renderer {
-        let mesh_id = renderer
-            .mesh
-            .as_deref()
-            .ok_or_else(|| MapError::MissingMesh {
-                entity_id: entity.id.clone(),
-                mesh_id: "<missing>".to_owned(),
-            })?;
-        let asset = assets_by_id
-            .get(mesh_id)
-            .ok_or_else(|| MapError::MissingMesh {
-                entity_id: entity.id.clone(),
-                mesh_id: mesh_id.to_owned(),
-            })?;
-        let material = materials_by_id
-            .get(renderer.material.as_str())
-            .ok_or_else(|| MapError::MissingMaterial {
-                entity_id: entity.id.clone(),
-                material_id: renderer.material.clone(),
-            })?;
+        let (mesh_id, asset, material) =
+            resolve_mesh_renderer_inputs(entity, renderer, resources.context)?;
         let asset_server = world.get_resource::<AssetServer>().cloned();
-        if let Some(scene_path) = model_scene_path(asset)
-            && let Some(asset_server) = asset_server.as_ref()
+        if let Some(spawned) =
+            try_spawn_model_scene(world, entity, renderer, asset, resources.context, transform)
         {
-            let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
-            let playback = animation_playback(asset);
-            let scene_binding = playback.as_ref().and_then(|playback| {
-                world.contains_resource::<Assets<AnimationClip>>().then(|| {
-                    NativeAnimationSceneBinding {
-                        asset: asset.id.clone(),
-                        clip_speeds: animation_clip_speeds(asset),
-                        gltf: asset_server.load(scene_path.clone()),
-                        clip: asset_server.load(
-                            GltfAssetLabel::Animation(animation_clip_index(asset, playback))
-                                .from_asset(scene_path.clone()),
-                        ),
-                        loop_: playback.loop_,
-                        speed: playback.speed,
-                        source_clip: playback.source_clip.clone(),
-                    }
-                })
-            });
-            let mut spawned = world.spawn(SceneBundle {
-                scene,
-                transform,
-                visibility: map_visibility(entity),
-                ..Default::default()
-            });
-            spawned.insert((stable_id, name));
-            insert_shadow_markers(&mut spawned, renderer);
-            if let Some(layers) = entity.components.render_layers.as_ref() {
-                spawned.insert(render_layers_for_names(layer_map, &layers.layers));
-            }
-            if let Some(binding) = scene_binding {
-                spawned.insert(binding);
-            }
-            if let Some(playback) = playback {
-                spawned.insert(playback);
-            }
-            return Ok(spawned.id());
+            return Ok(spawned);
         }
         let mesh = resolve_mesh_handle(world, asset);
         let mesh_lod = native_mesh_lod(world, &entity.id, renderer, assets_by_id, mesh_id, &mesh)?;
@@ -234,31 +213,148 @@ fn spawn_entity(
             }
             spawned.id()
         };
-        if uses_emissive_marker_mask(material)
-            && world.contains_resource::<NativeEmissiveMarkerMask>()
-        {
-            let mask_material = add_emissive_mask_material(world);
-            let mut proxy = world.spawn(PbrBundle {
-                mesh,
-                material: mask_material,
-                visibility: Visibility::Inherited,
-                ..Default::default()
-            });
-            proxy.insert((
-                Name::new(format!("{}.emissive-mask", entity.id)),
-                RenderLayers::layer(THREE_COMPAT_EMISSIVE_MASK_LAYER),
-                NotShadowCaster,
-                NotShadowReceiver,
-            ));
-            if let Some(mesh_lod) = mesh_lod {
-                proxy.insert(mesh_lod);
-            }
-            let proxy = proxy.id();
-            world.entity_mut(spawned_id).push_children(&[proxy]);
-        }
+        attach_emissive_mask_proxy(world, entity, material, mesh, mesh_lod, spawned_id);
         return Ok(spawned_id);
     }
 
+    unreachable!("mesh renderer was checked before spawning")
+}
+
+fn resolve_mesh_renderer_inputs<'a>(
+    entity: &WorldEntity,
+    renderer: &'a threenative_loader::MeshRendererComponent,
+    context: &'a NativeWorldEntitySpawnContext<'a>,
+) -> Result<(&'a str, &'a AssetIr, &'a MaterialIr), MapError> {
+    let mesh_id = renderer
+        .mesh
+        .as_deref()
+        .ok_or_else(|| MapError::MissingMesh {
+            entity_id: entity.id.clone(),
+            mesh_id: "<missing>".to_owned(),
+        })?;
+    let asset = context
+        .assets_by_id
+        .get(mesh_id)
+        .ok_or_else(|| MapError::MissingMesh {
+            entity_id: entity.id.clone(),
+            mesh_id: mesh_id.to_owned(),
+        })?;
+    let material = context
+        .materials_by_id
+        .get(renderer.material.as_str())
+        .ok_or_else(|| MapError::MissingMaterial {
+            entity_id: entity.id.clone(),
+            material_id: renderer.material.clone(),
+        })?;
+    Ok((mesh_id, asset, material))
+}
+
+fn try_spawn_model_scene(
+    world: &mut World,
+    entity: &WorldEntity,
+    renderer: &threenative_loader::MeshRendererComponent,
+    asset: &AssetIr,
+    context: &NativeWorldEntitySpawnContext<'_>,
+    transform: Transform,
+) -> Option<Entity> {
+    let scene_path = model_scene_path(asset)?;
+    let asset_server = world.get_resource::<AssetServer>().cloned()?;
+    let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
+    let playback = animation_playback(asset);
+    let scene_binding = playback.as_ref().and_then(|playback| {
+        world
+            .contains_resource::<Assets<AnimationClip>>()
+            .then(|| NativeAnimationSceneBinding {
+                asset: asset.id.clone(),
+                clip_speeds: animation_clip_speeds(asset),
+                gltf: asset_server.load(scene_path.clone()),
+                clip: asset_server.load(
+                    GltfAssetLabel::Animation(animation_clip_index(asset, playback))
+                        .from_asset(scene_path.clone()),
+                ),
+                loop_: playback.loop_,
+                speed: playback.speed,
+                source_clip: playback.source_clip.clone(),
+            })
+    });
+    let mut spawned = world.spawn(SceneBundle {
+        scene,
+        transform,
+        visibility: map_visibility(entity),
+        ..Default::default()
+    });
+    spawned.insert((
+        ThreeNativeId(entity.id.clone()),
+        Name::new(entity.id.clone()),
+    ));
+    insert_shadow_markers(&mut spawned, renderer);
+    if let Some(layers) = entity.components.render_layers.as_ref() {
+        spawned.insert(render_layers_for_names(&context.layer_map, &layers.layers));
+    }
+    if let Some(binding) = scene_binding {
+        spawned.insert(binding);
+    }
+    if let Some(playback) = playback {
+        spawned.insert(playback);
+    }
+    Some(spawned.id())
+}
+
+fn attach_emissive_mask_proxy(
+    world: &mut World,
+    entity: &WorldEntity,
+    material: &MaterialIr,
+    mesh: Handle<Mesh>,
+    mesh_lod: Option<NativeMeshLod>,
+    spawned_id: Entity,
+) {
+    if !uses_emissive_marker_mask(material)
+        || !world.contains_resource::<NativeEmissiveMarkerMask>()
+    {
+        return;
+    }
+    let mask_material = add_emissive_mask_material(world);
+    let mut proxy = world.spawn(PbrBundle {
+        mesh,
+        material: mask_material,
+        visibility: Visibility::Inherited,
+        ..Default::default()
+    });
+    proxy.insert((
+        Name::new(format!("{}.emissive-mask", entity.id)),
+        RenderLayers::layer(THREE_COMPAT_EMISSIVE_MASK_LAYER),
+        NotShadowCaster,
+        NotShadowReceiver,
+    ));
+    if let Some(mesh_lod) = mesh_lod {
+        proxy.insert(mesh_lod);
+    }
+    let proxy = proxy.id();
+    world.entity_mut(spawned_id).push_children(&[proxy]);
+}
+
+fn spawn_camera_entity(
+    world: &mut World,
+    entity: &WorldEntity,
+    context: &NativeWorldEntitySpawnContext<'_>,
+    transform: Transform,
+) -> Result<Entity, MapError> {
+    let NativeWorldEntitySpawnContext {
+        active_cameras,
+        camera_atmosphere,
+        camera_color_management,
+        fallback_active_camera,
+        layer_map,
+        render_target_registry,
+        runtime_color_grading,
+        runtime_config,
+        ..
+    } = context;
+    let camera_atmosphere = *camera_atmosphere;
+    let camera_color_management = *camera_color_management;
+    let fallback_active_camera = fallback_active_camera.as_deref();
+    let runtime_color_grading = *runtime_color_grading;
+    let runtime_config = *runtime_config;
     if let Some(camera) = &entity.components.camera {
         let environment_map = world.get_resource::<NativeEnvironmentMapHandles>().cloned();
         let projection = if camera.kind == "orthographic" {
@@ -284,7 +380,7 @@ fn spawn_entity(
             exposure: exposure_for_profile(camera_color_management, runtime_color_grading),
             projection: projection.clone(),
             tonemapping: tonemapping_for_profile(camera_color_management, runtime_color_grading),
-            transform: transform.clone(),
+            transform,
             ..Default::default()
         });
         if let Some(fog) = fog_settings_for_profile(camera_atmosphere) {
@@ -296,11 +392,13 @@ fn spawn_entity(
         if let Some(height_fog) = crate::rendering::native_height_fog_settings(camera_atmosphere) {
             spawned.insert(height_fog);
         }
-        if let Some(ssgi) = crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere) {
+        if let Some(ssgi) =
+            crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere)
+        {
             spawned.insert(ssgi);
         }
         let is_active = if active_cameras.is_empty() {
-            fallback_active_camera.map_or(true, |id| id == entity.id)
+            fallback_active_camera.is_none_or(|id| id == entity.id)
         } else {
             active_cameras.contains(entity.id.as_str())
         };
@@ -313,182 +411,226 @@ fn spawn_entity(
             UVec2::new(1280, 720),
             camera_render_target(camera, render_target_registry),
         );
-        spawned.insert(CameraMainTextureUsages(
-            TextureUsages::COPY_SRC
-                | TextureUsages::RENDER_ATTACHMENT
-                | TextureUsages::TEXTURE_BINDING,
-        ));
-        if crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere).is_some()
-            || crate::rendering::native_height_fog_settings(camera_atmosphere).is_some()
-        {
-            if let Some(mut camera_3d) = spawned.get_mut::<Camera3d>() {
-                camera_3d.depth_texture_usages =
-                    (TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING).into();
-            }
-        }
-        if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
-            camera_component.hdr = camera_color_management.is_some()
-                || runtime_color_grading.is_some()
-                || bloom_settings.is_some()
-                || crate::rendering::native_height_fog_settings(camera_atmosphere).is_some()
-                || crate::rendering::native_ssgi_settings(runtime_config, camera_atmosphere).is_some();
-            if camera.clear.is_none() {
-                if let Some(clear_color) = default_camera_clear_color {
-                    camera_component.clear_color = ClearColorConfig::Custom(clear_color);
-                }
-            }
-        }
-        if let Some(projection) = camera.projection.as_ref() {
-            if projection.kind == "matrix" {
-                if let Some(matrix) = projection.matrix.as_ref() {
-                    if matrix.len() == 16 {
-                        let values: [f32; 16] = matrix.clone().try_into().unwrap_or([0.0; 16]);
-                        spawned.insert(NativeCustomProjection(values));
-                    }
-                }
-            }
-        }
-        spawned.insert((stable_id, name, map_visibility(entity)));
-        if let Some(bloom_settings) = bloom_settings {
-            spawned.insert(bloom_settings.clone());
-        }
-        if camera_atmosphere
-            .is_some_and(|profile| profile.sun.casts_shadow && profile.shadows.enabled)
-        {
-            spawned.insert(ShadowFilteringMethod::Gaussian);
-        }
-        if is_active {
-            if let Some(environment_map) = environment_map {
-                spawned.insert(EnvironmentMapLight {
-                    diffuse_map: environment_map.diffuse_map.clone(),
-                    specular_map: environment_map.specular_map.clone(),
-                    intensity: environment_map.intensity,
-                });
-            }
-        }
-        insert_camera_antialias(&mut spawned, runtime_config);
-        insert_camera_ambient_occlusion(&mut spawned, runtime_config);
-        insert_camera_ssgi_prepasses(&mut spawned, runtime_config);
-        insert_camera_shadow_profile(&mut spawned, runtime_config);
-        insert_camera_depth_of_field(&mut spawned, runtime_config);
-        insert_camera_motion_blur(&mut spawned, runtime_config);
-        insert_camera_screen_space_reflections(&mut spawned, runtime_config);
+        configure_spawned_camera(
+            &mut spawned,
+            entity,
+            camera,
+            context,
+            environment_map,
+            is_active,
+        );
         let camera_id = spawned.id();
-        drop(spawned);
         if is_active {
             spawn_emissive_mask_camera(world, camera, &projection, transform);
         }
         return Ok(camera_id);
     }
 
-    if let Some(light) = &entity.components.light {
-        if camera_atmosphere.is_some() && matches!(light.kind.as_str(), "ambient" | "directional") {
-            return Ok(world
-                .spawn(SpatialBundle {
-                    transform,
-                    visibility: map_visibility(entity),
-                    ..Default::default()
-                })
-                .insert((stable_id, name))
-                .id());
-        }
-        if light.kind == "directional" {
-            let light_transform = directional_light_transform(transform, entity);
-            return Ok(world
-                .spawn(DirectionalLightBundle {
-                    directional_light: DirectionalLight {
-                        color: color_to_bevy(&light.color),
-                        illuminance: directional_illuminance(
-                            light.intensity,
-                            camera_color_management,
-                            camera_atmosphere,
-                        ),
-                        shadow_depth_bias: light
-                            .shadow_bias
-                            .unwrap_or(DirectionalLight::DEFAULT_SHADOW_DEPTH_BIAS),
-                        shadow_normal_bias: light
-                            .shadow_normal_bias
-                            .unwrap_or(DirectionalLight::DEFAULT_SHADOW_NORMAL_BIAS),
-                        shadows_enabled: false,
-                        ..Default::default()
-                    },
-                    transform: light_transform,
-                    visibility: map_visibility(entity),
-                    ..Default::default()
-                })
-                .insert((stable_id, name))
-                .id());
-        }
-        if light.kind == "point" {
-            return Ok(world
-                .spawn(PointLightBundle {
-                    point_light: PointLight {
-                        color: color_to_bevy(&light.color),
-                        intensity: point_lumens(light.intensity, camera_color_management),
-                        range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
-                        shadow_depth_bias: light
-                            .shadow_bias
-                            .unwrap_or(PointLight::DEFAULT_SHADOW_DEPTH_BIAS),
-                        shadow_normal_bias: light
-                            .shadow_normal_bias
-                            .unwrap_or(PointLight::DEFAULT_SHADOW_NORMAL_BIAS),
-                        ..Default::default()
-                    },
-                    transform,
-                    visibility: map_visibility(entity),
-                    ..Default::default()
-                })
-                .insert((stable_id, name))
-                .id());
-        }
-        if light.kind == "spot" {
-            return Ok(world
-                .spawn(SpotLightBundle {
-                    spot_light: SpotLight {
-                        color: color_to_bevy(&light.color),
-                        intensity: point_lumens(light.intensity, camera_color_management),
-                        outer_angle: light.angle.unwrap_or(std::f32::consts::FRAC_PI_4),
-                        range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
-                        shadow_depth_bias: light
-                            .shadow_bias
-                            .unwrap_or(SpotLight::DEFAULT_SHADOW_DEPTH_BIAS),
-                        shadow_normal_bias: light
-                            .shadow_normal_bias
-                            .unwrap_or(SpotLight::DEFAULT_SHADOW_NORMAL_BIAS),
-                        ..Default::default()
-                    },
-                    transform,
-                    visibility: map_visibility(entity),
-                    ..Default::default()
-                })
-                .insert((stable_id, name))
-                .id());
-        }
-        if light.kind == "ambient" {
-            let color = color_to_bevy(&light.color);
-            let brightness = light.intensity
-                * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
-                * if camera_atmosphere.is_some_and(|profile| profile.active) { 1.0 } else { ambient_occlusion_intensity_approximation(runtime_config) }
-                * crate::rendering::native_ssgi_ambient_multiplier(runtime_config);
-        if world.contains_resource::<crate::rendering::NativeBakedProbeLightingApplied>() {
-                if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
-                    ambient.color = crate::rendering::blend_ambient_colors(ambient.color, color);
-                    ambient.brightness += brightness;
-                }
-            } else {
-                world.insert_resource(AmbientLight { color, brightness });
-            }
+    unreachable!("camera was checked before spawning")
+}
+
+fn configure_spawned_camera(
+    spawned: &mut EntityWorldMut<'_>,
+    entity: &WorldEntity,
+    camera: &threenative_loader::CameraComponent,
+    context: &NativeWorldEntitySpawnContext<'_>,
+    environment_map: Option<NativeEnvironmentMapHandles>,
+    is_active: bool,
+) {
+    spawned.insert(CameraMainTextureUsages(
+        TextureUsages::COPY_SRC | TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING,
+    ));
+    if (crate::rendering::native_ssgi_settings(context.runtime_config, context.camera_atmosphere)
+        .is_some()
+        || crate::rendering::native_height_fog_settings(context.camera_atmosphere).is_some())
+        && let Some(mut camera_3d) = spawned.get_mut::<Camera3d>()
+    {
+        camera_3d.depth_texture_usages =
+            (TextureUsages::RENDER_ATTACHMENT | TextureUsages::TEXTURE_BINDING).into();
+    }
+    if let Some(mut camera_component) = spawned.get_mut::<Camera>() {
+        camera_component.hdr = context.camera_color_management.is_some()
+            || context.runtime_color_grading.is_some()
+            || context.bloom_settings.is_some()
+            || crate::rendering::native_height_fog_settings(context.camera_atmosphere).is_some()
+            || crate::rendering::native_ssgi_settings(
+                context.runtime_config,
+                context.camera_atmosphere,
+            )
+            .is_some();
+        if camera.clear.is_none()
+            && let Some(clear_color) = context.default_camera_clear_color
+        {
+            camera_component.clear_color = ClearColorConfig::Custom(clear_color);
         }
     }
+    if let Some(projection) = camera.projection.as_ref()
+        && projection.kind == "matrix"
+        && let Some(matrix) = projection.matrix.as_ref()
+        && matrix.len() == 16
+    {
+        let values: [f32; 16] = matrix.clone().try_into().unwrap_or([0.0; 16]);
+        spawned.insert(NativeCustomProjection(values));
+    }
+    spawned.insert((
+        ThreeNativeId(entity.id.clone()),
+        Name::new(entity.id.clone()),
+        map_visibility(entity),
+    ));
+    if let Some(bloom_settings) = context.bloom_settings.as_ref() {
+        spawned.insert(bloom_settings.clone());
+    }
+    if context
+        .camera_atmosphere
+        .is_some_and(|profile| profile.sun.casts_shadow && profile.shadows.enabled)
+    {
+        spawned.insert(ShadowFilteringMethod::Gaussian);
+    }
+    if is_active && let Some(environment_map) = environment_map {
+        spawned.insert(EnvironmentMapLight {
+            diffuse_map: environment_map.diffuse_map,
+            specular_map: environment_map.specular_map,
+            intensity: environment_map.intensity,
+        });
+    }
+    insert_camera_antialias(spawned, context.runtime_config);
+    insert_camera_ambient_occlusion(spawned, context.runtime_config);
+    insert_camera_ssgi_prepasses(spawned, context.runtime_config);
+    insert_camera_shadow_profile(spawned, context.runtime_config);
+    insert_camera_depth_of_field(spawned, context.runtime_config);
+    insert_camera_motion_blur(spawned, context.runtime_config);
+    insert_camera_screen_space_reflections(spawned, context.runtime_config);
+}
 
-    Ok(world
+fn spawn_light_or_spatial(
+    world: &mut World,
+    entity: &WorldEntity,
+    context: &NativeWorldEntitySpawnContext<'_>,
+    transform: Transform,
+) -> Entity {
+    let light = entity.components.light.as_ref().expect("light was checked");
+    let stable_id = ThreeNativeId(entity.id.clone());
+    let name = Name::new(entity.id.clone());
+    if context.camera_atmosphere.is_some()
+        && matches!(light.kind.as_str(), "ambient" | "directional")
+    {
+        return world
+            .spawn(SpatialBundle {
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            })
+            .insert((stable_id, name))
+            .id();
+    }
+    if light.kind == "directional" {
+        let light_transform = directional_light_transform(transform, entity);
+        return world
+            .spawn(DirectionalLightBundle {
+                directional_light: DirectionalLight {
+                    color: color_to_bevy(&light.color),
+                    illuminance: directional_illuminance(
+                        light.intensity,
+                        context.camera_color_management,
+                        context.camera_atmosphere,
+                    ),
+                    shadow_depth_bias: light
+                        .shadow_bias
+                        .unwrap_or(DirectionalLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                    shadow_normal_bias: light
+                        .shadow_normal_bias
+                        .unwrap_or(DirectionalLight::DEFAULT_SHADOW_NORMAL_BIAS),
+                    shadows_enabled: false,
+                },
+                transform: light_transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            })
+            .insert((stable_id, name))
+            .id();
+    }
+    if light.kind == "point" {
+        return world
+            .spawn(PointLightBundle {
+                point_light: PointLight {
+                    color: color_to_bevy(&light.color),
+                    intensity: point_lumens(light.intensity, context.camera_color_management),
+                    range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
+                    shadow_depth_bias: light
+                        .shadow_bias
+                        .unwrap_or(PointLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                    shadow_normal_bias: light
+                        .shadow_normal_bias
+                        .unwrap_or(PointLight::DEFAULT_SHADOW_NORMAL_BIAS),
+                    ..Default::default()
+                },
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            })
+            .insert((stable_id, name))
+            .id();
+    }
+    if light.kind == "spot" {
+        return world
+            .spawn(SpotLightBundle {
+                spot_light: SpotLight {
+                    color: color_to_bevy(&light.color),
+                    intensity: point_lumens(light.intensity, context.camera_color_management),
+                    outer_angle: light.angle.unwrap_or(std::f32::consts::FRAC_PI_4),
+                    range: light.range.unwrap_or(THREE_COMPAT_DEFAULT_RANGE),
+                    shadow_depth_bias: light
+                        .shadow_bias
+                        .unwrap_or(SpotLight::DEFAULT_SHADOW_DEPTH_BIAS),
+                    shadow_normal_bias: light
+                        .shadow_normal_bias
+                        .unwrap_or(SpotLight::DEFAULT_SHADOW_NORMAL_BIAS),
+                    ..Default::default()
+                },
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            })
+            .insert((stable_id, name))
+            .id();
+    }
+    if light.kind == "ambient" {
+        let color = color_to_bevy(&light.color);
+        let brightness = light.intensity
+            * THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY
+            * if context
+                .camera_atmosphere
+                .is_some_and(|profile| profile.active)
+            {
+                1.0
+            } else {
+                ambient_occlusion_intensity_approximation(context.runtime_config)
+            }
+            * crate::rendering::native_ssgi_ambient_multiplier(context.runtime_config);
+        if world.contains_resource::<crate::rendering::NativeBakedProbeLightingApplied>() {
+            if let Some(mut ambient) = world.get_resource_mut::<AmbientLight>() {
+                ambient.color = crate::rendering::blend_ambient_colors(ambient.color, color);
+                ambient.brightness += brightness;
+            }
+        } else {
+            world.insert_resource(AmbientLight { color, brightness });
+        }
+    }
+    spawn_spatial_entity(world, entity, transform)
+}
+
+fn spawn_spatial_entity(world: &mut World, entity: &WorldEntity, transform: Transform) -> Entity {
+    world
         .spawn(SpatialBundle {
             transform,
             visibility: map_visibility(entity),
             ..Default::default()
         })
-        .insert((stable_id, name))
-        .id())
+        .insert((
+            ThreeNativeId(entity.id.clone()),
+            Name::new(entity.id.clone()),
+        ))
+        .id()
 }
 
 fn shader_material_instance(material: &MaterialIr) -> Option<NativeShaderMaterialInstance> {
@@ -633,7 +775,12 @@ fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) 
                 .map(|texture| texture.asset.clone())
         });
         let color = add_shader_emissive(
-            [1.0, 1.0, 1.0, shader_alpha(material, outputs).unwrap_or(1.0)],
+            [
+                1.0,
+                1.0,
+                1.0,
+                shader_alpha(material, outputs).unwrap_or(1.0),
+            ],
             material,
             emissive,
         );
@@ -649,11 +796,16 @@ fn portable_shader_base_color(material: &MaterialIr) -> (Color, Option<String>) 
         let r = json_array_f32(values, 0, 1.0);
         let g = json_array_f32(values, 1, r);
         let b = json_array_f32(values, 2, g);
-        let alpha = shader_alpha(material, outputs).unwrap_or_else(|| json_array_f32(values, 3, 1.0));
+        let alpha =
+            shader_alpha(material, outputs).unwrap_or_else(|| json_array_f32(values, 3, 1.0));
         let color = add_shader_emissive([r, g, b, alpha], material, emissive);
         return (Color::srgba(color[0], color[1], color[2], color[3]), None);
     }
-    let fallback = color_with_opacity(&material.color, shader_alpha(material, outputs).unwrap_or(1.0)).to_srgba();
+    let fallback = color_with_opacity(
+        &material.color,
+        shader_alpha(material, outputs).unwrap_or(1.0),
+    )
+    .to_srgba();
     let color = add_shader_emissive(
         [fallback.red, fallback.green, fallback.blue, fallback.alpha],
         material,
@@ -702,12 +854,14 @@ fn shader_expression_color(
         let color = color_to_bevy(&ColorIr::Hex(value.to_owned())).to_srgba();
         return Some([color.red, color.green, color.blue, color.alpha]);
     }
-    uniform.default.as_array().map(|values| [
-        json_array_f32(values, 0, 1.0),
-        json_array_f32(values, 1, 1.0),
-        json_array_f32(values, 2, 1.0),
-        json_array_f32(values, 3, 1.0),
-    ])
+    uniform.default.as_array().map(|values| {
+        [
+            json_array_f32(values, 0, 1.0),
+            json_array_f32(values, 1, 1.0),
+            json_array_f32(values, 2, 1.0),
+            json_array_f32(values, 3, 1.0),
+        ]
+    })
 }
 
 fn shader_alpha(
@@ -742,7 +896,8 @@ fn shader_displacement_amount(material: &MaterialIr) -> Option<f32> {
     }
     let uniform_name = amount.get("uniform").and_then(|value| value.as_str())?;
     material.uniforms.as_ref()?.iter().find_map(|uniform| {
-        (uniform.name == uniform_name).then(|| uniform.default.as_f64().map(|value| value as f32))?
+        (uniform.name == uniform_name)
+            .then(|| uniform.default.as_f64().map(|value| value as f32))?
     })
 }
 
@@ -989,11 +1144,7 @@ pub fn apply_native_animation_service_effects(
                 .is_some_and(|current| current.source_clip == request.source_clip)
             {
                 commands.add(move |world: &mut World| {
-                    if let Some(mut player) = world.get_mut::<AnimationPlayer>(player_entity) {
-                        for (_, active) in player.playing_animations_mut() {
-                            active.set_speed(speed);
-                        }
-                    }
+                    update_animation_player_speed(world, player_entity, speed);
                 });
                 applied = true;
                 continue;
@@ -1025,6 +1176,15 @@ pub fn apply_native_animation_service_effects(
         if !applied {
             queue.commands.push(request);
         }
+    }
+}
+
+fn update_animation_player_speed(world: &mut World, player_entity: Entity, speed: f32) {
+    let Some(mut player) = world.get_mut::<AnimationPlayer>(player_entity) else {
+        return;
+    };
+    for (_, active) in player.playing_animations_mut() {
+        active.set_speed(speed);
     }
 }
 

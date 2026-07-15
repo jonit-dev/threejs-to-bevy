@@ -150,24 +150,32 @@ pub fn step_bundle_patrols(
                 break;
             }
         }
-        let transform = entity
-            .components
-            .transform
-            .get_or_insert_with(default_transform);
-        transform.position = Some(position);
-        if patrol.face_heading.unwrap_or(false) && length([velocity[0], 0.0, velocity[2]]) > EPSILON
-        {
-            let yaw = velocity[0].atan2(velocity[2]);
-            transform.rotation = Some([0.0, (yaw / 2.0).sin(), 0.0, (yaw / 2.0).cos()]);
-        }
-        if let Some(rigid_body) = entity.components.rigid_body.as_mut() {
-            if rigid_body.kind == "kinematic" {
-                rigid_body.velocity = Some(velocity);
-            }
-        }
+        apply_patrol_movement(entity, &patrol, position, velocity);
         observations.push(observation(&id, state, position, velocity, false));
     }
     observations
+}
+
+fn apply_patrol_movement(
+    entity: &mut threenative_loader::WorldEntity,
+    patrol: &PatrolComponent,
+    position: [f32; 3],
+    velocity: [f32; 3],
+) {
+    let transform = entity
+        .components
+        .transform
+        .get_or_insert_with(default_transform);
+    transform.position = Some(position);
+    if patrol.face_heading.unwrap_or(false) && length([velocity[0], 0.0, velocity[2]]) > EPSILON {
+        let yaw = velocity[0].atan2(velocity[2]);
+        transform.rotation = Some([0.0, (yaw / 2.0).sin(), 0.0, (yaw / 2.0).cos()]);
+    }
+    if let Some(rigid_body) = entity.components.rigid_body.as_mut()
+        && rigid_body.kind == "kinematic"
+    {
+        rigid_body.velocity = Some(velocity);
+    }
 }
 
 fn state_for<'a>(

@@ -8,7 +8,7 @@
       "sourceExample": "procedural-mesh",
       "regenerateCommand": "pnpm --filter @threenative/sdk build && node scripts/generate-procedural-mesh-fixture.mjs",
       "canonicalArtifactGate": "procedural-mesh",
-      "ownerDocs": "docs/PRDs/procedural-geometry-v2-2026-07-11.md",
+      "ownerDocs": "docs/PRDs/done/procedural-geometry-v2-2026-07-11.md",
       "aggregateGate": "verify:v8-procedural-mesh",
       "bundlePath": "packages/ir/fixtures/conformance/procedural-mesh/game.bundle",
       "promotedCapabilities": [
@@ -27,7 +27,7 @@
       "sourceExample": "procedural-mesh-lod",
       "regenerateCommand": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/compiler build && node scripts/generate-procedural-mesh-lod-fixture.mjs",
       "canonicalArtifactGate": "generated-mesh-lod",
-      "ownerDocs": "docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md",
+      "ownerDocs": "docs/PRDs/done/procedural-generated-mesh-lod-contract-2026-07-14.md",
       "aggregateGate": "verify:generated-mesh-lod",
       "bundlePath": "packages/ir/fixtures/conformance/procedural-mesh-lod/game.bundle",
       "promotedCapabilities": [

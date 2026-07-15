@@ -1,7 +1,7 @@
 use std::{
     collections::BTreeMap,
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
@@ -1300,7 +1300,7 @@ fn write_ui_bundle() -> PathBuf {
     root
 }
 
-fn write(root: &PathBuf, file: &str, contents: &str) {
+fn write(root: &Path, file: &str, contents: &str) {
     fs::write(root.join(file), contents).expect("bundle file should be written");
 }
 

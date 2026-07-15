@@ -174,13 +174,13 @@ fn apply_actions(
     actions
         .iter()
         .map(|action| {
-            if action.kind == "setResource" {
-                if let Some(resource) = &action.resource {
-                    resources.insert(
-                        resource.clone(),
-                        action.value.clone().unwrap_or(serde_json::Value::Null),
-                    );
-                }
+            if action.kind == "setResource"
+                && let Some(resource) = &action.resource
+            {
+                resources.insert(
+                    resource.clone(),
+                    action.value.clone().unwrap_or(serde_json::Value::Null),
+                );
             }
             NativeGameFlowTraceAction {
                 action: action.kind.clone(),

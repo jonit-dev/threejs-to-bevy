@@ -334,25 +334,7 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
         })
         .collect::<HashMap<_, _>>();
     world.insert_resource(instancing_report);
-    let source_assets = scene
-        .source_assets
-        .iter()
-        .map(|asset| {
-            (
-                asset.id.as_str(),
-                (asset.asset.as_str(), asset.category.as_str()),
-            )
-        })
-        .collect::<HashMap<_, _>>();
-    let assets = bundle
-        .assets
-        .assets
-        .iter()
-        .map(|asset| (asset.id.as_str(), asset))
-        .collect::<HashMap<_, _>>();
     let asset_server = world.get_resource::<AssetServer>().cloned();
-    let mut placeholder_batches =
-        HashMap::<String, (Handle<Mesh>, Handle<StandardMaterial>)>::new();
 
     if let Some(terrain) = scene.terrain.as_ref() {
         let material = material(world, Color::WHITE);
@@ -389,6 +371,40 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
             .insert((NotShadowCaster, NotShadowReceiver));
     }
 
+    spawn_environment_instances(
+        world,
+        bundle,
+        scene,
+        &instanced_members,
+        asset_server.as_ref(),
+    );
+}
+
+fn spawn_environment_instances(
+    world: &mut World,
+    bundle: &LoadedBundle,
+    scene: &threenative_loader::EnvironmentSceneIr,
+    instanced_members: &HashMap<String, NativeInstancedMember>,
+    asset_server: Option<&AssetServer>,
+) {
+    let source_assets = scene
+        .source_assets
+        .iter()
+        .map(|asset| {
+            (
+                asset.id.as_str(),
+                (asset.asset.as_str(), asset.category.as_str()),
+            )
+        })
+        .collect::<HashMap<_, _>>();
+    let assets = bundle
+        .assets
+        .assets
+        .iter()
+        .map(|asset| (asset.id.as_str(), asset))
+        .collect::<HashMap<_, _>>();
+    let mut placeholder_batches =
+        HashMap::<String, (Handle<Mesh>, Handle<StandardMaterial>)>::new();
     for instance in &scene.instances {
         let source_asset = source_assets.get(instance.source_asset.as_str()).copied();
         let category = source_asset
@@ -407,27 +423,26 @@ pub fn map_environment_into_world(world: &mut World, bundle: &LoadedBundle) {
 
         if let (Some(asset_server), Some((asset_id, category))) =
             (asset_server.as_ref(), source_asset)
-        {
-            if let Some(asset) = assets.get(asset_id).filter(|asset| {
+            && let Some(asset) = assets.get(asset_id).filter(|asset| {
                 if asset.kind == "model" && matches!(asset.format.as_str(), "gltf" | "glb") {
                     asset.path.is_some()
                 } else {
                     false
                 }
-            }) {
-                apply_gltf_normalization(&mut transform, category, asset);
-                let entity = spawn_gltf_scene(
-                    world,
-                    asset_server,
-                    &format!("environment:{}", instance.id),
-                    asset.path.as_deref().unwrap_or_default(),
-                    transform,
-                );
-                if let Some(member) = instanced_member {
-                    world.entity_mut(entity).insert(member);
-                }
-                continue;
+            })
+        {
+            apply_gltf_normalization(&mut transform, category, asset);
+            let entity = spawn_gltf_scene(
+                world,
+                asset_server,
+                &format!("environment:{}", instance.id),
+                asset.path.as_deref().unwrap_or_default(),
+                transform,
+            );
+            if let Some(member) = instanced_member {
+                world.entity_mut(entity).insert(member);
             }
+            continue;
         }
 
         let base_size = size_for_category(category);

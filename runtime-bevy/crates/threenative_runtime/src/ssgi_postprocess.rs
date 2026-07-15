@@ -146,11 +146,7 @@ impl ViewNode for NativeSsgiNode {
     ) -> Result<(), NodeRunError> {
         let pipeline = world.resource::<NativeSsgiPipeline>();
         let multisampled = world.resource::<Msaa>() != &Msaa::Off;
-        let pipeline_id = if multisampled {
-            pipeline.multisampled_pipeline_id
-        } else {
-            pipeline.pipeline_id
-        };
+        let pipeline_id = pipeline.pipeline_id(multisampled);
         let Some(render_pipeline) = world
             .resource::<PipelineCache>()
             .get_render_pipeline(pipeline_id)
@@ -223,11 +219,7 @@ impl ViewNode for NativeSsgiNode {
         );
         let sampleable_source_view =
             sampleable_source.create_view(&TextureViewDescriptor::default());
-        let layout = if multisampled {
-            &pipeline.multisampled_layout
-        } else {
-            &pipeline.layout
-        };
+        let layout = pipeline.layout(multisampled);
         {
             let post = target.post_process_write();
             let bind_group = context.render_device().create_bind_group(
@@ -326,6 +318,23 @@ struct NativeSsgiPipeline {
     sampler: Sampler,
     pipeline_id: CachedRenderPipelineId,
     multisampled_pipeline_id: CachedRenderPipelineId,
+}
+impl NativeSsgiPipeline {
+    fn layout(&self, multisampled: bool) -> &BindGroupLayout {
+        if multisampled {
+            &self.multisampled_layout
+        } else {
+            &self.layout
+        }
+    }
+
+    fn pipeline_id(&self, multisampled: bool) -> CachedRenderPipelineId {
+        if multisampled {
+            self.multisampled_pipeline_id
+        } else {
+            self.pipeline_id
+        }
+    }
 }
 impl FromWorld for NativeSsgiPipeline {
     fn from_world(world: &mut World) -> Self {

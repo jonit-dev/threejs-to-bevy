@@ -8,6 +8,7 @@ use std::{
 use bevy::{
     app::ScheduleRunnerPlugin,
     asset::LoadState,
+    ecs::system::SystemParam,
     input::ButtonInput,
     prelude::*,
     render::view::screenshot::ScreenshotManager,
@@ -115,6 +116,60 @@ pub struct NativeProofHarnessRequiredModels(Vec<Handle<Scene>>);
 
 #[derive(Clone, Debug, Default, Resource)]
 pub struct NativeProofHarnessFastForward(pub u64);
+
+type NativeProofTransformQueries<'w, 's> = ParamSet<
+    'w,
+    's,
+    (
+        Query<'w, 's, (&'static ThreeNativeId, &'static mut Transform)>,
+        Query<'w, 's, (&'static ThreeNativeId, &'static Transform)>,
+    ),
+>;
+
+type NativeProofResourceQueries<'w, 's> = ParamSet<
+    'w,
+    's,
+    (
+        Option<Res<'w, crate::scene_ray_query::NativeSceneRayQuery>>,
+        Option<Res<'w, crate::overlay_host::NativeOverlayRenderReadiness>>,
+    ),
+>;
+
+#[derive(SystemParam)]
+pub struct NativeProofHarnessSystem<'w, 's> {
+    commands: Commands<'w, 's>,
+    state: ResMut<'w, NativeProofHarnessState>,
+    keyboard: ResMut<'w, ButtonInput<KeyCode>>,
+    exit: EventWriter<'w, AppExit>,
+    windows: Query<'w, 's, Entity, With<PrimaryWindow>>,
+    screenshots: Option<ResMut<'w, ScreenshotManager>>,
+    transforms: NativeProofTransformQueries<'w, 's>,
+    asset_server: Option<Res<'w, AssetServer>>,
+    required_models: Option<Res<'w, NativeProofHarnessRequiredModels>>,
+    runtime: Option<ResMut<'w, crate::ScriptedRuntimeBundle>>,
+    ui_cameras: Query<'w, 's, (Entity, &'static mut Camera), With<IsDefaultUiCamera>>,
+    scene_cameras: Query<'w, 's, (Entity, &'static Camera), Without<IsDefaultUiCamera>>,
+    root_ui_nodes: Query<'w, 's, Entity, (With<Node>, Without<Parent>)>,
+    resource_observations: Option<Res<'w, NativeResourceObservationState>>,
+    write_audit: Option<Res<'w, NativeRuntimeWriteAuditState>>,
+    proof_resources: NativeProofResourceQueries<'w, 's>,
+}
+
+struct NativeProofHarnessCommandProgress {
+    diagnostics: Vec<NativeProofHarnessDiagnostic>,
+    hold_tick: bool,
+    advance_ticks: u64,
+}
+
+impl Default for NativeProofHarnessCommandProgress {
+    fn default() -> Self {
+        Self {
+            diagnostics: Vec::new(),
+            hold_tick: false,
+            advance_ticks: 1,
+        }
+    }
+}
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct NativeProofHarnessReadiness {
@@ -336,275 +391,287 @@ pub fn load_native_proof_harness_stream(
     Ok(stream)
 }
 
-pub fn apply_native_proof_harness_commands(
-    mut commands: Commands,
-    mut state: ResMut<NativeProofHarnessState>,
-    mut keyboard: ResMut<ButtonInput<KeyCode>>,
-    mut exit: EventWriter<AppExit>,
-    windows: Query<Entity, With<PrimaryWindow>>,
-    mut screenshots: Option<ResMut<ScreenshotManager>>,
-    mut transforms: ParamSet<(
-        Query<(&ThreeNativeId, &mut Transform)>,
-        Query<(&ThreeNativeId, &Transform)>,
-    )>,
-    asset_server: Option<Res<AssetServer>>,
-    required_models: Option<Res<NativeProofHarnessRequiredModels>>,
-    mut runtime: Option<ResMut<crate::ScriptedRuntimeBundle>>,
-    mut ui_cameras: Query<(Entity, &mut Camera), With<IsDefaultUiCamera>>,
-    scene_cameras: Query<(Entity, &Camera), Without<IsDefaultUiCamera>>,
-    root_ui_nodes: Query<Entity, (With<Node>, Without<Parent>)>,
-    resource_observations: Option<Res<NativeResourceObservationState>>,
-    write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
-    mut proof_resources: ParamSet<(
-        Option<Res<crate::scene_ray_query::NativeSceneRayQuery>>,
-        Option<Res<crate::overlay_host::NativeOverlayRenderReadiness>>,
-    )>,
-) {
-    let tick = state.tick;
-    let mut diagnostics = Vec::new();
-    if !native_proof_harness_models_ready(asset_server.as_deref(), required_models.as_deref()) {
-        let performance = state.performance_sample();
-        write_native_proof_harness_sample(
-            &mut state,
-            tick,
-            diagnostics,
-            performance,
-            transforms.p1().iter(),
-            resource_observations.as_deref().cloned(),
-            write_audit
-                .as_deref()
-                .filter(|audit| audit.enabled)
-                .cloned(),
-            runtime
-                .as_deref()
-                .map(|runtime| native_resource_snapshots(&runtime.bundle))
-                .unwrap_or_default(),
-            runtime.as_deref().map(|runtime| {
-                native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
-            }),
-            runtime
-                .as_deref()
-                .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
-            Vec::new(),
-        );
+pub fn apply_native_proof_harness_commands(mut harness: NativeProofHarnessSystem) {
+    let tick = harness.state.tick;
+    if !native_proof_harness_models_ready(
+        harness.asset_server.as_deref(),
+        harness.required_models.as_deref(),
+    ) {
+        write_current_native_proof_harness_sample(&mut harness, tick, Vec::new());
         return;
     }
-    let harness_commands = state
+    let commands = harness
+        .state
         .commands
         .iter()
         .filter(|command| command.tick == tick)
         .cloned()
         .collect::<Vec<_>>();
-    let mut hold_tick = false;
-    let mut advance_ticks = 1;
-    for command in harness_commands {
-        match command.action {
-            NativeProofHarnessAction::Key { code, pressed } => {
-                if let Some(key_code) = portable_key_code(&code) {
-                    if pressed {
-                        state.held_keys.insert(key_code);
-                    } else {
-                        state.held_keys.remove(&key_code);
-                        keyboard.release(key_code);
-                    }
-                } else {
-                    diagnostics.push(NativeProofHarnessDiagnostic {
-                        code: "TN_NATIVE_PROOF_INPUT_UNSUPPORTED".to_owned(),
-                        message: format!("Keyboard code '{code}' is not portable."),
-                        severity: "error".to_owned(),
-                    });
-                }
-            }
-            NativeProofHarnessAction::OverlayMessage {
-                overlay_id,
-                message_type,
-                payload,
-            } => {
-                commands.add(move |world: &mut World| {
-                    if let Some(mut resource) =
-                        world.get_resource_mut::<crate::overlay_host::NativeOverlayBridgeResource>()
-                    {
-                        let crate::overlay_host::NativeOverlayBridgeResource { bridge, overlays } =
-                            &mut *resource;
-                        bridge.receive_overlay_message(
-                            overlays,
-                            &overlay_id,
-                            &message_type,
-                            payload,
-                        );
-                    }
-                });
-            }
-            NativeProofHarnessAction::SetTransform {
-                entity,
-                position,
-                rotation,
-                scale,
-            } => {
-                let mut applied = false;
-                for (id, mut transform) in transforms.p0().iter_mut() {
-                    if id.0 == entity {
-                        if let Some([x, y, z]) = position {
-                            transform.translation = Vec3::new(x, y, z);
-                        }
-                        if let Some([x, y, z, w]) = rotation {
-                            transform.rotation = Quat::from_xyzw(x, y, z, w);
-                        }
-                        if let Some([x, y, z]) = scale {
-                            transform.scale = Vec3::new(x, y, z);
-                        }
-                        applied = true;
-                        break;
-                    }
-                }
-                if let Some(runtime) = runtime.as_deref_mut() {
-                    applied = apply_bundle_transform_setup(
-                        &mut runtime.bundle,
-                        &entity,
-                        position,
-                        rotation,
-                        scale,
-                    ) || applied;
-                }
-                if !applied {
-                    diagnostics.push(NativeProofHarnessDiagnostic {
-                        code: "TN_NATIVE_PROOF_SETUP_ENTITY_NOT_FOUND".to_owned(),
-                        message: format!(
-                            "Native proof harness could not apply Transform override for entity '{entity}'."
-                        ),
-                        severity: "error".to_owned(),
-                    });
-                }
-            }
-            NativeProofHarnessAction::Advance { frames } => {
-                advance_ticks = advance_ticks.max(frames.max(1));
-                commands.insert_resource(NativeProofHarnessFastForward(frames.max(1)));
-            }
-            NativeProofHarnessAction::Screenshot { path } => {
-                if proof_resources
-                    .p1()
-                    .as_deref()
-                    .is_some_and(|readiness| !readiness.is_ready())
-                {
-                    hold_tick = true;
-                    continue;
-                }
-                route_proof_ui_to_scene_camera(
-                    &mut commands,
-                    &mut ui_cameras,
-                    &scene_cameras,
-                    &root_ui_nodes,
-                );
-                match request_native_proof_screenshot(&path, &windows, screenshots.as_deref_mut()) {
-                    Ok(()) => {}
-                    Err(message) => diagnostics.push(NativeProofHarnessDiagnostic {
-                        code: "TN_NATIVE_PROOF_SCREENSHOT_FAILED".to_owned(),
-                        message,
-                        severity: "warning".to_owned(),
-                    }),
-                }
-            }
-            NativeProofHarnessAction::Window {
-                operation,
-                width,
-                height,
-            } => {
-                commands.add(move |world: &mut World| {
-                    let mut windows = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
-                    let Ok(mut window) = windows.get_single_mut(world) else {
-                        return;
-                    };
-                    match operation.as_str() {
-                        "resize" => {
-                            if let (Some(width), Some(height)) = (width, height)
-                                && width.is_finite()
-                                && height.is_finite()
-                                && width >= 1.0
-                                && height >= 1.0
-                            {
-                                window.resolution.set(width, height);
-                            }
-                        }
-                        "minimize" => window.set_minimized(true),
-                        "restore" => window.set_minimized(false),
-                        _ => {}
-                    }
-                });
-            }
-            NativeProofHarnessAction::SceneOcclusion { from, to } => {
-                let positions = transforms
-                    .p1()
-                    .iter()
-                    .filter(|(id, _)| id.0 == from || id.0 == to)
-                    .map(|(id, transform)| (id.0.clone(), transform.translation.to_array()))
-                    .collect::<BTreeMap<_, _>>();
-                match (
-                    positions.get(from.as_str()),
-                    positions.get(to.as_str()),
-                    proof_resources.p0().as_deref(),
-                ) {
-                    (Some(origin), Some(target), Some(query)) => {
-                        let hit = query.occluded_excluding(
-                            *origin,
-                            *target,
-                            &[from.as_str(), to.as_str()],
-                        );
-                        state.scene_queries.push(NativeProofHarnessSceneQuerySample {
-                            distance: hit.as_ref().map(|value| value.distance),
-                            from,
-                            hit: hit.is_some(),
-                            occluder: hit.map(|value| value.entity_id),
-                            to,
-                        });
-                    }
-                    _ => diagnostics.push(NativeProofHarnessDiagnostic {
-                        code: "TN_NATIVE_PROOF_SCENE_QUERY_INVALID".to_owned(),
-                        message: format!(
-                            "Native scene occlusion query could not resolve endpoints '{from}' and '{to}'."
-                        ),
-                        severity: "error".to_owned(),
-                    }),
-                }
-            }
-            NativeProofHarnessAction::Exit => {
-                if native_proof_screenshots_ready(&state.commands, tick) {
-                    exit.send(AppExit::Success);
-                } else {
-                    hold_tick = true;
-                }
+    let mut progress = NativeProofHarnessCommandProgress::default();
+    for command in commands {
+        apply_native_proof_harness_action(&mut harness, tick, command.action, &mut progress);
+    }
+    for key_code in &harness.state.held_keys {
+        harness.keyboard.press(*key_code);
+    }
+    write_current_native_proof_harness_sample(&mut harness, tick, progress.diagnostics);
+    if !progress.hold_tick {
+        harness.state.tick += progress.advance_ticks;
+    }
+}
+
+fn apply_native_proof_harness_action(
+    harness: &mut NativeProofHarnessSystem,
+    tick: u64,
+    action: NativeProofHarnessAction,
+    progress: &mut NativeProofHarnessCommandProgress,
+) {
+    match action {
+        NativeProofHarnessAction::Key { code, pressed } => {
+            apply_native_proof_key(harness, code, pressed, &mut progress.diagnostics);
+        }
+        NativeProofHarnessAction::OverlayMessage {
+            overlay_id,
+            message_type,
+            payload,
+        } => queue_native_proof_overlay_message(
+            &mut harness.commands,
+            overlay_id,
+            message_type,
+            payload,
+        ),
+        NativeProofHarnessAction::SetTransform {
+            entity,
+            position,
+            rotation,
+            scale,
+        } => apply_native_proof_transform(
+            harness,
+            entity,
+            position,
+            rotation,
+            scale,
+            &mut progress.diagnostics,
+        ),
+        NativeProofHarnessAction::Advance { frames } => {
+            let frames = frames.max(1);
+            progress.advance_ticks = progress.advance_ticks.max(frames);
+            harness
+                .commands
+                .insert_resource(NativeProofHarnessFastForward(frames));
+        }
+        NativeProofHarnessAction::Screenshot { path } => {
+            request_native_proof_harness_screenshot(harness, path, progress);
+        }
+        NativeProofHarnessAction::Window {
+            operation,
+            width,
+            height,
+        } => queue_native_proof_window(&mut harness.commands, operation, width, height),
+        NativeProofHarnessAction::SceneOcclusion { from, to } => {
+            apply_native_proof_scene_occlusion(harness, from, to, &mut progress.diagnostics);
+        }
+        NativeProofHarnessAction::Exit => {
+            if native_proof_screenshots_ready(&harness.state.commands, tick) {
+                harness.exit.send(AppExit::Success);
+            } else {
+                progress.hold_tick = true;
             }
         }
     }
-    for key_code in &state.held_keys {
-        keyboard.press(*key_code);
+}
+
+fn apply_native_proof_key(
+    harness: &mut NativeProofHarnessSystem,
+    code: String,
+    pressed: bool,
+    diagnostics: &mut Vec<NativeProofHarnessDiagnostic>,
+) {
+    let Some(key_code) = portable_key_code(&code) else {
+        diagnostics.push(NativeProofHarnessDiagnostic {
+            code: "TN_NATIVE_PROOF_INPUT_UNSUPPORTED".to_owned(),
+            message: format!("Keyboard code '{code}' is not portable."),
+            severity: "error".to_owned(),
+        });
+        return;
+    };
+    if pressed {
+        harness.state.held_keys.insert(key_code);
+    } else {
+        harness.state.held_keys.remove(&key_code);
+        harness.keyboard.release(key_code);
     }
-    let performance = state.performance_sample();
-    write_native_proof_harness_sample(
-        &mut state,
-        tick,
-        diagnostics,
-        performance,
-        transforms.p1().iter(),
-        resource_observations.as_deref().cloned(),
-        write_audit
-            .as_deref()
-            .filter(|audit| audit.enabled)
-            .cloned(),
-        runtime
-            .as_deref()
-            .map(|runtime| native_resource_snapshots(&runtime.bundle))
-            .unwrap_or_default(),
-        runtime.as_deref().map(|runtime| {
-            native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
-        }),
-        runtime
-            .as_deref()
-            .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
-        Vec::new(),
+}
+
+fn queue_native_proof_overlay_message(
+    commands: &mut Commands,
+    overlay_id: String,
+    message_type: String,
+    payload: serde_json::Value,
+) {
+    commands.add(move |world: &mut World| {
+        let Some(mut resource) =
+            world.get_resource_mut::<crate::overlay_host::NativeOverlayBridgeResource>()
+        else {
+            return;
+        };
+        let crate::overlay_host::NativeOverlayBridgeResource { bridge, overlays } = &mut *resource;
+        bridge.receive_overlay_message(overlays, &overlay_id, &message_type, payload);
+    });
+}
+
+fn apply_native_proof_transform(
+    harness: &mut NativeProofHarnessSystem,
+    entity: String,
+    position: Option<[f32; 3]>,
+    rotation: Option<[f32; 4]>,
+    scale: Option<[f32; 3]>,
+    diagnostics: &mut Vec<NativeProofHarnessDiagnostic>,
+) {
+    let mut applied = apply_native_proof_world_transform(
+        &mut harness.transforms.p0(),
+        &entity,
+        position,
+        rotation,
+        scale,
     );
-    if !hold_tick {
-        state.tick += advance_ticks;
+    if let Some(runtime) = harness.runtime.as_deref_mut() {
+        applied =
+            apply_bundle_transform_setup(&mut runtime.bundle, &entity, position, rotation, scale)
+                || applied;
     }
+    if !applied {
+        diagnostics.push(NativeProofHarnessDiagnostic {
+            code: "TN_NATIVE_PROOF_SETUP_ENTITY_NOT_FOUND".to_owned(),
+            message: format!(
+                "Native proof harness could not apply Transform override for entity '{entity}'."
+            ),
+            severity: "error".to_owned(),
+        });
+    }
+}
+
+fn apply_native_proof_world_transform(
+    transforms: &mut Query<(&ThreeNativeId, &mut Transform)>,
+    entity: &str,
+    position: Option<[f32; 3]>,
+    rotation: Option<[f32; 4]>,
+    scale: Option<[f32; 3]>,
+) -> bool {
+    let Some((_, mut transform)) = transforms.iter_mut().find(|(id, _)| id.0 == entity) else {
+        return false;
+    };
+    if let Some([x, y, z]) = position {
+        transform.translation = Vec3::new(x, y, z);
+    }
+    if let Some([x, y, z, w]) = rotation {
+        transform.rotation = Quat::from_xyzw(x, y, z, w);
+    }
+    if let Some([x, y, z]) = scale {
+        transform.scale = Vec3::new(x, y, z);
+    }
+    true
+}
+
+fn request_native_proof_harness_screenshot(
+    harness: &mut NativeProofHarnessSystem,
+    path: String,
+    progress: &mut NativeProofHarnessCommandProgress,
+) {
+    if harness
+        .proof_resources
+        .p1()
+        .as_deref()
+        .is_some_and(|readiness| !readiness.is_ready())
+    {
+        progress.hold_tick = true;
+        return;
+    }
+    route_proof_ui_to_scene_camera(
+        &mut harness.commands,
+        &mut harness.ui_cameras,
+        &harness.scene_cameras,
+        &harness.root_ui_nodes,
+    );
+    if let Err(message) =
+        request_native_proof_screenshot(&path, &harness.windows, harness.screenshots.as_deref_mut())
+    {
+        progress.diagnostics.push(NativeProofHarnessDiagnostic {
+            code: "TN_NATIVE_PROOF_SCREENSHOT_FAILED".to_owned(),
+            message,
+            severity: "warning".to_owned(),
+        });
+    }
+}
+
+fn queue_native_proof_window(
+    commands: &mut Commands,
+    operation: String,
+    width: Option<f32>,
+    height: Option<f32>,
+) {
+    commands.add(move |world: &mut World| {
+        let mut windows = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
+        let Ok(mut window) = windows.get_single_mut(world) else {
+            return;
+        };
+        match operation.as_str() {
+            "resize" => {
+                if let (Some(width), Some(height)) = (width, height)
+                    && width.is_finite()
+                    && height.is_finite()
+                    && width >= 1.0
+                    && height >= 1.0
+                {
+                    window.resolution.set(width, height);
+                }
+            }
+            "minimize" => window.set_minimized(true),
+            "restore" => window.set_minimized(false),
+            _ => {}
+        }
+    });
+}
+
+fn apply_native_proof_scene_occlusion(
+    harness: &mut NativeProofHarnessSystem,
+    from: String,
+    to: String,
+    diagnostics: &mut Vec<NativeProofHarnessDiagnostic>,
+) {
+    let positions = harness
+        .transforms
+        .p1()
+        .iter()
+        .filter(|(id, _)| id.0 == from || id.0 == to)
+        .map(|(id, transform)| (id.0.clone(), transform.translation.to_array()))
+        .collect::<BTreeMap<_, _>>();
+    let scene_query = harness.proof_resources.p0();
+    let (Some(origin), Some(target), Some(query)) = (
+        positions.get(from.as_str()),
+        positions.get(to.as_str()),
+        scene_query.as_deref(),
+    ) else {
+        diagnostics.push(NativeProofHarnessDiagnostic {
+            code: "TN_NATIVE_PROOF_SCENE_QUERY_INVALID".to_owned(),
+            message: format!(
+                "Native scene occlusion query could not resolve endpoints '{from}' and '{to}'."
+            ),
+            severity: "error".to_owned(),
+        });
+        return;
+    };
+    let hit = query.occluded_excluding(*origin, *target, &[from.as_str(), to.as_str()]);
+    harness
+        .state
+        .scene_queries
+        .push(NativeProofHarnessSceneQuerySample {
+            distance: hit.as_ref().map(|value| value.distance),
+            from,
+            hit: hit.is_some(),
+            occluder: hit.map(|value| value.entity_id),
+            to,
+        });
 }
 
 fn apply_bundle_transform_setup(
@@ -677,21 +744,20 @@ fn write_native_proof_harness_post_runtime_sample(
     write_native_proof_harness_sample(
         &mut state,
         tick,
-        Vec::new(),
-        performance,
         transforms.iter(),
-        resource_observations.as_deref().cloned(),
-        write_audit
-            .as_deref()
-            .filter(|audit| audit.enabled)
-            .cloned(),
-        runtime
-            .as_deref()
-            .map(|runtime| native_resource_snapshots(&runtime.bundle))
-            .unwrap_or_default(),
-        None,
-        None,
-        Vec::new(),
+        NativeProofHarnessSample {
+            diagnostics: Vec::new(),
+            performance,
+            resources: resource_observations.as_deref().cloned(),
+            write_audit: write_audit
+                .as_deref()
+                .filter(|audit| audit.enabled)
+                .cloned(),
+            resource_snapshots: BTreeMap::new(),
+            runtime_observations: None,
+            gameplay_observations: None,
+            overlay_snapshots: Vec::new(),
+        },
     );
 }
 
@@ -771,19 +837,67 @@ fn native_proof_harness_models_ready(
     })
 }
 
-fn write_native_proof_harness_sample<'a>(
-    state: &mut NativeProofHarnessState,
-    tick: u64,
+struct NativeProofHarnessSample {
     diagnostics: Vec<NativeProofHarnessDiagnostic>,
     performance: NativeProofHarnessPerformanceSample,
-    transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
     resources: Option<NativeResourceObservationState>,
     write_audit: Option<NativeRuntimeWriteAuditState>,
     resource_snapshots: BTreeMap<String, serde_json::Value>,
     runtime_observations: Option<NativeRuntimeProbeObservations>,
     gameplay_observations: Option<serde_json::Value>,
     overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
+}
+
+fn write_current_native_proof_harness_sample(
+    harness: &mut NativeProofHarnessSystem,
+    tick: u64,
+    diagnostics: Vec<NativeProofHarnessDiagnostic>,
 ) {
+    let performance = harness.state.performance_sample();
+    let runtime = harness.runtime.as_deref();
+    let sample = NativeProofHarnessSample {
+        diagnostics,
+        performance,
+        resources: harness.resource_observations.as_deref().cloned(),
+        write_audit: harness
+            .write_audit
+            .as_deref()
+            .filter(|audit| audit.enabled)
+            .cloned(),
+        resource_snapshots: runtime
+            .map(|runtime| native_resource_snapshots(&runtime.bundle))
+            .unwrap_or_default(),
+        runtime_observations: runtime.map(|runtime| {
+            native_runtime_probe_observations(&runtime.bundle.assets, &runtime.bundle.materials)
+        }),
+        gameplay_observations: runtime
+            .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
+        overlay_snapshots: Vec::new(),
+    };
+    write_native_proof_harness_sample(
+        &mut harness.state,
+        tick,
+        harness.transforms.p1().iter(),
+        sample,
+    );
+}
+
+fn write_native_proof_harness_sample<'a>(
+    state: &mut NativeProofHarnessState,
+    tick: u64,
+    transforms: impl IntoIterator<Item = (&'a ThreeNativeId, &'a Transform)>,
+    sample: NativeProofHarnessSample,
+) {
+    let NativeProofHarnessSample {
+        diagnostics,
+        performance,
+        resources,
+        write_audit,
+        resource_snapshots,
+        runtime_observations,
+        gameplay_observations,
+        overlay_snapshots,
+    } = sample;
     let ok = diagnostics
         .iter()
         .all(|diagnostic| diagnostic.severity != "error");

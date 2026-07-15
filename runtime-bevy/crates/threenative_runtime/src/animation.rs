@@ -399,10 +399,10 @@ fn particle_command_status(command: &str) -> &str {
 }
 
 fn particle_seed(value: &str) -> u32 {
-    if let Ok(number) = value.parse::<f64>() {
-        if number.is_finite() {
-            return number.abs().floor() as u32;
-        }
+    if let Ok(number) = value.parse::<f64>()
+        && number.is_finite()
+    {
+        return number.abs().floor() as u32;
     }
     let mut hash = 2166136261_u32;
     for byte in value.as_bytes() {

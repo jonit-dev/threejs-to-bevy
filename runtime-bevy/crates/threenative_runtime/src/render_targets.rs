@@ -11,17 +11,9 @@ use bevy::{
 };
 use threenative_loader::{AssetIr, CameraComponent, LoadedBundle};
 
-#[derive(Clone, Debug, Resource)]
+#[derive(Clone, Debug, Default, Resource)]
 pub struct NativeRenderTargetRegistry {
     pub images: HashMap<String, Handle<Image>>,
-}
-
-impl Default for NativeRenderTargetRegistry {
-    fn default() -> Self {
-        Self {
-            images: HashMap::new(),
-        }
-    }
 }
 
 #[derive(Clone, Component, Debug)]
@@ -100,12 +92,14 @@ fn render_target_texture_usages(asset: &AssetIr) -> TextureUsages {
 
 fn render_target_image(asset: &AssetIr, size: Extent3d, format: TextureFormat) -> Image {
     if asset.usage.as_deref() == Some("depth") {
-        let mut image = Image::default();
-        image.data = vec![0; (size.width * size.height * size.depth_or_array_layers * 4) as usize];
+        let mut image = Image {
+            data: vec![0; (size.width * size.height * size.depth_or_array_layers * 4) as usize],
+            asset_usage: RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+            ..Default::default()
+        };
         image.texture_descriptor.dimension = TextureDimension::D2;
         image.texture_descriptor.size = size;
         image.texture_descriptor.format = format;
-        image.asset_usage = RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD;
         return image;
     }
     Image::new_fill(

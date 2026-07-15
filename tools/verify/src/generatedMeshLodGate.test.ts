@@ -115,7 +115,7 @@ function fixture(): FixtureCatalogEntry {
     aggregateGate: "verify:generated-mesh-lod",
     bundlePath: "packages/ir/fixtures/conformance/procedural-mesh-lod/game.bundle",
     canonicalId: "procedural-mesh-lod",
-    ownerDocs: "docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md",
+    ownerDocs: "docs/PRDs/done/procedural-generated-mesh-lod-contract-2026-07-14.md",
     promotedCapabilities: ["rendering:generated-mesh-lod"],
     reportArtifacts: ["tools/verify/artifacts/generated-mesh-lod/verification-report.json"],
   };

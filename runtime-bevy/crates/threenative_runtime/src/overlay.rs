@@ -38,14 +38,20 @@ pub struct NativeOverlayBridge {
     snapshots: VecDeque<OverlayBridgeEnvelope>,
 }
 
-impl NativeOverlayBridge {
-    pub fn new() -> Self {
+impl Default for NativeOverlayBridge {
+    fn default() -> Self {
         Self {
             diagnostics: Vec::new(),
             events: Vec::new(),
             sequence: 0,
             snapshots: VecDeque::with_capacity(64),
         }
+    }
+}
+
+impl NativeOverlayBridge {
+    pub fn new() -> Self {
+        Self::default()
     }
 
     pub fn diagnostics(&self) -> &[OverlayDiagnostic] {

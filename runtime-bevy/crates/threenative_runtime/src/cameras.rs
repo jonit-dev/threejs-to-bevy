@@ -38,6 +38,18 @@ pub struct NativeCameraHelperState {
     pub view_model_offset: Vec3,
 }
 
+type NativeCameraHelpersQuery<'w, 's> = Query<
+    'w,
+    's,
+    (
+        &'static mut Transform,
+        &'static mut NativeCameraHelperState,
+        &'static NativeCameraMetadata,
+    ),
+>;
+type NativeCameraTargetsQuery<'w, 's> =
+    Query<'w, 's, (&'static ThreeNativeId, &'static Transform), Without<Camera>>;
+
 pub fn build_render_layer_map(bundle: &LoadedBundle) -> NativeRenderLayerMap {
     let mut names = vec!["default".to_owned()];
     for entity in &bundle.world.entities {
@@ -100,25 +112,25 @@ pub fn camera_order(camera: &CameraComponent) -> i32 {
 }
 
 pub fn active_camera_ids(bundle: &LoadedBundle) -> Vec<String> {
-    if let Some(value) = bundle.world.resources.get("ActiveCameras") {
-        if let Some(cameras) = value.get("cameras").and_then(|cameras| cameras.as_array()) {
-            return cameras
-                .iter()
-                .filter_map(|camera| {
-                    camera.as_str().map(str::to_owned).or_else(|| {
-                        camera
-                            .get("entity")
-                            .and_then(|entity| entity.as_str())
-                            .map(str::to_owned)
-                    })
+    if let Some(value) = bundle.world.resources.get("ActiveCameras")
+        && let Some(cameras) = value.get("cameras").and_then(|cameras| cameras.as_array())
+    {
+        return cameras
+            .iter()
+            .filter_map(|camera| {
+                camera.as_str().map(str::to_owned).or_else(|| {
+                    camera
+                        .get("entity")
+                        .and_then(|entity| entity.as_str())
+                        .map(str::to_owned)
                 })
-                .collect();
-        }
+            })
+            .collect();
     }
-    if let Some(value) = bundle.world.resources.get("ActiveCamera") {
-        if let Some(entity) = value.get("entity").and_then(|entity| entity.as_str()) {
-            return vec![entity.to_owned()];
-        }
+    if let Some(value) = bundle.world.resources.get("ActiveCamera")
+        && let Some(entity) = value.get("entity").and_then(|entity| entity.as_str())
+    {
+        return vec![entity.to_owned()];
     }
     bundle
         .world
@@ -214,14 +226,7 @@ pub fn apply_camera_components(
 
 pub fn update_native_camera_helpers(
     time: Option<Res<Time>>,
-    mut queries: ParamSet<(
-        Query<(
-            &mut Transform,
-            &mut NativeCameraHelperState,
-            &NativeCameraMetadata,
-        )>,
-        Query<(&ThreeNativeId, &Transform), Without<Camera>>,
-    )>,
+    mut queries: ParamSet<(NativeCameraHelpersQuery, NativeCameraTargetsQuery)>,
 ) {
     if queries.p0().is_empty() {
         return;
@@ -246,11 +251,11 @@ pub fn update_native_camera_helpers(
         if let Some(orbit) = camera.orbit.as_ref() {
             apply_orbit_helper(&mut transform, orbit, &target_positions, delta);
         }
-        if let Some(view_model) = camera.view_model.as_ref() {
-            if let Some(offset) = view_model.offset {
-                state.view_model_offset = Vec3::new(offset[0], offset[1], offset[2]);
-                transform.translation += state.view_model_offset;
-            }
+        if let Some(view_model) = camera.view_model.as_ref()
+            && let Some(offset) = view_model.offset
+        {
+            state.view_model_offset = Vec3::new(offset[0], offset[1], offset[2]);
+            transform.translation += state.view_model_offset;
         }
         if let Some(shake) = camera.screen_shake.as_ref() {
             apply_screen_shake(&mut transform, shake, &mut state, delta);

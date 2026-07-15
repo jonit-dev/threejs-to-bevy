@@ -1,0 +1,109 @@
+{
+  "version": 1,
+  "workspace": "runtime-bevy",
+  "timeoutMs": 600000,
+  "allowedRemoveByPhases": [
+    5,
+    6
+  ],
+  "debt": [
+    {
+      "lint": "clippy::excessive_nesting",
+      "path": "runtime-bevy/crates/threenative_runtime/src/ui.rs",
+      "maximum": 2,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/audio.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/character.rs",
+      "maximum": 2,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/conformance.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/contact_shadows.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/map_world.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/render_targets.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/rendering_atmosphere.rs",
+      "maximum": 3,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/rendering.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/systems_context.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/systems_effects.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/ui_debug.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/ui.rs",
+      "maximum": 2,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    },
+    {
+      "lint": "clippy::too_many_lines",
+      "path": "runtime-bevy/crates/threenative_runtime/tests/v3_environment.rs",
+      "maximum": 1,
+      "reason": "Existing maintainability debt captured after enabling the Phase 2 smell thresholds.",
+      "removeByPhase": 6
+    }
+  ]
+}

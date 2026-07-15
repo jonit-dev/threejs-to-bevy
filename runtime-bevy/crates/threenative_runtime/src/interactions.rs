@@ -40,6 +40,14 @@ pub struct NativeInteractionTrace {
     pub completion: bool,
 }
 
+#[derive(Clone, Copy)]
+struct InteractionEffectContext<'a> {
+    source: &'a str,
+    target: &'a str,
+    tick: u64,
+    interaction: &'a str,
+}
+
 pub fn step_bundle_interactions(
     bundle: &mut LoadedBundle,
     tick: u64,
@@ -94,16 +102,19 @@ pub fn step_bundle_interactions(
             );
             continue;
         }
+        let effect_context = InteractionEffectContext {
+            source: &source,
+            target: &target,
+            tick,
+            interaction: &interaction.id,
+        };
         let mut effect_names = apply_effects(
             bundle,
             &interaction.effects,
-            &source,
-            &target,
             state,
             presentation.as_deref_mut(),
             write_ledger.as_deref_mut(),
-            tick,
-            &interaction.id,
+            effect_context,
         );
         let fully_applied = effect_names.len() == interaction.effects.len();
         if fully_applied {
@@ -126,13 +137,10 @@ pub fn step_bundle_interactions(
                 effect_names.extend(apply_effects(
                     bundle,
                     completion_effects,
-                    &source,
-                    &target,
                     state,
                     presentation.as_deref_mut(),
                     write_ledger.as_deref_mut(),
-                    tick,
-                    &interaction.id,
+                    effect_context,
                 ));
             }
             let event = interaction
@@ -187,18 +195,14 @@ fn candidates(
                 }
                 "overlap" => overlaps(bundle, &source, target),
                 "sensor-enter" | "sensor-exit" => {
-                    let sensor_match = sensors.iter().any(|event| {
-                        event.get("phase").and_then(Value::as_str)
-                            == Some(if detector_kind == "sensor-enter" {
-                                "enter"
-                            } else {
-                                "exit"
-                            })
-                            && ((event.get("sensor").and_then(Value::as_str) == Some(&source)
-                                && array_has(event.get("occupants"), target))
-                                || (event.get("sensor").and_then(Value::as_str) == Some(target)
-                                    && array_has(event.get("occupants"), &source)))
-                    });
+                    let phase = if detector_kind == "sensor-enter" {
+                        "enter"
+                    } else {
+                        "exit"
+                    };
+                    let sensor_match = sensors
+                        .iter()
+                        .any(|event| sensor_event_matches(event, phase, &source, target));
                     sensor_match
                         || interaction
                             .detector
@@ -235,48 +239,21 @@ fn candidates(
 fn apply_effects(
     bundle: &mut LoadedBundle,
     effects: &[Value],
-    source: &str,
-    target: &str,
     state: &mut NativeInteractionRuntimeState,
     mut presentation: Option<&mut crate::presentation::NativePresentationRuntimeState>,
     mut ledger: Option<&mut NativeRuntimeWriteLedger>,
-    tick: u64,
-    interaction: &str,
+    context: InteractionEffectContext<'_>,
 ) -> Vec<String> {
     let mut names = Vec::new();
     for (effect_index, effect) in effects.iter().enumerate() {
         let effect_kind = kind(effect);
         let applied = match effect_kind.as_str() {
             "addResource" | "setResource" => {
-                let resource = string(effect, "resource");
-                let field = string(effect, "field");
-                let current = bundle
-                    .world
-                    .resources
-                    .entry(resource.clone())
-                    .or_insert_with(|| json!({}));
-                let old = current.get(&field).cloned();
-                let value = if effect_kind == "addResource" {
-                    current.get(&field).and_then(Value::as_f64).unwrap_or(0.0)
-                        + effect.get("value").and_then(Value::as_f64).unwrap_or(0.0)
-                } else {
-                    effect.get("value").and_then(Value::as_f64).unwrap_or(0.0)
-                };
-                current[&field] = json!(value);
-                record_write(
-                    ledger.as_deref_mut(),
-                    tick,
-                    interaction,
-                    "resource",
-                    &resource,
-                    &field,
-                    old,
-                    json!(value),
-                );
+                apply_resource_effect(bundle, effect, &effect_kind, ledger.as_deref_mut(), context);
                 true
             }
             "patchComponent" => {
-                let id = target_id(effect.get("target"), source, target);
+                let id = target_id(effect.get("target"), context.source, context.target);
                 let component = string(effect, "component");
                 let Some(patch) = effect.get("patch").and_then(Value::as_object) else {
                     continue;
@@ -291,8 +268,8 @@ fn apply_effects(
                     for change in changes {
                         record_write(
                             ledger.as_deref_mut(),
-                            tick,
-                            interaction,
+                            context.tick,
+                            context.interaction,
                             "component",
                             &id,
                             &format!("{component}/{}", change.field),
@@ -310,9 +287,13 @@ fn apply_effects(
                     let diagnostic = NativeInteractionDiagnostic {
                         code: "TN_INTERACTION_COMPONENT_PATCH_INVALID",
                         message: format!(
-                            "Interaction '{interaction}' could not patch component '{component}' on entity '{id}': {message}."
+                            "Interaction '{}' could not patch component '{component}' on entity '{id}': {message}.",
+                            context.interaction
                         ),
-                        path: format!("interactions/{interaction}/effects/{effect_index}"),
+                        path: format!(
+                            "interactions/{}/effects/{effect_index}",
+                            context.interaction
+                        ),
                         severity: "error",
                         suggestion: format!(
                             "Patch only declared fields with values matching the '{component}' component shape."
@@ -333,15 +314,15 @@ fn apply_effects(
                 true
             }
             "despawn" => {
-                let id = target_id(effect.get("target"), source, target);
+                let id = target_id(effect.get("target"), context.source, context.target);
                 let before = bundle.world.entities.len();
                 bundle.world.entities.retain(|entity| entity.id != id);
                 let applied = bundle.world.entities.len() != before;
                 if applied {
                     record_write(
                         ledger.as_deref_mut(),
-                        tick,
-                        interaction,
+                        context.tick,
+                        context.interaction,
                         "state",
                         &id,
                         "lifecycle",
@@ -352,92 +333,25 @@ fn apply_effects(
                 applied
             }
             "setTransform" => {
-                let id = target_id(effect.get("target"), source, target);
-                let position = optional_vec3(effect, "position");
-                let rotation = optional_vec4(effect, "rotation");
-                let scale = optional_vec3(effect, "scale");
-                if position.is_err() || rotation.is_err() || scale.is_err() {
-                    false
-                } else if position.as_ref().ok().and_then(|value| *value).is_none()
-                    && rotation.as_ref().ok().and_then(|value| *value).is_none()
-                    && scale.as_ref().ok().and_then(|value| *value).is_none()
-                {
-                    false
-                } else if let Some(transform) = bundle
-                    .world
-                    .entities
-                    .iter_mut()
-                    .find(|entity| entity.id == id)
-                    .and_then(|entity| entity.components.transform.as_mut())
-                {
-                    let old_position = transform.position;
-                    let old_rotation = transform.rotation;
-                    let old_scale = transform.scale;
-                    if let Some(value) = position.expect("validated optional position") {
-                        transform.position = Some(value);
-                    }
-                    if let Some(value) = rotation.expect("validated optional rotation") {
-                        transform.rotation = Some(value);
-                    }
-                    if let Some(value) = scale.expect("validated optional scale") {
-                        transform.scale = Some(value);
-                    }
-                    if transform.position != old_position {
-                        record_write(
-                            ledger.as_deref_mut(),
-                            tick,
-                            interaction,
-                            "component",
-                            &id,
-                            "Transform/position",
-                            old_position.map(|value| json!(value)),
-                            json!(transform.position),
-                        );
-                    }
-                    if transform.rotation != old_rotation {
-                        record_write(
-                            ledger.as_deref_mut(),
-                            tick,
-                            interaction,
-                            "component",
-                            &id,
-                            "Transform/rotation",
-                            old_rotation.map(|value| json!(value)),
-                            json!(transform.rotation),
-                        );
-                    }
-                    if transform.scale != old_scale {
-                        record_write(
-                            ledger.as_deref_mut(),
-                            tick,
-                            interaction,
-                            "component",
-                            &id,
-                            "Transform/scale",
-                            old_scale.map(|value| json!(value)),
-                            json!(transform.scale),
-                        );
-                    }
-                    true
-                } else {
-                    false
-                }
+                let id = target_id(effect.get("target"), context.source, context.target);
+                apply_transform_effect(
+                    bundle,
+                    effect,
+                    &id,
+                    ledger.as_deref_mut(),
+                    context.tick,
+                    context.interaction,
+                )
             }
-            "feedbackPreset" => {
-                let preset_id = string(effect, "preset");
-                let preset = bundle.systems.as_ref().and_then(|systems| {
-                    systems
-                        .feedback_presets
-                        .iter()
-                        .find(|preset| preset.get("id").and_then(Value::as_str) == Some(&preset_id))
-                });
-                if let (Some(preset), Some(presentation)) = (preset, presentation.as_deref_mut()) {
-                    presentation.play_feedback_preset(preset);
-                }
-                preset.is_some()
-            }
+            "feedbackPreset" => apply_feedback_preset(bundle, effect, presentation.as_deref_mut()),
             "requestFlowTransition" => apply_flow_transition(bundle, effect, state),
-            "instantiate" => instantiate(bundle, effect, ledger.as_deref_mut(), tick, interaction),
+            "instantiate" => instantiate(
+                bundle,
+                effect,
+                ledger.as_deref_mut(),
+                context.tick,
+                context.interaction,
+            ),
             _ => false,
         };
         if applied {
@@ -445,6 +359,146 @@ fn apply_effects(
         }
     }
     names
+}
+
+fn apply_feedback_preset(
+    bundle: &LoadedBundle,
+    effect: &Value,
+    presentation: Option<&mut crate::presentation::NativePresentationRuntimeState>,
+) -> bool {
+    let preset_id = string(effect, "preset");
+    let preset = bundle.systems.as_ref().and_then(|systems| {
+        systems
+            .feedback_presets
+            .iter()
+            .find(|preset| preset.get("id").and_then(Value::as_str) == Some(&preset_id))
+    });
+    if let (Some(preset), Some(presentation)) = (preset, presentation) {
+        presentation.play_feedback_preset(preset);
+    }
+    preset.is_some()
+}
+
+fn apply_resource_effect(
+    bundle: &mut LoadedBundle,
+    effect: &Value,
+    effect_kind: &str,
+    ledger: Option<&mut NativeRuntimeWriteLedger>,
+    context: InteractionEffectContext<'_>,
+) {
+    let resource = string(effect, "resource");
+    let field = string(effect, "field");
+    let current = bundle
+        .world
+        .resources
+        .entry(resource.clone())
+        .or_insert_with(|| json!({}));
+    let old = current.get(&field).cloned();
+    let value = if effect_kind == "addResource" {
+        current.get(&field).and_then(Value::as_f64).unwrap_or(0.0)
+            + effect.get("value").and_then(Value::as_f64).unwrap_or(0.0)
+    } else {
+        effect.get("value").and_then(Value::as_f64).unwrap_or(0.0)
+    };
+    current[&field] = json!(value);
+    record_write(
+        ledger,
+        context.tick,
+        context.interaction,
+        "resource",
+        &resource,
+        &field,
+        old,
+        json!(value),
+    );
+}
+
+fn sensor_event_matches(event: &Value, phase: &str, source: &str, target: &str) -> bool {
+    event.get("phase").and_then(Value::as_str) == Some(phase)
+        && ((event.get("sensor").and_then(Value::as_str) == Some(source)
+            && array_has(event.get("occupants"), target))
+            || (event.get("sensor").and_then(Value::as_str) == Some(target)
+                && array_has(event.get("occupants"), source)))
+}
+
+fn apply_transform_effect(
+    bundle: &mut LoadedBundle,
+    effect: &Value,
+    id: &str,
+    mut ledger: Option<&mut NativeRuntimeWriteLedger>,
+    tick: u64,
+    interaction: &str,
+) -> bool {
+    let (Ok(position), Ok(rotation), Ok(scale)) = (
+        optional_vec3(effect, "position"),
+        optional_vec4(effect, "rotation"),
+        optional_vec3(effect, "scale"),
+    ) else {
+        return false;
+    };
+    if position.is_none() && rotation.is_none() && scale.is_none() {
+        return false;
+    }
+    let Some(transform) = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == id)
+        .and_then(|entity| entity.components.transform.as_mut())
+    else {
+        return false;
+    };
+
+    let old_position = transform.position;
+    let old_rotation = transform.rotation;
+    let old_scale = transform.scale;
+    if let Some(value) = position {
+        transform.position = Some(value);
+    }
+    if let Some(value) = rotation {
+        transform.rotation = Some(value);
+    }
+    if let Some(value) = scale {
+        transform.scale = Some(value);
+    }
+
+    if transform.position != old_position {
+        record_write(
+            ledger.as_deref_mut(),
+            tick,
+            interaction,
+            "component",
+            id,
+            "Transform/position",
+            old_position.map(|value| json!(value)),
+            json!(transform.position),
+        );
+    }
+    if transform.rotation != old_rotation {
+        record_write(
+            ledger.as_deref_mut(),
+            tick,
+            interaction,
+            "component",
+            id,
+            "Transform/rotation",
+            old_rotation.map(|value| json!(value)),
+            json!(transform.rotation),
+        );
+    }
+    if transform.scale != old_scale {
+        record_write(
+            ledger,
+            tick,
+            interaction,
+            "component",
+            id,
+            "Transform/scale",
+            old_scale.map(|value| json!(value)),
+            json!(transform.scale),
+        );
+    }
+    true
 }
 
 fn instantiate(
@@ -471,10 +525,10 @@ fn instantiate(
             continue;
         }
         let mut components = template.components;
-        if let Some(hierarchy) = components.hierarchy.as_mut() {
-            if let Some(parent) = hierarchy.parent.as_ref() {
-                hierarchy.parent = Some(format!("{prefix}.{parent}"));
-            }
+        if let Some(hierarchy) = components.hierarchy.as_mut()
+            && let Some(parent) = hierarchy.parent.as_ref()
+        {
+            hierarchy.parent = Some(format!("{prefix}.{parent}"));
         }
         bundle.world.entities.push(threenative_loader::WorldEntity {
             id: id.clone(),

@@ -312,13 +312,14 @@ pub fn apply_native_audio_service_effects(
                 }
             }
             NativeAudioServiceCommand::Stop { playback_id } => {
-                for (entity, playback, sink) in &playbacks {
-                    if playback.0 == playback_id {
-                        if let Some(sink) = sink {
-                            sink.stop();
-                        }
-                        commands.entity(entity).despawn();
+                for (entity, _, sink) in playbacks
+                    .iter()
+                    .filter(|(_, playback, _)| playback.0 == playback_id)
+                {
+                    if let Some(sink) = sink {
+                        sink.stop();
                     }
+                    commands.entity(entity).despawn();
                 }
                 states.0.insert(playback_id, "stopped".to_owned());
             }
@@ -390,15 +391,7 @@ pub fn apply_native_audio_controls(
                 }
                 let sink_status = matches
                     .iter()
-                    .find_map(|(_, _, sink)| {
-                        sink.map(|sink| {
-                            if sink.is_paused() {
-                                "paused"
-                            } else {
-                                "playing"
-                            }
-                        })
-                    })
+                    .find_map(|(_, _, sink)| sink.map(audio_sink_status))
                     .map(str::to_owned);
                 let status = sink_status
                     .or_else(|| states.0.get(&control.target).cloned())
@@ -425,6 +418,14 @@ pub fn apply_native_audio_controls(
         }
     }
     runtime.pending_controls = deferred;
+}
+
+fn audio_sink_status(sink: &AudioSink) -> &'static str {
+    if sink.is_paused() {
+        "paused"
+    } else {
+        "playing"
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -734,7 +735,7 @@ pub fn observe_audio(bundle: &LoadedBundle) -> Option<NativeAudioObservation> {
         .iter()
         .flat_map(|(event, values)| {
             let count = values.as_array().map_or(1, |items| items.len());
-            std::iter::repeat(event.as_str()).take(count)
+            std::iter::repeat_n(event.as_str(), count)
         })
         .collect::<Vec<_>>();
     commands.extend(handle_audio_events(audio, &event_names));

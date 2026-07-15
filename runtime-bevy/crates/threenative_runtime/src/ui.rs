@@ -1360,7 +1360,10 @@ fn native_ui_shadow(shadow: &UiShadowIr) -> NativeUiShadow {
     }
 }
 
-fn rendered_text_style(node: &UiNodeIr, fonts: &[UiFontAssetIr]) -> Option<NativeUiRenderedTextStyle> {
+fn rendered_text_style(
+    node: &UiNodeIr,
+    fonts: &[UiFontAssetIr],
+) -> Option<NativeUiRenderedTextStyle> {
     let style = node.style.as_ref();
     let font_family = style.and_then(|style| style.font_family.clone());
     let font_weight = style.and_then(|style| style.font_weight.clone());

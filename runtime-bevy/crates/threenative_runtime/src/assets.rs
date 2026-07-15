@@ -229,11 +229,10 @@ pub fn build_texture_controls_registry_for_environment(
         .and_then(|environment| environment.skybox.as_ref())
         .filter(|skybox| skybox.mode == "equirect")
         .and_then(|skybox| skybox.asset.as_deref())
+        && let Some(control) = controls.get_mut(skybox_asset)
     {
-        if let Some(control) = controls.get_mut(skybox_asset) {
-            control.wrap_s = Some("clampToEdge".to_owned());
-            control.wrap_t = Some("clampToEdge".to_owned());
-        }
+        control.wrap_s = Some("clampToEdge".to_owned());
+        control.wrap_t = Some("clampToEdge".to_owned());
     }
 
     TextureAssetControlsRegistry(controls)
@@ -387,13 +386,12 @@ pub fn texture_uv_transform(asset: &AssetIr) -> Affine2 {
     let offset = asset.offset.unwrap_or([0.0, 0.0]);
     let rotation = asset.rotation.unwrap_or(0.0);
     let center = asset.center.unwrap_or([0.0, 0.0]);
-    let centered = Affine2::from_translation(Vec2::new(-center[0], -center[1]))
+    Affine2::from_translation(Vec2::new(-center[0], -center[1]))
         * Affine2::from_scale_angle_translation(
             Vec2::new(repeat[0], repeat[1]),
             rotation,
             Vec2::new(offset[0] + center[0], offset[1] + center[1]),
-        );
-    centered
+        )
 }
 
 fn resolve_asset(asset: &AssetIr) -> Option<NativeAssetRef> {
