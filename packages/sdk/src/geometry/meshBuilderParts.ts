@@ -1,6 +1,6 @@
 import { SdkError } from "../errors.js";
 import type { ColorValue } from "../materials/MeshStandardMaterial.js";
-import { CustomMeshGeometry, type ICustomMeshAttribute, type IMeshBounds } from "./primitives.js";
+import { CustomMeshGeometry, type ICustomMeshAttribute, type ICustomMeshColliderHint, type IMeshBounds } from "./primitives.js";
 import type {
   IMeshBuilderExtrudeOptions,
   IMeshBuilderLatheOptions,
@@ -25,6 +25,7 @@ export interface IMeshBuilderTransform {
 
 export interface IMeshBuilderGeometryBuildOptions {
   budget?: "hero-prop" | "standard-prop";
+  collider?: "box" | "mesh";
   helper?: string;
   seed?: number;
   storage?: "binary" | "inline";
@@ -60,6 +61,177 @@ export function makeBox(x: number, y: number, z: number): IMeshBuilderPart {
     }
     uvs.push(0, 0, 1, 0, 1, 1, 0, 1);
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  return { colors: whiteColors(positions.length / 3), indices, normals, positions, uvs };
+}
+
+export function makeTorus(
+  majorRadius: number,
+  minorRadius: number,
+  radialSegments: number,
+  tubularSegments: number,
+): IMeshBuilderPart {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (let tubular = 0; tubular <= tubularSegments; tubular += 1) {
+    const u = tubular / tubularSegments;
+    const tubularAngle = u * Math.PI * 2;
+    const tubularCos = Math.cos(tubularAngle);
+    const tubularSin = Math.sin(tubularAngle);
+    for (let radial = 0; radial <= radialSegments; radial += 1) {
+      const v = radial / radialSegments;
+      const radialAngle = v * Math.PI * 2;
+      const radialCos = Math.cos(radialAngle);
+      const radialSin = Math.sin(radialAngle);
+      const ringRadius = majorRadius + minorRadius * radialCos;
+      positions.push(tubularCos * ringRadius, minorRadius * radialSin, tubularSin * ringRadius);
+      normals.push(tubularCos * radialCos, radialSin, tubularSin * radialCos);
+      uvs.push(u, v);
+    }
+  }
+  const row = radialSegments + 1;
+  for (let tubular = 0; tubular < tubularSegments; tubular += 1) {
+    for (let radial = 0; radial < radialSegments; radial += 1) {
+      const a = tubular * row + radial;
+      const b = a + row;
+      indices.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+  }
+  return { colors: whiteColors(positions.length / 3), indices, normals, positions, uvs };
+}
+
+export function makePlane(width: number, depth: number, widthSegments: number, depthSegments: number): IMeshBuilderPart {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  for (let z = 0; z <= depthSegments; z += 1) {
+    const v = z / depthSegments;
+    for (let x = 0; x <= widthSegments; x += 1) {
+      const u = x / widthSegments;
+      positions.push((u - 0.5) * width, 0, (v - 0.5) * depth);
+      normals.push(0, 1, 0);
+      uvs.push(u, v);
+    }
+  }
+  const row = widthSegments + 1;
+  for (let z = 0; z < depthSegments; z += 1) {
+    for (let x = 0; x < widthSegments; x += 1) {
+      const a = z * row + x;
+      const b = a + row;
+      indices.push(a, b, a + 1, a + 1, b, b + 1);
+    }
+  }
+  return { colors: whiteColors(positions.length / 3), indices, normals, positions, uvs };
+}
+
+export function makePrism(sides: number, radius: number, height: number): IMeshBuilderPart {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const halfHeight = height / 2;
+
+  for (let side = 0; side < sides; side += 1) {
+    const angle = (side / sides) * Math.PI * 2;
+    const nextAngle = ((side + 1) / sides) * Math.PI * 2;
+    const normalAngle = angle + Math.PI / sides;
+    const normal: [number, number, number] = [Math.cos(normalAngle), 0, Math.sin(normalAngle)];
+    const a: [number, number, number] = [Math.cos(angle) * radius, -halfHeight, Math.sin(angle) * radius];
+    const b: [number, number, number] = [Math.cos(angle) * radius, halfHeight, Math.sin(angle) * radius];
+    const c: [number, number, number] = [Math.cos(nextAngle) * radius, -halfHeight, Math.sin(nextAngle) * radius];
+    const d: [number, number, number] = [Math.cos(nextAngle) * radius, halfHeight, Math.sin(nextAngle) * radius];
+    const base = positions.length / 3;
+    positions.push(...a, ...b, ...c, ...d);
+    normals.push(...normal, ...normal, ...normal, ...normal);
+    uvs.push(side / sides, 0, side / sides, 1, (side + 1) / sides, 0, (side + 1) / sides, 1);
+    indices.push(base, base + 1, base + 2, base + 2, base + 1, base + 3);
+  }
+
+  for (const sign of [-1, 1] as const) {
+    const center = positions.length / 3;
+    positions.push(0, sign * halfHeight, 0);
+    normals.push(0, sign, 0);
+    uvs.push(0.5, 0.5);
+    const ring = positions.length / 3;
+    for (let side = 0; side < sides; side += 1) {
+      const angle = (side / sides) * Math.PI * 2;
+      const x = Math.cos(angle);
+      const z = Math.sin(angle);
+      positions.push(x * radius, sign * halfHeight, z * radius);
+      normals.push(0, sign, 0);
+      uvs.push((x + 1) / 2, (z + 1) / 2);
+    }
+    for (let side = 0; side < sides; side += 1) {
+      const current = ring + side;
+      const next = ring + ((side + 1) % sides);
+      if (sign > 0) {
+        indices.push(center, next, current);
+      } else {
+        indices.push(center, current, next);
+      }
+    }
+  }
+  return { colors: whiteColors(positions.length / 3), indices, normals, positions, uvs };
+}
+
+export function makeRoundedBox(x: number, y: number, z: number, radius: number, cornerSegments: number): IMeshBuilderPart {
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const half: [number, number, number] = [x / 2, y / 2, z / 2];
+  const inner: [number, number, number] = [half[0] - radius, half[1] - radius, half[2] - radius];
+  const segments = cornerSegments * 2 + 1;
+  const faces = [
+    { axis: 0, sign: 1, uAxis: 2, vAxis: 1 },
+    { axis: 0, sign: -1, uAxis: 2, vAxis: 1 },
+    { axis: 1, sign: 1, uAxis: 0, vAxis: 2 },
+    { axis: 1, sign: -1, uAxis: 0, vAxis: 2 },
+    { axis: 2, sign: 1, uAxis: 0, vAxis: 1 },
+    { axis: 2, sign: -1, uAxis: 0, vAxis: 1 },
+  ] as const;
+
+  for (const face of faces) {
+    const base = positions.length / 3;
+    for (let vIndex = 0; vIndex <= segments; vIndex += 1) {
+      const v = vIndex / segments;
+      for (let uIndex = 0; uIndex <= segments; uIndex += 1) {
+        const u = uIndex / segments;
+        const source: [number, number, number] = [0, 0, 0];
+        source[face.axis] = face.sign * half[face.axis];
+        source[face.uAxis] = (u - 0.5) * half[face.uAxis] * 2;
+        source[face.vAxis] = (v - 0.5) * half[face.vAxis] * 2;
+        const center: [number, number, number] = [
+          Math.max(-inner[0], Math.min(inner[0], source[0])),
+          Math.max(-inner[1], Math.min(inner[1], source[1])),
+          Math.max(-inner[2], Math.min(inner[2], source[2])),
+        ];
+        const normal = normalize([
+          source[0] - center[0],
+          source[1] - center[1],
+          source[2] - center[2],
+        ]);
+        positions.push(
+          center[0] + normal[0] * radius,
+          center[1] + normal[1] * radius,
+          center[2] + normal[2] * radius,
+        );
+        normals.push(...normal);
+        uvs.push(u, v);
+      }
+    }
+    const row = segments + 1;
+    for (let vIndex = 0; vIndex < segments; vIndex += 1) {
+      for (let uIndex = 0; uIndex < segments; uIndex += 1) {
+        const a = base + vIndex * row + uIndex;
+        const b = a + row;
+        appendOrientedTriangle(indices, positions, normals, a, b, a + 1);
+        appendOrientedTriangle(indices, positions, normals, a + 1, b, b + 1);
+      }
+    }
   }
   return { colors: whiteColors(positions.length / 3), indices, normals, positions, uvs };
 }
@@ -359,16 +531,47 @@ export function buildMeshGeometry(id: string, parts: readonly IMeshBuilderPart[]
     { itemSize: 3, name: "position", values: merged.positions },
     { itemSize: 2, name: "uv", values: merged.uvs },
   ];
+  const bounds = computeBounds(merged.positions);
   return new CustomMeshGeometry({
     attributes,
-    bounds: computeBounds(merged.positions),
+    bounds,
     budget: { classification, limit, vertexCount },
+    ...(options.collider === undefined ? {} : { collider: deriveColliderHint(options.collider, bounds, merged.indices.length / 3) }),
     generation: { helper: options.helper, id, seed: options.seed, source: "MeshBuilder" },
     indices: merged.indices,
     storage: options.storage ?? "binary",
     topology: "triangle-list",
     usage: "static",
   });
+}
+
+function deriveColliderHint(kind: "box" | "mesh", bounds: IMeshBounds, triangleCount: number): ICustomMeshColliderHint {
+  const size: [number, number, number] = [
+    bounds.max[0] - bounds.min[0],
+    bounds.max[1] - bounds.min[1],
+    bounds.max[2] - bounds.min[2],
+  ];
+  if (size.some((extent) => !Number.isFinite(extent) || extent <= 0)) {
+    throw new SdkError(
+      "TN_SDK_MESH_BUILDER_COLLIDER_BOUNDS_INVALID",
+      "MeshBuilder derived colliders require positive finite bounds on every axis.",
+    );
+  }
+  const center: [number, number, number] = [
+    (bounds.min[0] + bounds.max[0]) / 2,
+    (bounds.min[1] + bounds.max[1]) / 2,
+    (bounds.min[2] + bounds.max[2]) / 2,
+  ];
+  if (kind === "box") {
+    return { center, kind, size };
+  }
+  if (!Number.isInteger(triangleCount) || triangleCount < 1 || triangleCount > 10_000) {
+    throw new SdkError(
+      "TN_SDK_MESH_BUILDER_COLLIDER_TRIANGLE_COUNT_EXCEEDED",
+      `MeshBuilder derived mesh collider has ${triangleCount} triangles; the portable collider limit is 10000.`,
+    );
+  }
+  return { kind, mesh: { bounds: { center, size }, triangleCount } };
 }
 
 export function mapPositions(part: IMeshBuilderPart, mapper: (position: [number, number, number], index: number) => [number, number, number]): IMeshBuilderPart {
@@ -507,6 +710,26 @@ function triangleNormal(positions: readonly number[], a: number, b: number, c: n
     ab[2] * ac[0] - ab[0] * ac[2],
     ab[0] * ac[1] - ab[1] * ac[0],
   ]);
+}
+
+function appendOrientedTriangle(
+  indices: number[],
+  positions: readonly number[],
+  normals: readonly number[],
+  a: number,
+  b: number,
+  c: number,
+): void {
+  const geometricNormal = triangleNormal(positions, a, b, c);
+  const expectedNormal: [number, number, number] = [
+    (normals[a * 3] ?? 0) + (normals[b * 3] ?? 0) + (normals[c * 3] ?? 0),
+    (normals[a * 3 + 1] ?? 0) + (normals[b * 3 + 1] ?? 0) + (normals[c * 3 + 1] ?? 0),
+    (normals[a * 3 + 2] ?? 0) + (normals[b * 3 + 2] ?? 0) + (normals[c * 3 + 2] ?? 0),
+  ];
+  const dot = geometricNormal[0] * expectedNormal[0]
+    + geometricNormal[1] * expectedNormal[1]
+    + geometricNormal[2] * expectedNormal[2];
+  indices.push(...(dot >= 0 ? [a, b, c] : [a, c, b]));
 }
 
 function rotateVec3(value: [number, number, number], rotation: [number, number, number]): [number, number, number] {

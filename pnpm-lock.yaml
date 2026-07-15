@@ -82,6 +82,9 @@ importers:
       '@threenative/runtime-web-three':
         specifier: workspace:*
         version: link:../runtime-web-three
+      '@threenative/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2

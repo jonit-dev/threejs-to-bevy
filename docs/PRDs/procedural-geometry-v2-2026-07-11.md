@@ -3,7 +3,7 @@
 Complexity: 9 -> HIGH mode
 
 Date: 2026-07-11
-Status: PLANNED
+Status: IN PROGRESS
 Predecessors: `docs/PRDs/done/v8/V8-04-portable-procedural-mesh-authoring.md`,
 `docs/PRDs/done/proof-first-engine-loop-2026-07-05/PRD-006-believable-world-terrain-and-biome-dressing.md`
 
@@ -136,21 +136,21 @@ flowchart LR
 
 **Key Decisions:**
 
-- [ ] Pure-TS deterministic implementations only (no native/wasm CSG deps);
+- [x] Pure-TS deterministic implementations only (no native/wasm CSG deps);
   same inputs + seed must produce byte-identical binary payloads across runs
   (existing scene-to-world determinism tests extended to the new ops).
-- [ ] CSG uses a BSP triangle-soup algorithm (csg.js-style) bounded by the
+- [x] CSG uses a BSP triangle-soup algorithm (csg.js-style) bounded by the
   existing vertex budgets; CSG output runs through `weld()` +
   normal recalculation so downstream validation invariants hold.
-- [ ] Collider derivation reuses `IColliderComponent` kinds `box` and `mesh`
+- [x] Collider derivation reuses `IColliderComponent` kinds `box` and `mesh`
   (`packages/ir/src/types.ts:494`); a true `convex-hull` collider kind is
   deferred unless Phase 4 shows both Rapier adapters already accept it via
   the `mesh` path.
 - [ ] LOD levels reuse the promoted LOD group contract; no new runtime
   selection semantics.
-- [ ] Helper recipes move behind a registry object that owns id, seed
+- [x] Helper recipes move behind a registry object that owns id, seed
   defaults, budget class, and fixture enrollment; drift tests derive from it.
-- [ ] Error-handling: all new ops validate inputs with `SdkError` codes in
+- [x] Error-handling: all new ops validate inputs with `SdkError` codes in
   the existing `TN_SDK_MESH_BUILDER_*` namespace; no silent clamping except
   where the current API already clamps.
 
@@ -202,11 +202,11 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] Torus: major/minor radius, radial/tubular segments; seam UVs wrap.
-- [ ] Plane: size, widthSegments/depthSegments grid (feeds later noise work).
-- [ ] Prism: n-gon sides, radius, height (covers hex/oct columns).
-- [ ] RoundedBox: size + corner radius + corner segments.
-- [ ] Validation via existing `assertPositive`/`integerAtLeast` helpers;
+- [x] Torus: major/minor radius, radial/tubular segments; seam UVs wrap.
+- [x] Plane: size, widthSegments/depthSegments grid (feeds later noise work).
+- [x] Prism: n-gon sides, radius, height (covers hex/oct columns).
+- [x] RoundedBox: size + corner radius + corner segments.
+- [x] Validation via existing `assertPositive`/`integerAtLeast` helpers;
   budget enforcement unchanged.
 
 **Tests Required:**
@@ -250,15 +250,15 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] FBM value noise: integer-lattice hashing from the existing LCG pattern
+- [x] FBM value noise: integer-lattice hashing from the existing LCG pattern
   (`seeded`, meshBuilderParts.ts) so output is deterministic and portable;
   displacement along vertex normals; document that positions sampled in
   pre-displacement local space.
-- [ ] `weld`: spatial-hash dedupe within tolerance, reindex, then smooth
+- [x] `weld`: spatial-hash dedupe within tolerance, reindex, then smooth
   normal recalculation; this is also the post-pass CSG requires in Phase 3.
-- [ ] `subdivide`: midpoint subdivision (1-3 iterations), budget-checked
+- [x] `subdivide`: midpoint subdivision (1-3 iterations), budget-checked
   before allocation so a hostile iteration count fails fast.
-- [ ] `mirror`: reflect positions across axis, flip triangle winding, negate
+- [x] `mirror`: reflect positions across axis, flip triangle winding, negate
   normal component.
 
 **Tests Required:**
@@ -304,12 +304,12 @@ sequenceDiagram
 
 **Implementation:**
 
-- [ ] BSP CSG on indexed triangle lists; carry uv/color attributes through
+- [x] BSP CSG on indexed triangle lists; carry uv/color attributes through
   splits by barycentric interpolation; recompute normals after solve.
-- [ ] Deterministic: no randomness; fixed epsilon; stable triangle ordering.
-- [ ] Enforce vertex budget on the solved result and fail with the existing
+- [x] Deterministic: no randomness; fixed epsilon; stable triangle ordering.
+- [x] Enforce vertex budget on the solved result and fail with the existing
   budget error code.
-- [ ] Degenerate-triangle filter after solve (area epsilon) so downstream
+- [x] Degenerate-triangle filter after solve (area epsilon) so downstream
   index/finite validation cannot fail.
 
 **Tests Required:**
@@ -360,14 +360,14 @@ gate fixture provides the screenshot evidence for CSG.
 
 **Implementation:**
 
-- [ ] Box-fit: center + size from built bounds (already computed in
+- [x] Box-fit: center + size from built bounds (already computed in
   `buildMeshGeometry`).
-- [ ] Mesh collider: populate the existing `mesh: { bounds, triangleCount,
+- [x] Mesh collider: populate the existing `mesh: { bounds, triangleCount,
   source }` shape (`packages/ir/src/types.ts:498-505`); source references the
   generated mesh asset id.
-- [ ] No IR schema change; if validation requires any addition it must be an
+- [x] No IR schema change; if validation requires any addition it must be an
   optional field with schema + validation + fixture updated together.
-- [ ] Precedence rule tested: explicit authored collider suppresses the hint.
+- [x] Precedence rule tested: explicit authored collider suppresses the hint.
 
 **Tests Required:**
 | Test File | Test Name | Assertion |
@@ -411,12 +411,12 @@ gate fixture provides the screenshot evidence for CSG.
 
 **Implementation:**
 
-- [ ] Decimation must be deterministic (fixed grid origin/order, no RNG).
+- [x] Decimation must be deterministic (fixed grid origin/order, no RNG).
 - [ ] Each level revalidates against budgets and IR asset invariants.
 - [ ] Reuse existing LOD group semantics exactly; if the promoted contract
   needs any addition, stop and split a follow-up PRD (do not extend runtime
   semantics inside this phase).
-- [ ] Document expected reduction (e.g. level ratios 0.5/0.25) as targets,
+- [x] Document expected reduction (e.g. level ratios 0.5/0.25) as targets,
   with an accepted tolerance, since clustering is approximate.
 
 **Tests Required:**
@@ -463,15 +463,15 @@ gate fixture provides the screenshot evidence for CSG.
 
 **Implementation:**
 
-- [ ] Registry is the single source of truth: helper exports, fixture
+- [x] Registry is the single source of truth: helper exports, fixture
   enrollment, and the visual gate list derive from it; add the smallest
   consistency test that fails when a helper is added without enrollment.
-- [ ] New helpers exercise the new vocabulary (crystal: prism + flatNormals;
+- [x] New helpers exercise the new vocabulary (crystal: prism + flatNormals;
   bush: icosphere + coherentNoise + weld; arch: CSG subtract; crate:
   roundedBox; fence post: prism + taper).
-- [ ] Rerun `verify-v8-procedural-mesh` flow for the new fixture: silhouette
+- [x] Rerun `verify-v8-procedural-mesh` flow for the new fixture: silhouette
   overlap >= 0.98, color delta <= 0.03, both runtimes.
-- [ ] Docs per CLAUDE.md rule: capability file + STATUS.md index line +
+- [x] Docs per CLAUDE.md rule: capability file + STATUS.md index line +
   parity doc updated in the same change.
 
 **Tests Required:**
@@ -512,17 +512,17 @@ acceptability, screenshot review).
 - [ ] All six phases complete with tests listed per phase passing.
 - [ ] `pnpm check:docs`, `pnpm build`, `pnpm typecheck`, `pnpm test`,
   `pnpm verify:conformance`, `pnpm verify:smoke` all pass.
-- [ ] Determinism: rebuilding any new-op mesh with identical inputs produces
+- [x] Determinism: rebuilding any new-op mesh with identical inputs produces
   byte-identical binary payloads (asserted in tests, not by inspection).
-- [ ] No runtime (web or Bevy) code changes required; if a phase discovers
+- [x] No runtime (web or Bevy) code changes required; if a phase discovers
   one is needed, stop and split it into its own PRD.
-- [ ] Visual parity gate passes for the new CSG fixture on web and native.
-- [ ] Registry drift test guards helper/fixture/gate enrollment.
+- [x] Visual parity gate passes for the new CSG fixture on web and native.
+- [x] Registry drift test guards helper/fixture/gate enrollment.
 - [ ] `docs/status/capabilities/rendering.md`, `docs/STATUS.md`, and
   `docs/bevy-feature-parity.md` updated (compile-time CSG/LOD/collider
   derivation promoted; runtime deformation/streaming/GPU geometry boundaries
   unchanged).
-- [ ] Feature reachable end-to-end: authored in `src/scripts/**/*.ts`,
+- [x] Feature reachable end-to-end: authored in `src/scripts/**/*.ts`,
   compiled, rendered in both runtimes, proven by gates.
 
 ## Risks
@@ -543,4 +543,61 @@ acceptability, screenshot review).
 
 ## Verification Evidence
 
-(To be filled per phase during implementation.)
+Current implementation evidence (2026-07-14):
+
+- Phases 1 and 2 implementation checkpoints pass. SDK typecheck and all 150
+  SDK tests pass, including analytic primitive normals/topology, Float32 byte
+  determinism, coherent-noise correlation/amplitude bounds, welding,
+  subdivision, and mirror winding.
+- Phase 3 implementation checkpoint passes. BSP union/subtract/intersect tests
+  cover analytic bounds/hole behavior, coplanar degeneracy, interpolated
+  attributes, solved-result budgets, and byte determinism. The compiler suite
+  passes 276/276 with a twice-emitted CSG/coherent-noise arch producing
+  identical binary hashes and a validated bundle.
+- Phase 4 implementation checkpoint passes. SDK/compiler tests cover derived
+  box and mesh colliders, compiler-owned mesh source IDs, explicit-collider
+  precedence, invalid bounds, and the existing 10,000-triangle limit.
+  `pnpm verify:conformance` passes. The focused gate's structured web/Bevy
+  traces prove that `proof.character-on-arch` is grounded above the CSG arch
+  mesh collider and that `proof.box-on-bush` contacts and rests on the
+  generated bush box collider with zero final vertical velocity. Evidence is
+  in `tools/verify/artifacts/procedural-mesh/physics-report.json` and its three
+  linked trace artifacts. The independent Phase 4 re-review returns PASS and
+  accepts the shared structured trace harness as reproducible cross-target
+  evidence for the specified grounding/rest outcomes.
+- Phase 5 discovered that the promoted LOD contract accepts model assets only
+  and cannot wire generated mesh assets without new IR/runtime semantics. Per
+  this PRD's hard-stop rule, that integration moved to
+  `docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md`. The
+  deterministic vertex-clustering decimator core and scale-relative invariant
+  tests pass, but `build({ lodLevels })`, compiler wiring, selection traces,
+  and visual evidence are not claimed here. Consequently Phase 5 and the
+  parent criterion requiring all six phases remain open until that follow-up
+  contract work is completed or this PRD's acceptance scope is revised.
+- Phase 6 registry/fixture integration is implemented: nine registry-owned
+  helpers, drift/budget/hash tests, reproducible pine/bush/arch binary fixture,
+  derived collider components, fixture-catalog enrollment, and a
+  registry-derived visual verifier. The root `verify:v8-procedural-mesh`
+  command is enrolled, named helper aliases are guarded against registry
+  drift, and capture exceptions now write a failed verification report.
+  Focused SDK, CLI verifier, IR conformance, bundle validation, docs, and
+  cookbook gates pass. The fresh focused gate also passes its physics and
+  visual checkpoints, and the independent Phase 6 re-review returns PASS.
+- `pnpm verify:v8-procedural-mesh -- --json` passes. The captured web/native
+  fixture has `0.9987144981` silhouette overlap, `0.0106436668` average color
+  delta, and `0.00716796875` changed-pixel ratio. The contact sheet and diff
+  are in `tools/verify/artifacts/procedural-mesh/`; the arch opening and the
+  pine/bush silhouettes are visibly preserved in both adapters.
+- `pnpm build`, `pnpm typecheck`, `pnpm verify:smoke`, `pnpm check:docs`,
+  `pnpm verify:cookbook`, and `git diff --check` pass. The focused procedural
+  conformance steps and the latest aggregate `pnpm verify:conformance` pass.
+- `pnpm test` is not green in the shared worktree. The stale procedural
+  fixture assertions in the web runtime were updated and that package now
+  passes 466/466, but the CLI package passes 629/632. Its three failures are
+  outside this PRD: one temporary-workspace dependency install and two
+  generator fixture setup failures. The five previously failing web packaging
+  tests now pass after the browser-safe IR subpath correction.
+- The browser-safe UI-effects IR subpath removes the accidental
+  `node:fs/promises.realpath` dependency from the preview graph. The runtime
+  browser-graph test and all five CLI web distribution tests pass after that
+  correction.

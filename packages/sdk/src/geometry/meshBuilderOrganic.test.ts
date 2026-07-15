@@ -1,35 +1,86 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 
-import { mushroom, pineTree, stylizedTree } from "./meshBuilderOrganic.js";
+import {
+  assertOrganicMeshHelperFixtureEnrollment,
+  arch,
+  buildOrganicMeshHelper,
+  bush,
+  crate,
+  crystal,
+  fencePost,
+  mushroom,
+  organicMeshHelpers,
+  organicMeshHelperRegistry,
+  pineTree,
+  rock,
+  stylizedTree,
+} from "./meshBuilderOrganic.js";
 
-test("should build a deterministic stylized tree helper", () => {
-  const first = stylizedTree({ seed: 12 });
-  const second = stylizedTree({ seed: 12 });
+test("should build every registry helper within its declared budget", () => {
+  for (const [helper, descriptor] of Object.entries(organicMeshHelperRegistry)) {
+    const geometry = buildOrganicMeshHelper(helper as keyof typeof organicMeshHelperRegistry);
 
-  assert.deepEqual(second.attributes, first.attributes);
-  assert.deepEqual(second.indices, first.indices);
-  assert.deepEqual(second.bounds, first.bounds);
-  assert.equal(first.generation?.helper, "stylizedTree");
-  assert.equal(first.budget?.classification, "standard-prop");
+    assert.equal(geometry.generation?.helper, helper);
+    assert.equal(geometry.generation?.id, descriptor.id);
+    assert.equal(geometry.generation?.seed, descriptor.defaultSeed);
+    assert.equal(geometry.budget?.classification, descriptor.budget);
+    assert.ok((geometry.budget?.vertexCount ?? Infinity) <= (geometry.budget?.limit ?? -Infinity));
+  }
 });
 
-test("should vary organic helpers only by seed", () => {
-  const first = mushroom({ seed: 1 });
-  const same = mushroom({ seed: 1 });
-  const different = mushroom({ seed: 2 });
+test("should produce identical output when helper rebuilt with same seed", () => {
+  for (const helper of Object.keys(organicMeshHelperRegistry) as Array<keyof typeof organicMeshHelperRegistry>) {
+    const first = buildOrganicMeshHelper(helper, { seed: 42 });
+    const second = buildOrganicMeshHelper(helper, { seed: 42 });
 
-  assert.deepEqual(same.attributes, first.attributes);
-  assert.notDeepEqual(different.attributes, first.attributes);
-  assert.ok(first.bounds?.max[1]);
-  assert.ok(different.bounds?.max[1]);
+    assert.equal(hashGeometry(second), hashGeometry(first), helper);
+  }
 });
 
-test("should build a single pine tree helper for visual parity fixtures", () => {
+test("should fail when registry helper lacks fixture enrollment", () => {
+  assert.throws(
+    () => assertOrganicMeshHelperFixtureEnrollment({ orphan: {} }),
+    (error: unknown) => error instanceof Error
+      && "code" in error
+      && error.code === "TN_SDK_MESH_HELPER_FIXTURE_ENROLLMENT_MISSING",
+  );
+});
+
+test("should attach registry-owned collider hints to visual boolean and CSG helpers", () => {
+  assert.equal(buildOrganicMeshHelper("bush").collider?.kind, "box");
+  assert.equal(buildOrganicMeshHelper("arch").collider?.kind, "mesh");
+});
+
+test("should preserve named helper wrappers", () => {
+  const namedHelpers = { arch, bush, crate, crystal, fencePost, mushroom, pineTree, rock, stylizedTree };
+  assert.deepEqual(Object.keys(namedHelpers).sort(), Object.keys(organicMeshHelperRegistry).sort());
+  for (const helper of Object.keys(organicMeshHelperRegistry) as Array<keyof typeof organicMeshHelperRegistry>) {
+    assert.equal(namedHelpers[helper], organicMeshHelpers[helper], helper);
+  }
+
+  const tree = stylizedTree({ seed: 12 });
   const pine = pineTree({ seed: 12 });
+  const firstMushroom = mushroom({ seed: 1 });
+  const secondMushroom = mushroom({ seed: 2 });
 
+  assert.equal(tree.generation?.helper, "stylizedTree");
   assert.equal(pine.generation?.helper, "pineTree");
-  assert.equal(pine.storage, "binary");
-  assert.ok((pine.bounds?.max[1] ?? 0) > 2);
-  assert.ok((pine.indices?.length ?? 0) > 0);
+  assert.notDeepEqual(secondMushroom.attributes, firstMushroom.attributes);
 });
+
+function hashGeometry(geometry: ReturnType<typeof buildOrganicMeshHelper>): string {
+  return createHash("sha256")
+    .update(JSON.stringify({
+      attributes: geometry.attributes,
+      bounds: geometry.bounds,
+      budget: geometry.budget,
+      generation: geometry.generation,
+      indices: geometry.indices,
+      storage: geometry.storage,
+      topology: geometry.topology,
+      usage: geometry.usage,
+    }))
+    .digest("hex");
+}

@@ -13,10 +13,15 @@ import {
   makeHemisphere,
   makeLathe,
   makeParametric,
+  makePlane,
+  makePrism,
   makeRaw,
+  makeRoundedBox,
   makeSphere,
+  makeTorus,
   makeTube,
   mapPositions,
+  mergeParts,
   normalize,
   recalculateFlatNormals,
   recalculateSmoothNormals,
@@ -27,6 +32,14 @@ import {
   type IMeshBuilderPart,
   type IMeshBuilderTransform,
 } from "./meshBuilderParts.js";
+import { assertMeshBuilderCsgBudget, solveMeshBuilderCsg, type MeshBuilderCsgOperation } from "./meshBuilderCsg.js";
+import {
+  coherentNoisePart,
+  mirrorPart,
+  subdivideParts,
+  weldParts,
+  type IMirrorAxis,
+} from "./meshBuilderOps.js";
 import type { CustomMeshGeometry } from "./primitives.js";
 
 export interface IMeshBuilderPrimitiveOptions {
@@ -40,6 +53,30 @@ export interface IMeshBuilderSphereOptions extends IMeshBuilderPrimitiveOptions 
 
 export interface IMeshBuilderBoxOptions {
   size?: readonly [number, number, number];
+}
+
+export interface IMeshBuilderTorusOptions {
+  majorRadius?: number;
+  minorRadius?: number;
+  radialSegments?: number;
+  tubularSegments?: number;
+}
+
+export interface IMeshBuilderPlaneOptions {
+  depthSegments?: number;
+  size?: readonly [number, number];
+  widthSegments?: number;
+}
+
+export interface IMeshBuilderPrismOptions {
+  height?: number;
+  radius?: number;
+  sides?: number;
+}
+
+export interface IMeshBuilderRoundedBoxOptions extends IMeshBuilderBoxOptions {
+  cornerRadius?: number;
+  cornerSegments?: number;
 }
 
 export interface IMeshBuilderCylinderOptions extends IMeshBuilderPrimitiveOptions {
@@ -89,9 +126,29 @@ export interface IMeshBuilderExtrudeOptions {
 
 export interface IMeshBuilderBuildOptions {
   budget?: "hero-prop" | "standard-prop";
+  collider?: "box" | "mesh";
   helper?: string;
   seed?: number;
   storage?: "binary" | "inline";
+}
+
+export interface IMeshBuilderCoherentNoiseOptions {
+  amplitude?: number;
+  frequency?: number;
+  octaves?: number;
+  seed?: number;
+}
+
+export interface IMeshBuilderWeldOptions {
+  tolerance?: number;
+}
+
+export interface IMeshBuilderSubdivideOptions {
+  iterations?: number;
+}
+
+export interface IMeshBuilderMirrorOptions {
+  axis?: IMirrorAxis;
 }
 
 export class MeshBuilder {
@@ -119,6 +176,51 @@ export class MeshBuilder {
     assertPositive(y, "MeshBuilder.box.size[1]");
     assertPositive(z, "MeshBuilder.box.size[2]");
     return this.addPart(makeBox(x, y, z));
+  }
+
+  public torus(options: IMeshBuilderTorusOptions = {}): this {
+    const majorRadius = options.majorRadius ?? 0.75;
+    const minorRadius = options.minorRadius ?? 0.25;
+    const radialSegments = integerAtLeast(options.radialSegments ?? 16, 3, "MeshBuilder.torus.radialSegments");
+    const tubularSegments = integerAtLeast(options.tubularSegments ?? 24, 3, "MeshBuilder.torus.tubularSegments");
+    assertPositive(majorRadius, "MeshBuilder.torus.majorRadius");
+    assertPositive(minorRadius, "MeshBuilder.torus.minorRadius");
+    return this.addPart(makeTorus(majorRadius, minorRadius, radialSegments, tubularSegments));
+  }
+
+  public plane(options: IMeshBuilderPlaneOptions = {}): this {
+    const [width = 1, depth = 1] = options.size ?? [1, 1];
+    const widthSegments = integerAtLeast(options.widthSegments ?? 1, 1, "MeshBuilder.plane.widthSegments");
+    const depthSegments = integerAtLeast(options.depthSegments ?? 1, 1, "MeshBuilder.plane.depthSegments");
+    assertPositive(width, "MeshBuilder.plane.size[0]");
+    assertPositive(depth, "MeshBuilder.plane.size[1]");
+    return this.addPart(makePlane(width, depth, widthSegments, depthSegments));
+  }
+
+  public prism(options: IMeshBuilderPrismOptions = {}): this {
+    const sides = integerAtLeast(options.sides ?? 6, 3, "MeshBuilder.prism.sides");
+    const radius = options.radius ?? 0.5;
+    const height = options.height ?? 1;
+    assertPositive(radius, "MeshBuilder.prism.radius");
+    assertPositive(height, "MeshBuilder.prism.height");
+    return this.addPart(makePrism(sides, radius, height));
+  }
+
+  public roundedBox(options: IMeshBuilderRoundedBoxOptions = {}): this {
+    const [x = 1, y = 1, z = 1] = options.size ?? [1, 1, 1];
+    const cornerRadius = options.cornerRadius ?? 0.1;
+    const cornerSegments = integerAtLeast(options.cornerSegments ?? 2, 1, "MeshBuilder.roundedBox.cornerSegments");
+    assertPositive(x, "MeshBuilder.roundedBox.size[0]");
+    assertPositive(y, "MeshBuilder.roundedBox.size[1]");
+    assertPositive(z, "MeshBuilder.roundedBox.size[2]");
+    assertPositive(cornerRadius, "MeshBuilder.roundedBox.cornerRadius");
+    if (cornerRadius > Math.min(x, y, z) / 2) {
+      throw new SdkError(
+        "TN_SDK_MESH_BUILDER_VALUE_INVALID",
+        "MeshBuilder.roundedBox.cornerRadius must not exceed half the smallest size component.",
+      );
+    }
+    return this.addPart(makeRoundedBox(x, y, z, cornerRadius, cornerSegments));
   }
 
   public sphere(options: IMeshBuilderSphereOptions = {}): this {
@@ -233,6 +335,60 @@ export class MeshBuilder {
     return this;
   }
 
+  public coherentNoise(options: IMeshBuilderCoherentNoiseOptions = {}): this {
+    const amplitude = options.amplitude ?? 0.05;
+    const frequency = options.frequency ?? 1;
+    const octaves = integerAtLeast(options.octaves ?? 4, 1, "MeshBuilder.coherentNoise.octaves");
+    const seed = options.seed ?? 1;
+    assertPositive(amplitude, "MeshBuilder.coherentNoise.amplitude");
+    assertPositive(frequency, "MeshBuilder.coherentNoise.frequency");
+    if (octaves > 8) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_VALUE_INVALID", "MeshBuilder.coherentNoise.octaves must be at most 8.");
+    }
+    if (!Number.isInteger(seed)) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_VALUE_INVALID", "MeshBuilder.coherentNoise.seed must be an integer.");
+    }
+    this.replaceParts(this.parts.map((part) => coherentNoisePart(part, { amplitude, frequency, octaves, seed })));
+    return this;
+  }
+
+  public weld(options: IMeshBuilderWeldOptions = {}): this {
+    const tolerance = options.tolerance ?? 1e-6;
+    assertPositive(tolerance, "MeshBuilder.weld.tolerance");
+    this.replaceParts(weldParts(this.parts, tolerance));
+    return this;
+  }
+
+  public subdivide(options: IMeshBuilderSubdivideOptions = {}): this {
+    const iterations = integerAtLeast(options.iterations ?? 1, 1, "MeshBuilder.subdivide.iterations");
+    if (iterations > 3) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_VALUE_INVALID", "MeshBuilder.subdivide.iterations must be at most 3.");
+    }
+    this.replaceParts(subdivideParts(this.parts, iterations));
+    return this;
+  }
+
+  public mirror(options: IMeshBuilderMirrorOptions = {}): this {
+    const axis = options.axis ?? "x";
+    if (axis !== "x" && axis !== "y" && axis !== "z") {
+      throw new SdkError("TN_SDK_MESH_BUILDER_VALUE_INVALID", "MeshBuilder.mirror.axis must be x, y, or z.");
+    }
+    this.replaceParts(this.parts.map((part) => mirrorPart(part, axis)));
+    return this;
+  }
+
+  public union(compose: (builder: MeshBuilder) => void): this {
+    return this.boolean("union", compose);
+  }
+
+  public subtract(compose: (builder: MeshBuilder) => void): this {
+    return this.boolean("subtract", compose);
+  }
+
+  public intersect(compose: (builder: MeshBuilder) => void): this {
+    return this.boolean("intersect", compose);
+  }
+
   public bend(options: { axis?: "x" | "z"; amount?: number } = {}): this {
     const axis = options.axis ?? "x";
     const amount = options.amount ?? 0.25;
@@ -316,5 +472,20 @@ export class MeshBuilder {
 
   private replaceParts(parts: IMeshBuilderPart[]): void {
     this.parts.splice(0, this.parts.length, ...parts);
+  }
+
+  private boolean(operation: MeshBuilderCsgOperation, compose: (builder: MeshBuilder) => void): this {
+    if (this.parts.length === 0) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_CSG_INVALID", `MeshBuilder.${operation} requires an accumulated left operand.`);
+    }
+    const operand = new MeshBuilder(`${this.id}.${operation}.operand`);
+    compose(operand);
+    if (operand.parts.length === 0) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_CSG_INVALID", `MeshBuilder.${operation} requires the callback to add an operand.`);
+    }
+    const solved = solveMeshBuilderCsg(mergeParts(this.parts), mergeParts(operand.parts), operation);
+    assertMeshBuilderCsgBudget(solved);
+    this.replaceParts(weldParts([solved], 1e-6).map(recalculateSmoothNormals));
+    return this;
   }
 }

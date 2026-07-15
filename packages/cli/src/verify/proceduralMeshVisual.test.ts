@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -19,6 +19,7 @@ test("should pass matching procedural mesh screenshots", async () => {
 
     assert.equal(report.status, "pass");
     assert.equal(report.metrics.silhouetteOverlap, 1);
+    assert.deepEqual(report.helpers.map((entry) => entry.helper), ["pineTree", "bush", "arch"]);
     assert.match(report.artifacts.contactSheetPath, /contact-sheet\.png$/);
     assert.match(report.artifacts.diffPath, /diff\.png$/);
   } finally {
@@ -61,6 +62,23 @@ test("should fail when material color drifts", async () => {
   }
 });
 
+test("should reject fixture drift when a registry-enrolled visual helper is absent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-v8-procedural-drift-"));
+  try {
+    await makeBundle(root);
+    const assetsPath = join(root, "assets.manifest.json");
+    const assets = JSON.parse(await readFile(assetsPath, "utf8")) as { assets: Array<{ generation?: { helper?: string } }> };
+    assets.assets = assets.assets.filter((asset) => asset.generation?.helper !== "arch");
+    await writeFile(assetsPath, `${JSON.stringify(assets, null, 2)}\n`);
+    await assert.rejects(
+      verifyProceduralMeshVisual({ artifactDir: root, bundlePath: root, screenshotCapturer: mockCapturer([210, 64, 64], [210, 64, 64]) }),
+      /missing registry enrollments: arch/,
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function makeBundle(root: string): Promise<void> {
   await writeJson(root, "manifest.json", {
     schema: "threenative.bundle",
@@ -74,21 +92,21 @@ async function makeBundle(root: string): Promise<void> {
     schema: "threenative.world",
     version: "0.1.0",
     entities: [
-      {
-        id: "prop",
+      ...["pineTree", "bush", "arch"].map((helper) => ({
+        id: `prop.${helper}`,
         components: {
           Transform: { position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] },
-          MeshRenderer: { mesh: "mesh.prop", material: "mat.prop" },
+          MeshRenderer: { mesh: `mesh.${helper}`, material: "mat.prop" },
         },
-      },
+      })),
     ],
   });
   await writeJson(root, "assets.manifest.json", {
     schema: "threenative.assets",
     version: "0.1.0",
     assets: [
-      {
-        id: "mesh.prop",
+      ...["pineTree", "bush", "arch"].map((helper) => ({
+        id: `mesh.${helper}`,
         kind: "mesh",
         format: "generated",
         primitive: "custom",
@@ -97,7 +115,8 @@ async function makeBundle(root: string): Promise<void> {
         bounds: { min: [0, 0, 0], max: [1, 1, 0] },
         attributes: [{ name: "position", itemSize: 3, values: [0, 0, 0, 1, 0, 0, 0, 1, 0] }],
         indices: [0, 1, 2],
-      },
+        generation: { helper, seed: 1 },
+      })),
     ],
   });
   await writeJson(root, "materials.ir.json", {

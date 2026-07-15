@@ -29,9 +29,47 @@ export async function verifyV8ProceduralMesh(options = {}) {
     return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
   }
 
+  const physicsVerifier = options.physicsVerifier
+    ?? (await import("./verify-procedural-mesh-physics.mjs")).verifyProceduralMeshPhysics;
+  let physics;
+  try {
+    physics = await physicsVerifier({ artifactDir, bundlePath, repoRoot: root });
+  } catch (error) {
+    steps.push({
+      durationMs: 0,
+      exitCode: 1,
+      name: "verify procedural mesh collider behavior",
+      stderr: error instanceof Error ? error.message : String(error),
+      stdout: "",
+    });
+    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
+  }
+  steps.push({
+    durationMs: 0,
+    exitCode: physics.ok ? 0 : 1,
+    name: "verify procedural mesh collider behavior",
+    stderr: physics.diagnostics?.join("\n") ?? "",
+    stdout: physics.reportPath,
+  });
+  if (!physics.ok) {
+    return writeReport({ artifactDir, bundlePath, ok: false, physicsReportPath: physics.reportPath, reportPath, steps });
+  }
+
   const verifier = options.visualVerifier
     ?? (await import(pathToFileURL(resolve(root, "packages/cli/dist/verify/proceduralMeshVisual.js")).href)).verifyProceduralMeshVisual;
-  const visual = await verifier({ artifactDir, bundlePath });
+  let visual;
+  try {
+    visual = await verifier({ artifactDir, bundlePath });
+  } catch (error) {
+    steps.push({
+      durationMs: 0,
+      exitCode: 1,
+      name: "verify procedural mesh visual parity",
+      stderr: error instanceof Error ? error.message : String(error),
+      stdout: "",
+    });
+    return writeReport({ artifactDir, bundlePath, ok: false, reportPath, steps });
+  }
   steps.push({
     durationMs: 0,
     exitCode: visual.status === "pass" ? 0 : 1,
@@ -44,13 +82,15 @@ export async function verifyV8ProceduralMesh(options = {}) {
     artifactDir,
     bundlePath,
     ok: visual.status === "pass",
+    physicsReportPath: physics.reportPath,
     reportPath,
     steps,
+    visualHelpers: visual.helpers,
     visualReportPath: visual.artifacts.reportPath,
   });
 }
 
-async function writeReport({ artifactDir, bundlePath, ok, reportPath, steps, visualReportPath }) {
+async function writeReport({ artifactDir, bundlePath, ok, physicsReportPath, reportPath, steps, visualHelpers = [], visualReportPath }) {
   await mkdir(artifactDir, { recursive: true });
   const report = {
     artifacts: {
@@ -59,6 +99,7 @@ async function writeReport({ artifactDir, bundlePath, ok, reportPath, steps, vis
       bundlePath,
       contactSheetPath: resolve(artifactDir, "contact-sheet.png"),
       diffPath: resolve(artifactDir, "diff.png"),
+      physicsReportPath: physicsReportPath ?? resolve(artifactDir, "physics-report.json"),
       reportPath,
       visualReportPath: visualReportPath ?? resolve(artifactDir, "procedural-mesh-report.json"),
       webScreenshotPath: resolve(artifactDir, "web.png"),
@@ -66,6 +107,7 @@ async function writeReport({ artifactDir, bundlePath, ok, reportPath, steps, vis
     code: ok ? "TN_VERIFY_V8_PROCEDURAL_MESH_OK" : "TN_VERIFY_V8_PROCEDURAL_MESH_FAILED",
     status: ok ? "pass" : "fail",
     steps,
+    visualHelpers: visualHelpers.map(({ helper, mesh }) => ({ helper, meshId: mesh.id })),
   };
   await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
   return { ...report, ok, reportPath };

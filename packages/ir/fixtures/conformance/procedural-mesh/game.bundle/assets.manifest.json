@@ -37,15 +37,15 @@
         "path": "generated/meshes/mesh.prop.tree.pine.indices.uint16.bin"
       },
       "bounds": {
-        "max": [
-          0.7713772464472801,
-          2.0452,
-          0.765786508742293
-        ],
         "min": [
           -0.78382275355272,
           0,
           -0.765786508742293
+        ],
+        "max": [
+          0.7713772464472801,
+          2.0452,
+          0.765786508742293
         ]
       },
       "budget": {
@@ -61,6 +61,138 @@
         "source": "MeshBuilder"
       },
       "id": "mesh.prop.tree.pine",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    },
+    {
+      "binaryAttributes": [
+        {
+          "count": 114,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.prop.bush.organic.00.color.bin"
+        },
+        {
+          "count": 114,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.prop.bush.organic.01.normal.bin"
+        },
+        {
+          "count": 114,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.prop.bush.organic.02.position.bin"
+        },
+        {
+          "count": 114,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.prop.bush.organic.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 768,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.prop.bush.organic.indices.uint16.bin"
+      },
+      "bounds": {
+        "min": [
+          -0.7642590988769755,
+          -0.5725710516081338,
+          -0.6866718700189819
+        ],
+        "max": [
+          0.8042075412011147,
+          0.5789486315429632,
+          0.6816301966545012
+        ]
+      },
+      "budget": {
+        "classification": "standard-prop",
+        "limit": 8000,
+        "vertexCount": 114
+      },
+      "format": "generated",
+      "generation": {
+        "helper": "bush",
+        "id": "prop.bush.organic",
+        "seed": 12,
+        "source": "MeshBuilder"
+      },
+      "id": "mesh.prop.bush.organic",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    },
+    {
+      "binaryAttributes": [
+        {
+          "count": 180,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.prop.arch.csg.00.color.bin"
+        },
+        {
+          "count": 180,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.prop.arch.csg.01.normal.bin"
+        },
+        {
+          "count": 180,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.prop.arch.csg.02.position.bin"
+        },
+        {
+          "count": 180,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.prop.arch.csg.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 750,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.prop.arch.csg.indices.uint16.bin"
+      },
+      "bounds": {
+        "min": [
+          -1,
+          -3.469446951953614e-18,
+          -0.35
+        ],
+        "max": [
+          1,
+          2.1,
+          0.35
+        ]
+      },
+      "budget": {
+        "classification": "hero-prop",
+        "limit": 25000,
+        "vertexCount": 180
+      },
+      "format": "generated",
+      "generation": {
+        "helper": "arch",
+        "id": "prop.arch.csg",
+        "seed": 12,
+        "source": "MeshBuilder"
+      },
+      "id": "mesh.prop.arch.csg",
       "kind": "mesh",
       "primitive": "custom",
       "topology": "triangle-list",

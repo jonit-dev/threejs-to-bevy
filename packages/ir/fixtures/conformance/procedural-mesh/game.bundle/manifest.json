@@ -5,7 +5,8 @@
   "files": {
     "assets": "assets.manifest.json",
     "materials": "materials.ir.json",
-    "targetProfile": "target.profile.json"
+    "targetProfile": "target.profile.json",
+    "input": "input.ir.json"
   },
   "name": "threenative-game",
   "requiredCapabilities": {
@@ -15,9 +16,13 @@
     "ecs": [
       "resources"
     ],
+    "physics": [
+      "collider",
+      "rigid-body"
+    ],
     "rendering": [
       "camera.active",
-      "camera.orthographic",
+      "camera.perspective",
       "light.ambient",
       "light.directional",
       "material.standard",

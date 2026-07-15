@@ -66,6 +66,7 @@
     "verify:template-production": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-production",
     "verify:template-playability": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:template-playability",
     "verify:ui-persistence-settings-facades": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:ui-persistence-settings-facades",
+    "verify:v8-procedural-mesh": "node scripts/verify-v8-procedural-mesh.mjs",
     "verify:webview-package": "pnpm build:verify-tools && node tools/verify/dist/cli/run.js verify:webview-package",
     "verify:smoke": "pnpm check:names && pnpm check:docs && pnpm verify:example-build-sweep",
     "prepare": "husky"

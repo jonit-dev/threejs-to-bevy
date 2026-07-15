@@ -2,18 +2,232 @@
   "entities": [
     {
       "components": {
-        "Camera": {
-          "far": 20,
-          "kind": "orthographic",
-          "near": 0.1,
-          "priority": 0,
-          "size": 2.8
+        "MeshRenderer": {
+          "material": "mat.pineTree",
+          "mesh": "mesh.prop.tree.pine"
+        },
+        "Transform": {
+          "position": [
+            -3,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "prop.pineTree"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.bush",
+          "mesh": "mesh.prop.bush.organic"
         },
         "Transform": {
           "position": [
             0,
-            1.15,
-            5
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "center": [
+            0.019974221162069594,
+            0.0031887899674146736,
+            -0.002520836682240346
+          ],
+          "kind": "box",
+          "size": [
+            1.5684666400780902,
+            1.151519683151097,
+            1.368302066673483
+          ],
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "prop.bush"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.arch",
+          "mesh": "mesh.prop.arch.csg"
+        },
+        "Transform": {
+          "position": [
+            3,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        },
+        "Collider": {
+          "kind": "mesh",
+          "mesh": {
+            "bounds": {
+              "center": [
+                0,
+                1.05,
+                0
+              ],
+              "size": [
+                2,
+                2.1,
+                0.7
+              ]
+            },
+            "triangleCount": 250,
+            "source": "mesh.prop.arch.csg"
+          },
+          "layer": "world"
+        },
+        "RigidBody": {
+          "kind": "static"
+        }
+      },
+      "id": "prop.arch"
+    },
+    {
+      "components": {
+        "CharacterController": {
+          "blocking": true,
+          "grounding": "raycast",
+          "moveXAxis": "StandX",
+          "moveZAxis": "StandZ",
+          "speed": 1,
+          "stepOffset": 0.3
+        },
+        "Collider": {
+          "height": 1.6,
+          "kind": "capsule",
+          "layer": "player",
+          "mask": [
+            "world"
+          ],
+          "radius": 0.3
+        },
+        "RigidBody": {
+          "kind": "kinematic"
+        },
+        "Transform": {
+          "position": [
+            3,
+            2.9,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "proof.character-on-arch"
+    },
+    {
+      "components": {
+        "Collider": {
+          "friction": 1,
+          "kind": "box",
+          "layer": "dynamic",
+          "mask": [
+            "world"
+          ],
+          "size": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.2,
+          "kind": "dynamic",
+          "mass": 1,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        },
+        "Transform": {
+          "position": [
+            0,
+            2.5,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "proof.box-on-bush"
+    },
+    {
+      "components": {
+        "Camera": {
+          "kind": "perspective",
+          "far": 100,
+          "fovY": 45,
+          "near": 0.1,
+          "priority": 0
+        },
+        "Transform": {
+          "position": [
+            0,
+            1.2,
+            8
           ],
           "rotation": [
             0,
@@ -34,26 +248,8 @@
       "components": {
         "Light": {
           "color": "#ffffff",
-          "intensity": 0.65,
+          "intensity": 1.5,
           "kind": "ambient"
-        },
-        "Transform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
         }
       },
       "id": "light.ambient"
@@ -62,14 +258,14 @@
       "components": {
         "Light": {
           "color": "#ffffff",
-          "intensity": 1.35,
+          "intensity": 2,
           "kind": "directional"
         },
         "Transform": {
           "position": [
-            2,
-            4,
-            3
+            3,
+            6,
+            5
           ],
           "rotation": [
             0,
@@ -85,37 +281,8 @@
         }
       },
       "id": "light.key"
-    },
-    {
-      "components": {
-        "MeshRenderer": {
-          "material": "mat.prop.tree.pine",
-          "mesh": "mesh.prop.tree.pine"
-        },
-        "Transform": {
-          "position": [
-            0,
-            0,
-            0
-          ],
-          "rotation": [
-            0,
-            0,
-            0,
-            1
-          ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
-        }
-      },
-      "id": "prop.tree.pine"
     }
   ],
-  "events": {},
-  "prefabs": [],
   "resources": {
     "ActiveCamera": {
       "entity": "camera.procedural"

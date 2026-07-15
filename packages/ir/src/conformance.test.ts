@@ -153,8 +153,10 @@ test("should include capability tags for each conformance fixture", async () => 
   assertFixtureCapabilities(byName, "procedural-mesh", [
     "asset:mesh.generated",
     "ecs:resources",
+    "physics:collider",
+    "physics:rigid-body",
     "rendering:camera.active",
-    "rendering:camera.orthographic",
+    "rendering:camera.perspective",
     "rendering:light.ambient",
     "rendering:light.directional",
     "rendering:material.standard",

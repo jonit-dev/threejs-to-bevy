@@ -3,6 +3,25 @@
   "version": "0.1.0",
   "fixtures": [
     {
+      "canonicalId": "procedural-mesh",
+      "owner": "ir-contract",
+      "sourceExample": "procedural-mesh",
+      "regenerateCommand": "pnpm --filter @threenative/sdk build && node scripts/generate-procedural-mesh-fixture.mjs",
+      "canonicalArtifactGate": "procedural-mesh",
+      "ownerDocs": "docs/PRDs/procedural-geometry-v2-2026-07-11.md",
+      "aggregateGate": "verify:v8-procedural-mesh",
+      "bundlePath": "packages/ir/fixtures/conformance/procedural-mesh/game.bundle",
+      "promotedCapabilities": [
+        "asset:mesh.generated",
+        "physics:collider",
+        "rendering:mesh.primitive.custom"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/procedural-mesh/verification-report.json",
+        "tools/verify/artifacts/procedural-mesh/procedural-mesh-report.json"
+      ]
+    },
+    {
       "canonicalId": "shadow-cascade-stability",
       "owner": "ir-contract",
       "sourceExample": "shadow-cascade-stability",

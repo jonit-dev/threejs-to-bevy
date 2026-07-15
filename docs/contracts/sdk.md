@@ -242,11 +242,70 @@ scene.add(camera);
 scene.setActiveCamera(camera);
 ```
 
-P1 procedural mesh authoring is static: runtime vertex mutation, CSG,
+`MeshBuilder` includes prop-oriented primitive generators in addition to the
+base box, sphere, cylinder, cone, capsule, lathe, tube, extrusion, and raw
+mesh sources:
+
+- `torus({ majorRadius, minorRadius, radialSegments, tubularSegments })`
+  creates a UV-wrapped ring with analytic normals.
+- `plane({ size: [width, depth], widthSegments, depthSegments })` creates an
+  XZ grid facing positive Y, suitable for later deformation.
+- `prism({ sides, radius, height })` creates a closed regular column with
+  separate cap and side normals.
+- `roundedBox({ size: [x, y, z], cornerRadius, cornerSegments })` creates a
+  rounded cuboid. The corner radius must not exceed half its smallest size
+  component.
+
+All dimensions must be positive finite numbers. Segment counts are integers;
+torus and prism rings require at least three segments or sides, plane grids
+require at least one segment per axis, and rounded boxes require at least one
+corner segment. These generators participate in the same deterministic
+custom-mesh budget checks as the original builder sources.
+
+Topology and organic-surface operations also run entirely at author time:
+
+- `coherentNoise({ amplitude, frequency, octaves, seed })` samples seeded 3D
+  FBM in each vertex's pre-displacement local position and moves it along its
+  normal. Reusing the same inputs is byte deterministic; one to eight octaves
+  are supported.
+- `weld({ tolerance })` spatially deduplicates vertices and recalculates smooth
+  normals. When UV or color seams collapse, the first vertex in stable source
+  order owns the welded attributes.
+- `subdivide({ iterations })` performs one to three midpoint subdivisions,
+  interpolating UV and color attributes. It rejects projected results above
+  the hero-prop ceiling before allocating the expanded geometry.
+- `mirror({ axis: "x" | "y" | "z" })` reflects the current parts and flips
+  triangle winding so their facing remains consistent.
+
+Compile-time CSG combines accumulated parts with a nested operand builder:
+
+```ts
+const arch = MeshBuilder.create("prop.arch")
+  .box({ size: [2, 2, 0.5] })
+  .subtract((operand) => {
+    operand.position([0, -0.5, 0]).cylinder({ radius: 0.55, height: 3 });
+  })
+  .build({ budget: "hero-prop" });
+```
+
+`union`, `subtract`, and `intersect` use a deterministic BSP solve with a
+fixed epsilon. Split vertices interpolate UV and color attributes; the result
+is degenerate-filtered, welded, and given recalculated smooth normals before
+the normal builder budget checks. This is static author-time CSG only.
+
+`build({ collider: "box" | "mesh" })` attaches a derived collider hint to the
+generated `CustomMeshGeometry`. Box hints use the built bounds center and size.
+Mesh hints additionally preserve the generated triangle count; the compiler
+fills `Collider.mesh.source` with the emitted mesh asset ID. When the scene
+entity already has an explicit physics collider, that authored collider always
+wins and the generated hint is ignored. Derived colliders reject zero-extent
+bounds, and mesh hints reject the portable limit of more than 10,000 triangles.
+
+Procedural mesh output remains static: runtime vertex mutation, runtime CSG,
 terrain-chunk streaming, deformable meshes, and direct Three.js/Bevy mesh APIs
 are outside the portable SDK contract. Migration tooling may normalize a
-compiler-only BufferGeometry snapshot into portable mesh data, but runtimes only
-consume validated IR/bundle assets.
+compiler-only BufferGeometry snapshot into portable mesh data, but runtimes
+only consume validated IR/bundle assets.
 
 ### Game Root Helper
 

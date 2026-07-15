@@ -1,11 +1,31 @@
 {
   "materials": [
     {
-      "color": "#ffffff",
-      "id": "mat.prop.tree.pine",
+      "color": "#000000",
+      "emissive": "#7fb069",
+      "emissiveIntensity": 1,
+      "id": "mat.pineTree",
       "kind": "standard",
       "metalness": 0,
-      "roughness": 0.82
+      "roughness": 1
+    },
+    {
+      "color": "#000000",
+      "emissive": "#4f8f4c",
+      "emissiveIntensity": 1,
+      "id": "mat.bush",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
+    },
+    {
+      "color": "#000000",
+      "emissive": "#b4a58e",
+      "emissiveIntensity": 1,
+      "id": "mat.arch",
+      "kind": "standard",
+      "metalness": 0,
+      "roughness": 1
     }
   ],
   "schema": "threenative.materials",

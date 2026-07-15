@@ -23,7 +23,9 @@ import {
   Scene,
   TorusGeometry,
   animationClip,
+  boxCollider,
   modelAsset,
+  physics,
 } from "@threenative/sdk";
 
 import { emitBundle } from "./bundle.js";
@@ -152,21 +154,21 @@ test("should emit custom mesh attributes and indices", () => {
   });
 });
 
-test("should emit procedural mesh binaries deterministically", async () => {
+test("should emit CSG arch mesh binaries deterministically and validate the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-procedural-mesh-emit-"));
   try {
     const scene = new Scene({ id: "scene" });
     scene.add(
       new Mesh({
-        geometry: MeshBuilder.create("prop.mushroom.red")
-          .position([0, 0.35, 0])
-          .cylinder({ height: 0.7, radius: 0.16, segments: 12 })
-          .position([0, 0.8, 0])
-          .scale([1.05, 0.42, 1.05])
-          .sphere({ radius: 0.55, rings: 8, segments: 18 })
-          .build({ helper: "mushroom", seed: 7 }),
-        id: "mushroom",
-        material: new MeshStandardMaterial({ color: "#d94b4b" }),
+        geometry: MeshBuilder.create("prop.arch.csg")
+          .box({ size: [2, 2, 0.5] })
+          .subtract((operand) => {
+            operand.rotate([Math.PI / 2, 0, 0]).position([0, -0.55, 0]).cylinder({ height: 1, radius: 0.58, segments: 24 });
+          })
+          .coherentNoise({ amplitude: 0.015, frequency: 2, octaves: 2, seed: 7 })
+          .build({ budget: "hero-prop", collider: "mesh", helper: "arch", seed: 7 }),
+        id: "arch",
+        material: new MeshStandardMaterial({ color: "#8f775d" }),
       }),
     );
     const config = {
@@ -179,11 +181,11 @@ test("should emit procedural mesh binaries deterministically", async () => {
 
     const first = await emitBundle(config, scene);
     const firstManifest = JSON.parse(await readFile(join(first, "assets.manifest.json"), "utf8"));
-    const firstAsset = firstManifest.assets.find((asset: { id: string }) => asset.id === "mesh.mushroom");
+    const firstAsset = firstManifest.assets.find((asset: { id: string }) => asset.id === "mesh.arch");
     const firstHashes = await hashPayloads(first, firstAsset);
     const second = await emitBundle({ ...config, outDir: "dist/second.bundle" }, scene);
     const secondManifest = JSON.parse(await readFile(join(second, "assets.manifest.json"), "utf8"));
-    const secondAsset = secondManifest.assets.find((asset: { id: string }) => asset.id === "mesh.mushroom");
+    const secondAsset = secondManifest.assets.find((asset: { id: string }) => asset.id === "mesh.arch");
     const secondHashes = await hashPayloads(second, secondAsset);
 
     assert.deepEqual(firstAsset.binaryAttributes, secondAsset.binaryAttributes);
@@ -191,9 +193,76 @@ test("should emit procedural mesh binaries deterministically", async () => {
     assert.deepEqual(firstHashes, secondHashes);
     assert.equal(firstAsset.topology, "triangle-list");
     assert.equal(firstAsset.usage, "static");
+    const world = JSON.parse(await readFile(join(first, "world.ir.json"), "utf8"));
+    assert.equal(world.entities.find((entity: { id: string }) => entity.id === "arch")?.components.Collider.mesh.source, "mesh.arch");
   } finally {
     await rm(root, { force: true, recursive: true });
   }
+});
+
+test("should emit mesh collider component when generated mesh has collider hint", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({
+    geometry: MeshBuilder.create("builder.id.is.not.asset.id")
+      .box({ size: [2, 1, 3] })
+      .build({ collider: "mesh" }),
+    id: "procedural-platform",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  }));
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "procedural-platform");
+
+  assert.deepEqual(entity?.components.Collider, {
+    kind: "mesh",
+    mesh: {
+      bounds: { center: [0, 0, 0], size: [2, 1, 3] },
+      source: "mesh.procedural-platform",
+      triangleCount: 12,
+    },
+  });
+});
+
+test("should emit box collider component when generated mesh has box hint", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({
+    geometry: MeshBuilder.create("prop.offset-box")
+      .position([1, 2, 3])
+      .box({ size: [2, 4, 6] })
+      .build({ collider: "box" }),
+    id: "offset-box",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  }));
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "offset-box");
+
+  assert.deepEqual(entity?.components.Collider, {
+    center: [1, 2, 3],
+    kind: "box",
+    size: [2, 4, 6],
+  });
+});
+
+test("should not override explicit collider when entity already defines one", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({
+    geometry: MeshBuilder.create("prop.explicit-collider")
+      .box({ size: [2, 1, 3] })
+      .build({ collider: "mesh" }),
+    id: "explicit-collider",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+    physics: physics({ collider: boxCollider([5, 4, 3], { center: [1, 2, 3] }) }),
+  }));
+
+  const result = sceneToWorld(scene);
+  const entity = result.world.entities.find((item) => item.id === "explicit-collider");
+
+  assert.deepEqual(entity?.components.Collider, {
+    center: [1, 2, 3],
+    kind: "box",
+    size: [5, 4, 3],
+  });
 });
 
 test("should emit material alpha and physical metadata", () => {

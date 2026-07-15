@@ -15,6 +15,19 @@ Current support:
   `parity`, advisory diagnostic `TN_RENDER_PROFILE_GRADING_ACTIVE` names the
   profile and the command that restores parity grading.
 - Mesh/material/light/camera/source document validation and compiler lowering.
+- Procedural Geometry V2 expands static `MeshBuilder` authoring with torus,
+  segmented plane, prism, rounded box, seeded coherent noise, weld, midpoint
+  subdivision, mirror, and deterministic BSP union/subtract/intersect. The
+  compiler still emits ordinary generated custom-mesh payloads, and optional
+  box/mesh collider hints lower to existing Collider components without
+  overriding explicit physics. Registry-derived conformance now covers pine,
+  coherent-noise bush, and CSG arch payloads. Runtime CSG remains unsupported,
+  and generated-mesh LOD selection remains deferred to
+  `docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md`. The focused
+  web/native gate promotes the compile-time CSG output with `0.9987` silhouette
+  overlap and `0.0106` visible-surface color delta. Its structured physics
+  traces also prove a capsule grounded on the CSG arch mesh collider and a
+  dropped body resting on the bush's generated box collider in both adapters.
 - Render-look profiles, screenshot proof, color parity, lighting tone, and
   visual performance gates.
 - `tn look list` and `tn look apply <profile>` expose five curated scaffold

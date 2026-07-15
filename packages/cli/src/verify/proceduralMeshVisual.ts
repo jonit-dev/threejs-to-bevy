@@ -4,6 +4,7 @@ import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import type { IAssetIr, Vec3 } from "@threenative/ir";
+import { organicMeshFixtureEnrollments, type OrganicMeshHelperName } from "@threenative/sdk";
 import { loadBundle, startWebPreview } from "@threenative/runtime-web-three";
 import { chromium } from "playwright";
 import { PNG } from "pngjs";
@@ -24,6 +25,11 @@ export interface IProceduralMeshVisualReport {
     webScreenshotPath: string;
   };
   diagnostics: Array<{ code: string; message: string; severity: "error" }>;
+  helpers: Array<{
+    helper: OrganicMeshHelperName;
+    materialColor: string | readonly [number, number, number] | readonly [number, number, number, number];
+    mesh: { bounds?: { min: Vec3; max: Vec3 }; id: string; indexCount: number; topology?: string; vertexCount: number };
+  }>;
   materialColor: string | readonly [number, number, number] | readonly [number, number, number, number];
   mesh: {
     bounds?: { min: Vec3; max: Vec3 };
@@ -58,10 +64,15 @@ export async function verifyProceduralMeshVisual(options: {
   await mkdir(options.artifactDir, { recursive: true });
   const bundle = await loadBundle(options.bundlePath);
   const cameraId = activeCameraId(bundle) ?? "camera.main";
-  const meshAsset = bundle.assets.assets.find((asset) => asset.kind === "mesh" && asset.primitive === "custom");
-  if (meshAsset === undefined) {
-    throw new Error("Procedural mesh visual verification requires a custom generated mesh asset.");
-  }
+  const visualEnrollments = organicMeshFixtureEnrollments.filter((entry) => entry.visual);
+  const enrolled = visualEnrollments.map(({ helper }) => ({
+    helper,
+    meshAsset: bundle.assets.assets.find((asset) => asset.kind === "mesh" && asset.primitive === "custom" && asset.generation?.helper === helper),
+  }));
+  const missing = enrolled.filter((entry) => entry.meshAsset === undefined).map((entry) => entry.helper);
+  if (missing.length > 0) throw new Error(`Procedural mesh visual fixture is missing registry enrollments: ${missing.join(", ")}.`);
+  const meshAsset = enrolled[0]?.meshAsset;
+  if (meshAsset === undefined) throw new Error("Procedural mesh visual registry has no enrolled helpers.");
   const entity = bundle.world.entities.find((candidate) => candidate.components.MeshRenderer?.mesh === meshAsset.id);
   const material = bundle.materials.materials.find((candidate) => candidate.id === entity?.components.MeshRenderer?.material);
   if (material === undefined) {
@@ -106,11 +117,28 @@ export async function verifyProceduralMeshVisual(options: {
       webScreenshotPath: capture.webScreenshotPath,
     },
     diagnostics,
-    materialColor: material.color ?? "#ffffff",
+    helpers: enrolled.map(({ helper, meshAsset: enrolledAsset }) => {
+      if (enrolledAsset === undefined) throw new Error("Unreachable missing procedural mesh enrollment.");
+      const enrolledEntity = bundle.world.entities.find((candidate) => candidate.components.MeshRenderer?.mesh === enrolledAsset.id);
+      const enrolledMaterial = bundle.materials.materials.find((candidate) => candidate.id === enrolledEntity?.components.MeshRenderer?.material);
+      if (enrolledMaterial === undefined) throw new Error(`Procedural mesh '${enrolledAsset.id}' does not have a resolved material.`);
+      return {
+        helper,
+        materialColor: enrolledMaterial.emissive ?? enrolledMaterial.color ?? "#ffffff",
+        mesh: {
+          bounds: "bounds" in enrolledAsset ? enrolledAsset.bounds : undefined,
+          id: enrolledAsset.id,
+          indexCount: meshIndexCount(enrolledAsset),
+          topology: "topology" in enrolledAsset ? enrolledAsset.topology : undefined,
+          vertexCount: meshVertexCount(enrolledAsset),
+        },
+      };
+    }),
+    materialColor: material.emissive ?? material.color ?? "#ffffff",
     mesh: {
       bounds: "bounds" in meshAsset ? meshAsset.bounds : undefined,
       id: meshAsset.id,
-      indexCount: "indices" in meshAsset ? meshAsset.indices?.length ?? 0 : 0,
+      indexCount: meshIndexCount(meshAsset),
       topology: "topology" in meshAsset ? meshAsset.topology : undefined,
       vertexCount: meshVertexCount(meshAsset),
     },
@@ -246,7 +274,13 @@ function meshVertexCount(asset: IAssetIr): number {
     return 0;
   }
   const position = asset.attributes?.find((attribute) => attribute.name === "position");
-  return position === undefined ? 0 : position.values.length / 3;
+  const binaryPosition = asset.binaryAttributes?.find((attribute) => attribute.name === "position");
+  return position === undefined ? binaryPosition?.count ?? 0 : position.values.length / 3;
+}
+
+function meshIndexCount(asset: IAssetIr): number {
+  if (asset.kind !== "mesh" || asset.primitive !== "custom") return 0;
+  return asset.indices?.length ?? asset.binaryIndices?.count ?? 0;
 }
 
 function hashMesh(asset: IAssetIr): string {

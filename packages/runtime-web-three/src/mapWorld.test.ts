@@ -592,7 +592,7 @@ test("mapWorld should map procedural mesh binary attributes", async () => {
   const bundle = await loadBundle(resolve(process.cwd(), "../ir/fixtures/conformance/procedural-mesh/game.bundle"));
   const mapped = mapWorld(bundle);
 
-  const object = mapped.objectsById.get("prop.tree.pine");
+  const object = mapped.objectsById.get("prop.pineTree");
   assert.ok(object instanceof THREE.Mesh);
   assert.equal(object.geometry.getAttribute("position").itemSize, 3);
   assert.equal(object.geometry.getAttribute("normal").itemSize, 3);
@@ -601,7 +601,7 @@ test("mapWorld should map procedural mesh binary attributes", async () => {
   assert.equal(object.geometry.getAttribute("position").count, 228);
   assert.equal(object.geometry.index?.count, 630);
   assert.ok(object.material instanceof THREE.MeshStandardMaterial);
-  assert.equal(object.material.color.getHexString(), "ffffff");
+  assert.equal(object.material.emissive.getHexString(), "7fb069");
   assert.equal(object.material.vertexColors, true);
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
 });

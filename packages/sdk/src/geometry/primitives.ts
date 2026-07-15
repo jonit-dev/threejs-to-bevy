@@ -28,6 +28,23 @@ export interface IMeshBudgetMetadata {
   vertexCount: number;
 }
 
+export type ICustomMeshColliderHint =
+  | {
+      center: Vector3Tuple;
+      kind: "box";
+      size: Vector3Tuple;
+    }
+  | {
+      kind: "mesh";
+      mesh: {
+        bounds: {
+          center: Vector3Tuple;
+          size: Vector3Tuple;
+        };
+        triangleCount: number;
+      };
+    };
+
 export class BoxGeometry {
   public readonly kind = "box";
   public readonly size: Vector3Tuple;
@@ -195,6 +212,7 @@ export class CustomMeshGeometry {
   public readonly attributes: readonly ICustomMeshAttribute[];
   public readonly bounds?: IMeshBounds;
   public readonly budget?: IMeshBudgetMetadata;
+  public readonly collider?: ICustomMeshColliderHint;
   public readonly generation?: IMeshGenerationMetadata;
   public readonly indices?: readonly number[];
   public readonly storage?: "binary" | "inline";
@@ -205,6 +223,7 @@ export class CustomMeshGeometry {
     attributes: readonly ICustomMeshAttribute[];
     bounds?: IMeshBounds;
     budget?: IMeshBudgetMetadata;
+    collider?: ICustomMeshColliderHint;
     generation?: IMeshGenerationMetadata;
     indices?: readonly number[];
     storage?: "binary" | "inline";
@@ -214,12 +233,33 @@ export class CustomMeshGeometry {
     this.attributes = normalizeMeshAttributes(options.attributes);
     this.bounds = options.bounds === undefined ? undefined : normalizeBounds(options.bounds);
     this.budget = options.budget === undefined ? undefined : { ...options.budget };
+    this.collider = options.collider === undefined ? undefined : normalizeColliderHint(options.collider);
     this.generation = options.generation === undefined ? undefined : { ...options.generation };
     this.indices = normalizeMeshIndices(options.indices);
     this.storage = options.storage;
     this.topology = options.topology;
     this.usage = options.usage;
   }
+}
+
+function normalizeColliderHint(collider: ICustomMeshColliderHint): ICustomMeshColliderHint {
+  if (collider.kind === "box") {
+    return {
+      center: [...collider.center] as Vector3Tuple,
+      kind: "box",
+      size: [...collider.size] as Vector3Tuple,
+    };
+  }
+  return {
+    kind: "mesh",
+    mesh: {
+      bounds: {
+        center: [...collider.mesh.bounds.center] as Vector3Tuple,
+        size: [...collider.mesh.bounds.size] as Vector3Tuple,
+      },
+      triangleCount: collider.mesh.triangleCount,
+    },
+  };
 }
 
 function assertIntegerAtLeast(value: number, min: number, code: string, path: string): void {

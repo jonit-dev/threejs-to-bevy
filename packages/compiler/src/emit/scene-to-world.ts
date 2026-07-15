@@ -1,5 +1,5 @@
 import { type IWorldIr } from "@threenative/ir";
-import type { IAssetReference, IPhysicsDeclaration } from "@threenative/sdk";
+import type { IAssetReference, ICustomMeshColliderHint, IPhysicsDeclaration } from "@threenative/sdk";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
@@ -54,6 +54,7 @@ interface IObjectLike {
     attributes?: readonly { itemSize: number; name: string; values: readonly number[] }[];
     bounds?: { max: readonly [number, number, number]; min: readonly [number, number, number] };
     budget?: Record<string, unknown>;
+    collider?: ICustomMeshColliderHint;
     generation?: Record<string, unknown>;
     depth?: number;
     height?: number;
@@ -221,6 +222,9 @@ function visitChildren(
           primitive: child.geometry.kind,
           ...(child.geometry.kind === "custom" ? {} : { size: geometrySize(child.geometry) }),
         });
+        if (components.Collider === undefined && child.geometry.kind === "custom" && child.geometry.collider !== undefined) {
+          components.Collider = emitDerivedCollider(child.geometry.collider, meshId);
+        }
       }
       output.materials.push(emitMaterial(materialId, child.material, output.assets));
       if (child.layers !== undefined && child.layers.length > 0) {
@@ -289,6 +293,30 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function emitDerivedCollider(
+  collider: ICustomMeshColliderHint,
+  meshId: string,
+): NonNullable<IWorldIr["entities"][number]["components"]["Collider"]> {
+  if (collider.kind === "box") {
+    return {
+      center: [...collider.center],
+      kind: "box",
+      size: [...collider.size],
+    };
+  }
+  return {
+    kind: "mesh",
+    mesh: {
+      bounds: {
+        center: [...collider.mesh.bounds.center],
+        size: [...collider.mesh.bounds.size],
+      },
+      source: meshId,
+      triangleCount: collider.mesh.triangleCount,
+    },
+  };
 }
 
 function emitCameraComponent(child: IObjectLike, kind: "orthographic" | "perspective"): Record<string, unknown> {
