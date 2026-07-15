@@ -8,6 +8,7 @@ import {
   BoxGeometry,
   CustomMeshGeometry,
   Mesh,
+  MeshBuilder,
   MeshStandardMaterial,
   OrthographicCamera,
   PerspectiveCamera,
@@ -36,6 +37,7 @@ import {
   gamepad,
   keyboard,
   loopingMusic,
+  modelAsset,
   oneShotSound,
   overlay,
   pointerButton,
@@ -76,6 +78,84 @@ test("should emit deterministic cube bundle", async () => {
     const secondWorld = await readFile(join(second, "world.ir.json"), "utf8");
 
     assert.equal(firstWorld, secondWorld);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit byte-identical procedural LOD payloads across rebuilds", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-lod-payloads-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({
+      geometry: MeshBuilder.create("builder.bundle-lod").sphere({ rings: 12, segments: 20 }).build({ lodLevels: 2 }),
+      id: "bundle-lod",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }));
+    const config = {
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    };
+    const first = await planBundle(config, scene);
+    const second = await planBundle(config, scene);
+    const payloads = (plan: Awaited<ReturnType<typeof planBundle>>) => plan.generatedMeshPayloads
+      .map((payload) => ({ bytes: payload.bytes.toString("hex"), path: payload.path }));
+
+    assert.deepEqual(second.documents.assetsManifest, first.documents.assetsManifest);
+    assert.deepEqual(payloads(second), payloads(first));
+    assert.ok(first.generatedMeshPayloads.some((payload) => payload.path.includes("mesh.bundle-lod.lod.1")));
+    assert.ok(first.generatedMeshPayloads.some((payload) => payload.path.includes("mesh.bundle-lod.lod.2")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve legacy procedural mesh output when LOD is absent", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-no-lod-shape-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({
+      geometry: MeshBuilder.create("builder.no-lod").box().build(),
+      id: "no-lod",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }));
+    const plan = await planBundle({
+      entry: "src/game.ts",
+      outDir: "dist/game.bundle",
+      projectPath: root,
+      schema: "threenative.project" as const,
+      version: "0.1.0" as const,
+    }, scene);
+    const renderer = plan.documents.world?.entities[0]?.components.MeshRenderer;
+    assert.deepEqual(renderer, { material: "mat.no-lod", mesh: "mesh.no-lod" });
+    assert.deepEqual(plan.documents.assetsManifest.assets.map((asset) => asset.id), ["mesh.no-lod"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject procedural LOD asset ID collision before bundle asset merging", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-lod-collision-"));
+  try {
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({
+      geometry: MeshBuilder.create("builder.collision").sphere({ rings: 12, segments: 20 }).build({ lodLevels: 1 }),
+      id: "collision",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }));
+    await assert.rejects(
+      () => planBundle({
+        entry: "src/game.ts",
+        outDir: "dist/game.bundle",
+        projectPath: root,
+        schema: "threenative.project" as const,
+        version: "0.1.0" as const,
+      }, { assets: [modelAsset("mesh.collision.lod.1", "assets/conflict.glb")], scene }),
+      (error: unknown) => error instanceof Error && "code" in error && error.code === "TN_COMPILER_GENERATED_MESH_LOD_ASSET_ID_COLLISION",
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

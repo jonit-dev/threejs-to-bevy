@@ -14,6 +14,22 @@ mod support;
 use support::load_conformance_fixture;
 
 #[test]
+fn generated_mesh_lod_conformance_reports_render_layers() {
+    let fixture = load_conformance_fixture("procedural-mesh-lod");
+    let mut app = App::new();
+    map_bundle_into_world(app.world_mut(), &fixture.bundle)
+        .expect("generated mesh LOD fixture should map");
+    let report = report_bevy_conformance(app.world_mut(), &fixture.bundle, fixture.name);
+    let entity = report
+        .entities
+        .iter()
+        .find(|entity| entity.id == "proof.generated-mesh-lod")
+        .expect("generated mesh LOD proof entity should be reported");
+
+    assert!(entity.components.contains(&"RenderLayers".to_owned()));
+}
+
+#[test]
 fn should_report_basic_scene_conformance_semantics() {
     let fixture = load_conformance_fixture("basic-scene");
     let mut app = App::new();

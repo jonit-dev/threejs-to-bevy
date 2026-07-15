@@ -1755,12 +1755,18 @@ fn standard_emissive_markers_should_generate_native_mask_input() {
         .expect("active camera should get an offscreen marker mask camera");
     assert!(mask_camera.0.is_active);
 
+    let source_entity = app
+        .world_mut()
+        .query::<(Entity, &ThreeNativeId)>()
+        .iter(app.world())
+        .find_map(|(entity, id)| (id.0 == "swatch.red").then_some(entity))
+        .expect("authored marker mesh should exist");
     let mut proxies = app
         .world_mut()
-        .query::<(&Name, &RenderLayers, &Handle<StandardMaterial>)>();
+        .query::<(&Name, &RenderLayers, &Handle<StandardMaterial>, &Parent)>();
     let proxy = proxies
         .iter(app.world())
-        .find(|(name, layers, _)| {
+        .find(|(name, layers, _, _)| {
             name.as_str() == "swatch.red.emissive-mask"
                 && layers.intersects(&RenderLayers::layer(mask_layer))
         })
@@ -1771,6 +1777,7 @@ fn standard_emissive_markers_should_generate_native_mask_input() {
         .expect("mask proxy material should exist");
     assert!(material.unlit);
     assert!(!material.fog_enabled);
+    assert_eq!(proxy.3.get(), source_entity);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
 }

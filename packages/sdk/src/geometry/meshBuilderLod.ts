@@ -1,5 +1,77 @@
 import { SdkError } from "../errors.js";
 import { computeBounds, recalculateSmoothNormals, type IMeshBuilderPart } from "./meshBuilderParts.js";
+import type { CustomMeshGeometry, ICustomMeshLodLevel } from "./primitives.js";
+
+export interface IMeshBuilderLodLevelOptions {
+  minDistance?: number;
+  ratio?: number;
+}
+
+export function buildMeshLodLevels(
+  base: IMeshBuilderPart,
+  geometry: CustomMeshGeometry,
+  requested: number | readonly IMeshBuilderLodLevelOptions[],
+): readonly ICustomMeshLodLevel[] {
+  const count = typeof requested === "number" ? requested : requested.length;
+  if (!Number.isInteger(count) || count < 1 || count > 4) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_COUNT_INVALID", "MeshBuilder lodLevels must request between 1 and 4 levels.");
+  }
+  const bounds = geometry.bounds ?? computeBounds(base.positions);
+  const maxExtent = Math.max(...bounds.max.map((value, axis) => value - (bounds.min[axis] ?? 0)));
+  const descriptors = Array.from({ length: count }, (_, index) => {
+    const explicit = typeof requested === "number" ? undefined : requested[index];
+    return {
+      minDistance: explicit?.minDistance ?? Math.max(1, maxExtent) * 10 * (2 ** index),
+      targetRatio: explicit?.ratio ?? 0.5 ** (index + 1),
+    };
+  });
+  validateLodDescriptors(descriptors);
+  const budget = geometry.budget;
+  if (budget === undefined) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_BUDGET_INVALID", "MeshBuilder LOD generation requires base mesh budget metadata.");
+  }
+  return descriptors.map((descriptor) => {
+    const decimated = decimateMeshPart(base, descriptor.targetRatio);
+    const levelBounds = computeBounds(decimated.positions);
+    return {
+      attributes: [
+        { itemSize: 4, name: "color", values: decimated.colors },
+        { itemSize: 3, name: "normal", values: decimated.normals },
+        { itemSize: 3, name: "position", values: decimated.positions },
+        { itemSize: 2, name: "uv", values: decimated.uvs },
+      ],
+      bounds: levelBounds,
+      budget: { ...budget, vertexCount: decimated.positions.length / 3 },
+      indices: decimated.indices,
+      minDistance: descriptor.minDistance,
+      targetRatio: descriptor.targetRatio,
+      storage: geometry.storage ?? "binary",
+      topology: "triangle-list",
+      usage: "static",
+    };
+  });
+}
+
+function validateLodDescriptors(levels: readonly { minDistance: number; targetRatio: number }[]): void {
+  let previousRatio = 1;
+  let previousDistance = 0;
+  levels.forEach((level, index) => {
+    if (!Number.isFinite(level.targetRatio) || level.targetRatio <= 0 || level.targetRatio >= 1) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_RATIO_INVALID", `MeshBuilder lodLevels[${index}].ratio must be finite, greater than 0, and less than 1.`);
+    }
+    if (level.targetRatio >= previousRatio) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_RATIO_ORDER_INVALID", `MeshBuilder lodLevels[${index}].ratio must be strictly decreasing.`);
+    }
+    if (!Number.isFinite(level.minDistance) || level.minDistance <= 0) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_DISTANCE_INVALID", `MeshBuilder lodLevels[${index}].minDistance must be finite and positive.`);
+    }
+    if (level.minDistance <= previousDistance) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_DISTANCE_ORDER_INVALID", `MeshBuilder lodLevels[${index}].minDistance must be strictly increasing.`);
+    }
+    previousRatio = level.targetRatio;
+    previousDistance = level.minDistance;
+  });
+}
 
 /** Deterministic vertex-clustering decimation for compile-time LOD data. */
 export function decimateMeshPart(part: IMeshBuilderPart, targetRatio: number): IMeshBuilderPart {

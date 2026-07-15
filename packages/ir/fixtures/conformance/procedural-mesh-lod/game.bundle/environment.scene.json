@@ -1,0 +1,64 @@
+{
+  "bookmarks": [
+    {
+      "id": "lod.far",
+      "pitch": 0,
+      "position": [
+        1.25,
+        -0.5,
+        92.75
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "lod.near",
+      "pitch": 0,
+      "position": [
+        1.25,
+        -0.5,
+        40.35
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "lod.threshold.1",
+      "pitch": 0,
+      "position": [
+        1.25,
+        -0.5,
+        40.75
+      ],
+      "yaw": 180
+    },
+    {
+      "id": "lod.threshold.2",
+      "pitch": 0,
+      "position": [
+        1.25,
+        -0.5,
+        80.75
+      ],
+      "yaw": 180
+    }
+  ],
+  "instances": [],
+  "path": {
+    "id": "path.lod-proof",
+    "points": [
+      [
+        0,
+        0,
+        0
+      ],
+      [
+        0,
+        0,
+        1
+      ]
+    ],
+    "width": 1
+  },
+  "schema": "threenative.environment-scene",
+  "sourceAssets": [],
+  "version": "0.1.0"
+}

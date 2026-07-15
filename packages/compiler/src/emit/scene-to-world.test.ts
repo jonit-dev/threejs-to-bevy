@@ -154,6 +154,107 @@ test("should emit custom mesh attributes and indices", () => {
   });
 });
 
+test("should emit one generated asset per procedural LOD level with deterministic IDs and thresholds", () => {
+  const build = () => {
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({
+      geometry: MeshBuilder.create("builder.lod").sphere({ radius: 2, rings: 12, segments: 20 }).build({ collider: "mesh", lodLevels: 2 }),
+      id: "hero",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }));
+    return sceneToWorld(scene);
+  };
+
+  const first = build();
+  const second = build();
+  assert.deepEqual(first.assets.map((asset) => asset.id), ["mesh.hero", "mesh.hero.lod.1", "mesh.hero.lod.2"]);
+  assert.deepEqual(first.world.entities[0]?.components.MeshRenderer, {
+    lod: {
+      levels: [
+        { mesh: "mesh.hero.lod.1", minDistance: 40 },
+        { mesh: "mesh.hero.lod.2", minDistance: 80 },
+      ],
+    },
+    material: "mat.hero",
+    mesh: "mesh.hero",
+  });
+  assert.deepEqual(second.assets, first.assets);
+  assert.deepEqual(second.world, first.world);
+  assert.equal(first.world.entities[0]?.components.Collider?.mesh?.source, "mesh.hero");
+});
+
+test("should derive deterministic LOD IDs and default thresholds", () => {
+  const emit = () => {
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({
+      geometry: MeshBuilder.create("builder.default-policy").sphere({ radius: 1.5, rings: 12, segments: 20 }).build({
+        lodLevels: [{}, {}],
+      }),
+      id: "default-policy",
+      material: new MeshStandardMaterial({ color: "#ffffff" }),
+    }));
+    return sceneToWorld(scene);
+  };
+  const first = emit();
+  const second = emit();
+  assert.deepEqual(first.generatedLodAssetIds, ["mesh.default-policy.lod.1", "mesh.default-policy.lod.2"]);
+  assert.deepEqual(first.world.entities[0]?.components.MeshRenderer?.lod, {
+    levels: [
+      { mesh: "mesh.default-policy.lod.1", minDistance: 30 },
+      { mesh: "mesh.default-policy.lod.2", minDistance: 60 },
+    ],
+  });
+  assert.deepEqual(second, first);
+});
+
+test("should reject procedural LOD asset ID collision", () => {
+  const scene = new Scene({
+    assetRefs: [modelAsset("mesh.hero.lod.1", "assets/conflict.glb")],
+    id: "scene",
+  });
+  scene.add(new Mesh({
+    geometry: MeshBuilder.create("builder.lod.collision").sphere({ rings: 12, segments: 20 }).build({ lodLevels: 1 }),
+    id: "hero",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  }));
+
+  assert.throws(
+    () => sceneToWorld(scene),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "TN_COMPILER_GENERATED_MESH_LOD_ASSET_ID_COLLISION",
+  );
+});
+
+test("should reject model assetRef combined with procedural LOD geometry", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({
+    assetRefs: [modelAsset("model.hero", "assets/hero.glb")],
+    geometry: MeshBuilder.create("builder.lod.asset-ref").sphere({ rings: 12, segments: 20 }).build({ lodLevels: 1 }),
+    id: "hero",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  }));
+
+  assert.throws(
+    () => sceneToWorld(scene),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "TN_COMPILER_GENERATED_MESH_LOD_ASSET_REF_CONFLICT",
+  );
+});
+
+test("should reject invalid generated procedural LOD data during compiler lowering", () => {
+  const geometry = MeshBuilder.create("builder.lod.invalid").sphere({ rings: 12, segments: 20 }).build({ lodLevels: 1 });
+  (geometry.lodLevels![0]!.indices as number[])[0] = 999_999;
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({
+    geometry,
+    id: "invalid-lod",
+    material: new MeshStandardMaterial({ color: "#ffffff" }),
+  }));
+
+  assert.throws(
+    () => sceneToWorld(scene),
+    (error: unknown) => error instanceof Error && "code" in error && error.code === "TN_COMPILER_GENERATED_MESH_LOD_INVALID",
+  );
+});
+
 test("should emit CSG arch mesh binaries deterministically and validate the bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-procedural-mesh-emit-"));
   try {

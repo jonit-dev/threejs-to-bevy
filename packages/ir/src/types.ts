@@ -413,8 +413,16 @@ export interface IActiveCameraResource {
   entity: string;
 }
 
+export interface IMeshRendererLodLevelIr {
+  mesh: string;
+  minDistance: number;
+}
+
 export interface IMeshRendererComponent {
   castShadow?: boolean;
+  lod?: {
+    levels: readonly IMeshRendererLodLevelIr[];
+  };
   material: string;
   mesh: string;
   receiveShadow?: boolean;

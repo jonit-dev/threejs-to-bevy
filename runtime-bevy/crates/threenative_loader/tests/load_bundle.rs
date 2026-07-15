@@ -5,7 +5,7 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 
-use threenative_loader::{LoadError, UiIr, load_bundle};
+use threenative_loader::{LoadError, MeshRendererComponent, UiIr, load_bundle};
 
 static TEMP_BUNDLE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
@@ -134,7 +134,7 @@ fn should_load_spawner_component() {
 
     assert_eq!(spawner.mode, "wave");
     assert_eq!(spawner.prefab, "prefab.enemy");
-    assert_eq!(spawner.enabled, true);
+    assert!(spawner.enabled);
     assert_eq!(spawner.wave_size, Some(2));
     assert_eq!(spawner.max_alive, Some(4));
 
@@ -364,6 +364,55 @@ fn should_load_prefab_template_mesh_renderer_without_mesh() {
     assert_eq!(renderer.material, "mat.player");
     assert_eq!(renderer.mesh, None);
     fs::remove_dir_all(root).expect("temp bundle should be removed");
+}
+
+#[test]
+fn should_deserialize_world_without_mesh_renderer_lod() {
+    let bundle = load_bundle(cube_fixture()).expect("legacy cube fixture should load");
+    let renderer = bundle
+        .world
+        .entities
+        .iter()
+        .find_map(|entity| entity.components.mesh_renderer.as_ref())
+        .expect("legacy fixture should contain a mesh renderer");
+
+    assert!(renderer.lod.is_none());
+    let serialized = serde_json::to_value(renderer).expect("mesh renderer should serialize");
+    assert!(
+        !serialized
+            .as_object()
+            .expect("renderer object")
+            .contains_key("lod")
+    );
+}
+
+#[test]
+fn should_round_trip_optional_mesh_renderer_lod() {
+    let renderer: MeshRendererComponent = serde_json::from_str(
+        r#"{
+          "material": "mat.main",
+          "mesh": "mesh.main",
+          "lod": {
+            "levels": [
+              { "mesh": "mesh.main.lod.1", "minDistance": 10 },
+              { "mesh": "mesh.main.lod.2", "minDistance": 20.5 }
+            ]
+          }
+        }"#,
+    )
+    .expect("mesh renderer LOD should deserialize");
+
+    let lod = renderer.lod.as_ref().expect("LOD should be present");
+    assert_eq!(lod.levels.len(), 2);
+    assert_eq!(lod.levels[0].mesh, "mesh.main.lod.1");
+    assert_eq!(lod.levels[0].min_distance, 10.0);
+    assert_eq!(lod.levels[1].mesh, "mesh.main.lod.2");
+    assert_eq!(lod.levels[1].min_distance, 20.5);
+
+    let serialized = serde_json::to_value(&renderer).expect("mesh renderer LOD should serialize");
+    let round_tripped: MeshRendererComponent = serde_json::from_value(serialized)
+        .expect("serialized mesh renderer LOD should deserialize");
+    assert_eq!(round_tripped.lod.expect("round-tripped LOD"), *lod);
 }
 
 #[test]

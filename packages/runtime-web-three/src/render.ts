@@ -12,7 +12,6 @@ import { serializeRuntimeWriteAudit } from "@threenative/ir/runtimeDiagnostics";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
 import {
-  updateCameraHelpers,
   updateCameraProjection,
   viewportToPhysical,
   type ICameraViewPlan,
@@ -20,6 +19,7 @@ import {
 import {
   bindRenderTargetTextures,
   createRenderTargetRegistry,
+  prepareWebCameraDraws,
   renderTargetCameraPasses,
   type IRenderTargetRegistry,
 } from "./renderTargets.js";
@@ -46,7 +46,7 @@ import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 import { colorToThree } from "./worldMapping/colors.js";
-import { applyPresentationCameraShake } from "./presentation.js";
+import { forgetMeshLodGeometries, meshLodGeometries, traceWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
@@ -57,6 +57,7 @@ export interface IRenderResult {
   dispose(): void;
   effectLog: ISystemEffectLog;
   entityWorldPosition(id: string): [number, number, number] | undefined;
+  meshLodSnapshot(): IWebMeshLodSelection[];
   performanceSnapshot(): IWebRuntimePerformanceSnapshot;
   resetPerformanceTrace(): void;
   renderer: THREE.WebGLRenderer;
@@ -622,6 +623,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       const position = new THREE.Vector3();
       object.getWorldPosition(position);
       return vectorToTuple(position);
+    },
+    meshLodSnapshot() {
+      return mapped.meshLod === undefined ? [] : traceWebMeshLod(mapped.meshLod);
     },
     ...(overlayHost === undefined ? {} : { overlayHost }),
     renderer,
@@ -1578,6 +1582,7 @@ export function renderCameraViews(
   directionalShadowController?: DirectionalShadowController,
 ): IRenderPassRecord[] {
   const registry = renderTargets ?? mapped.renderTargets;
+  prepareWebCameraDraws(mapped, world, delta);
   if (registry !== undefined) {
     renderTargetCameraPasses(
       renderer,
@@ -1586,12 +1591,8 @@ export function renderCameraViews(
       registry,
       delta,
       (camera) => directionalShadowController?.update(camera),
+      true,
     );
-  } else {
-    updateCameraHelpers(world, mapped.objectsById, delta);
-  }
-  if (mapped.presentation !== undefined) {
-    applyPresentationCameraShake(mapped, mapped.presentation);
   }
   const renderWidth = renderer.domElement.width;
   const renderHeight = renderer.domElement.height;
@@ -1638,6 +1639,31 @@ export function renderCameraViews(
   renderer.setViewport(0, 0, renderWidth, renderHeight);
   renderer.setScissor(0, 0, renderWidth, renderHeight);
   return records;
+}
+
+export function renderComposerCameraViews(
+  renderer: THREE.WebGLRenderer,
+  mapped: IThreeWorld,
+  world: IWorldIr,
+  renderTargets: IRenderTargetRegistry | undefined,
+  renderBackbuffer: () => void,
+  delta = 0,
+  directionalShadowController?: DirectionalShadowController,
+): void {
+  prepareWebCameraDraws(mapped, world, delta);
+  if (renderTargets !== undefined) {
+    renderTargetCameraPasses(
+      renderer,
+      mapped,
+      world,
+      renderTargets,
+      delta,
+      (camera) => directionalShadowController?.update(camera),
+      true,
+    );
+  }
+  directionalShadowController?.update(mapped.camera);
+  renderBackbuffer();
 }
 
 function createRenderPipeline(
@@ -1762,20 +1788,17 @@ function createRenderPipeline(
     render: (delta = 0) => {
       contactShadows?.update(world);
       emissiveProxyLights.sync();
-      updateCameraHelpers(world, mapped.objectsById, delta);
-      if (mapped.presentation !== undefined) {
-        applyPresentationCameraShake(mapped, mapped.presentation);
-      }
-      directionalShadowController?.update(mapped.camera);
-      const previousBackground = mapped.scene.background;
-      if (composerClear?.mode === "color") {
-        mapped.scene.background = clearColorForMode(composerClear, new THREE.Color("#111318"));
-      }
-      try {
-        composer.render();
-      } finally {
-        mapped.scene.background = previousBackground;
-      }
+      renderComposerCameraViews(renderer, mapped, world, renderTargets, () => {
+        const previousBackground = mapped.scene.background;
+        if (composerClear?.mode === "color") {
+          mapped.scene.background = clearColorForMode(composerClear, new THREE.Color("#111318"));
+        }
+        try {
+          composer.render();
+        } finally {
+          mapped.scene.background = previousBackground;
+        }
+      }, delta, directionalShadowController);
     },
     requiresContinuousUpdates: webComposerRequiresContinuousUpdates({ ssgi: ssgi !== undefined }),
     setSize: (width, height) => composer.setSize(width, height),
@@ -1868,7 +1891,10 @@ export function disposeThreeWorld(mapped: IThreeWorld): void {
   const textures = new Set<THREE.Texture>();
   mapped.scene.traverse((object) => {
     if (object instanceof THREE.Mesh) {
-      geometries.add(object.geometry);
+      for (const geometry of meshLodGeometries(object)) {
+        geometries.add(geometry);
+      }
+      forgetMeshLodGeometries(object);
       for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
         materials.add(material);
       }
@@ -1900,6 +1926,8 @@ export function disposeThreeWorld(mapped: IThreeWorld): void {
   mapped.scene.clear();
   mapped.objectsById.clear();
   mapped.cameras.clear();
+  mapped.meshLod?.entries.clear();
+  mapped.meshLod?.selections.clear();
 }
 
 function webBloomPassStrength(intensity: number): number {

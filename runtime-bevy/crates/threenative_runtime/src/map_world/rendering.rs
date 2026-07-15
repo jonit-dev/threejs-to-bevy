@@ -225,10 +225,69 @@ fn point_lumens(
     intensity * THREE_COMPAT_POINT_LUMENS_PER_CANDELA
 }
 
-fn add_mesh(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
+fn resolve_mesh_handle(world: &mut World, asset: &AssetIr) -> Handle<Mesh> {
+    if let Some(handle) = world
+        .resource::<NativeMeshHandles>()
+        .0
+        .get(asset.id.as_str())
+        .cloned()
+    {
+        return handle;
+    }
     let mut mesh = scene_mesh_for_asset(asset);
     generate_tangents_if_possible(&mut mesh);
-    world.resource_mut::<Assets<Mesh>>().add(mesh)
+    let handle = world.resource_mut::<Assets<Mesh>>().add(mesh);
+    world
+        .resource_mut::<NativeMeshHandles>()
+        .0
+        .insert(asset.id.clone(), handle.clone());
+    handle
+}
+
+fn native_mesh_lod(
+    world: &mut World,
+    entity_id: &str,
+    renderer: &threenative_loader::MeshRendererComponent,
+    assets_by_id: &HashMap<&str, &AssetIr>,
+    base_mesh: &str,
+    base_handle: &Handle<Mesh>,
+) -> Result<Option<NativeMeshLod>, MapError> {
+    let Some(lod) = renderer.lod.as_ref() else {
+        return Ok(None);
+    };
+    let mut levels = Vec::with_capacity(lod.levels.len());
+    let mut previous_min_distance = 0.0f64;
+    for (level_index, level) in lod.levels.iter().enumerate() {
+        if !level.min_distance.is_finite()
+            || level.min_distance <= 0.0
+            || level.min_distance <= previous_min_distance
+        {
+            return Err(MapError::InvalidLodThreshold {
+                entity_id: entity_id.to_owned(),
+                level_index,
+                min_distance: level.min_distance,
+            });
+        }
+        let asset =
+            assets_by_id
+                .get(level.mesh.as_str())
+                .ok_or_else(|| MapError::MissingLodMesh {
+                    entity_id: entity_id.to_owned(),
+                    level_index,
+                    mesh_id: level.mesh.clone(),
+                })?;
+        levels.push(NativeMeshLodLevel {
+            mesh: level.mesh.clone(),
+            min_distance: level.min_distance,
+            handle: resolve_mesh_handle(world, asset),
+        });
+        previous_min_distance = level.min_distance;
+    }
+    Ok(Some(NativeMeshLod {
+        base_mesh: base_mesh.to_owned(),
+        base_handle: base_handle.clone(),
+        levels,
+    }))
 }
 
 pub(crate) fn scene_mesh_for_asset(asset: &AssetIr) -> Mesh {

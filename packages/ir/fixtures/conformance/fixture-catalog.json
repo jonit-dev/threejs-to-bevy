@@ -22,6 +22,46 @@
       ]
     },
     {
+      "canonicalId": "procedural-mesh-lod",
+      "owner": "ir-contract",
+      "sourceExample": "procedural-mesh-lod",
+      "regenerateCommand": "pnpm --filter @threenative/sdk build && pnpm --filter @threenative/compiler build && node scripts/generate-procedural-mesh-lod-fixture.mjs",
+      "canonicalArtifactGate": "generated-mesh-lod",
+      "ownerDocs": "docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md",
+      "aggregateGate": "verify:generated-mesh-lod",
+      "bundlePath": "packages/ir/fixtures/conformance/procedural-mesh-lod/game.bundle",
+      "promotedCapabilities": [
+        "asset:mesh.generated",
+        "rendering:mesh.lod.generated"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/generated-mesh-lod/verification-report.json",
+        "tools/verify/artifacts/generated-mesh-lod/contact-sheet.svg"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/sdk", "build"],
+          ["pnpm", "--filter", "@threenative/compiler", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/cli", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/generatedMeshLodGate.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Generated procedural scene-mesh LOD selection and cross-adapter visual gate.",
+        "owner": "packages/ir procedural-mesh-lod fixture and tools/verify generated mesh LOD gate",
+        "profile": "release",
+        "protects": "Compiler-emitted generated mesh LOD variants, exact threshold selection, real web/native mesh swaps, and near/threshold/far silhouette evidence.",
+        "reason": "A catalog-owned fixture and paired runtime captures prevent trace-only promotion or adapter-specific generated mesh LOD selection drift.",
+        "release": {
+          "enrolled": true,
+          "name": "verify generated mesh LOD",
+          "timingCategory": "visual-native"
+        }
+      }
+    },
+    {
       "canonicalId": "shadow-cascade-stability",
       "owner": "ir-contract",
       "sourceExample": "shadow-cascade-stability",

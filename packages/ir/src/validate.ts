@@ -1157,7 +1157,8 @@ function validateMeshRendererReferences(
   diagnostics: IIrDiagnostic[],
 ): void {
   const materialIds = new Set((materials?.materials ?? []).map((material) => material.id));
-  const assetIds = new Set((assets?.assets ?? []).map((asset) => asset.id));
+  const assetsById = new Map((assets?.assets ?? []).map((asset) => [asset.id, asset]));
+  const assetIds = new Set(assetsById.keys());
   world.entities.forEach((entity, entityIndex) => {
     const renderer = entity.components.MeshRenderer;
     if (renderer === undefined) {
@@ -1187,6 +1188,159 @@ function validateMeshRendererReferences(
         severity: "error",
         suggestion: "Add the mesh to assets.manifest.json or update the MeshRenderer mesh reference.",
         value: renderer.mesh,
+      });
+    }
+    validateMeshRendererLod(renderer, assetsById, `${path}/entities/${entityIndex}/components/MeshRenderer/lod`, entity.id, diagnostics);
+  });
+}
+
+function validateMeshRendererLod(
+  renderer: IWorldEntity["components"]["MeshRenderer"],
+  assetsById: ReadonlyMap<string, IAssetsManifest["assets"][number]>,
+  path: string,
+  entityId: string,
+  diagnostics: IIrDiagnostic[],
+): void {
+  const lod = renderer?.lod as unknown;
+  if (lod === undefined) {
+    return;
+  }
+  if (!isRecord(lod)) {
+    diagnostics.push({
+      code: "TN_IR_MESH_RENDERER_LOD_INVALID",
+      message: `MeshRenderer LOD for entity '${entityId}' must be an object.`,
+      path,
+      severity: "error",
+      suggestion: "Set lod to { levels: [...] } or omit it.",
+    });
+    return;
+  }
+  validateUnsupportedFields(diagnostics, lod, ["levels"], (key) => ({
+    code: "TN_IR_MESH_RENDERER_LOD_FIELD_UNSUPPORTED",
+    message: `MeshRenderer LOD for entity '${entityId}' uses unsupported field '${key}'.`,
+    path: `${path}/${key}`,
+    severity: "error",
+    suggestion: "Remove the unsupported field; MeshRenderer.lod supports only levels.",
+  }));
+  if (!Array.isArray(lod.levels)) {
+    diagnostics.push({
+      code: "TN_IR_MESH_RENDERER_LOD_LEVELS_INVALID",
+      message: `MeshRenderer LOD levels for entity '${entityId}' must be an array containing 1 to 4 entries.`,
+      path: `${path}/levels`,
+      severity: "error",
+      suggestion: "Provide 1 to 4 ordered LOD level objects.",
+    });
+    return;
+  }
+  if (lod.levels.length < 1 || lod.levels.length > 4) {
+    diagnostics.push({
+      code: "TN_IR_MESH_RENDERER_LOD_LEVEL_COUNT_INVALID",
+      limit: 4,
+      message: `MeshRenderer LOD for entity '${entityId}' has ${lod.levels.length} levels; expected 1 to 4.`,
+      path: `${path}/levels`,
+      severity: "error",
+      suggestion: "Provide at least one and no more than four ordered LOD levels.",
+      value: lod.levels.length,
+    });
+  }
+
+  const referencedMeshes = new Set<string>();
+  let previousDistance = 0;
+  lod.levels.forEach((level, levelIndex) => {
+    const levelPath = `${path}/levels/${levelIndex}`;
+    if (!isRecord(level)) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_LEVEL_INVALID",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' must be an object.`,
+        path: levelPath,
+        severity: "error",
+        suggestion: "Use { mesh: 'mesh.id', minDistance: positiveNumber }.",
+      });
+      return;
+    }
+    validateUnsupportedFields(diagnostics, level, ["mesh", "minDistance"], (key) => ({
+      code: "TN_IR_MESH_RENDERER_LOD_LEVEL_FIELD_UNSUPPORTED",
+      message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' uses unsupported field '${key}'.`,
+      path: `${levelPath}/${key}`,
+      severity: "error",
+      suggestion: "Remove the unsupported field; each level supports only mesh and minDistance.",
+    }));
+
+    const distance = level.minDistance;
+    if (typeof distance !== "number" || !Number.isFinite(distance) || distance <= 0) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_INVALID",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' must use a positive finite minDistance.`,
+        path: `${levelPath}/minDistance`,
+        severity: "error",
+        suggestion: "Set minDistance to a finite number greater than zero.",
+        value: String(distance),
+      });
+    } else {
+      if (levelIndex > 0 && distance <= previousDistance) {
+        diagnostics.push({
+          code: "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_ORDER_INVALID",
+          message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' must have minDistance greater than ${previousDistance}.`,
+          path: `${levelPath}/minDistance`,
+          severity: "error",
+          suggestion: "Sort LOD levels by strictly increasing minDistance values.",
+          value: distance,
+        });
+      }
+      previousDistance = distance;
+    }
+
+    const mesh = level.mesh;
+    if (typeof mesh !== "string" || mesh.trim() === "") {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_MESH_INVALID",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' must reference a non-empty mesh asset ID.`,
+        path: `${levelPath}/mesh`,
+        severity: "error",
+        suggestion: "Set mesh to the ID of an existing mesh asset.",
+        value: String(mesh),
+      });
+      return;
+    }
+    if (mesh === renderer?.mesh) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_BASE_MESH_DUPLICATE",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' repeats base mesh '${mesh}'.`,
+        path: `${levelPath}/mesh`,
+        severity: "error",
+        suggestion: "Reference a distinct lower-detail mesh asset or remove the level.",
+        value: mesh,
+      });
+    } else if (referencedMeshes.has(mesh)) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_MESH_DUPLICATE",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' repeats mesh '${mesh}'.`,
+        path: `${levelPath}/mesh`,
+        severity: "error",
+        suggestion: "Reference each LOD mesh asset exactly once.",
+        value: mesh,
+      });
+    }
+    referencedMeshes.add(mesh);
+
+    const asset = assetsById.get(mesh);
+    if (asset === undefined) {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_MESH_MISSING",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' references missing asset '${mesh}'.`,
+        path: `${levelPath}/mesh`,
+        severity: "error",
+        suggestion: "Add the mesh asset to assets.manifest.json or update the LOD mesh reference.",
+        value: mesh,
+      });
+    } else if (asset.kind !== "mesh") {
+      diagnostics.push({
+        code: "TN_IR_MESH_RENDERER_LOD_MESH_KIND_INVALID",
+        message: `MeshRenderer LOD level ${levelIndex} for entity '${entityId}' references '${mesh}' with kind '${asset.kind}', expected 'mesh'.`,
+        path: `${levelPath}/mesh`,
+        severity: "error",
+        suggestion: "Reference an asset whose kind is 'mesh'.",
+        value: mesh,
       });
     }
   });

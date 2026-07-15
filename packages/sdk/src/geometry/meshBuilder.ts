@@ -40,7 +40,10 @@ import {
   weldParts,
   type IMirrorAxis,
 } from "./meshBuilderOps.js";
-import type { CustomMeshGeometry } from "./primitives.js";
+import { buildMeshLodLevels, type IMeshBuilderLodLevelOptions } from "./meshBuilderLod.js";
+import { CustomMeshGeometry } from "./primitives.js";
+
+export type { IMeshBuilderLodLevelOptions } from "./meshBuilderLod.js";
 
 export interface IMeshBuilderPrimitiveOptions {
   segments?: number;
@@ -128,6 +131,7 @@ export interface IMeshBuilderBuildOptions {
   budget?: "hero-prop" | "standard-prop";
   collider?: "box" | "mesh";
   helper?: string;
+  lodLevels?: number | readonly IMeshBuilderLodLevelOptions[];
   seed?: number;
   storage?: "binary" | "inline";
 }
@@ -456,7 +460,23 @@ export class MeshBuilder {
   }
 
   public build(options: IMeshBuilderBuildOptions = {}): CustomMeshGeometry {
-    return buildMeshGeometry(this.id, this.parts, options);
+    const geometry = buildMeshGeometry(this.id, this.parts, options);
+    if (options.lodLevels === undefined) {
+      return geometry;
+    }
+    const levels = buildMeshLodLevels(mergeParts(this.parts), geometry, options.lodLevels);
+    return new CustomMeshGeometry({
+      attributes: geometry.attributes,
+      ...(geometry.bounds === undefined ? {} : { bounds: geometry.bounds }),
+      ...(geometry.budget === undefined ? {} : { budget: geometry.budget }),
+      ...(geometry.collider === undefined ? {} : { collider: geometry.collider }),
+      ...(geometry.generation === undefined ? {} : { generation: geometry.generation }),
+      ...(geometry.indices === undefined ? {} : { indices: geometry.indices }),
+      lodLevels: levels,
+      ...(geometry.storage === undefined ? {} : { storage: geometry.storage }),
+      ...(geometry.topology === undefined ? {} : { topology: geometry.topology }),
+      ...(geometry.usage === undefined ? {} : { usage: geometry.usage }),
+    });
   }
 
   private addPart(part: IMeshBuilderPart): this {

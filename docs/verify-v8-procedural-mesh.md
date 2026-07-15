@@ -46,7 +46,7 @@ bounds, topology, material colors, and image metrics. This gate proves static
 output parity for author-time CSG and noise operations; it does not promote
 runtime CSG, runtime deformation, generated-mesh LOD integration, chunk
 streaming, or shader-driven procedural geometry. Generated-mesh LOD remains
-tracked by [the follow-up contract PRD](PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md).
+tracked by [the completed follow-up contract PRD](PRDs/done/procedural-generated-mesh-lod-contract-2026-07-14.md).
 
 No fresh web/native capture is implied by fixture or unit-test updates alone;
 run the focused command above before making a current visual-parity claim.

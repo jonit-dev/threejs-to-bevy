@@ -1,0 +1,318 @@
+{
+  "artifacts": {
+    "artifactOwner": {
+      "kind": "aggregate"
+    },
+    "canonicalArtifactDir": "tools/verify/artifacts/generated-mesh-lod",
+    "legacyArtifactDirs": [],
+    "linkedArtifacts": {},
+    "contactSheetPath": "tools/verify/artifacts/generated-mesh-lod/contact-sheet.svg"
+  },
+  "code": "TN_VERIFY_GENERATED_MESH_LOD_OK",
+  "contract": {
+    "baseMesh": "mesh.proof.generated-mesh-lod",
+    "cameraEntity": "camera.procedural-mesh-lod",
+    "entity": "proof.generated-mesh-lod",
+    "invariant": {
+      "collider": {
+        "center": [
+          0.7192584490980856,
+          -0.48385680179722046,
+          0
+        ],
+        "kind": "box",
+        "size": [
+          4.098516898196172,
+          2.427713603594441,
+          2.66
+        ]
+      },
+      "hierarchy": null,
+      "layers": {
+        "layers": [
+          "lod-proof",
+          "world"
+        ]
+      },
+      "material": "mat.proof.generated-mesh-lod",
+      "shadows": {
+        "cast": true,
+        "receive": true
+      },
+      "transform": {
+        "position": [
+          1.25,
+          -0.5,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.3,
+          2.7,
+          3
+        ]
+      },
+      "visibility": true
+    },
+    "levels": [
+      {
+        "mesh": "mesh.proof.generated-mesh-lod.lod.1",
+        "minDistance": 40
+      },
+      {
+        "mesh": "mesh.proof.generated-mesh-lod.lod.2",
+        "minDistance": 80
+      }
+    ],
+    "payloads": [
+      {
+        "bytes": 103872,
+        "id": "mesh.proof.generated-mesh-lod",
+        "sha256": "8af7a3e8244bcd364df44ac3d1c4433f5b2c7034dda9016eeb9e6a4a1f4c2a4d",
+        "triangleCount": 3456
+      },
+      {
+        "bytes": 52188,
+        "id": "mesh.proof.generated-mesh-lod.lod.1",
+        "sha256": "169db66aa95729b23b5b41e1cfa9ace79f63d696860d31ebd82f49faee1da5dc",
+        "triangleCount": 1738
+      },
+      {
+        "bytes": 27252,
+        "id": "mesh.proof.generated-mesh-lod.lod.2",
+        "sha256": "4bc7a05dd76b7e86e8831ba8c65c21ce58b31c2b4167b2ddb7845438a0e619d3",
+        "triangleCount": 910
+      }
+    ],
+    "payloadSizes": {
+      "baseBytes": 103872,
+      "totalBytes": 183312
+    },
+    "triangleCounts": {
+      "mesh.proof.generated-mesh-lod": 3456,
+      "mesh.proof.generated-mesh-lod.lod.1": 1738,
+      "mesh.proof.generated-mesh-lod.lod.2": 910
+    }
+  },
+  "diagnostics": [],
+  "fixtureId": "procedural-mesh-lod",
+  "generatedBy": "@threenative/verify-tools generatedMeshLodGate",
+  "ok": true,
+  "schema": "threenative.verify.generated-mesh-lod",
+  "runtimeInvariants": {
+    "native": {
+      "collider": true,
+      "hierarchy": null,
+      "layers": true,
+      "material": "mat.proof.generated-mesh-lod",
+      "shadows": {
+        "cast": true,
+        "receive": true
+      },
+      "transform": {
+        "position": [
+          1.25,
+          -0.5,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.3,
+          2.7,
+          3
+        ]
+      },
+      "visibility": true
+    },
+    "web": {
+      "collider": true,
+      "hierarchy": null,
+      "layers": true,
+      "material": "mat.proof.generated-mesh-lod",
+      "shadows": {
+        "cast": true,
+        "receive": true
+      },
+      "transform": {
+        "position": [
+          1.25,
+          -0.5,
+          0.75
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ],
+        "scale": [
+          3.3,
+          2.7,
+          3
+        ]
+      },
+      "visibility": true
+    }
+  },
+  "states": [
+    {
+      "nativeBytes": 22473,
+      "nativeMetrics": {
+        "colorMae": 0.011398095097732933,
+        "nativeNonBackgroundFraction": 0.006890190972222222,
+        "silhouetteDelta": 0.006576886940181659,
+        "webNonBackgroundFraction": 0.006922743055555555
+      },
+      "nativeSelection": {
+        "entity": "proof.generated-mesh-lod",
+        "distance": 39.599998474121094,
+        "selectedMesh": "mesh.proof.generated-mesh-lod",
+        "threshold": 0
+      },
+      "state": "near",
+      "webBytes": 5527,
+      "webMetrics": {
+        "colorMae": 0.011398095097732933,
+        "nativeNonBackgroundFraction": 0.006890190972222222,
+        "silhouetteDelta": 0.006576886940181659,
+        "webNonBackgroundFraction": 0.006922743055555555
+      },
+      "webSelection": {
+        "distance": 39.6,
+        "entity": "proof.generated-mesh-lod",
+        "selectedMesh": "mesh.proof.generated-mesh-lod",
+        "threshold": 0
+      },
+      "artifacts": {
+        "nativeScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/near.native.png",
+        "nativeTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/near.native.trace.json",
+        "webScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/near.web.png",
+        "webTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/near.web.trace.json"
+      }
+    },
+    {
+      "nativeBytes": 22303,
+      "nativeMetrics": {
+        "colorMae": 0.010925156409507827,
+        "nativeNonBackgroundFraction": 0.006669921875,
+        "silhouetteDelta": 0.004698639014906081,
+        "webNonBackgroundFraction": 0.0066927083333333335
+      },
+      "nativeSelection": {
+        "entity": "proof.generated-mesh-lod",
+        "distance": 40,
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.1",
+        "threshold": 40
+      },
+      "state": "threshold-1",
+      "webBytes": 5591,
+      "webMetrics": {
+        "colorMae": 0.010925156409507827,
+        "nativeNonBackgroundFraction": 0.006669921875,
+        "silhouetteDelta": 0.004698639014906081,
+        "webNonBackgroundFraction": 0.0066927083333333335
+      },
+      "webSelection": {
+        "distance": 40,
+        "entity": "proof.generated-mesh-lod",
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.1",
+        "threshold": 40
+      },
+      "artifacts": {
+        "nativeScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/threshold-1.native.png",
+        "nativeTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/threshold-1.native.trace.json",
+        "webScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/threshold-1.web.png",
+        "webTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/threshold-1.web.trace.json"
+      }
+    },
+    {
+      "nativeBytes": 17325,
+      "nativeMetrics": {
+        "colorMae": 0.01580852964687069,
+        "nativeNonBackgroundFraction": 0.0016449652777777777,
+        "silhouetteDelta": 0.01046435578809679,
+        "webNonBackgroundFraction": 0.0016558159722222222
+      },
+      "nativeSelection": {
+        "entity": "proof.generated-mesh-lod",
+        "distance": 80,
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.2",
+        "threshold": 80
+      },
+      "state": "threshold-2",
+      "webBytes": 5100,
+      "webMetrics": {
+        "colorMae": 0.01580852964687069,
+        "nativeNonBackgroundFraction": 0.0016449652777777777,
+        "silhouetteDelta": 0.01046435578809679,
+        "webNonBackgroundFraction": 0.0016558159722222222
+      },
+      "webSelection": {
+        "distance": 80,
+        "entity": "proof.generated-mesh-lod",
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.2",
+        "threshold": 80
+      },
+      "artifacts": {
+        "nativeScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/threshold-2.native.png",
+        "nativeTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/threshold-2.native.trace.json",
+        "webScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/threshold-2.web.png",
+        "webTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/threshold-2.web.trace.json"
+      }
+    },
+    {
+      "nativeBytes": 16863,
+      "nativeMetrics": {
+        "colorMae": 0.016130651282658545,
+        "nativeNonBackgroundFraction": 0.001238064236111111,
+        "silhouetteDelta": 0.018119068162208762,
+        "webNonBackgroundFraction": 0.0012543402777777778
+      },
+      "nativeSelection": {
+        "entity": "proof.generated-mesh-lod",
+        "distance": 92,
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.2",
+        "threshold": 80
+      },
+      "state": "far",
+      "webBytes": 5000,
+      "webMetrics": {
+        "colorMae": 0.016130651282658545,
+        "nativeNonBackgroundFraction": 0.001238064236111111,
+        "silhouetteDelta": 0.018119068162208762,
+        "webNonBackgroundFraction": 0.0012543402777777778
+      },
+      "webSelection": {
+        "distance": 92,
+        "entity": "proof.generated-mesh-lod",
+        "selectedMesh": "mesh.proof.generated-mesh-lod.lod.2",
+        "threshold": 80
+      },
+      "artifacts": {
+        "nativeScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/far.native.png",
+        "nativeTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/far.native.trace.json",
+        "webScreenshotPath": "tools/verify/artifacts/generated-mesh-lod/screenshots/far.web.png",
+        "webTracePath": "tools/verify/artifacts/generated-mesh-lod/traces/far.web.trace.json"
+      }
+    }
+  ],
+  "status": "pass",
+  "thresholds": {
+    "maxColorMae": 0.05,
+    "maxDistanceDelta": 0.02,
+    "maxSilhouetteDelta": 0.05,
+    "minNonBackgroundFraction": 0.001,
+    "source": "2026-07-14 procedural-mesh-lod simple-lit web/native measured envelope"
+  },
+  "version": "0.1.0"
+}

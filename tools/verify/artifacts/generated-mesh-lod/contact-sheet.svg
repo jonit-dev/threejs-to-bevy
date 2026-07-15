@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1370" height="1590" viewBox="0 0 1370 1590"><rect width="100%" height="100%" fill="#111318"/><text x="30" y="35" fill="#fff">near: web / native, silhouette=0.0066, color=0.0114</text>
+<image x="30" y="50" width="640" height="360" href="screenshots/near.web.png"/>
+<image x="700" y="50" width="640" height="360" href="screenshots/near.native.png"/>
+<text x="30" y="425" fill="#fff">threshold-1: web / native, silhouette=0.0047, color=0.0109</text>
+<image x="30" y="440" width="640" height="360" href="screenshots/threshold-1.web.png"/>
+<image x="700" y="440" width="640" height="360" href="screenshots/threshold-1.native.png"/>
+<text x="30" y="815" fill="#fff">threshold-2: web / native, silhouette=0.0105, color=0.0158</text>
+<image x="30" y="830" width="640" height="360" href="screenshots/threshold-2.web.png"/>
+<image x="700" y="830" width="640" height="360" href="screenshots/threshold-2.native.png"/>
+<text x="30" y="1205" fill="#fff">far: web / native, silhouette=0.0181, color=0.0161</text>
+<image x="30" y="1220" width="640" height="360" href="screenshots/far.web.png"/>
+<image x="700" y="1220" width="640" height="360" href="screenshots/far.native.png"/></svg>

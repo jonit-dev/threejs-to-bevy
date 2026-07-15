@@ -117,5 +117,5 @@ Generated-mesh LOD authoring is still deferred contract work. Do not pass an
 invented `lodLevels` option or script runtime mesh swaps. The decimator alone
 does not establish bundle ownership or adapter selection semantics; complete
 the optional IR/compiler/runtime contract described in
-[`procedural-generated-mesh-lod-contract-2026-07-14.md`](../PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md)
+[`procedural-generated-mesh-lod-contract-2026-07-14.md`](../PRDs/done/procedural-generated-mesh-lod-contract-2026-07-14.md)
 before documenting generated LOD levels as portable.

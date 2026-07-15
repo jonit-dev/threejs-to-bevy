@@ -21,6 +21,7 @@ export { compareInteractionParity, validateInteractionResidualEvidence, type IIn
 export { runContactShadowGate, validateContactShadowEvidence, type ContactShadowGateResult } from "./contactShadowsGate.js";
 export { runVolumetricsGate, validateVolumetricsEvidence } from "./volumetricsGate.js";
 export { runSsgiGate, validateSsgiEvidence } from "./ssgiGate.js";
+export { runGeneratedMeshLodGate, validateGeneratedMeshLodEvidence, type GeneratedMeshLodContract, type GeneratedMeshLodStateEvidence } from "./generatedMeshLodGate.js";
 export { runBakedGiGate } from "./bakedGiGate.js";
 export { runLightingShowcaseGate, validateLightingShowcaseEvidence, type LightingShowcaseMetrics } from "./lightingShowcaseGate.js";
 export { runLegacyScriptAlias, resolveScriptAlias, formatDeprecationDiagnostic, listDeprecatedScriptAliases, isRegisteredGate, SCRIPT_ALIASES } from "./legacyAliases.js";

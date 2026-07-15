@@ -2415,6 +2415,9 @@ fn component_names(entity: &WorldEntity) -> Vec<String> {
     if entity.components.mesh_renderer.is_some() {
         names.push("MeshRenderer".to_owned());
     }
+    if entity.components.render_layers.is_some() {
+        names.push("RenderLayers".to_owned());
+    }
     if entity.components.rigid_body.is_some() {
         names.push("RigidBody".to_owned());
     }

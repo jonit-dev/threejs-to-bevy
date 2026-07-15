@@ -21,13 +21,20 @@ Current support:
   compiler still emits ordinary generated custom-mesh payloads, and optional
   box/mesh collider hints lower to existing Collider components without
   overriding explicit physics. Registry-derived conformance now covers pine,
-  coherent-noise bush, and CSG arch payloads. Runtime CSG remains unsupported,
-  and generated-mesh LOD selection remains deferred to
-  `docs/PRDs/procedural-generated-mesh-lod-contract-2026-07-14.md`. The focused
-  web/native gate promotes the compile-time CSG output with `0.9987` silhouette
-  overlap and `0.0106` visible-surface color delta. Its structured physics
-  traces also prove a capsule grounded on the CSG arch mesh collider and a
-  dropped body resting on the bush's generated box collider in both adapters.
+  coherent-noise bush, and CSG arch payloads. Generated scene meshes may also
+  author one to four compile-time LOD variants: the compiler emits deterministic
+  `.lod.N` custom-mesh assets, while web swaps the installed geometry and native
+  swaps the real `Handle<Mesh>` at the same exact distance thresholds. The
+  catalog-owned `pnpm verify:focused verify:generated-mesh-lod` gate proves base,
+  both threshold equalities, and far selection with paired rendered captures,
+  actual-handle traces, invariant renderer state, triangle counts
+  `3456 > 1738 > 910`, silhouette delta at most `0.0182`, and color MAE at most
+  `0.0162`. The focused CSG proof separately records `0.9987` silhouette overlap
+  and `0.0106` visible-surface color delta; its physics traces prove a capsule
+  grounded on the CSG arch mesh collider and a dropped body resting on the
+  bush's generated box collider in both adapters. Runtime CSG, runtime mesh
+  generation/deformation, environment HLOD/fades/impostors, and geometry
+  streaming remain outside this generated scene-mesh LOD claim.
 - Render-look profiles, screenshot proof, color parity, lighting tone, and
   visual performance gates.
 - `tn look list` and `tn look apply <profile>` expose five curated scaffold

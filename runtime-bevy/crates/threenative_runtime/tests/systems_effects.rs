@@ -344,6 +344,12 @@ fn systems_effects_should_merge_partial_mesh_renderer_patches() {
     bundle.world.entities[0].components.mesh_renderer =
         Some(threenative_loader::MeshRendererComponent {
             cast_shadow: Some(true),
+            lod: Some(threenative_loader::MeshRendererLodIr {
+                levels: vec![threenative_loader::MeshRendererLodLevelIr {
+                    mesh: "mesh.player.lod.1".to_owned(),
+                    min_distance: 10.0,
+                }],
+            }),
             mesh: Some("mesh.player".to_owned()),
             material: "mat.player".to_owned(),
             receive_shadow: Some(true),
@@ -377,6 +383,14 @@ fn systems_effects_should_merge_partial_mesh_renderer_patches() {
     assert_eq!(renderer.material, "mat.player");
     assert_eq!(renderer.mesh.as_deref(), Some("mesh.player"));
     assert_eq!(renderer.visible, Some(false));
+    assert_eq!(
+        renderer
+            .lod
+            .as_ref()
+            .and_then(|lod| lod.levels.first())
+            .map(|level| (level.mesh.as_str(), level.min_distance)),
+        Some(("mesh.player.lod.1", 10.0)),
+    );
 }
 
 #[test]

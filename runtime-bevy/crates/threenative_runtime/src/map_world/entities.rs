@@ -111,48 +111,48 @@ fn spawn_entity(
                 material_id: renderer.material.clone(),
             })?;
         let asset_server = world.get_resource::<AssetServer>().cloned();
-        if let Some(scene_path) = model_scene_path(asset) {
-            if let Some(asset_server) = asset_server.as_ref() {
-                let scene =
-                    asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
-                let playback = animation_playback(asset);
-                let scene_binding = playback.as_ref().and_then(|playback| {
-                    world.contains_resource::<Assets<AnimationClip>>().then(|| {
-                        NativeAnimationSceneBinding {
-                            asset: asset.id.clone(),
-                            clip_speeds: animation_clip_speeds(asset),
-                            gltf: asset_server.load(scene_path.clone()),
-                            clip: asset_server.load(
-                                GltfAssetLabel::Animation(animation_clip_index(asset, playback))
-                                    .from_asset(scene_path.clone()),
-                            ),
-                            loop_: playback.loop_,
-                            speed: playback.speed,
-                            source_clip: playback.source_clip.clone(),
-                        }
-                    })
-                });
-                let mut spawned = world.spawn(SceneBundle {
-                    scene,
-                    transform,
-                    visibility: map_visibility(entity),
-                    ..Default::default()
-                });
-                spawned.insert((stable_id, name));
-                insert_shadow_markers(&mut spawned, renderer);
-                if let Some(layers) = entity.components.render_layers.as_ref() {
-                    spawned.insert(render_layers_for_names(layer_map, &layers.layers));
-                }
-                if let Some(binding) = scene_binding {
-                    spawned.insert(binding);
-                }
-                if let Some(playback) = playback {
-                    spawned.insert(playback);
-                }
-                return Ok(spawned.id());
+        if let Some(scene_path) = model_scene_path(asset)
+            && let Some(asset_server) = asset_server.as_ref()
+        {
+            let scene = asset_server.load(GltfAssetLabel::Scene(0).from_asset(scene_path.clone()));
+            let playback = animation_playback(asset);
+            let scene_binding = playback.as_ref().and_then(|playback| {
+                world.contains_resource::<Assets<AnimationClip>>().then(|| {
+                    NativeAnimationSceneBinding {
+                        asset: asset.id.clone(),
+                        clip_speeds: animation_clip_speeds(asset),
+                        gltf: asset_server.load(scene_path.clone()),
+                        clip: asset_server.load(
+                            GltfAssetLabel::Animation(animation_clip_index(asset, playback))
+                                .from_asset(scene_path.clone()),
+                        ),
+                        loop_: playback.loop_,
+                        speed: playback.speed,
+                        source_clip: playback.source_clip.clone(),
+                    }
+                })
+            });
+            let mut spawned = world.spawn(SceneBundle {
+                scene,
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            });
+            spawned.insert((stable_id, name));
+            insert_shadow_markers(&mut spawned, renderer);
+            if let Some(layers) = entity.components.render_layers.as_ref() {
+                spawned.insert(render_layers_for_names(layer_map, &layers.layers));
             }
+            if let Some(binding) = scene_binding {
+                spawned.insert(binding);
+            }
+            if let Some(playback) = playback {
+                spawned.insert(playback);
+            }
+            return Ok(spawned.id());
         }
-        let mesh = add_mesh(world, asset);
+        let mesh = resolve_mesh_handle(world, asset);
+        let mesh_lod = native_mesh_lod(world, &entity.id, renderer, assets_by_id, mesh_id, &mesh)?;
         let policy = material_policy(material);
         if material.kind == "shader" {
             let material_handle = add_portable_shader_material(
@@ -176,6 +176,9 @@ fn spawn_entity(
             let spawned_id = spawned.id();
             spawned.insert((stable_id, name));
             spawned.insert(policy);
+            if let Some(mesh_lod) = mesh_lod {
+                spawned.insert(mesh_lod);
+            }
             if let Some(instance) = shader_material_instance(material) {
                 spawned.insert(instance);
             }
@@ -203,48 +206,54 @@ fn spawn_entity(
             .0
             .entry(material.id.clone())
             .or_insert_with(|| material_handle.clone());
-        let mut spawned = world.spawn(PbrBundle {
-            mesh: mesh.clone(),
-            material: material_handle,
-            transform,
-            visibility: map_visibility(entity),
-            ..Default::default()
-        });
-        let spawned_id = spawned.id();
-        spawned.insert((stable_id, name));
-        spawned.insert(policy);
-        if let Some(instance) = shader_material_instance(material) {
-            spawned.insert(instance);
-        }
-        if let Some(policy) = emissive_bloom_policy(material) {
+        let spawned_id = {
+            let mut spawned = world.spawn(PbrBundle {
+                mesh: mesh.clone(),
+                material: material_handle,
+                transform,
+                visibility: map_visibility(entity),
+                ..Default::default()
+            });
+            spawned.insert((stable_id, name));
             spawned.insert(policy);
-        }
-        insert_shadow_markers(&mut spawned, renderer);
-        if let Some(layers) = entity.components.render_layers.as_ref() {
-            spawned.insert(render_layers_for_names(layer_map, &layers.layers));
-        }
-        if let Some(playback) = animation_playback(asset) {
-            spawned.insert(playback);
-        }
-        drop(spawned);
+            if let Some(mesh_lod) = mesh_lod.as_ref() {
+                spawned.insert(mesh_lod.clone());
+            }
+            if let Some(instance) = shader_material_instance(material) {
+                spawned.insert(instance);
+            }
+            if let Some(policy) = emissive_bloom_policy(material) {
+                spawned.insert(policy);
+            }
+            insert_shadow_markers(&mut spawned, renderer);
+            if let Some(layers) = entity.components.render_layers.as_ref() {
+                spawned.insert(render_layers_for_names(layer_map, &layers.layers));
+            }
+            if let Some(playback) = animation_playback(asset) {
+                spawned.insert(playback);
+            }
+            spawned.id()
+        };
         if uses_emissive_marker_mask(material)
             && world.contains_resource::<NativeEmissiveMarkerMask>()
         {
             let mask_material = add_emissive_mask_material(world);
-            let proxy = world
-                .spawn(PbrBundle {
-                    mesh,
-                    material: mask_material,
-                    visibility: Visibility::Inherited,
-                    ..Default::default()
-                })
-                .insert((
-                    Name::new(format!("{}.emissive-mask", entity.id)),
-                    RenderLayers::layer(THREE_COMPAT_EMISSIVE_MASK_LAYER),
-                    NotShadowCaster,
-                    NotShadowReceiver,
-                ))
-                .id();
+            let mut proxy = world.spawn(PbrBundle {
+                mesh,
+                material: mask_material,
+                visibility: Visibility::Inherited,
+                ..Default::default()
+            });
+            proxy.insert((
+                Name::new(format!("{}.emissive-mask", entity.id)),
+                RenderLayers::layer(THREE_COMPAT_EMISSIVE_MASK_LAYER),
+                NotShadowCaster,
+                NotShadowReceiver,
+            ));
+            if let Some(mesh_lod) = mesh_lod {
+                proxy.insert(mesh_lod);
+            }
+            let proxy = proxy.id();
             world.entity_mut(spawned_id).push_children(&[proxy]);
         }
         return Ok(spawned_id);

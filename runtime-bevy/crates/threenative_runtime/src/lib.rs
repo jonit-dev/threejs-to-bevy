@@ -35,6 +35,7 @@ pub mod input_ui_polish;
 pub mod interactions;
 pub mod kinematic_mover;
 pub mod map_world;
+pub mod mesh_lod;
 pub mod mesh_bounds;
 pub mod motion_blur_postprocess;
 pub mod native_ssr;
@@ -404,6 +405,11 @@ pub fn app_from_bundle_with_options(
             map_world::bind_native_animation_players,
             map_world::animate_native_stylized_motion,
         ),
+    );
+    app.add_systems(
+        PostUpdate,
+        mesh_lod::select_native_mesh_lod
+            .after(bevy::transform::TransformSystem::TransformPropagate),
     );
     if has_scripts {
         app.insert_resource(systems_host::NativeResourceObservationState {

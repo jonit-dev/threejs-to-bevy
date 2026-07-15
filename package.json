@@ -11,6 +11,7 @@
     "check:docs": "pnpm build:verify-tools && node tools/verify/dist/cli/check-docs.js",
     "check:source-size": "node scripts/check-source-size.mjs",
     "check:names": "node scripts/check-current-names.mjs",
+    "check:rust": "node scripts/check-rust-quality.mjs",
     "lint": "pnpm -r --if-present lint",
     "test": "node scripts/run-root-tests.mjs",
     "test:color-parity": "pnpm --filter @threenative/cli build && node scripts/check-color-parity-contract.mjs && node --test scripts/check-color-parity-contract.test.mjs scripts/verify-v8-color-parity.test.mjs",

@@ -1,0 +1,42 @@
+{
+  "entry": {
+    "environmentScene": "environment.scene.json",
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  },
+  "name": "threenative-game",
+  "requiredCapabilities": {
+    "asset": [
+      "mesh.generated"
+    ],
+    "ecs": [
+      "resources"
+    ],
+    "environment": [
+      "camera-bookmarks",
+      "path",
+      "scene"
+    ],
+    "physics": [
+      "collider.box"
+    ],
+    "rendering": [
+      "camera.active",
+      "camera.perspective",
+      "light.ambient",
+      "light.directional",
+      "material.emissive",
+      "material.standard",
+      "mesh-renderer",
+      "mesh-renderer.shadows",
+      "mesh.primitive.custom",
+      "render-layers"
+    ]
+  },
+  "schema": "threenative.bundle",
+  "version": "0.1.0"
+}

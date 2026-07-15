@@ -25,6 +25,49 @@ test("should build a deterministic mushroom mesh from primitives", () => {
   assert.deepEqual(second.generation, first.generation);
 });
 
+test("should normalize deterministic procedural LOD shorthand and descriptors", () => {
+  const shorthand = MeshBuilder.create("prop.lod.defaults")
+    .sphere({ radius: 2, rings: 12, segments: 20 })
+    .build({ lodLevels: 2 });
+
+  assert.deepEqual(shorthand.lodLevels?.map((level) => ({ minDistance: level.minDistance, targetRatio: level.targetRatio })), [
+    { minDistance: 40, targetRatio: 0.5 },
+    { minDistance: 80, targetRatio: 0.25 },
+  ]);
+  assert.ok((shorthand.lodLevels?.[0]?.indices.length ?? Infinity) < (shorthand.indices?.length ?? 0));
+  assert.ok((shorthand.lodLevels?.[1]?.indices.length ?? Infinity) < (shorthand.indices?.length ?? 0));
+
+  const explicit = MeshBuilder.create("prop.lod.explicit")
+    .sphere({ rings: 12, segments: 20 })
+    .build({ lodLevels: [{ minDistance: 12, ratio: 0.6 }, { minDistance: 30, ratio: 0.3 }] });
+  assert.deepEqual(explicit.lodLevels?.map((level) => ({ minDistance: level.minDistance, targetRatio: level.targetRatio })), [
+    { minDistance: 12, targetRatio: 0.6 },
+    { minDistance: 30, targetRatio: 0.3 },
+  ]);
+});
+
+test("should reject invalid procedural LOD count ratio and distance ordering", () => {
+  assert.throws(
+    () => MeshBuilder.create("prop.lod.count").sphere().build({ lodLevels: 5 }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_MESH_BUILDER_LOD_COUNT_INVALID",
+  );
+  assert.throws(
+    () => MeshBuilder.create("prop.lod.ratios").sphere().build({ lodLevels: [{ ratio: 0.4 }, { ratio: 0.5 }] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_MESH_BUILDER_LOD_RATIO_ORDER_INVALID",
+  );
+  assert.throws(
+    () => MeshBuilder.create("prop.lod.distances").sphere().build({ lodLevels: [{ minDistance: 20 }, { minDistance: 10 }] }),
+    (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_MESH_BUILDER_LOD_DISTANCE_ORDER_INVALID",
+  );
+});
+
+test("should retain the legacy geometry shape when procedural LOD is absent", () => {
+  const geometry = MeshBuilder.create("prop.no-lod").box().build();
+  assert.equal("lodLevels" in geometry, true);
+  assert.equal(geometry.lodLevels, undefined);
+  assert.equal(JSON.stringify(geometry).includes('"lodLevels"'), false);
+});
+
 test("should reject procedural meshes over the P1 prop budget", () => {
   assert.throws(
     () => MeshBuilder.create("prop.hero.too-large").sphere({ radius: 1, rings: 90, segments: 90 }).build(),

@@ -19,6 +19,7 @@ declare global {
       debugColliderCount?: number;
       contactShadowsSnapshot?(): unknown;
       entityWorldPosition(id: string): [number, number, number] | undefined;
+      meshLodSnapshot?(): unknown;
       performanceSnapshot?(): unknown;
       resourceSnapshot?(id: string): unknown;
       resetPerformanceTrace?(): void;
@@ -58,6 +59,7 @@ window.__THREENATIVE_RUNTIME__ = {
   contactShadowsSnapshot: result.contactShadowsSnapshot,
   debugColliderCount: result.debugColliderCount,
   entityWorldPosition: result.entityWorldPosition,
+  meshLodSnapshot: result.meshLodSnapshot,
   performanceSnapshot: result.performanceSnapshot,
   resourceSnapshot: result.resourceSnapshot,
   resetPerformanceTrace: result.resetPerformanceTrace,

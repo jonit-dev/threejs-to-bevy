@@ -760,10 +760,25 @@ pub struct SpawnerDespawnPolicyComponent {
 #[serde(rename_all = "camelCase")]
 pub struct MeshRendererComponent {
     pub cast_shadow: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lod: Option<MeshRendererLodIr>,
     pub mesh: Option<String>,
     pub material: String,
     pub receive_shadow: Option<bool>,
     pub visible: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshRendererLodIr {
+    pub levels: Vec<MeshRendererLodLevelIr>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct MeshRendererLodLevelIr {
+    pub mesh: String,
+    pub min_distance: f64,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -59,6 +59,7 @@ use crate::cameras::{
     camera_order, render_layers_for_names,
 };
 use crate::motion_blur_postprocess::NativeTemporalMotionBlur;
+use crate::mesh_lod::{NativeMeshLod, NativeMeshLodLevel};
 use crate::render_targets::{
     NativeCustomProjection, NativeRenderTargetRegistry, allocate_render_targets,
     camera_render_target,
@@ -149,6 +150,9 @@ pub struct NativeMaterialPolicy {
 
 #[derive(Resource, Default)]
 pub struct NativeMaterialHandles(pub HashMap<String, Handle<StandardMaterial>>);
+
+#[derive(Resource, Default)]
+pub struct NativeMeshHandles(pub HashMap<String, Handle<Mesh>>);
 
 #[derive(Resource, Default)]
 pub struct NativeShaderMaterialHandles(pub HashMap<String, Handle<NativePortableShaderMaterial>>);
@@ -375,6 +379,18 @@ pub struct NativeAnimationServiceQueue {
 pub enum MapError {
     #[error("entity '{entity_id}' references missing mesh '{mesh_id}'")]
     MissingMesh { entity_id: String, mesh_id: String },
+    #[error("entity '{entity_id}' LOD level {level_index} references missing mesh '{mesh_id}'")]
+    MissingLodMesh {
+        entity_id: String,
+        level_index: usize,
+        mesh_id: String,
+    },
+    #[error("entity '{entity_id}' LOD level {level_index} has invalid threshold {min_distance}")]
+    InvalidLodThreshold {
+        entity_id: String,
+        level_index: usize,
+        min_distance: f64,
+    },
     #[error("entity '{entity_id}' references missing material '{material_id}'")]
     MissingMaterial {
         entity_id: String,
@@ -388,6 +404,8 @@ impl MapError {
     pub fn code(&self) -> &'static str {
         match self {
             Self::MissingMesh { .. } => "TN_BEVY_MESH_REFERENCE_MISSING",
+            Self::MissingLodMesh { .. } => "TN_BEVY_MESH_LOD_REFERENCE_MISSING",
+            Self::InvalidLodThreshold { .. } => "TN_BEVY_MESH_LOD_THRESHOLD_INVALID",
             Self::MissingMaterial { .. } => "TN_BEVY_MATERIAL_REFERENCE_MISSING",
             Self::UnsupportedUnlitMaterial { .. } => "TN_BEVY_MATERIAL_UNLIT_UNSUPPORTED",
         }
@@ -398,6 +416,23 @@ impl MapError {
             Self::MissingMesh { entity_id, .. } => {
                 format!("world.ir.json/entities/{entity_id}/components/MeshRenderer/mesh")
             }
+            Self::MissingLodMesh {
+                entity_id,
+                level_index,
+                ..
+            }
+            | Self::InvalidLodThreshold {
+                entity_id,
+                level_index,
+                ..
+            } => format!(
+                "world.ir.json/entities/{entity_id}/components/MeshRenderer/lod/levels/{level_index}/{}",
+                if matches!(self, Self::MissingLodMesh { .. }) {
+                    "mesh"
+                } else {
+                    "minDistance"
+                }
+            ),
             Self::MissingMaterial { entity_id, .. } => {
                 format!("world.ir.json/entities/{entity_id}/components/MeshRenderer/material")
             }
@@ -413,6 +448,12 @@ impl MapError {
                 format!(
                     "Add mesh asset '{mesh_id}' to assets.manifest.json or update the MeshRenderer mesh reference."
                 )
+            }
+            Self::MissingLodMesh { mesh_id, .. } => format!(
+                "Add mesh asset '{mesh_id}' to assets.manifest.json or update the MeshRenderer LOD mesh reference."
+            ),
+            Self::InvalidLodThreshold { .. } => {
+                "Use a finite positive LOD minDistance in strictly increasing order.".to_owned()
             }
             Self::MissingMaterial { material_id, .. } => {
                 format!(
@@ -565,6 +606,7 @@ pub fn prepare_world_entity_spawn_context<'a>(
     bundle: &'a LoadedBundle,
 ) -> NativeWorldEntitySpawnContext<'a> {
     ensure_asset_resources(world);
+    world.init_resource::<NativeMeshHandles>();
     apply_runtime_config(world, bundle.runtime_config.as_ref());
     let camera_atmosphere = bundle
         .environment_scene
@@ -1491,11 +1533,16 @@ include!("map_world/rendering.rs");
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
+    use bevy::prelude::{App, Assets, Mesh};
     use image::{Rgba, RgbaImage};
+    use threenative_loader::AssetIr;
 
     use super::{
-        Lcg, MapError, RuntimeConfigIr, SampledImage, StylizedSourceGroundMaps,
-        ambient_occlusion_intensity_approximation,
+        Lcg, MapError, NativeMeshHandles, RuntimeConfigIr, SampledImage,
+        StylizedSourceGroundMaps, ambient_occlusion_intensity_approximation,
+        native_mesh_lod, resolve_mesh_handle,
     };
 
     #[test]
@@ -1606,5 +1653,128 @@ mod tests {
             "materials.ir.json/materials/mat.backdrop/kind"
         );
         assert!(error.suggestion().contains("freeze-gate"));
+    }
+
+    #[test]
+    fn mesh_registry_should_resolve_each_asset_id_once() {
+        let mut app = App::new();
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<NativeMeshHandles>();
+        let base: AssetIr = serde_json::from_value(serde_json::json!({
+            "id": "mesh.hero",
+            "kind": "mesh",
+            "format": "generated",
+            "primitive": "box",
+            "size": [1, 1, 1]
+        }))
+        .expect("base mesh asset should deserialize");
+        let variant_one: AssetIr = serde_json::from_value(serde_json::json!({
+            "id": "mesh.hero.lod.1",
+            "kind": "mesh",
+            "format": "generated",
+            "primitive": "box",
+            "size": [0.5, 0.5, 0.5]
+        }))
+        .expect("LOD1 mesh asset should deserialize");
+        let variant_two: AssetIr = serde_json::from_value(serde_json::json!({
+            "id": "mesh.hero.lod.2",
+            "kind": "mesh",
+            "format": "generated",
+            "primitive": "box",
+            "size": [0.25, 0.25, 0.25]
+        }))
+        .expect("LOD2 mesh asset should deserialize");
+        let renderer = serde_json::from_value(serde_json::json!({
+            "material": "mat.hero",
+            "mesh": "mesh.hero",
+            "lod": { "levels": [
+                { "mesh": "mesh.hero.lod.1", "minDistance": 10.0000000001 },
+                { "mesh": "mesh.hero.lod.2", "minDistance": 20.0000000002 }
+            ] }
+        }))
+        .expect("LOD renderer should deserialize");
+        let assets_by_id = HashMap::from([
+            (base.id.as_str(), &base),
+            (variant_one.id.as_str(), &variant_one),
+            (variant_two.id.as_str(), &variant_two),
+        ]);
+
+        let first_base = resolve_mesh_handle(app.world_mut(), &base);
+        let second_base = resolve_mesh_handle(app.world_mut(), &base);
+        let mapped = native_mesh_lod(
+            app.world_mut(),
+            "hero",
+            &renderer,
+            &assets_by_id,
+            "mesh.hero",
+            &first_base,
+        )
+        .expect("LOD should map")
+        .expect("renderer should contain LOD");
+        let second_variant_one = resolve_mesh_handle(app.world_mut(), &variant_one);
+        let second_variant_two = resolve_mesh_handle(app.world_mut(), &variant_two);
+
+        assert_eq!(first_base.id(), second_base.id());
+        assert_eq!(mapped.base_handle.id(), first_base.id());
+        assert_eq!(mapped.levels.len(), 2);
+        assert_eq!(mapped.levels[0].handle.id(), second_variant_one.id());
+        assert_eq!(mapped.levels[1].handle.id(), second_variant_two.id());
+        assert_eq!(mapped.levels[0].min_distance, 10.0000000001);
+        assert_eq!(mapped.levels[1].min_distance, 20.0000000002);
+        assert_ne!(first_base.id(), mapped.levels[0].handle.id());
+        assert_ne!(mapped.levels[0].handle.id(), mapped.levels[1].handle.id());
+        assert_eq!(app.world().resource::<Assets<Mesh>>().len(), 3);
+        assert_eq!(app.world().resource::<NativeMeshHandles>().0.len(), 3);
+    }
+
+    #[test]
+    fn mesh_lod_mapping_errors_should_expose_exact_native_diagnostics() {
+        let mut app = App::new();
+        app.init_resource::<Assets<Mesh>>();
+        app.init_resource::<NativeMeshHandles>();
+        let base_handle = bevy::prelude::Handle::weak_from_u128(1);
+        let missing_renderer = serde_json::from_value(serde_json::json!({
+            "material": "mat.hero",
+            "mesh": "mesh.hero",
+            "lod": { "levels": [{ "mesh": "mesh.hero.lod.1", "minDistance": 10 }] }
+        }))
+        .expect("renderer should deserialize");
+        let missing = native_mesh_lod(
+            app.world_mut(),
+            "hero",
+            &missing_renderer,
+            &HashMap::new(),
+            "mesh.hero",
+            &base_handle,
+        )
+        .expect_err("missing LOD mesh should fail mapping");
+        assert_eq!(missing.code(), "TN_BEVY_MESH_LOD_REFERENCE_MISSING");
+        assert_eq!(
+            missing.path(),
+            "world.ir.json/entities/hero/components/MeshRenderer/lod/levels/0/mesh"
+        );
+        assert!(missing.suggestion().contains("mesh.hero.lod.1"));
+
+        let invalid_renderer = serde_json::from_value(serde_json::json!({
+            "material": "mat.hero",
+            "mesh": "mesh.hero",
+            "lod": { "levels": [{ "mesh": "mesh.hero.lod.1", "minDistance": -1 }] }
+        }))
+        .expect("renderer should deserialize");
+        let invalid = native_mesh_lod(
+            app.world_mut(),
+            "hero",
+            &invalid_renderer,
+            &HashMap::new(),
+            "mesh.hero",
+            &base_handle,
+        )
+        .expect_err("invalid threshold should fail mapping");
+        assert_eq!(invalid.code(), "TN_BEVY_MESH_LOD_THRESHOLD_INVALID");
+        assert_eq!(
+            invalid.path(),
+            "world.ir.json/entities/hero/components/MeshRenderer/lod/levels/0/minDistance"
+        );
+        assert!(invalid.suggestion().contains("strictly increasing"));
     }
 }

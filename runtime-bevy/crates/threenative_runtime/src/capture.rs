@@ -24,6 +24,7 @@ use threenative_runtime::{
     assets::{TextureAssetControlsRegistry, load_texture_asset},
     environment::apply_environment_bookmark,
     map_world::NativeStylizedMotionTimeOverride,
+    mesh_lod::{NativeMeshLodTrace, select_native_mesh_lod, trace_native_mesh_lod},
     stylized_nature::native_compatible_model_scene_path,
     systems_host::NativeGameLoopState,
     trace_report::write_pretty_json_report,
@@ -60,6 +61,10 @@ struct CaptureTransformTraceOptions {
     output_path: PathBuf,
 }
 
+struct CaptureMeshLodTraceOptions {
+    output_path: PathBuf,
+}
+
 #[derive(Debug, PartialEq)]
 struct CaptureViewportOptions {
     height: f32,
@@ -87,6 +92,12 @@ struct CaptureTransformTraceState {
     last_world_position: Option<[f32; 3]>,
     output_path: PathBuf,
     samples: Vec<CaptureTransformTraceSample>,
+}
+
+#[derive(Resource)]
+struct CaptureMeshLodTraceState {
+    output_path: PathBuf,
+    traces: Option<Vec<NativeMeshLodTrace>>,
 }
 
 #[derive(Clone, Serialize)]
@@ -144,6 +155,10 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(code) => return code,
     };
+    let mesh_lod_trace_options = match take_mesh_lod_trace_options(&mut args) {
+        Ok(options) => options,
+        Err(code) => return code,
+    };
     let viewport_options = match take_viewport_options(&mut args) {
         Ok(options) => options,
         Err(code) => return code,
@@ -154,7 +169,7 @@ fn main() -> ExitCode {
     };
     if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
-            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--ui-state <node-id> <focus|hover|selected>] [--transform-trace <entity-id> <output-json>]"
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--ui-state <node-id> <focus|hover|selected>] [--transform-trace <entity-id> <output-json>] [--mesh-lod-trace <output-json>]"
         );
         return ExitCode::from(2);
     }
@@ -305,6 +320,16 @@ fn main() -> ExitCode {
         app.add_systems(
             PostUpdate,
             record_capture_transform_trace.after(TransformSystem::TransformPropagate),
+        );
+    }
+    if let Some(options) = mesh_lod_trace_options {
+        app.insert_resource(CaptureMeshLodTraceState {
+            output_path: options.output_path,
+            traces: None,
+        });
+        app.add_systems(
+            PostUpdate,
+            record_capture_mesh_lod_trace.after(select_native_mesh_lod),
         );
     }
     app.run();
@@ -562,6 +587,7 @@ fn request_screenshot(
     mut screenshots: ResMut<ScreenshotManager>,
     mut exit: EventWriter<AppExit>,
     trace: Option<Res<CaptureTransformTraceState>>,
+    mesh_lod_trace: Option<Res<CaptureMeshLodTraceState>>,
 ) {
     *frame += 1;
     if let Ok(window) = windows.get_single() {
@@ -612,6 +638,18 @@ fn request_screenshot(
             exit.send(AppExit::error());
             return;
         }
+        if let Some(trace) = mesh_lod_trace {
+            let Some(traces) = trace.traces.as_ref() else {
+                error!("mesh LOD trace was not recorded before capture completed");
+                exit.send(AppExit::error());
+                return;
+            };
+            if let Err(error) = write_pretty_json_report(&trace.output_path, traces) {
+                error!("failed to write mesh LOD trace: {error}");
+                exit.send(AppExit::error());
+                return;
+            }
+        }
         exit.send(AppExit::Success);
     } else if *frame >= config.max_frame {
         let pending = config
@@ -627,6 +665,23 @@ fn request_screenshot(
         );
         exit.send(AppExit::error());
     }
+}
+
+fn record_capture_mesh_lod_trace(world: &mut World) {
+    let should_record = world
+        .get_resource::<CaptureMeshLodTraceState>()
+        .is_some_and(|trace| trace.traces.is_none())
+        && world.get_resource::<CaptureConfig>().is_some_and(|config| {
+            config
+                .captures
+                .iter()
+                .any(|capture| capture.requested_at_frame.is_some())
+        });
+    if !should_record {
+        return;
+    }
+    let traces = trace_native_mesh_lod(world);
+    world.resource_mut::<CaptureMeshLodTraceState>().traces = Some(traces);
 }
 
 fn write_capture_transform_trace(
@@ -760,6 +815,40 @@ mod tests {
         assert_eq!(args.len(), 5);
         assert_eq!(trace.entity_id, "motion.marker");
         assert_eq!(trace.output_path, PathBuf::from("trace.json"));
+    }
+
+    #[test]
+    fn mesh_lod_trace_options_are_removed_from_positional_capture_args() {
+        let mut args = vec![
+            "threenative_capture".to_owned(),
+            "bundle".to_owned(),
+            "camera.main".to_owned(),
+            "frame.png".to_owned(),
+            "120".to_owned(),
+            "--mesh-lod-trace".to_owned(),
+            "mesh-lod.json".to_owned(),
+        ];
+
+        let trace = take_mesh_lod_trace_options(&mut args)
+            .expect("mesh LOD trace option should parse")
+            .expect("mesh LOD trace option should exist");
+
+        assert_eq!(args.len(), 5);
+        assert_eq!(trace.output_path, PathBuf::from("mesh-lod.json"));
+    }
+
+    #[test]
+    fn mesh_lod_trace_output_serializes_missing_distance_as_null() {
+        let traces = vec![NativeMeshLodTrace {
+            entity: "lod.no-camera".to_owned(),
+            distance: None,
+            selected_mesh: "mesh.base".to_owned(),
+            threshold: 0.0,
+        }];
+
+        let value = serde_json::to_value(traces).expect("mesh LOD trace should serialize");
+        assert!(value[0]["distance"].is_null());
+        assert_eq!(value[0]["selectedMesh"], "mesh.base");
     }
 
     #[test]

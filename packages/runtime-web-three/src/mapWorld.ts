@@ -24,6 +24,14 @@ import { attachWorldHierarchy } from "./worldMapping/hierarchy.js";
 import { mapWorldTextObject } from "./worldText.js";
 import type { IPresentationRuntimeState } from "./presentation.js";
 import {
+  createWebMeshLodRuntime,
+  forgetMeshLodGeometries,
+  meshLodGeometries,
+  registerWebMeshLod,
+  unregisterWebMeshLod,
+  type IWebMeshLodRuntime,
+} from "./meshLod.js";
+import {
   advanceStylizedNatureRuntime,
   attachStylizedSourceAssets,
   createRippleWaterObject,
@@ -52,6 +60,7 @@ export interface IThreeWorld {
   cameras: Map<string, THREE.Camera>;
   diagnostics: IRuntimeDiagnostic[];
   layerAllocation: Map<string, number>;
+  meshLod?: IWebMeshLodRuntime;
   objectsById: Map<string, THREE.Object3D>;
   presentation?: IPresentationRuntimeState;
   reconcile?(world: IWorldIr): void;
@@ -98,6 +107,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
   const diagnostics: IRuntimeDiagnostic[] = [];
   const assetsById = new Map(bundle.assets.assets.map((asset) => [asset.id, asset]));
   const materialsById = new Map(bundle.materials.materials.map((material) => [material.id, material]));
+  const meshLod = createWebMeshLodRuntime();
 
   const layerAllocation = allocateRenderLayers(collectLayerNames(bundle.world), diagnostics);
   const atmosphereProvidesWorldLighting = bundle.environmentScene?.atmosphere?.active === true;
@@ -114,11 +124,13 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
       bundle.source,
       atmosphereProvidesWorldLighting,
       atmosphereExposure,
+      meshLod,
     );
     applyTransform(object, entity);
     applyVisibility(object, entity);
     applyEntityRenderLayers(object, entity, layerAllocation);
     object.userData.threeNativeEngineSignature = engineComponentSignature(entity);
+    object.userData.entityId = entity.id;
     objectsById.set(entity.id, object);
   }
 
@@ -190,6 +202,7 @@ export function mapWorld(bundle: IWebBundle): IThreeWorld {
     cameraViews,
     diagnostics,
     layerAllocation,
+    meshLod,
     objectsById,
     scene,
   };
@@ -229,6 +242,9 @@ function reconcileMappedWorld(
   for (const [id, object] of mapped.objectsById) {
     if (!entityIds.has(id)) {
       object.removeFromParent();
+      if (mapped.meshLod !== undefined) {
+        unregisterWebMeshLod(mapped.meshLod, id);
+      }
       disposeObjectResources(object);
       mapped.objectsById.delete(id);
       mapped.cameras.delete(id);
@@ -241,6 +257,9 @@ function reconcileMappedWorld(
     if (object === undefined || object.userData.threeNativeEngineSignature !== signature) {
       if (object !== undefined) {
         object.removeFromParent();
+        if (mapped.meshLod !== undefined) {
+          unregisterWebMeshLod(mapped.meshLod, entity.id);
+        }
         disposeObjectResources(object);
       }
       object = mapEntity(
@@ -251,8 +270,10 @@ function reconcileMappedWorld(
         source,
         atmosphereProvidesWorldLighting,
         atmosphereExposure,
+        mapped.meshLod,
       );
       object.userData.threeNativeEngineSignature = signature;
+      object.userData.entityId = entity.id;
       mapped.objectsById.set(entity.id, object);
       const stylizedNature = readStylizedNature(entity);
       if (stylizedNature !== undefined && object instanceof THREE.Group) {
@@ -365,7 +386,10 @@ function disposeObjectResources(root: THREE.Object3D): void {
     if (!(object instanceof THREE.Mesh)) {
       return;
     }
-    object.geometry.dispose();
+    for (const geometry of new Set(meshLodGeometries(object))) {
+      geometry.dispose();
+    }
+    forgetMeshLodGeometries(object);
     for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
       for (const value of Object.values(material)) {
         if (value instanceof THREE.Texture) {
@@ -546,6 +570,7 @@ function mapEntity(
   source?: string,
   atmosphereProvidesWorldLighting = false,
   atmosphereExposure?: number,
+  meshLod?: IWebMeshLodRuntime,
 ): THREE.Object3D {
   if (entity.components.WorldText !== undefined) {
     return mapWorldTextObject(entity.components.WorldText);
@@ -584,6 +609,21 @@ function mapEntity(
       }
       const object = new THREE.Mesh(geometry, mappedMaterial);
       object.userData.threeNativeMaterialId = material.id;
+      if (meshLod !== undefined && asset.kind === "mesh" && renderer.lod !== undefined) {
+        const levelAssets = renderer.lod.levels.map((level) => assetsById.get(level.mesh));
+        if (levelAssets.every((levelAsset): levelAsset is Extract<IAssetIr, { kind: "mesh" }> => levelAsset?.kind === "mesh")) {
+          registerWebMeshLod(meshLod, {
+            base: { geometry, mesh: renderer.mesh },
+            entity: entity.id,
+            levels: renderer.lod.levels.map((level, index) => ({
+              geometry: mapGeometry(levelAssets[index]!),
+              mesh: level.mesh,
+              minDistance: level.minDistance,
+            })),
+            object,
+          });
+        }
+      }
       applyShadowSettings(object, renderer);
       if (material.renderOrder !== undefined) {
         object.renderOrder = material.renderOrder;
@@ -894,7 +934,7 @@ function selectAnimationClip(clips: readonly THREE.AnimationClip[], playback: IA
     ?? clips[0];
 }
 
-function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
+export function mapGeometry(asset: IAssetIr): THREE.BufferGeometry {
   if (asset.kind !== "mesh") {
     return new THREE.BoxGeometry(1, 1, 1);
   }

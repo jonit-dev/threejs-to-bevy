@@ -3,6 +3,8 @@ import type { IAssetIr, IAssetsManifest, IMaterialIr, IRuntimeDiagnostic, IWorld
 
 import { updateCameraHelpers, updateCameraProjection } from "./cameras.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { updateWebMeshLod } from "./meshLod.js";
+import { applyPresentationCameraShake } from "./presentation.js";
 
 export interface IRenderTargetEntry {
   assetId: string;
@@ -16,6 +18,20 @@ export interface IRenderTargetEntry {
 export interface IRenderTargetRegistry {
   diagnostics: IRuntimeDiagnostic[];
   entries: Map<string, IRenderTargetEntry>;
+}
+
+export function prepareWebCameraDraws(
+  mapped: IThreeWorld,
+  world: IWorldIr,
+  delta = 0,
+): void {
+  updateCameraHelpers(world, mapped.objectsById, delta);
+  if (mapped.presentation !== undefined) {
+    applyPresentationCameraShake(mapped, mapped.presentation);
+  }
+  if (mapped.meshLod !== undefined) {
+    updateWebMeshLod(mapped.meshLod, mapped.cameraViews, mapped.cameras);
+  }
 }
 
 const TEXTURE_SLOTS = [
@@ -153,8 +169,11 @@ export function renderTargetCameraPasses(
   registry: IRenderTargetRegistry,
   delta = 0,
   beforeRender?: (camera: THREE.Camera) => void,
+  cameraStatePrepared = false,
 ): string[] {
-  updateCameraHelpers(world, mapped.objectsById, delta);
+  if (!cameraStatePrepared) {
+    prepareWebCameraDraws(mapped, world, delta);
+  }
   const rendered: string[] = [];
   const targetViews = mapped.cameraViews
     .filter((view) => view.targetKind === "texture" || view.targetKind === "depth")

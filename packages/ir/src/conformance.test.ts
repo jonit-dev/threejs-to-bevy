@@ -454,6 +454,18 @@ test("should expose fixture ownership metadata from the catalog", async () => {
   assert.match(renderingLights.regenerateCommand ?? "", /verify:v9:rendering-lights/);
 });
 
+test("should enroll the generated mesh LOD fixture exactly once from the catalog", async () => {
+  const catalog = await loadConformanceFixtureCatalog(resolve(packageRoot, "fixtures/conformance/fixture-catalog.json"));
+  const fixtures = catalog.fixtures.filter((fixture) => fixture.aggregateGate === "verify:generated-mesh-lod");
+
+  assert.equal(fixtures.length, 1);
+  assert.equal(fixtures[0]?.canonicalId, "procedural-mesh-lod");
+  assert.equal(fixtures[0]?.bundlePath, "packages/ir/fixtures/conformance/procedural-mesh-lod/game.bundle");
+  assert.equal(fixtures[0]?.focusedGate?.profile, "release");
+  assert.equal(fixtures[0]?.focusedGate?.release.enrolled, true);
+  assert.equal(fixtures[0]?.focusedGate?.release.timingCategory, "visual-native");
+});
+
 test("should keep conformance fixture paths rooted in packages/ir/fixtures", async () => {
   const catalog = await loadConformanceFixtureCatalog(resolve(packageRoot, "fixtures/conformance/fixture-catalog.json"));
 

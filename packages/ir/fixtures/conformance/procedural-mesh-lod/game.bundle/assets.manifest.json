@@ -1,0 +1,202 @@
+{
+  "assets": [
+    {
+      "binaryAttributes": [
+        {
+          "count": 1732,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.00.color.bin"
+        },
+        {
+          "count": 1732,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.01.normal.bin"
+        },
+        {
+          "count": 1732,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.02.position.bin"
+        },
+        {
+          "count": 1732,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 10368,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.proof.generated-mesh-lod.indices.uint16.bin"
+      },
+      "bounds": {
+        "max": [
+          2.768516898196171,
+          0.73,
+          1.33
+        ],
+        "min": [
+          -1.33,
+          -1.697713603594441,
+          -1.33
+        ]
+      },
+      "budget": {
+        "classification": "hero-prop",
+        "limit": 25000,
+        "vertexCount": 1732
+      },
+      "format": "generated",
+      "generation": {
+        "helper": "generatedMeshLodProof",
+        "id": "proof.asymmetric-key",
+        "seed": 23,
+        "source": "MeshBuilder"
+      },
+      "id": "mesh.proof.generated-mesh-lod",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    },
+    {
+      "binaryAttributes": [
+        {
+          "count": 870,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.1.00.color.bin"
+        },
+        {
+          "count": 870,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.1.01.normal.bin"
+        },
+        {
+          "count": 870,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.1.02.position.bin"
+        },
+        {
+          "count": 870,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.1.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 5214,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.1.indices.uint16.bin"
+      },
+      "bounds": {
+        "max": [
+          2.768516898196171,
+          0.73,
+          1.3264899077054553
+        ],
+        "min": [
+          -1.3264899077054553,
+          -1.697713603594441,
+          -1.3264899077054553
+        ]
+      },
+      "budget": {
+        "classification": "hero-prop",
+        "limit": 25000,
+        "vertexCount": 870
+      },
+      "format": "generated",
+      "id": "mesh.proof.generated-mesh-lod.lod.1",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    },
+    {
+      "binaryAttributes": [
+        {
+          "count": 454,
+          "format": "float32x4",
+          "itemSize": 4,
+          "name": "color",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.2.00.color.bin"
+        },
+        {
+          "count": 454,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "normal",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.2.01.normal.bin"
+        },
+        {
+          "count": 454,
+          "format": "float32x3",
+          "itemSize": 3,
+          "name": "position",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.2.02.position.bin"
+        },
+        {
+          "count": 454,
+          "format": "float32x2",
+          "itemSize": 2,
+          "name": "uv",
+          "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.2.03.uv.bin"
+        }
+      ],
+      "binaryIndices": {
+        "count": 2730,
+        "format": "uint16",
+        "path": "generated/meshes/mesh.proof.generated-mesh-lod.lod.2.indices.uint16.bin"
+      },
+      "bounds": {
+        "max": [
+          2.768516898196171,
+          0.7264899077054554,
+          1.3197390303954872
+        ],
+        "min": [
+          -1.3264899077054553,
+          -1.697713603594441,
+          -1.3197390303954872
+        ]
+      },
+      "budget": {
+        "classification": "hero-prop",
+        "limit": 25000,
+        "vertexCount": 454
+      },
+      "format": "generated",
+      "id": "mesh.proof.generated-mesh-lod.lod.2",
+      "kind": "mesh",
+      "primitive": "custom",
+      "topology": "triangle-list",
+      "usage": "static"
+    }
+  ],
+  "groups": [
+    {
+      "id": "bundle.requiredAssets",
+      "required": [
+        "mesh.proof.generated-mesh-lod",
+        "mesh.proof.generated-mesh-lod.lod.1",
+        "mesh.proof.generated-mesh-lod.lod.2"
+      ]
+    }
+  ],
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -28,6 +28,18 @@ export interface IMeshBudgetMetadata {
   vertexCount: number;
 }
 
+export interface ICustomMeshLodLevel {
+  attributes: readonly ICustomMeshAttribute[];
+  bounds: IMeshBounds;
+  budget: IMeshBudgetMetadata;
+  indices: readonly number[];
+  minDistance: number;
+  targetRatio: number;
+  storage: "binary" | "inline";
+  topology: "triangle-list";
+  usage: "static";
+}
+
 export type ICustomMeshColliderHint =
   | {
       center: Vector3Tuple;
@@ -215,6 +227,7 @@ export class CustomMeshGeometry {
   public readonly collider?: ICustomMeshColliderHint;
   public readonly generation?: IMeshGenerationMetadata;
   public readonly indices?: readonly number[];
+  public readonly lodLevels?: readonly ICustomMeshLodLevel[];
   public readonly storage?: "binary" | "inline";
   public readonly topology?: "triangle-list";
   public readonly usage?: "static";
@@ -226,6 +239,7 @@ export class CustomMeshGeometry {
     collider?: ICustomMeshColliderHint;
     generation?: IMeshGenerationMetadata;
     indices?: readonly number[];
+    lodLevels?: readonly ICustomMeshLodLevel[];
     storage?: "binary" | "inline";
     topology?: "triangle-list";
     usage?: "static";
@@ -236,9 +250,77 @@ export class CustomMeshGeometry {
     this.collider = options.collider === undefined ? undefined : normalizeColliderHint(options.collider);
     this.generation = options.generation === undefined ? undefined : { ...options.generation };
     this.indices = normalizeMeshIndices(options.indices);
+    this.lodLevels = options.lodLevels === undefined ? undefined : normalizeCustomMeshLodLevels(options.lodLevels);
     this.storage = options.storage;
     this.topology = options.topology;
     this.usage = options.usage;
+  }
+}
+
+function normalizeCustomMeshLodLevels(levels: readonly ICustomMeshLodLevel[]): readonly ICustomMeshLodLevel[] {
+  if (levels.length < 1 || levels.length > 4) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_COUNT_INVALID", "CustomMeshGeometry.lodLevels must contain between 1 and 4 levels.");
+  }
+  let previousRatio = 1;
+  let previousDistance = 0;
+  return levels.map((level, index) => {
+    if (!Number.isFinite(level.targetRatio) || level.targetRatio <= 0 || level.targetRatio >= 1) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_RATIO_INVALID", `CustomMeshGeometry.lodLevels[${index}].targetRatio must be finite, greater than 0, and less than 1.`);
+    }
+    if (level.targetRatio >= previousRatio) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_RATIO_ORDER_INVALID", `CustomMeshGeometry.lodLevels[${index}].targetRatio must be strictly less than the preceding target ratio.`);
+    }
+    if (!Number.isFinite(level.minDistance) || level.minDistance <= 0) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_DISTANCE_INVALID", `CustomMeshGeometry.lodLevels[${index}].minDistance must be finite and positive.`);
+    }
+    if (level.minDistance <= previousDistance) {
+      throw new SdkError("TN_SDK_MESH_BUILDER_LOD_DISTANCE_ORDER_INVALID", `CustomMeshGeometry.lodLevels[${index}].minDistance must be strictly greater than the preceding distance.`);
+    }
+    const attributes = normalizeMeshAttributes(level.attributes);
+    const indices = normalizeMeshIndices(level.indices);
+    const bounds = normalizeBounds(level.bounds);
+    validateMeshBudget(level.budget, attributes);
+    validateLodMeshGeometry(attributes, indices ?? [], bounds);
+    previousRatio = level.targetRatio;
+    previousDistance = level.minDistance;
+    return {
+      attributes,
+      bounds,
+      budget: { ...level.budget },
+      indices: indices ?? [],
+      minDistance: level.minDistance,
+      targetRatio: level.targetRatio,
+      storage: level.storage,
+      topology: level.topology,
+      usage: level.usage,
+    };
+  });
+}
+
+function validateLodMeshGeometry(
+  attributes: readonly ICustomMeshAttribute[],
+  indices: readonly number[],
+  bounds: IMeshBounds,
+): void {
+  const position = attributes.find((attribute) => attribute.name === "position")!;
+  const vertexCount = position.values.length / 3;
+  if (indices.some((index) => index >= vertexCount)) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_GEOMETRY_INVALID", "CustomMeshGeometry LOD indices must reference existing position vertices.");
+  }
+  const measured = [0, 1, 2].map((axis) => {
+    const values = Array.from({ length: vertexCount }, (_, vertex) => position.values[vertex * 3 + axis]!);
+    return { max: Math.max(...values), min: Math.min(...values) };
+  });
+  if (measured.some((axis, index) => axis.min !== bounds.min[index] || axis.max !== bounds.max[index])) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_GEOMETRY_INVALID", "CustomMeshGeometry LOD bounds must exactly match its position attribute.");
+  }
+}
+
+function validateMeshBudget(budget: IMeshBudgetMetadata, attributes: readonly ICustomMeshAttribute[]): void {
+  const position = attributes.find((attribute) => attribute.name === "position")!;
+  const vertexCount = position.values.length / position.itemSize;
+  if (!Number.isInteger(budget.limit) || budget.limit <= 0 || budget.vertexCount !== vertexCount || vertexCount > budget.limit) {
+    throw new SdkError("TN_SDK_MESH_BUILDER_LOD_BUDGET_INVALID", "CustomMeshGeometry LOD budget must match its position vertex count and positive limit.");
   }
 }
 

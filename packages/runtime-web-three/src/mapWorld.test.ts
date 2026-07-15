@@ -7,6 +7,8 @@ import * as THREE from "three";
 import { loadBundle } from "./loadBundle.js";
 import type { IWebBundle } from "./loadBundle.js";
 import { advanceAnimationPlayback, applyAnimationServiceEffects, hasAnimationPlayback, loadWorldModelAssets, mapWorld, preservesLoadedModelSourceMaterials, sceneStartupDiagnostics, syncTransforms, traceEmissiveBloomContributions } from "./mapWorld.js";
+import { meshLodGeometries, traceWebMeshLod, updateWebMeshLod } from "./meshLod.js";
+import { disposeThreeWorld } from "./render.js";
 
 test("model-test loaded GLB keeps authored source materials", () => {
   const model = { format: "glb", id: "model.any", kind: "model", path: "assets/any.glb" } as const;
@@ -605,6 +607,138 @@ test("mapWorld should map procedural mesh binary attributes", async () => {
   assert.equal(object.material.vertexColors, true);
   assert.equal(mapped.diagnostics.filter((diagnostic) => diagnostic.severity === "error").length, 0);
 });
+
+test("mapWorld should swap procedural geometry while preserving renderer state", () => {
+  const bundle = meshLodBundle();
+  const mapped = mapWorld(bundle);
+  const object = mapped.objectsById.get("prop.lod");
+  assert.ok(object instanceof THREE.Mesh);
+  assert.ok(mapped.meshLod !== undefined);
+  const identity = {
+    castShadow: object.castShadow,
+    layers: object.layers.mask,
+    material: object.material,
+    parent: object.parent,
+    position: object.position.clone(),
+    receiveShadow: object.receiveShadow,
+    uuid: object.uuid,
+    visible: object.visible,
+  };
+
+  updateWebMeshLod(mapped.meshLod, mapped.cameraViews, mapped.cameras);
+
+  assert.equal(object.geometry.index?.count, 3);
+  assert.equal(mapped.objectsById.get("prop.lod"), object);
+  assert.equal(object.uuid, identity.uuid);
+  assert.equal(object.material, identity.material);
+  assert.equal(object.parent, identity.parent);
+  assert.deepEqual(object.position, identity.position);
+  assert.equal(object.layers.mask, identity.layers);
+  assert.equal(object.visible, identity.visible);
+  assert.equal(object.castShadow, identity.castShadow);
+  assert.equal(object.receiveShadow, identity.receiveShadow);
+  assert.equal(object.userData.entityId, "prop.lod");
+  assert.deepEqual(traceWebMeshLod(mapped.meshLod), [{
+    distance: 12,
+    entity: "prop.lod",
+    selectedMesh: "mesh.prop.lod.1",
+    threshold: 10,
+  }]);
+});
+
+test("disposeThreeWorld should dispose every cached procedural LOD geometry once", () => {
+  const mapped = mapWorld(meshLodBundle());
+  const object = mapped.objectsById.get("prop.lod");
+  assert.ok(object instanceof THREE.Mesh);
+  const geometries = meshLodGeometries(object);
+  const disposeCounts = new Map<THREE.BufferGeometry, number>();
+  for (const geometry of geometries) {
+    geometry.dispose = () => disposeCounts.set(geometry, (disposeCounts.get(geometry) ?? 0) + 1);
+  }
+
+  disposeThreeWorld(mapped);
+
+  assert.equal(geometries.length, 3);
+  assert.deepEqual([...disposeCounts.values()], [1, 1, 1]);
+  assert.equal(mapped.meshLod?.entries.size, 0);
+});
+
+test("reconcile should dispose cached procedural LOD geometries when the entity despawns", () => {
+  const bundle = meshLodBundle();
+  const mapped = mapWorld(bundle);
+  const object = mapped.objectsById.get("prop.lod");
+  assert.ok(object instanceof THREE.Mesh);
+  const geometries = meshLodGeometries(object);
+  const disposeCounts = new Map<THREE.BufferGeometry, number>();
+  for (const geometry of geometries) {
+    geometry.dispose = () => disposeCounts.set(geometry, (disposeCounts.get(geometry) ?? 0) + 1);
+  }
+
+  mapped.reconcile?.({
+    ...bundle.world,
+    entities: bundle.world.entities.filter((entity) => entity.id !== "prop.lod"),
+  });
+
+  assert.deepEqual([...disposeCounts.values()], [1, 1, 1]);
+  assert.equal(mapped.meshLod?.entries.has("prop.lod"), false);
+  assert.equal(mapped.objectsById.has("prop.lod"), false);
+});
+
+function meshLodBundle(): IWebBundle {
+  const meshAsset = (id: string, positions: number[], indices: number[]) => ({
+    attributes: [{ itemSize: 3 as const, name: "position" as const, values: positions }],
+    format: "generated" as const,
+    id,
+    indices,
+    kind: "mesh" as const,
+    primitive: "custom" as const,
+  });
+  return {
+    assets: {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [
+        meshAsset("mesh.prop", [-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], [0, 1, 2, 0, 2, 3]),
+        meshAsset("mesh.prop.lod.1", [-1, -1, 0, 1, -1, 0, 0, 1, 0], [0, 1, 2]),
+        meshAsset("mesh.prop.lod.2", [-1, 0, 0, 1, 0, 0, 0, 0.5, 0], [0, 1, 2]),
+      ],
+    },
+    manifest: {
+      schema: "threenative.bundle",
+      version: "0.1.0",
+      name: "mesh-lod",
+      requiredCapabilities: {},
+      entry: { world: "world.ir.json" },
+      files: { assets: "assets.manifest.json", materials: "materials.ir.json", targetProfile: "target.profile.json" },
+    },
+    materials: { schema: "threenative.materials", version: "0.1.0", materials: [{ color: "#8899aa", id: "mat.main", kind: "standard" }] },
+    targetProfile: { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] },
+    world: {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "root", components: { Transform: { position: [10, 0, 0] } } },
+        {
+          id: "prop.lod",
+          components: {
+            Hierarchy: { parent: "root" },
+            MeshRenderer: {
+              castShadow: true,
+              lod: { levels: [{ mesh: "mesh.prop.lod.1", minDistance: 10 }, { mesh: "mesh.prop.lod.2", minDistance: 20 }] },
+              material: "mat.main",
+              mesh: "mesh.prop",
+              receiveShadow: false,
+              visible: true,
+            },
+            RenderLayers: { layers: ["actors"] },
+            Transform: { position: [2, 0, 0] },
+          },
+        },
+        { id: "camera.main", components: { Camera: { far: 100, kind: "perspective", near: 0.1 }, Transform: { position: [0, 0, 0] } } },
+      ],
+    },
+  };
+}
 
 test("mapWorld should attach animation playback state to model renderers", () => {
   const mapped = mapWorld({

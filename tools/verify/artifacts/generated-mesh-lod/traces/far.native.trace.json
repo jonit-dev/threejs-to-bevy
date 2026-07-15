@@ -1,0 +1,8 @@
+[
+  {
+    "entity": "proof.generated-mesh-lod",
+    "distance": 92.0,
+    "selectedMesh": "mesh.proof.generated-mesh-lod.lod.2",
+    "threshold": 80.0
+  }
+]

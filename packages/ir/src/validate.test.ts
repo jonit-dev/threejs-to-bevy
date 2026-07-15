@@ -4,9 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import type { IMeshRendererLodLevelIr } from "./index.js";
 import { IR_DOCUMENTS } from "./documents.js";
 import { writeTestBundle } from "./testFixtures.js";
 import { validateBundle } from "./validate.js";
+
+test("should export the mesh renderer LOD level contract", () => {
+  const level: IMeshRendererLodLevelIr = { mesh: "mesh.main.lod.1", minDistance: 10 };
+  assert.deepEqual(level, { mesh: "mesh.main.lod.1", minDistance: 10 });
+});
 
 test("should return diagnostics for malformed manifest shape", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-manifest-shape-"));
@@ -401,6 +407,190 @@ test("should reject mesh renderer mesh references missing from assets document",
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.find((diagnostic) => diagnostic.code === "TN_IR_MESH_RENDERER_MESH_MISSING")?.path, "world.ir.json/entities/0/components/MeshRenderer/mesh");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept ordered mesh renderer LOD levels when assets exist", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-mesh-renderer-lod-valid-"));
+  try {
+    await writeMeshRendererLodBundle(root, {
+      levels: [
+        { mesh: "mesh.main.lod.1", minDistance: 10 },
+        { mesh: "mesh.main.lod.2", minDistance: 20 },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject missing duplicate and non-mesh LOD references", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-mesh-renderer-lod-refs-"));
+  try {
+    await writeMeshRendererLodBundle(
+      root,
+      {
+        levels: [
+          { mesh: "mesh.main.lod.1", minDistance: 10 },
+          { mesh: "mesh.main.lod.1", minDistance: 20 },
+          { mesh: "mesh.missing", minDistance: 30 },
+          { mesh: "target.color", minDistance: 40 },
+        ],
+      },
+      [{
+        id: "mesh.base-cycle",
+        components: {
+          MeshRenderer: {
+            lod: { levels: [{ mesh: "mesh.main", minDistance: 5 }] },
+            material: "mat.main",
+            mesh: "mesh.main",
+          },
+        },
+      }],
+    );
+
+    const result = await validateBundle(root);
+    const lodDiagnostics = result.diagnostics.filter((diagnostic) => diagnostic.code.startsWith("TN_IR_MESH_RENDERER_LOD_"));
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      lodDiagnostics.map(({ code, path, value }) => ({ code, path, value })),
+      [
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_MESH_DUPLICATE",
+          path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels/1/mesh",
+          value: "mesh.main.lod.1",
+        },
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_MESH_MISSING",
+          path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels/2/mesh",
+          value: "mesh.missing",
+        },
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_MESH_KIND_INVALID",
+          path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels/3/mesh",
+          value: "target.color",
+        },
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_BASE_MESH_DUPLICATE",
+          path: "world.ir.json/entities/1/components/MeshRenderer/lod/levels/0/mesh",
+          value: "mesh.main",
+        },
+      ],
+    );
+    assert.equal(lodDiagnostics.every((diagnostic) => diagnostic.suggestion !== undefined), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unordered or non-finite LOD thresholds", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-mesh-renderer-lod-thresholds-"));
+  try {
+    await writeMeshRendererLodBundle(root, {
+      levels: [
+        { mesh: "mesh.main.lod.1", minDistance: 10 },
+        { mesh: "mesh.main.lod.2", minDistance: 10 },
+        { mesh: "mesh.main.lod.3", minDistance: null },
+      ],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics
+        .filter((diagnostic) => diagnostic.code.startsWith("TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_"))
+        .map(({ code, path, value }) => ({ code, path, value })),
+      [
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_ORDER_INVALID",
+          path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels/1/minDistance",
+          value: 10,
+        },
+        {
+          code: "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_INVALID",
+          path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels/2/minDistance",
+          value: "null",
+        },
+      ],
+    );
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid mesh renderer LOD shapes and counts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-mesh-renderer-lod-shape-"));
+  try {
+    await writeMeshRendererLodBundle(
+      root,
+      { levels: [] },
+      [
+        { id: "lod.not-object", components: { MeshRenderer: { lod: [], material: "mat.main", mesh: "mesh.main" } } },
+        { id: "lod.no-levels", components: { MeshRenderer: { lod: {}, material: "mat.main", mesh: "mesh.main" } } },
+        {
+          id: "lod.too-many",
+          components: {
+            MeshRenderer: {
+              lod: {
+                levels: [
+                  { mesh: "mesh.main.lod.1", minDistance: 1 },
+                  { mesh: "mesh.main.lod.2", minDistance: 2 },
+                  { mesh: "mesh.main.lod.3", minDistance: 3 },
+                  { mesh: "mesh.main.lod.4", minDistance: 4 },
+                  { mesh: "mesh.main.lod.5", minDistance: 5 },
+                ],
+              },
+              material: "mat.main",
+              mesh: "mesh.main",
+            },
+          },
+        },
+        {
+          id: "lod.invalid-levels",
+          components: {
+            MeshRenderer: {
+              lod: { levels: [null, { mesh: "", minDistance: -1 }] },
+              material: "mat.main",
+              mesh: "mesh.main",
+            },
+          },
+        },
+      ],
+    );
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.diagnostics
+        .filter((diagnostic) => [
+          "TN_IR_MESH_RENDERER_LOD_INVALID",
+          "TN_IR_MESH_RENDERER_LOD_LEVELS_INVALID",
+          "TN_IR_MESH_RENDERER_LOD_LEVEL_COUNT_INVALID",
+          "TN_IR_MESH_RENDERER_LOD_LEVEL_INVALID",
+          "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_INVALID",
+          "TN_IR_MESH_RENDERER_LOD_MESH_INVALID",
+        ].includes(diagnostic.code))
+        .map(({ code, path, value }) => ({ code, path, value })),
+      [
+        { code: "TN_IR_MESH_RENDERER_LOD_LEVEL_COUNT_INVALID", path: "world.ir.json/entities/0/components/MeshRenderer/lod/levels", value: 0 },
+        { code: "TN_IR_MESH_RENDERER_LOD_INVALID", path: "world.ir.json/entities/1/components/MeshRenderer/lod", value: undefined },
+        { code: "TN_IR_MESH_RENDERER_LOD_LEVELS_INVALID", path: "world.ir.json/entities/2/components/MeshRenderer/lod/levels", value: undefined },
+        { code: "TN_IR_MESH_RENDERER_LOD_LEVEL_COUNT_INVALID", path: "world.ir.json/entities/3/components/MeshRenderer/lod/levels", value: 5 },
+        { code: "TN_IR_MESH_RENDERER_LOD_LEVEL_INVALID", path: "world.ir.json/entities/4/components/MeshRenderer/lod/levels/0", value: undefined },
+        { code: "TN_IR_MESH_RENDERER_LOD_MIN_DISTANCE_INVALID", path: "world.ir.json/entities/4/components/MeshRenderer/lod/levels/1/minDistance", value: "-1" },
+        { code: "TN_IR_MESH_RENDERER_LOD_MESH_INVALID", path: "world.ir.json/entities/4/components/MeshRenderer/lod/levels/1/mesh", value: "" },
+      ],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -2020,6 +2210,44 @@ async function writeBundle(root: string, health: Record<string, unknown>): Promi
   await writeJson(root, "assets.manifest.json", { schema: "threenative.assets", version: "0.1.0", assets: [] });
   await writeJson(root, "materials.ir.json", { schema: "threenative.materials", version: "0.1.0", materials: [] });
   await writeJson(root, "target.profile.json", { schema: "threenative.target-profile", version: "0.1.0", targets: ["web"] });
+}
+
+async function writeMeshRendererLodBundle(root: string, lod: unknown, extraEntities: unknown[] = []): Promise<void> {
+  await writeBundle(root, { current: 100, max: 100 });
+  await writeJson(root, "world.ir.json", {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "mesh.entity",
+        components: { MeshRenderer: { lod, material: "mat.main", mesh: "mesh.main" } },
+      },
+      ...extraEntities,
+    ],
+    resources: {},
+    events: {},
+    prefabs: [],
+  });
+  await writeJson(root, "materials.ir.json", {
+    schema: "threenative.materials",
+    version: "0.1.0",
+    materials: [{ id: "mat.main", kind: "standard", color: "#ffffff" }],
+  });
+  await writeJson(root, "assets.manifest.json", {
+    schema: "threenative.assets",
+    version: "0.1.0",
+    assets: [
+      { format: "generated", id: "mesh.main", kind: "mesh", primitive: "box", size: [1, 1, 1] },
+      ...Array.from({ length: 5 }, (_, index) => ({
+        format: "generated",
+        id: `mesh.main.lod.${index + 1}`,
+        kind: "mesh",
+        primitive: "box",
+        size: [1, 1, 1],
+      })),
+      { format: "rgba8", height: 1, id: "target.color", kind: "render-target", usage: "color", width: 1 },
+    ],
+  });
 }
 
 async function writeRuntimeConfig(root: string, renderer: Record<string, unknown>): Promise<void> {

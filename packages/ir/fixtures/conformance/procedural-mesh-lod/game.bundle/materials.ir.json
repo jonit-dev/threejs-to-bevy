@@ -1,0 +1,15 @@
+{
+  "materials": [
+    {
+      "color": "#163a40",
+      "emissive": "#2fb8aa",
+      "emissiveIntensity": 0.7,
+      "id": "mat.proof.generated-mesh-lod",
+      "kind": "standard",
+      "metalness": 0.05,
+      "roughness": 0.7
+    }
+  ],
+  "schema": "threenative.materials",
+  "version": "0.1.0"
+}

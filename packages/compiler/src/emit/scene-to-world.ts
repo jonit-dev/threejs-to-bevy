@@ -1,5 +1,7 @@
 import { type IWorldIr } from "@threenative/ir";
-import type { IAssetReference, ICustomMeshColliderHint, IPhysicsDeclaration } from "@threenative/sdk";
+import { CustomMeshGeometry, SdkError, type IAssetReference, type ICustomMeshColliderHint, type ICustomMeshLodLevel, type IPhysicsDeclaration } from "@threenative/sdk";
+
+import { CompilerError } from "../errors.js";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
@@ -59,6 +61,7 @@ interface IObjectLike {
     depth?: number;
     height?: number;
     indices?: readonly number[];
+    lodLevels?: readonly ICustomMeshLodLevel[];
     innerRadius?: number;
     kind: string;
     outerRadius?: number;
@@ -100,6 +103,7 @@ interface IObjectLike {
 
 export interface ISceneEmitResult {
   assets: Array<Record<string, unknown> & { id: string }>;
+  generatedLodAssetIds: readonly string[];
   materials: Array<Record<string, unknown> & { id: string }>;
   world: IWorldIr;
 }
@@ -108,9 +112,12 @@ export function sceneToWorld(scene: IObjectLike): ISceneEmitResult {
   const entities: IWorldIr["entities"] = [];
   const assets: ISceneEmitResult["assets"] = [];
   const materials: ISceneEmitResult["materials"] = [];
+  const generatedLodAssetIds = new Set<string>();
 
   emitAssetRefs(scene.assetRefs, assets);
-  visitChildren(scene, undefined, { assets, entities, materials });
+  visitChildren(scene, undefined, { assets, entities, generatedLodAssetIds, materials });
+
+  assertNoGeneratedLodAssetIdCollisions(assets, generatedLodAssetIds);
 
   entities.sort((left, right) => left.id.localeCompare(right.id));
   assets.sort((left, right) => left.id.localeCompare(right.id));
@@ -131,6 +138,7 @@ export function sceneToWorld(scene: IObjectLike): ISceneEmitResult {
 
   return {
     assets,
+    generatedLodAssetIds: [...generatedLodAssetIds].sort((left, right) => left.localeCompare(right)),
     materials,
     world: {
       schema: "threenative.world",
@@ -163,7 +171,7 @@ function resolveActiveCameras(
 function visitChildren(
   parent: IObjectLike,
   parentId: string | undefined,
-  output: { assets: ISceneEmitResult["assets"]; entities: IWorldIr["entities"]; materials: ISceneEmitResult["materials"] },
+  output: { assets: ISceneEmitResult["assets"]; entities: IWorldIr["entities"]; generatedLodAssetIds: Set<string>; materials: ISceneEmitResult["materials"] },
 ): void {
   parent.children.forEach((child, index) => {
     const id = child.id ?? `${parentId ?? "scene"}.child.${index}`;
@@ -195,10 +203,20 @@ function visitChildren(
       const modelRef = (child.assetRefs ?? []).find((ref) => ref.kind === "model");
       const meshId = modelRef?.id ?? `mesh.${id}`;
       const materialId = `mat.${id}`;
+      if (modelRef !== undefined && child.geometry.kind === "custom" && child.geometry.lodLevels !== undefined) {
+        throw new CompilerError(
+          "TN_COMPILER_GENERATED_MESH_LOD_ASSET_REF_CONFLICT",
+          `Mesh '${id}' cannot combine model assetRef '${modelRef.id}' with procedural generated-mesh LOD levels.`,
+        );
+      }
+      const lodLevels = modelRef === undefined && child.geometry.kind === "custom"
+        ? emitGeneratedMeshLodAssets(meshId, child.geometry.lodLevels, output.assets, output.generatedLodAssetIds)
+        : undefined;
       components.MeshRenderer = {
         ...(child.castShadow === undefined ? {} : { castShadow: child.castShadow }),
         material: materialId,
         mesh: meshId,
+        ...(lodLevels === undefined ? {} : { lod: { levels: lodLevels } }),
         ...(child.receiveShadow === undefined ? {} : { receiveShadow: child.receiveShadow }),
         ...(child.visible === false ? { visible: false } : {}),
       };
@@ -293,6 +311,87 @@ function visitChildren(
     output.entities.push({ id, components });
     visitChildren(child, id, output);
   });
+}
+
+function emitGeneratedMeshLodAssets(
+  baseMeshId: string,
+  levels: readonly ICustomMeshLodLevel[] | undefined,
+  assets: ISceneEmitResult["assets"],
+  generatedLodAssetIds: Set<string>,
+): readonly { mesh: string; minDistance: number }[] | undefined {
+  if (levels === undefined) {
+    return undefined;
+  }
+  const normalizedLevels = validateGeneratedMeshLodLevels(levels);
+  return normalizedLevels.map((level, index) => {
+    const id = `${baseMeshId}.lod.${index + 1}`;
+    generatedLodAssetIds.add(id);
+    assets.push({
+      attributes: level.attributes,
+      bounds: level.bounds,
+      budget: level.budget,
+      id,
+      indices: level.indices,
+      kind: "mesh",
+      format: "generated",
+      primitive: "custom",
+      storage: level.storage,
+      topology: level.topology,
+      usage: level.usage,
+    });
+    return { mesh: id, minDistance: level.minDistance };
+  });
+}
+
+function validateGeneratedMeshLodLevels(levels: readonly ICustomMeshLodLevel[]): readonly ICustomMeshLodLevel[] {
+  try {
+    if (levels.some((level) => level.topology !== "triangle-list" || level.usage !== "static" || (level.storage !== "binary" && level.storage !== "inline"))) {
+      throw new Error("storage, topology, or usage is invalid");
+    }
+    const first = levels[0];
+    if (first === undefined) {
+      throw new Error("at least one LOD level is required");
+    }
+    const geometry = new CustomMeshGeometry({
+      attributes: first.attributes,
+      bounds: first.bounds,
+      budget: first.budget,
+      indices: first.indices,
+      lodLevels: levels,
+      storage: first.storage,
+      topology: first.topology,
+      usage: first.usage,
+    });
+    return geometry.lodLevels!;
+  } catch (error) {
+    const detail = error instanceof SdkError || error instanceof Error ? error.message : String(error);
+    throw new CompilerError(
+      "TN_COMPILER_GENERATED_MESH_LOD_INVALID",
+      `Generated mesh LOD metadata is invalid: ${detail}`,
+    );
+  }
+}
+
+function assertNoGeneratedLodAssetIdCollisions(
+  assets: readonly { id: string }[],
+  generatedLodAssetIds: ReadonlySet<string>,
+): void {
+  const counts = new Map<string, number>();
+  for (const asset of assets) {
+    counts.set(asset.id, (counts.get(asset.id) ?? 0) + 1);
+  }
+  for (const id of generatedLodAssetIds) {
+    if ((counts.get(id) ?? 0) > 1) {
+      throwGeneratedLodAssetIdCollision(id);
+    }
+  }
+}
+
+export function throwGeneratedLodAssetIdCollision(id: string): never {
+  throw new CompilerError(
+    "TN_COMPILER_GENERATED_MESH_LOD_ASSET_ID_COLLISION",
+    `Generated mesh LOD asset ID '${id}' collides with another claimed bundle asset ID. Rename the entity or conflicting asset.`,
+  );
 }
 
 function emitDerivedCollider(

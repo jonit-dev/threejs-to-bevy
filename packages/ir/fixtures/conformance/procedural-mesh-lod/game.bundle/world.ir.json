@@ -1,0 +1,163 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "far": 300,
+          "fovY": 62,
+          "kind": "perspective",
+          "layers": [
+            "lod-proof",
+            "world"
+          ],
+          "near": 0.1,
+          "priority": 0
+        },
+        "Transform": {
+          "position": [
+            1.25,
+            -0.5,
+            40.35
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.procedural-mesh-lod"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#8adad2",
+          "intensity": 1.2,
+          "kind": "ambient"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.ambient"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 2,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [
+            4,
+            7,
+            6
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.key"
+    },
+    {
+      "components": {
+        "Collider": {
+          "center": [
+            0.7192584490980856,
+            -0.48385680179722046,
+            0
+          ],
+          "kind": "box",
+          "size": [
+            4.098516898196172,
+            2.427713603594441,
+            2.66
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "lod": {
+            "levels": [
+              {
+                "mesh": "mesh.proof.generated-mesh-lod.lod.1",
+                "minDistance": 40
+              },
+              {
+                "mesh": "mesh.proof.generated-mesh-lod.lod.2",
+                "minDistance": 80
+              }
+            ]
+          },
+          "material": "mat.proof.generated-mesh-lod",
+          "mesh": "mesh.proof.generated-mesh-lod",
+          "receiveShadow": true
+        },
+        "RenderLayers": {
+          "layers": [
+            "lod-proof",
+            "world"
+          ]
+        },
+        "Transform": {
+          "position": [
+            1.25,
+            -0.5,
+            0.75
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            3.3,
+            2.7,
+            3
+          ]
+        }
+      },
+      "id": "proof.generated-mesh-lod"
+    }
+  ],
+  "events": {},
+  "prefabs": [],
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.procedural-mesh-lod"
+    }
+  },
+  "schema": "threenative.world",
+  "version": "0.1.0"
+}
