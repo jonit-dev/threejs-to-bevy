@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
 
-import { AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
+import { AUTHORING_BATCH_SCHEMA, AUTHORING_BATCH_VERSION, AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
 import { assetCommand, assetCreationStrategy, blenderMcpOutcomeCoverage, CLI_COMMAND_REGISTRY, dispatch, type IAssetCommandOptions } from "@threenative/cli";
 
 import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } from "./index.js";
@@ -438,6 +438,83 @@ test("should expose registry-backed tool names", () => {
   );
 
   assert.deepEqual(mcpOperationNames, AUTHORING_OPERATION_NAMES);
+});
+
+test("batch tool schema derives registered operation names", async () => {
+  const tools = ["authoring.batch.plan", "authoring.batch.apply"].map((name) =>
+    AUTHORING_MCP_TOOLS.find((tool) => tool.name === name),
+  );
+  const operationNames = tools.map((tool) => {
+    const properties = tool?.inputSchema?.properties as Record<string, { items?: { oneOf?: Array<{ properties?: { name?: { const?: string } } }> } }> | undefined;
+    return properties?.operations?.items?.oneOf?.map((operation) => operation.properties?.name?.const);
+  });
+
+  assert.ok(tools.every((tool) => tool !== undefined));
+  assert.deepEqual(operationNames, [[...AUTHORING_OPERATION_NAMES], [...AUTHORING_OPERATION_NAMES]]);
+
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-batch-schema-"));
+  let calls = 0;
+  try {
+    const result = await callAuthoringMcpTool({
+      arguments: {
+        id: "unknown-operation",
+        operations: [{ args: {}, name: "unknown.operation" }],
+        schema: AUTHORING_BATCH_SCHEMA,
+        version: AUTHORING_BATCH_VERSION,
+      },
+      name: "authoring.batch.plan",
+    }, {
+      allowedProjectRoots: [root],
+      execute: async () => {
+        calls += 1;
+        return { exitCode: 0, stdout: "{}\n" };
+      },
+      projectRoot: root,
+    });
+
+    assert.equal(result.isError, true);
+    assert.equal((result.content as IJsonPayload).code, "TN_MCP_ARGUMENT_INVALID");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("batch plan and apply delegate to the shared authoring core", async () => {
+  const root = await createMcpSceneProject();
+  const file = join(root, "content/scenes/arena.scene.json");
+  const batch = {
+    id: "add-batch-entity",
+    operations: [{ args: { entityId: "batch-kart", prefabId: "kart", sceneId: "scene.arena" }, name: "scene.add_entity" }],
+    schema: AUTHORING_BATCH_SCHEMA,
+    version: AUTHORING_BATCH_VERSION,
+  };
+  let calls = 0;
+  const options = {
+    allowedProjectRoots: [root],
+    execute: async () => {
+      calls += 1;
+      return { exitCode: 0, stdout: "{}\n" };
+    },
+    projectRoot: root,
+  };
+
+  try {
+    const planned = await callAuthoringMcpTool({ arguments: batch, name: "authoring.batch.plan" }, options);
+    const afterPlan = JSON.parse(await readFile(file, "utf8")) as { entities: Array<{ id: string }> };
+    const applied = await callAuthoringMcpTool({ arguments: batch, name: "authoring.batch.apply" }, options);
+    const afterApply = JSON.parse(await readFile(file, "utf8")) as { entities: Array<{ id: string }> };
+
+    assert.equal(planned.isError, false);
+    assert.equal((planned.content as { changed: boolean }).changed, true);
+    assert.equal(afterPlan.entities.some((entity) => entity.id === "batch-kart"), false);
+    assert.equal(applied.isError, false);
+    assert.equal((applied.content as { committed: boolean }).committed, true);
+    assert.equal(afterApply.entities.some((entity) => entity.id === "batch-kart"), true);
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
 });
 
 test("mcp wrapper delegates inspect and validate to CLI JSON output", async () => {

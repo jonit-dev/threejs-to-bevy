@@ -1,7 +1,9 @@
 import { resolve } from "node:path";
 
 import {
-  dispatchAuthoringOperation,
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
   getAuthoringOperationDescriptor,
   planAuthoringRecipe,
   type AuthoringOperationName,
@@ -12,35 +14,48 @@ import {
   type IAuthoringRecipePlanResult,
 } from "@threenative/authoring";
 import { SceneBuilder } from "./scene.js";
+import type {
+  AuthoringOperationArgsMap,
+  AuthoringOperationCallArgs,
+  GeneratedAuthoringOperationName,
+} from "./generatedOperations.js";
 
-export type AuthoringClientOperationName = AuthoringOperationName | string;
-export type AuthoringClientOperationArgs = Record<string, unknown>;
+export type AuthoringClientOperationName = AuthoringOperationName & GeneratedAuthoringOperationName;
+export type AuthoringClientOperationArgs<TName extends string = AuthoringClientOperationName> =
+  TName extends AuthoringClientOperationName ? AuthoringOperationArgsMap[TName] & Record<string, unknown> : Record<string, unknown>;
 
-export interface IAuthoringClientOperationInput<TName extends AuthoringClientOperationName = AuthoringClientOperationName> {
-  args?: AuthoringClientOperationArgs;
+export interface IAuthoringClientOperationInput<TName extends string = AuthoringClientOperationName> {
+  args: AuthoringClientOperationArgs<TName>;
   name: TName;
 }
 
-export interface IAuthoringClientOperationTrace<TName extends AuthoringClientOperationName = AuthoringClientOperationName> {
-  args: AuthoringClientOperationArgs;
+export interface IAuthoringClientOperationTrace<TName extends string = AuthoringClientOperationName> {
+  args: AuthoringClientOperationArgs<TName>;
   index: number;
   name: TName;
 }
 
-export interface IAuthoringClientOperationResult<TName extends AuthoringClientOperationName = AuthoringClientOperationName> {
+export interface IAuthoringClientOperationResult<TName extends string = AuthoringClientOperationName> {
   result: IAuthoringOperationResult;
   trace: IAuthoringClientOperationTrace<TName>;
 }
 
 export interface IAuthoringClientTransactionResult {
   changed: boolean;
+  committed: boolean;
   diagnostics: IAuthoringDiagnostic[];
   filesWritten: string[];
+  filesCreated: string[];
+  filesDeleted: string[];
+  filesModified: string[];
   ok: boolean;
-  operationResults: IAuthoringClientOperationResult[];
-  operations: IAuthoringClientOperationTrace[];
+  operationResults: IAuthoringClientOperationResult<string>[];
+  operations: IAuthoringClientOperationTrace<string>[];
   projectPath: string;
+  planHash: string;
+  recovered: boolean;
   stoppedAt?: number;
+  transactionId: string;
 }
 
 export interface IAuthoringClientCommitOptions {
@@ -50,15 +65,16 @@ export interface IAuthoringClientCommitOptions {
 export interface IAuthoringClientDryRunResult {
   diagnostics: IAuthoringDiagnostic[];
   ok: boolean;
-  operations: IAuthoringClientOperationTrace[];
+  operations: IAuthoringClientOperationTrace<string>[];
   projectPath: string;
 }
 
 export interface IAuthoringClientProject {
   readonly projectPath: string;
-  operation<TName extends AuthoringClientOperationName>(name: TName, args?: AuthoringClientOperationArgs): AuthoringClientTransaction;
-  planRecipe(recipeId: AuthoringRecipeId | string, args?: AuthoringClientOperationArgs): IAuthoringRecipePlanResult;
-  recipe(recipeId: AuthoringRecipeId | string, args?: AuthoringClientOperationArgs): AuthoringClientTransaction;
+  operation<TName extends AuthoringClientOperationName>(name: TName, ...args: AuthoringOperationCallArgs<TName>): AuthoringClientTransaction;
+  unsafeOperation(name: string, args?: Record<string, unknown>): AuthoringClientTransaction;
+  planRecipe(recipeId: AuthoringRecipeId | string, args?: Record<string, unknown>): IAuthoringRecipePlanResult;
+  recipe(recipeId: AuthoringRecipeId | string, args?: Record<string, unknown>): AuthoringClientTransaction;
   scene(sceneId: string): SceneBuilder;
   transaction(): AuthoringClientTransaction;
 }
@@ -70,19 +86,23 @@ export class AuthoringClientProject implements IAuthoringClientProject {
     this.projectPath = resolve(projectPath);
   }
 
-  operation<TName extends AuthoringClientOperationName>(name: TName, args: AuthoringClientOperationArgs = {}): AuthoringClientTransaction {
-    return this.transaction().operation(name, args);
+  operation<TName extends AuthoringClientOperationName>(name: TName, ...args: AuthoringOperationCallArgs<TName>): AuthoringClientTransaction {
+    return this.transaction().operation(name, ...args);
   }
 
-  planRecipe(recipeId: AuthoringRecipeId | string, args: AuthoringClientOperationArgs = {}): IAuthoringRecipePlanResult {
+  unsafeOperation(name: string, args: Record<string, unknown> = {}): AuthoringClientTransaction {
+    return this.transaction().unsafeOperation(name, args);
+  }
+
+  planRecipe(recipeId: AuthoringRecipeId | string, args: Record<string, unknown> = {}): IAuthoringRecipePlanResult {
     return planAuthoringRecipe({ args, projectPath: this.projectPath, recipeId });
   }
 
-  recipe(recipeId: AuthoringRecipeId | string, args: AuthoringClientOperationArgs = {}): AuthoringClientTransaction {
+  recipe(recipeId: AuthoringRecipeId | string, args: Record<string, unknown> = {}): AuthoringClientTransaction {
     const transaction = this.transaction();
     const plan = this.planRecipe(recipeId, args);
     for (const operation of plan.operations) {
-      transaction.operation(operation.name, operation.args);
+      transaction.queueOperation(operation.name, operation.args);
     }
     return transaction;
   }
@@ -98,13 +118,21 @@ export class AuthoringClientProject implements IAuthoringClientProject {
 
 export class AuthoringClientTransaction {
   readonly projectPath: string;
-  readonly operations: IAuthoringClientOperationTrace[] = [];
+  readonly operations: IAuthoringClientOperationTrace<string>[] = [];
 
   constructor(projectPath: string) {
     this.projectPath = resolve(projectPath);
   }
 
-  operation<TName extends AuthoringClientOperationName>(name: TName, args: AuthoringClientOperationArgs = {}): this {
+  operation<TName extends AuthoringClientOperationName>(name: TName, ...args: AuthoringOperationCallArgs<TName>): this {
+    return this.queueOperation(name, (args[0] ?? {}) as Record<string, unknown>);
+  }
+
+  unsafeOperation(name: string, args: Record<string, unknown> = {}): this {
+    return this.queueOperation(name, args);
+  }
+
+  queueOperation(name: string, args: Record<string, unknown>): this {
     this.operations.push({
       args: cloneArgs(args),
       index: this.operations.length,
@@ -114,41 +142,35 @@ export class AuthoringClientTransaction {
   }
 
   async commit(options: IAuthoringClientCommitOptions = {}): Promise<IAuthoringClientTransactionResult> {
-    const stopOnError = options.stopOnError ?? true;
-    const operationResults: IAuthoringClientOperationResult[] = [];
-    const diagnostics: IAuthoringDiagnostic[] = [];
-    const filesWritten = new Set<string>();
-    let changed = false;
-    let stoppedAt: number | undefined;
-
-    for (const trace of this.operations) {
-      const result = await dispatchAuthoringOperation({
-        args: trace.args,
-        name: trace.name,
-        projectPath: this.projectPath,
-      });
-      operationResults.push({ result, trace });
-      diagnostics.push(...result.diagnostics);
-      for (const file of result.filesWritten) {
-        filesWritten.add(file);
-      }
-      changed = changed || result.changed;
-      if (!result.ok && stopOnError) {
-        stoppedAt = trace.index;
-        break;
-      }
-    }
-
-    const ok = operationResults.length === this.operations.length && operationResults.every((entry) => entry.result.ok);
-    return {
-      changed,
-      diagnostics,
-      filesWritten: [...filesWritten].sort(),
-      ok,
-      operationResults,
-      operations: this.operations.map((operation) => ({ ...operation, args: cloneArgs(operation.args) })),
+    const batchResult = await applyAuthoringBatch({
+      batch: {
+        id: "authoring-client-transaction",
+        operations: this.operations.map(({ args, name }) => ({ args, name: name as AuthoringOperationName })),
+        schema: AUTHORING_BATCH_SCHEMA,
+        version: AUTHORING_BATCH_VERSION,
+      },
       projectPath: this.projectPath,
-      ...(stoppedAt === undefined ? {} : { stoppedAt }),
+      stopOnError: options.stopOnError,
+    });
+    return {
+      changed: batchResult.changed,
+      committed: batchResult.committed,
+      diagnostics: batchResult.diagnostics,
+      filesCreated: batchResult.filesCreated,
+      filesDeleted: batchResult.filesDeleted,
+      filesModified: batchResult.filesModified,
+      filesWritten: batchResult.filesWritten,
+      ok: batchResult.ok,
+      operationResults: batchResult.operationResults.map((entry) => ({
+        result: entry.result,
+        trace: this.operations[entry.index]!,
+      })),
+      operations: this.operations.map((operation) => ({ ...operation, args: cloneArgs(operation.args) })),
+      planHash: batchResult.planHash,
+      projectPath: this.projectPath,
+      recovered: batchResult.recovered,
+      ...(batchResult.stoppedAt === undefined ? {} : { stoppedAt: batchResult.stoppedAt }),
+      transactionId: batchResult.transactionId,
     };
   }
 
@@ -163,6 +185,15 @@ export function openProject(projectPath: string): IAuthoringClientProject {
 
 export { SceneBuilder } from "./scene.js";
 export type {
+  AuthoringJsonObject,
+  AuthoringJsonValue,
+  AuthoringOperationArgs,
+  AuthoringOperationArgsMap,
+  AuthoringOperationCallArgs,
+  AuthoringVector3,
+  GeneratedAuthoringOperationName,
+} from "./generatedOperations.js";
+export type {
   ISceneAddEntityOptions,
   ISceneAddPrefabOptions,
   ISceneCameraOptions,
@@ -176,11 +207,11 @@ export type {
   ISceneTransformOptions,
 } from "./scene.js";
 
-function cloneArgs(args: AuthoringClientOperationArgs): AuthoringClientOperationArgs {
-  return JSON.parse(JSON.stringify(args)) as AuthoringClientOperationArgs;
+function cloneArgs<TArgs extends Record<string, unknown>>(args: TArgs): TArgs {
+  return JSON.parse(JSON.stringify(args)) as TArgs;
 }
 
-function dryRunOperations(projectPath: string, operations: readonly IAuthoringClientOperationTrace[]): IAuthoringClientDryRunResult {
+function dryRunOperations(projectPath: string, operations: readonly IAuthoringClientOperationTrace<string>[]): IAuthoringClientDryRunResult {
   const diagnostics = operations.flatMap((operation) => dryRunOperationDiagnostics(operation));
   return {
     diagnostics,
@@ -190,7 +221,7 @@ function dryRunOperations(projectPath: string, operations: readonly IAuthoringCl
   };
 }
 
-function dryRunOperationDiagnostics(operation: IAuthoringClientOperationTrace): IAuthoringDiagnostic[] {
+function dryRunOperationDiagnostics(operation: IAuthoringClientOperationTrace<string>): IAuthoringDiagnostic[] {
   const descriptor = getAuthoringOperationDescriptor(operation.name);
   if (descriptor === undefined) {
     return [
@@ -206,7 +237,7 @@ function dryRunOperationDiagnostics(operation: IAuthoringClientOperationTrace): 
   return descriptor.arguments.flatMap((argument) => requiredArgumentDiagnostic(operation, argument));
 }
 
-function requiredArgumentDiagnostic(operation: IAuthoringClientOperationTrace, argument: IAuthoringOperationArgumentDescriptor): IAuthoringDiagnostic[] {
+function requiredArgumentDiagnostic(operation: IAuthoringClientOperationTrace<string>, argument: IAuthoringOperationArgumentDescriptor): IAuthoringDiagnostic[] {
   const value = operation.args[argument.name];
   if (value === undefined) {
     return argument.required

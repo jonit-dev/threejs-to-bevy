@@ -1,11 +1,24 @@
 import { readFile, realpath } from "node:fs/promises";
 import { dirname, relative, resolve, sep } from "node:path";
 
-import { AUTHORING_OPERATION_NAMES, buildAuthoringOperationCliArgv, getAuthoringOperationDescriptor, type AuthoringOperationName } from "@threenative/authoring";
+import {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
+  AUTHORING_OPERATION_NAMES,
+  buildAuthoringOperationCliArgv,
+  getAuthoringOperationDescriptor,
+  planAuthoringBatch,
+  type AuthoringOperationName,
+  type IAuthoringBatchDocument,
+  type IAuthoringOperationArgumentDescriptor,
+} from "@threenative/authoring";
 import { CLI_COMMAND_REGISTRY, dispatch, type CommandMcpToolName, type ICommandMcpAdapterDefinition } from "@threenative/cli";
 
 export type AuthoringMcpToolName =
   | AuthoringOperationName
+  | "authoring.batch.apply"
+  | "authoring.batch.plan"
   | "bundle.import"
   | CommandMcpToolName
   | "project.build"
@@ -48,6 +61,31 @@ const registryBackedMcpTools: Array<{ description: string; name: AuthoringOperat
   };
 });
 
+export const AUTHORING_BATCH_MCP_INPUT_SCHEMA: Record<string, unknown> = {
+  additionalProperties: false,
+  properties: {
+    actor: { type: "string" },
+    id: { minLength: 1, type: "string" },
+    intent: { type: "string" },
+    operations: {
+      items: {
+        oneOf: AUTHORING_OPERATION_NAMES.map((name) => batchOperationSchema(name)),
+      },
+      minItems: 1,
+      type: "array",
+    },
+    preconditions: {
+      additionalProperties: false,
+      properties: { planHash: { minLength: 1, type: "string" } },
+      type: "object",
+    },
+    schema: { const: AUTHORING_BATCH_SCHEMA, type: "string" },
+    version: { const: AUTHORING_BATCH_VERSION, type: "string" },
+  },
+  required: ["schema", "version", "id", "operations"],
+  type: "object",
+};
+
 const commandRegistryBackedMcpTools: Array<{ description: string; inputSchema?: Record<string, unknown>; name: AuthoringMcpToolName }> = Object.values(CLI_COMMAND_REGISTRY)
   .flatMap((command) => command.adapters?.mcp === undefined ? [] : (Array.isArray(command.adapters.mcp) ? command.adapters.mcp : [command.adapters.mcp]).map((adapter) => ({
     description: adapter.description,
@@ -58,6 +96,8 @@ const commandRegistryBackedMcpTools: Array<{ description: string; inputSchema?: 
 export const AUTHORING_MCP_TOOLS: Array<{ description: string; inputSchema?: Record<string, unknown>; name: AuthoringMcpToolName }> = [
   { description: "Inspect a source scene document through tn scene inspect --json.", name: "scene.inspect" },
   { description: "Validate source scene documents through tn scene validate --json.", name: "scene.validate" },
+  { description: "Plan a validated atomic authoring batch without publishing source changes.", inputSchema: AUTHORING_BATCH_MCP_INPUT_SCHEMA, name: "authoring.batch.plan" },
+  { description: "Apply a validated atomic authoring batch through the shared authoring committer.", inputSchema: AUTHORING_BATCH_MCP_INPUT_SCHEMA, name: "authoring.batch.apply" },
   ...commandRegistryBackedMcpTools,
   ...registryBackedMcpTools,
   { description: "Import recoverable bundle catalogs through tn bundle import --json.", name: "bundle.import" },
@@ -68,6 +108,17 @@ export const AUTHORING_MCP_TOOLS: Array<{ description: string; inputSchema?: Rec
 
 export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options: IAuthoringMcpOptions): Promise<IAuthoringMcpResult> {
   const args = call.arguments ?? {};
+  if (isAuthoringBatchTool(call.name)) {
+    try {
+      validateJsonSchemaValue(args, AUTHORING_BATCH_MCP_INPUT_SCHEMA, call.name);
+    } catch (error) {
+      return mcpDiagnostic({
+        code: "TN_MCP_ARGUMENT_INVALID",
+        message: error instanceof Error ? error.message : String(error),
+        path: call.name,
+      });
+    }
+  }
   const earlyArgumentDiagnostic = validateEarlyCommandArguments(call.name, args);
   if (earlyArgumentDiagnostic !== undefined) {
     return mcpDiagnostic(earlyArgumentDiagnostic);
@@ -76,6 +127,18 @@ export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options:
   const guard = await validateProjectRoot(projectRoot, options.allowedProjectRoots ?? [process.cwd()]);
   if (guard !== undefined) {
     return mcpDiagnostic(guard);
+  }
+  if (isAuthoringBatchTool(call.name)) {
+    const mode = call.name === "authoring.batch.plan" ? "plan" : "apply";
+    const batch = args as unknown as IAuthoringBatchDocument;
+    const result = mode === "plan"
+      ? await planAuthoringBatch({ batch, projectPath: projectRoot })
+      : await applyAuthoringBatch({ batch, projectPath: projectRoot });
+    return {
+      cli: { argv: ["authoring", "batch", mode, "--project", projectRoot, "--json"], exitCode: result.ok ? 0 : 1 },
+      content: result,
+      isError: !result.ok,
+    };
   }
   let argv: string[];
   try {
@@ -320,6 +383,9 @@ function validateJsonSchemaValue(value: unknown, schema: Record<string, unknown>
 }
 
 function jsonSchemaValueMatches(value: unknown, schema: Record<string, unknown>): boolean {
+  if (Array.isArray(schema.oneOf)) {
+    return schema.oneOf.filter((candidate) => isRecord(candidate) && jsonSchemaValueMatches(value, candidate)).length === 1;
+  }
   if ("const" in schema && value !== schema.const) return false;
   if (Array.isArray(schema.enum) && !schema.enum.includes(value)) return false;
   if (schema.type === "string") {
@@ -333,8 +399,67 @@ function jsonSchemaValueMatches(value: unknown, schema: Record<string, unknown>)
     if (typeof schema.maximum === "number" && value > schema.maximum) return false;
     if (typeof schema.exclusiveMinimum === "number" && value <= schema.exclusiveMinimum) return false;
   } else if (schema.type === "boolean" && typeof value !== "boolean") return false;
-  else if (schema.type === "object" && !isRecord(value)) return false;
+  else if (schema.type === "object") {
+    if (!isRecord(value)) return false;
+    const properties = isRecord(schema.properties) ? schema.properties : {};
+    const required = Array.isArray(schema.required) ? schema.required.filter((key): key is string => typeof key === "string") : [];
+    if (required.some((key) => value[key] === undefined)) return false;
+    if (schema.additionalProperties === false && Object.keys(value).some((key) => !(key in properties))) return false;
+    if (Object.entries(properties).some(([key, property]) => value[key] !== undefined && isRecord(property) && !jsonSchemaValueMatches(value[key], property))) return false;
+  } else if (schema.type === "array") {
+    if (!Array.isArray(value)) return false;
+    if (typeof schema.minItems === "number" && value.length < schema.minItems) return false;
+    if (typeof schema.maxItems === "number" && value.length > schema.maxItems) return false;
+    if (isRecord(schema.items) && value.some((item) => !jsonSchemaValueMatches(item, schema.items as Record<string, unknown>))) return false;
+  }
   return true;
+}
+
+function batchOperationSchema(name: AuthoringOperationName): Record<string, unknown> {
+  const descriptor = getAuthoringOperationDescriptor(name);
+  if (descriptor === undefined) throw new Error(`Registered authoring operation '${name}' has no descriptor.`);
+  const requiredArguments = descriptor.arguments.filter((argument) => argument.required).map((argument) => argument.name);
+  return {
+    additionalProperties: false,
+    properties: {
+      args: {
+        additionalProperties: false,
+        properties: Object.fromEntries(descriptor.arguments.map((argument) => [argument.name, batchArgumentSchema(argument)])),
+        ...(requiredArguments.length === 0 ? {} : { required: requiredArguments }),
+        type: "object",
+      },
+      name: { const: name, type: "string" },
+    },
+    required: ["name", ...(requiredArguments.length === 0 ? [] : ["args"])],
+    type: "object",
+  };
+}
+
+function batchArgumentSchema(argument: IAuthoringOperationArgumentDescriptor): Record<string, unknown> {
+  const numberConstraints = {
+    ...(argument.constraints?.max === undefined ? {} : { maximum: argument.constraints.max }),
+    ...(argument.constraints?.min === undefined ? {} : { minimum: argument.constraints.min }),
+  };
+  const stringSchema = {
+    ...(argument.constraints?.enumValues === undefined ? {} : { enum: argument.constraints.enumValues }),
+    minLength: 1,
+    type: "string",
+  };
+  switch (argument.type) {
+    case "boolean": return { type: "boolean" };
+    case "json-object": return { type: "object" };
+    case "json-object-array": return { items: { type: "object" }, type: "array" };
+    case "json-value": return {};
+    case "number": return { ...numberConstraints, type: "number" };
+    case "number-array": return { items: { type: "number" }, type: "array" };
+    case "string": return stringSchema;
+    case "string-array": return { items: stringSchema, type: "array" };
+    case "vector3": return { items: { type: "number" }, maxItems: 3, minItems: 3, type: "array" };
+  }
+}
+
+function isAuthoringBatchTool(name: AuthoringMcpToolName): name is "authoring.batch.apply" | "authoring.batch.plan" {
+  return name === "authoring.batch.apply" || name === "authoring.batch.plan";
 }
 
 function validateEarlyCommandArguments(name: AuthoringMcpToolName, args: Record<string, unknown>): { code: string; message: string; path: string } | undefined {

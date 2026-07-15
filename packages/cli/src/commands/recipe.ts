@@ -1,13 +1,17 @@
 import {
   applyAuthoringRecipe,
+  getAuthoringOperationDescriptor,
+  hashAuthoringTransactionBytes,
   listAuthoringRecipeIds,
   planAuthoringRecipe,
+  publishAuthoringTransaction,
   type IAuthoringRecipeApplyResult,
   type IAuthoringRecipePlanResult,
 } from "@threenative/authoring";
-import { access, copyFile, cp, mkdir, mkdtemp, readFile, rename, rm, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, isAbsolute, join, resolve } from "node:path";
+import { isAbsolute, join, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
 import { buildGameTaskGraph } from "../game/taskGraph.js";
@@ -50,10 +54,7 @@ async function applyRecipeTransaction(recipeId: string, args: Record<string, unk
   const transactionRoot = await mkdtemp(join(tmpdir(), "tn-cli-recipe-"));
   const stagedProjectPath = join(transactionRoot, "project");
   try {
-    await cp(projectPath, stagedProjectPath, {
-      filter: (source) => !isIgnoredTransactionPath(projectPath, source),
-      recursive: true,
-    });
+    await stageRecipeSources(projectPath, stagedProjectPath, preflight);
     const scaffoldedScript = await scaffoldRecipeScript(recipeId, args, stagedProjectPath);
     const result = await applyAuthoringRecipe({ args, projectPath: stagedProjectPath, recipeId });
     if (result.ok && scaffoldedScript !== undefined) {
@@ -66,11 +67,53 @@ async function applyRecipeTransaction(recipeId: string, args: Record<string, unk
     }
     result.filesWritten = await changedRecipeFiles(stagedProjectPath, projectPath, result.filesWritten);
     result.changed = result.filesWritten.length > 0;
-    await commitRecipeFiles(stagedProjectPath, projectPath, result.filesWritten);
-    return remapRecipeResult(result, projectPath, true);
+    const publication = await publishRecipeFiles(stagedProjectPath, projectPath, result.filesWritten);
+    result.diagnostics.push(...publication.diagnostics);
+    result.ok = publication.ok;
+    result.filesWritten = publication.filesWritten;
+    result.changed = publication.committed && publication.filesWritten.length > 0;
+    return remapRecipeResult(result, projectPath, publication.committed);
   } finally {
     await rm(transactionRoot, { force: true, recursive: true });
   }
+}
+
+async function stageRecipeSources(projectPath: string, stagedProjectPath: string, plan: IAuthoringRecipePlanResult): Promise<void> {
+  await mkdir(stagedProjectPath, { recursive: true });
+  const operationTargets = await Promise.all(plan.operations.map(async (operation) => {
+    const descriptor = getAuthoringOperationDescriptor(operation.name);
+    return descriptor === undefined ? [] : descriptor.targetResolver({ args: operation.args, projectPath });
+  }));
+  const scriptOperation = plan.operations.find((operation) => operation.name === "scene.attach_script");
+  const modulePath = stringArg(scriptOperation?.args ?? {}, "modulePath");
+  const proofPath = gameKitRecipeIds.has(plan.recipeId) ? `content/proofs/${plan.recipeId}.proof.json` : undefined;
+  const paths = [...new Set([...operationTargets.flat(), ...(modulePath === undefined ? [] : [modulePath]), ...(proofPath === undefined ? [] : [proofPath])])].sort();
+  for (const path of paths) {
+    const source = resolve(projectPath, path);
+    const destination = resolve(stagedProjectPath, path);
+    await mkdir(resolve(destination, ".."), { recursive: true });
+    await copyFile(source, destination).catch((error: unknown) => {
+      if (!isMissingPathError(error)) throw error;
+    });
+  }
+}
+
+async function publishRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]) {
+  return publishAuthoringTransaction({
+    files: await Promise.all(files.map(async (file) => {
+      const existing = await readFile(resolve(projectPath, file)).catch((error: unknown) => {
+        if (isMissingPathError(error)) return undefined;
+        throw error;
+      });
+      return {
+        baseHash: existing === undefined ? null : hashAuthoringTransactionBytes(existing),
+        bytes: await readFile(resolve(stagedProjectPath, file)),
+        path: file,
+      };
+    })),
+    projectPath,
+    transactionId: `recipe-${randomUUID()}`,
+  });
 }
 
 async function persistGameTaskGraph(projectPath: string): Promise<void> {
@@ -185,22 +228,6 @@ function hasNamedExport(source: string, exportName: string): boolean {
   return new RegExp(`\\bexport\\s+(?:async\\s+)?(?:function|const|let|var|class)\\s+${escaped}\\b`, "u").test(source);
 }
 
-function isIgnoredTransactionPath(projectPath: string, source: string): boolean {
-  const relativePath = source.slice(projectPath.length).replace(/^[/\\]+/u, "");
-  const firstSegment = relativePath.split(/[/\\]/u)[0];
-  return firstSegment === "node_modules" || firstSegment === ".git" || firstSegment === "dist" || firstSegment === "artifacts";
-}
-
-async function commitRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<void> {
-  for (const file of files) {
-    const destination = resolve(projectPath, file);
-    const temporary = `${destination}.tn-recipe-${process.pid}.tmp`;
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(resolve(stagedProjectPath, file), temporary);
-    await rename(temporary, destination);
-  }
-}
-
 async function changedRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<string[]> {
   const changed: string[] = [];
   for (const file of files) {
@@ -211,6 +238,10 @@ async function changedRecipeFiles(stagedProjectPath: string, projectPath: string
     }
   }
   return changed;
+}
+
+function isMissingPathError(error: unknown): boolean {
+  return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 function remapRecipeResult(result: IAuthoringRecipeApplyResult, projectPath: string, committed: boolean): IAuthoringRecipeApplyResult {

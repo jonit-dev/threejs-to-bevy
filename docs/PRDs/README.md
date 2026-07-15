@@ -13,6 +13,13 @@ closes interaction executor parity, native process-restart persistence,
 `ScriptContext` type-contract drift, evidence-tiered UI/accessibility parity,
 and relocatable material-aware `tn model-test` proof.
 
+### Atomic Authoring Batches and Document Scaling (2026-07-14)
+
+The [completed atomic authoring batch PRD](done/other/atomic-authoring-batches-and-document-scaling-2026-07-14.md)
+landed one registry-backed multi-file plan/apply contract for CLI, MCP,
+editor, recipes, generators, and the TypeScript client, with journal recovery,
+conflict and generator-owner preconditions, typed descriptors, bounded staging,
+and a 64 KiB-to-50 MiB measured regression gate.
 
 ### Agent Ergonomics (2026-07-05)
 
@@ -144,6 +151,11 @@ Links under `done/` are historical implementation evidence, not active backlog.
   coverage debt reporting, and timing calibration.
 
 ### Authoring, Editor, And Plugins
+
+- [Atomic Authoring Batches and Document Scaling](done/other/atomic-authoring-batches-and-document-scaling-2026-07-14.md) - done:
+  provides one atomic multi-file operation batch with semantic dry runs,
+  journaled recovery, concurrent/generator ownership checks, descriptor-derived
+  adapters and types, and large-document benchmarks.
 
 - [Optional Headless Blender Asset Generation](other/optional-headless-blender-asset-generation.md):
   adds an explicit, checksum-verified optional Blender tool lifecycle and a

@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { dirname, extname, relative, resolve } from "node:path";
 import { defineConfig, type Plugin } from "vite";
 
-import { applyEditorOperationApi } from "./src/server/operationApi.js";
+import { applyEditorOperationApi, applyEditorOperationBatchApi } from "./src/server/operationApi.js";
 import { applyEditorChatApi, planEditorChatApi } from "./src/server/chatApi.js";
 import { buildEditorPreviewApi } from "./src/server/buildApi.js";
 import { loadEditorProjectApi } from "./src/server/projectApi.js";
@@ -35,6 +35,12 @@ function editorApiPlugin(): Plugin {
             const boot = await readBootConfig();
             const body = await readJsonBody(request);
             const result = await applyEditorOperationApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
+            return json(response, result);
+          }
+          if (request.url === "/api/operations" && request.method === "POST") {
+            const boot = await readBootConfig();
+            const body = await readJsonBody(request);
+            const result = await applyEditorOperationBatchApi({ projectPath: boot.projectPath ?? process.cwd(), request: body, rootPath: boot.projectPath });
             return json(response, result);
           }
           if (request.url?.startsWith("/api/scripts") === true) {

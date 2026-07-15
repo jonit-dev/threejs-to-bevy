@@ -9,6 +9,13 @@ Current support:
   deterministic formatting, source discovery, and generated-artifact rejection.
 - CLI-first scene, material, UI, system, prefab, physics, recipe, cookbook, and
   iterate workflows exposed through `tn ... --json`.
+- Arbitrary registered mutations can be grouped with `tn authoring batch plan`
+  and `tn authoring batch apply`. Planning reports descriptor-predicted paths,
+  source/generator ownership, base and next hashes, bounded structural diffs,
+  per-document bytes/addressable items, and a deterministic `planHash`.
+  Applying rechecks that hash, then publishes every changed file through one
+  recovery journal. CLI, MCP, editor chat/composites, recipes, overlays, and
+  the TypeScript transaction client share this planner and publisher.
 - `tn playtest schema --json` exposes the executable assertion/step/setup DSL
   from the assertion registry, and `tn playtest scaffold --assert
   <movement|pickup|win-state|retry> --json` writes loader-valid proof-bar
@@ -41,11 +48,22 @@ Current support:
   list when no match clears the floor. The descriptor-derived MCP
   `cookbook_lookup` tool exposes the same show-by-id and search-by-query JSON
   paths to MCP agents.
-- Recipe application stages the whole project mutation before commit, adopts
+- Recipe application stages only descriptor-declared source dependencies before commit, adopts
   existing scene entities/cameras without replacing authored transforms or
   active-camera ownership, scaffolds required script exports, and reports an
   exact no-op on idempotent retry. Compact JSON is the default; `--full-json`
   retains operation traces for debugging.
+- Generator provenance is a correctness boundary: ordinary batches cannot
+  overwrite a declared output, while an explicitly authorized owning
+  generator advances its output hash in the same journaled commit. The
+  descriptive batch `actor` never grants ownership.
+- Batch staging is target-bounded. The scale gate generates, then removes,
+  64 KiB, 1 MiB, 10 MiB, and 50 MiB fixtures across 1/10/100 touched files;
+  it records median latency, peak RSS, paths, and copied bytes against a
+  reviewed 20% relative-regression baseline. A 10 MiB affected document emits
+  `TN_AUTHORING_DOCUMENT_GROWTH_WARNING`; use prefabs, PlacementSets, sibling
+  UI/system/resource documents, or a separate scene before proposing a
+  sharding, streaming-parser, or format-change PRD.
 - `tn game plan` resolves project IDs and derives recipe flags and maintained
   cookbook references from their owning descriptors. `tn authoring inspect`
   includes a compact project map of scene entity, prefab, resource, system,
@@ -114,6 +132,8 @@ Verification:
 - `tools/agent-benchmark/COOKBOOK-TOPIC-AUDIT-2026-07-07.md`
   maps benchmark needs to the existing validated cookbook entries.
 - `pnpm --filter @threenative/authoring test`
+- `pnpm verify:adapter-surfaces`
+- `pnpm verify:authoring-batch-scale`
 - `pnpm --filter @threenative/authoring test -- --run "placement"`
 - `pnpm --filter @threenative/cli test -- --run "placement"`
 - `pnpm --filter @threenative/authoring test -- --run "archetype|actor"`

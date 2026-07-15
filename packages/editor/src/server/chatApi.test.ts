@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { cp, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -16,6 +16,11 @@ test("should apply an approved chat plan through editor operations", async () =>
     const result = await applyEditorChatApi({ projectPath: root, request: { approvalToken: plan.approvalToken, plan } });
 
     assert.equal(result.ok, true);
+    assert.match(plan.batchPlan?.planHash ?? "", /^sha256:/);
+    assert.deepEqual(plan.batchPlan?.touchedPaths, ["content/scenes/arena.scene.json"]);
+    assert.equal(plan.batchPlan?.files[0]?.owner, "source");
+    assert.equal(result.batchResult?.planHash, plan.batchPlan?.planHash);
+    assert.equal(result.batchResult?.committed, true);
     assert.equal(result.changedSourceFiles.includes("content/scenes/arena.scene.json"), true);
     assert.equal(result.liveUpdate.kind, "hotPatch");
     const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
@@ -26,6 +31,25 @@ test("should apply an approved chat plan through editor operations", async () =>
     assert.deepEqual(entity.transform?.position, [0, 0.5, -2]);
     assert.equal((entity.components?.RigidBody as { kind?: string } | undefined)?.kind, "dynamic");
     assert.equal((entity.components?.Collider as { kind?: string } | undefined)?.kind, "box");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("editor refuses apply after previewed source changes", async () => {
+  const root = await copyStarterProject();
+  try {
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    const plan = await planEditorChatApi({ projectPath: root, request: { message: "add a cube" } });
+    const changedAfterPreview = `${await readFile(scenePath, "utf8")}\n`;
+    await writeFile(scenePath, changedAfterPreview, "utf8");
+
+    const result = await applyEditorChatApi({ projectPath: root, request: { approvalToken: plan.approvalToken, plan } });
+
+    assert.equal(result.ok, false);
+    assert.equal(result.batchResult?.committed, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_BATCH_CONFLICT"), true);
+    assert.equal(await readFile(scenePath, "utf8"), changedAfterPreview);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

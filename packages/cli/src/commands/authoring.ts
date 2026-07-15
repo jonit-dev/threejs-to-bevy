@@ -1,14 +1,27 @@
-import { loadAuthoringProject, validateAuthoringProject } from "@threenative/authoring";
+import {
+  applyAuthoringBatch,
+  type IAuthoringBatchApplyResult,
+  type IAuthoringBatchDocument,
+  type IAuthoringBatchPlanResult,
+  loadAuthoringProject,
+  planAuthoringBatch,
+  validateAuthoringProject,
+} from "@threenative/authoring";
 import { compileTypedGameSpecFile } from "@threenative/compiler";
-import { resolve } from "node:path";
+import { createReadStream } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname, relative, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
 
 const ITERATE_NOTICE = "Standalone authoring validation is subsumed by tn iterate --project . --json for the normal agent verify loop.";
 const ITERATE_NEXT = "tn iterate --project . --json";
+export const AUTHORING_BATCH_INPUT_MAX_BYTES = 1024 * 1024;
+export const AUTHORING_BATCH_STDOUT_MAX_BYTES = 256 * 1024;
 
 interface IAuthoringCommandOptions {
   cwd?: string;
+  stdin?: AsyncIterable<string | Uint8Array>;
 }
 
 export async function authoringCommand(argv: readonly string[], options: IAuthoringCommandOptions = {}): Promise<ICommandResult> {
@@ -16,6 +29,10 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
   const [subcommand] = normalizedArgv;
   const json = normalizedArgv.includes("--json");
   const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
+
+  if (subcommand === "batch") {
+    return authoringBatchCommand(normalizedArgv, projectPath, json, options);
+  }
 
   if (subcommand === "inspect") {
     const project = await loadAuthoringProject({ projectPath });
@@ -80,10 +97,126 @@ function renderPayload(payload: unknown, json: boolean, message: string, exitCod
 function renderUsage(json: boolean): ICommandResult {
   const payload = {
     code: "TN_AUTHORING_COMMAND_UNKNOWN",
-    message: "Usage: tn authoring inspect|validate|compile-typed-spec [--project <path>] [--entry <src/game.spec.ts>] [--json]",
+    message: "Usage: tn authoring inspect|validate|compile-typed-spec [--project <path>] [--entry <src/game.spec.ts>] [--json]\n       tn authoring batch plan|apply --file <path|-> [--project <path>] [--json]",
     severity: "error",
   };
   return { exitCode: 2, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
+}
+
+async function authoringBatchCommand(
+  argv: readonly string[],
+  projectPath: string,
+  json: boolean,
+  options: IAuthoringCommandOptions,
+): Promise<ICommandResult> {
+  const action = argv[1];
+  const file = readFlag(argv, "--file");
+  if ((action !== "plan" && action !== "apply") || file === undefined) {
+    return renderBatchError(
+      "TN_AUTHORING_BATCH_ARGS_MISSING",
+      "Usage: tn authoring batch plan|apply --file <path|-> [--project <path>] [--json]",
+      json,
+      2,
+    );
+  }
+
+  let batch: unknown;
+  try {
+    const input = file === "-"
+      ? await readBoundedInput(options.stdin ?? process.stdin, AUTHORING_BATCH_INPUT_MAX_BYTES)
+      : await readBoundedInput(
+          createReadStream(resolve(options.cwd ?? process.env.INIT_CWD ?? process.cwd(), file)),
+          AUTHORING_BATCH_INPUT_MAX_BYTES,
+        );
+    batch = JSON.parse(input) as unknown;
+  } catch (error) {
+    const oversized = error instanceof AuthoringBatchInputTooLargeError;
+    return renderBatchError(
+      oversized ? "TN_AUTHORING_BATCH_INPUT_TOO_LARGE" : "TN_AUTHORING_BATCH_INPUT_INVALID",
+      oversized
+        ? `Authoring batch input exceeds the ${AUTHORING_BATCH_INPUT_MAX_BYTES}-byte budget.`
+        : `Could not read one authoring batch JSON document from '${file}'.`,
+      json,
+      1,
+      oversized ? "Reduce the operation manifest size and retry." : "Provide a readable file containing exactly one valid JSON document.",
+    );
+  }
+
+  const result = action === "plan"
+    ? await planAuthoringBatch({ batch: batch as IAuthoringBatchDocument, projectPath })
+    : await applyAuthoringBatch({ batch: batch as IAuthoringBatchDocument, projectPath });
+  return renderBatchPayload(result, projectPath, json, action);
+}
+
+async function readBoundedInput(input: AsyncIterable<string | Uint8Array>, maximumBytes: number): Promise<string> {
+  const chunks: Buffer[] = [];
+  let total = 0;
+  for await (const chunk of input) {
+    const bytes = typeof chunk === "string" ? Buffer.from(chunk, "utf8") : Buffer.from(chunk);
+    total += bytes.byteLength;
+    if (total > maximumBytes) throw new AuthoringBatchInputTooLargeError();
+    chunks.push(bytes);
+  }
+  return Buffer.concat(chunks, total).toString("utf8");
+}
+
+class AuthoringBatchInputTooLargeError extends Error {}
+
+async function renderBatchPayload(
+  payload: IAuthoringBatchApplyResult | IAuthoringBatchPlanResult,
+  projectPath: string,
+  json: boolean,
+  action: "apply" | "plan",
+): Promise<ICommandResult> {
+  const ok = payload.ok;
+  const message = ok
+    ? `Authoring batch ${action === "plan" ? "plan completed" : "applied"}.`
+    : `Authoring batch ${action} failed.`;
+  if (!json) return { exitCode: ok ? 0 : 1, stdout: `${message}\n` };
+
+  const serialized = `${JSON.stringify(payload, null, 2)}\n`;
+  if (Buffer.byteLength(serialized, "utf8") <= AUTHORING_BATCH_STDOUT_MAX_BYTES) {
+    return { exitCode: ok ? 0 : 1, stdout: serialized };
+  }
+
+  const transactionId = payload.transactionId;
+  const artifactAbsolutePath = resolve(projectPath, ".tn/authoring-results", `${transactionId}.json`);
+  await mkdir(dirname(artifactAbsolutePath), { recursive: true });
+  await writeFile(artifactAbsolutePath, serialized, "utf8");
+  const artifactPath = relative(projectPath, artifactAbsolutePath).replaceAll("\\", "/");
+  const bounded = {
+    changed: payload.changed,
+    ...(action === "apply" ? { committed: "committed" in payload && payload.committed } : {}),
+    diagnostics: payload.diagnostics.slice(0, 20),
+    filesCreated: payload.filesCreated,
+    filesDeleted: payload.filesDeleted,
+    filesModified: payload.filesModified,
+    ok,
+    outputArtifactPath: artifactPath,
+    outputTruncated: true,
+    planHash: payload.planHash,
+    touchedPaths: payload.touchedPaths,
+    transactionId: payload.transactionId,
+  };
+  const boundedSerialized = `${JSON.stringify(bounded, null, 2)}\n`;
+  if (Buffer.byteLength(boundedSerialized, "utf8") <= AUTHORING_BATCH_STDOUT_MAX_BYTES) {
+    return { exitCode: ok ? 0 : 1, stdout: boundedSerialized };
+  }
+  return {
+    exitCode: ok ? 0 : 1,
+    stdout: `${JSON.stringify({ ok, outputArtifactPath: artifactPath, outputTruncated: true, transactionId: payload.transactionId })}\n`,
+  };
+}
+
+function renderBatchError(code: string, message: string, json: boolean, exitCode: number, suggestion?: string): ICommandResult {
+  const diagnostic = { code, message, severity: "error", ...(suggestion === undefined ? {} : { suggestion }) };
+  const payload = { changed: false, diagnostics: [diagnostic], ok: false };
+  return { exitCode, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${message}\n` };
+}
+
+function readFlag(argv: readonly string[], flag: string): string | undefined {
+  const index = argv.indexOf(flag);
+  return index === -1 ? undefined : argv[index + 1];
 }
 
 function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): string {

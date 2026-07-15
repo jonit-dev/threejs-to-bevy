@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import test from "node:test";
 
-import { authoringCommand } from "./authoring.js";
+import { AUTHORING_BATCH_INPUT_MAX_BYTES, AUTHORING_BATCH_STDOUT_MAX_BYTES, authoringCommand } from "./authoring.js";
 
 test("authoring command inspects and validates structured source documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-command-"));
@@ -160,6 +161,99 @@ export default defineTypedGameSpec({
     const validatePayload = JSON.parse(validate.stdout) as { ok: boolean };
     assert.equal(validate.exitCode, 0);
     assert.equal(validatePayload.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("batch applies operations across scene input and systems files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-batch-command-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "arena",
+      entities: [],
+      prefabs: [],
+      resources: [],
+      systems: [],
+      ui: { nodes: [], bindings: [] },
+    }, null, 2)}\n`);
+    const batchPath = join(root, "three-documents.authoring-batch.json");
+    await writeFile(batchPath, `${JSON.stringify({
+      schema: "threenative.authoring-batch",
+      version: "0.1.0",
+      id: "add-player-loop",
+      operations: [
+        { name: "input.add_action", args: { inputDocId: "gameplay", actionId: "jump", keys: ["keyboard.Space"] } },
+        { name: "scene.add_entity", args: { sceneId: "arena", entityId: "player" } },
+        { name: "system.create", args: { systemId: "player-controller", schedule: "update" } },
+      ],
+    }, null, 2)}\n`);
+
+    const apply = await authoringCommand(["batch", "apply", "--file", batchPath, "--project", root, "--json"]);
+    const payload = JSON.parse(apply.stdout) as {
+      committed: boolean;
+      filesCreated: string[];
+      filesModified: string[];
+      ok: boolean;
+      transactionId: string;
+    };
+    assert.equal(apply.exitCode, 0);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.committed, true);
+    assert.match(payload.transactionId, /^authoring-/);
+    assert.deepEqual(payload.filesCreated, [
+      "content/input/gameplay.input.json",
+      "content/systems/player-controller.systems.json",
+    ]);
+    assert.deepEqual(payload.filesModified, ["content/scenes/arena.scene.json"]);
+
+    const scene = JSON.parse(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8")) as { entities: Array<{ id: string }> };
+    const input = JSON.parse(await readFile(join(root, "content/input/gameplay.input.json"), "utf8")) as { actions: Array<{ id: string }> };
+    const systems = JSON.parse(await readFile(join(root, "content/systems/player-controller.systems.json"), "utf8")) as { systems: Array<{ id: string }> };
+    assert.deepEqual(scene.entities.map(({ id }) => id), ["player"]);
+    assert.deepEqual(input.actions.map(({ id }) => id), ["jump"]);
+    assert.deepEqual(systems.systems.map(({ id }) => id), ["player-controller"]);
+
+    const validate = await authoringCommand(["validate", "--project", root, "--json"]);
+    assert.equal(validate.exitCode, 0);
+    assert.equal((JSON.parse(validate.stdout) as { ok: boolean }).ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("batch reads one bounded JSON document from stdin", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-batch-stdin-"));
+  try {
+    const batch = JSON.stringify({
+      schema: "threenative.authoring-batch",
+      version: "0.1.0",
+      id: "stdin-system",
+      operations: [{ name: "system.create", args: { systemId: "stdin-system", schedule: "update" } }],
+    });
+    const plan = await authoringCommand(
+      ["batch", "plan", "--file", "-", "--project", root, "--json"],
+      { stdin: Readable.from([batch]) },
+    );
+    const payload = JSON.parse(plan.stdout) as { changed: boolean; ok: boolean; touchedPaths: string[] };
+    assert.equal(plan.exitCode, 0);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.changed, true);
+    assert.deepEqual(payload.touchedPaths, ["content/systems/stdin-system.systems.json"]);
+    assert.equal(Buffer.byteLength(plan.stdout, "utf8") <= AUTHORING_BATCH_STDOUT_MAX_BYTES, true);
+    await assert.rejects(readFile(join(root, "content/systems/stdin-system.systems.json"), "utf8"), { code: "ENOENT" });
+
+    const oversized = await authoringCommand(
+      ["batch", "plan", "--file", "-", "--project", root, "--json"],
+      { stdin: Readable.from([Buffer.alloc(AUTHORING_BATCH_INPUT_MAX_BYTES + 1, 0x20)]) },
+    );
+    const oversizedPayload = JSON.parse(oversized.stdout) as { diagnostics: Array<{ code: string }>; ok: boolean };
+    assert.equal(oversized.exitCode, 1);
+    assert.equal(oversizedPayload.ok, false);
+    assert.equal(oversizedPayload.diagnostics[0]?.code, "TN_AUTHORING_BATCH_INPUT_TOO_LARGE");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -6,6 +6,46 @@ export type {
   IAuthoringDiagnosticRelated,
 } from "./diagnostics.js";
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
+export type {
+  IApplyAuthoringBatchOptions,
+  IAuthoringBatchApplyResult,
+  IAuthoringBatchDocument,
+  IAuthoringBatchFilePlan,
+  IAuthoringBatchOperation,
+  IAuthoringBatchOperationTrace,
+  IAuthoringBatchPlanResult,
+  IPlanAuthoringBatchOptions,
+} from "./batches.js";
+export {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
+  planAuthoringBatch,
+} from "./batches.js";
+export type {
+  IGeneratorOwnerAuthorization,
+  IGeneratorOutputOwner,
+  IGeneratorProvenanceIndex,
+} from "./generatorProvenance.js";
+export {
+  advanceGeneratorOutputHash,
+  generatedOutputOwnershipDiagnostic,
+  hashGeneratorOutputs,
+  resolveGeneratorProvenance,
+} from "./generatorProvenance.js";
+export type {
+  AuthoringTransactionHash,
+  IAuthoringTransactionFaultInjection,
+  IAuthoringTransactionFile,
+  IAuthoringTransactionResult,
+  IPublishAuthoringTransactionOptions,
+  IRecoverAuthoringTransactionsOptions,
+} from "./transactionJournal.js";
+export {
+  hashAuthoringTransactionBytes,
+  publishAuthoringTransaction,
+  recoverAuthoringTransactions,
+} from "./transactionJournal.js";
 export type { IPrescriptiveDiagnosticCode } from "./prescriptiveCodes.js";
 export { PRESCRIPTIVE_DIAGNOSTIC_CODES, prescriptiveFixForCode } from "./prescriptiveCodes.js";
 export type { IWorldBiomeDefinition, WorldBiomeId } from "./biomes.js";
@@ -378,13 +418,18 @@ export {
 } from "./operations.js";
 export type {
   AuthoringOperationName,
+  AuthoringOperationMutationPolicy,
   AuthoringOperationPathPolicy,
   AuthoringOperationResultShape,
   AuthoringOperationSourceFamily,
   IAuthoringOperationArgumentDescriptor,
+  IAuthoringOperationAdapterExclusion,
+  IAuthoringOperationAdapterExclusions,
   IAuthoringOperationCliAdapterDescriptor,
   IAuthoringOperationCliArgumentBinding,
   IAuthoringOperationDescriptor,
+  IAuthoringOperationTargetContext,
+  AuthoringOperationTargetResolver,
   IAuthoringOperationEditorAdapterDescriptor,
   IAuthoringOperationEditorSmokeDescriptor,
   IDispatchAuthoringOperationOptions,

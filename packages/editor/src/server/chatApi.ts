@@ -1,7 +1,18 @@
-import { authoringDiagnostic, getAuthoringOperationDescriptor, validateAuthoringProject, type IAuthoringDiagnostic } from "@threenative/authoring";
+import {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
+  authoringDiagnostic,
+  getAuthoringOperationDescriptor,
+  planAuthoringBatch,
+  type AuthoringOperationName,
+  type IAuthoringBatchApplyResult,
+  type IAuthoringBatchDocument,
+  type IAuthoringDiagnostic,
+} from "@threenative/authoring";
 
 import { classifyLiveSceneUpdate, type IEditorLiveSceneUpdate } from "../preview/liveSceneUpdates.js";
-import { applyEditorOperationApi, type IEditorOperationApiResult } from "./operationApi.js";
+import type { IEditorOperationApiResult } from "./operationApi.js";
 import { editorChatContextFromProject, planEditorChatOperations, type IEditorChatPlan, type IEditorChatOperationStep } from "./chatPlan.js";
 import { loadEditorProjectApi, validateProjectRoot } from "./projectApi.js";
 
@@ -16,6 +27,7 @@ export interface IEditorChatApplyApiRequest {
 }
 
 export interface IEditorChatApplyApiResult {
+  batchResult?: IAuthoringBatchApplyResult;
   changedSourceFiles: string[];
   diagnostics: IAuthoringDiagnostic[];
   generatedProofFiles: string[];
@@ -45,10 +57,23 @@ export async function planEditorChatApi(options: {
     return failedPlan(options.request.message, [guard]);
   }
   const project = await loadEditorProjectApi({ projectPath: options.projectPath, rootPath: options.rootPath });
-  return planEditorChatOperations({
+  const proposal = planEditorChatOperations({
     context: editorChatContextFromProject(project, options.request.selectedRowId),
     message: options.request.message,
   });
+  if (!proposal.ok) {
+    return proposal;
+  }
+  const batchPlan = await planAuthoringBatch({ batch: batchForChatPlan(proposal), projectPath: options.projectPath });
+  const diagnostics = [...proposal.diagnostics, ...batchPlan.diagnostics];
+  return {
+    ...proposal,
+    affectedFiles: batchPlan.touchedPaths,
+    approvalToken: `${proposal.approvalToken}:${batchPlan.planHash}`,
+    batchPlan,
+    diagnostics,
+    ok: batchPlan.ok && diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
+  };
 }
 
 export async function applyEditorChatApi(options: {
@@ -77,33 +102,35 @@ export async function applyEditorChatApi(options: {
     return failedApply(guardDiagnostics);
   }
 
-  const operationResults: IEditorOperationApiResult[] = [];
-  const diagnostics: IAuthoringDiagnostic[] = [];
-  let revision = plan.projectRevision;
-  for (const [index, operation] of plan.operations.entries()) {
-    const result = await applyEditorOperationApi({
-      projectPath: options.projectPath,
-      request: { args: operation.args, name: operation.name, projectRevision: revision },
-      rootPath: options.rootPath,
-    });
-    operationResults.push(result);
-    diagnostics.push(...result.diagnostics.map((diagnostic) => ({ ...diagnostic, path: diagnostic.path ?? `/operations/${index}` })));
-    revision = result.projectRevision;
-    if (!result.ok) {
-      break;
-    }
+  if (plan.batchPlan === undefined) {
+    return failedApply([authoringDiagnostic({
+      code: "TN_EDITOR_CHAT_PLAN_HASH_REQUIRED",
+      message: "AI chat apply requires the plan hash produced by the editor preview.",
+      path: "/plan/batchPlan/planHash",
+      suggestion: "Plan the chat edit again and apply the reviewed preview.",
+    })]);
   }
 
-  const sourceFiles = sourceFilesFromResults(operationResults);
-  const validation = await validateAuthoringProject({ projectPath: options.projectPath });
-  diagnostics.push(...validation.diagnostics);
-  const ok = operationResults.length === plan.operations.length && operationResults.every((result) => result.ok) && validation.ok;
+  const batchResult = await applyAuthoringBatch({
+    batch: {
+      ...batchForChatPlan(plan),
+      preconditions: { planHash: plan.batchPlan.planHash },
+    },
+    projectPath: options.projectPath,
+  });
+  const sourceFiles = batchResult.filesWritten.filter((file) => !isGeneratedProofFile(file));
+  const revision = `${plan.projectRevision ?? "rev"}:${sourceFiles.join("|")}:${batchResult.committed ? "changed" : "same"}`;
+  const operationResults = batchResult.operationResults.map((trace) => ({
+    ...trace.result,
+    projectRevision: revision,
+  }));
   return {
+    batchResult,
     changedSourceFiles: sourceFiles,
-    diagnostics,
+    diagnostics: batchResult.diagnostics,
     generatedProofFiles: [],
     liveUpdate: classifyLiveSceneUpdate({ changedFiles: sourceFiles, operations: plan.operations }),
-    ok,
+    ok: batchResult.ok && batchResult.committed,
     operationResults,
     projectRevision: revision,
   };
@@ -151,12 +178,22 @@ function unsafePathValue(operation: IEditorChatOperationStep): string | undefine
   return undefined;
 }
 
-function sourceFilesFromResults(results: readonly IEditorOperationApiResult[]): string[] {
-  return [...new Set(results.flatMap((result) => result.filesWritten).filter((file) => !isGeneratedProofFile(file)))].sort();
-}
-
 function isGeneratedProofFile(file: string): boolean {
   return file.endsWith(".ir.json") || file === "assets.manifest.json" || file.includes("/dist/");
+}
+
+function batchForChatPlan(plan: IEditorChatPlan): IAuthoringBatchDocument {
+  return {
+    actor: "editor-chat",
+    id: plan.id,
+    intent: plan.message,
+    operations: plan.operations.map((operation) => ({
+      args: operation.args,
+      name: operation.name as AuthoringOperationName,
+    })),
+    schema: AUTHORING_BATCH_SCHEMA,
+    version: AUTHORING_BATCH_VERSION,
+  };
 }
 
 function failedPlan(message: string, diagnostics: IAuthoringDiagnostic[]): IEditorChatPlan {

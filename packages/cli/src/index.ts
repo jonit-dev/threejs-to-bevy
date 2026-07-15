@@ -108,9 +108,10 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn flow create <flow-id> [--initial <state-id>] [--scene <scene-id>] [--project <path>] [--json]\n              tn flow add-state <flow-id> <state-id> [--actions '<json-array>'] [--project <path>] [--json]\n              tn flow add-transition <flow-id> <transition-id> --from <state-id> --to <state-id> --trigger '<json-object>' [--actions '<json-array>'] [--project <path>] [--json]",
   },
   authoring: {
-    description: "Inspect and validate structured authoring source documents.",
+    description: "Inspect, validate, and atomically mutate structured authoring source documents.",
     implemented: true,
-    usage: "tn authoring inspect [--project <path>] [--json]\n              tn authoring validate [--project <path>] [--json]",
+    subcommands: ["batch", "compile-typed-spec", "inspect", "validate"],
+    usage: "tn authoring inspect [--project <path>] [--json]\n              tn authoring validate [--project <path>] [--json]\n              tn authoring compile-typed-spec [--entry <src/game.spec.ts>] [--project <path>] [--json]\n              tn authoring batch plan --file <path|-> [--project <path>] [--json]\n              tn authoring batch apply --file <path|-> [--project <path>] [--json]",
   },
   bake: {
     description: "Bake deterministic portable lighting data into durable content.",

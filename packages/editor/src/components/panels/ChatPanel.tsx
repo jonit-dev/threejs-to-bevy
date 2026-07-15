@@ -12,7 +12,7 @@ export function ChatPanel() {
   const pendingPlan = chat.pendingPlan;
   const hasPlanErrors = (pendingPlan?.diagnostics ?? []).some((diagnostic) => diagnostic.severity === "error");
   const revisionChanged = pendingPlan?.projectRevision !== undefined && projectRevision !== undefined && pendingPlan.projectRevision !== projectRevision;
-  const canApply = pendingPlan !== undefined && pendingPlan.ok && !hasPlanErrors && !revisionChanged && chat.status !== "applying";
+  const canApply = pendingPlan !== undefined && pendingPlan.ok && pendingPlan.batchPlan !== undefined && !hasPlanErrors && !revisionChanged && chat.status !== "applying";
   return (
     <section className="tn-editor-chat-panel" aria-label="AI chat ECS control">
       <div className="tn-editor-chat-panel__transcript" aria-live="polite">
@@ -46,6 +46,7 @@ export function ChatPanel() {
             <small>{pendingPlan.operations.length} operations</small>
           </header>
           <p>{pendingPlan.summary}</p>
+          {pendingPlan.batchPlan === undefined ? null : <small>Plan: {pendingPlan.batchPlan.planHash.slice(0, 19)}...</small>}
           {pendingPlan.operations.length > 0 ? (
             <ol>
               {pendingPlan.operations.map((operation, index) => (
@@ -56,7 +57,11 @@ export function ChatPanel() {
               ))}
             </ol>
           ) : null}
-          {pendingPlan.affectedFiles.length > 0 ? <small className="tn-editor-chat-plan__files">Files: {pendingPlan.affectedFiles.join(", ")}</small> : null}
+          {pendingPlan.batchPlan?.files.length ? (
+            <ul className="tn-editor-chat-plan__files">
+              {pendingPlan.batchPlan.files.map((file) => <li key={file.path}>{file.change}: {file.path} ({file.owner})</li>)}
+            </ul>
+          ) : pendingPlan.affectedFiles.length > 0 ? <small className="tn-editor-chat-plan__files">Files: {pendingPlan.affectedFiles.join(", ")}</small> : null}
           {pendingPlan.diagnostics.length > 0 || revisionChanged ? (
             <ul className="tn-editor-chat-diagnostics">
               {revisionChanged ? <li>Project revision changed after this plan was created.</li> : null}

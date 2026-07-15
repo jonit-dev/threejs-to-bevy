@@ -17,6 +17,8 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
+    "generate:operations": "pnpm --filter @threenative/authoring build && node scripts/generate-operations.mjs",
+    "check:generated-operations": "pnpm --filter @threenative/authoring build && node scripts/generate-operations.mjs --check",
     "lint": "tsc -p tsconfig.json --noEmit",
     "test": "node scripts/run-tests.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"

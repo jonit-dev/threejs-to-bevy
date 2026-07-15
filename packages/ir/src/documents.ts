@@ -66,6 +66,7 @@ export interface IrDocumentMetadata {
   required?: boolean;
   schema?: (typeof IR_SCHEMA_IDS)[keyof typeof IR_SCHEMA_IDS];
   schemaFile?: string | null;
+  supportedVersions?: readonly string[];
   version?: string;
 }
 
@@ -184,6 +185,7 @@ export const IR_DOCUMENTS = {
     ],
     schema: IR_SCHEMA_IDS.localData,
     schemaFile: null,
+    supportedVersions: ["0.1.0", "0.2.0"],
   },
   materials: {
     drift: {
@@ -336,6 +338,10 @@ export const IR_DOCUMENTS = {
     schemaFile: "world.schema.json",
   },
 } as const satisfies Record<string, IrDocumentMetadata>;
+
+export function irDocumentVersions(metadata: IrDocumentMetadata): readonly string[] {
+  return metadata.supportedVersions ?? [metadata.version ?? IR_VERSION];
+}
 
 export type IrDocumentName = keyof typeof IR_DOCUMENTS;
 export type SchemaBackedIrDocumentName = {

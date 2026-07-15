@@ -154,17 +154,16 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     const suffix = Date.now().toString(36);
     const sceneId = sceneIdFromDocumentPath(get().activeScenePath ?? get().project?.sceneLifecycle?.activeScene?.documentPath);
     try {
-      let revision = get().project?.projectRevision;
       const result = buildAddObjectRecipePlan(action, suffix, { environmentId: environmentIdFromProject(get().project, sceneId) });
       if (result === undefined) {
         set({ status: action.readOnlyReason ?? `${action.label} does not have a promoted add operation yet` });
         return;
       }
       set({ status: `Adding ${result.statusLabel}` });
-      for (const operation of result.operations) {
-        const operationResult = await postOperation(operation.name, { ...operation.args, sceneId }, revision);
-        revision = operationResult.projectRevision ?? revision;
-      }
+      await postOperationBatch(`editor-${action.id}-${suffix}`, result.operations.map((operation) => ({
+        args: { ...operation.args, sceneId },
+        name: operation.name,
+      })), get().project?.projectRevision);
       const nextProject = await get().refreshProject();
       set({
         selectedRowId: nextProject.sceneObjects?.find((object) => object.id === result.entityId)?.rowId ?? `entity:content/scenes/arena.scene.json:${result.entityId}`,
@@ -412,7 +411,7 @@ export const useEditorStore = create<EditorStore>((set, get) => ({
     })),
   applyChatPlan: async () => {
     const plan = get().chat.pendingPlan;
-    if (plan === undefined || !plan.ok) {
+    if (plan === undefined || !plan.ok || plan.batchPlan === undefined) {
       set({ status: "No approved chat plan is ready to apply" });
       return;
     }
@@ -685,6 +684,19 @@ async function postOperation(name: string, args: Record<string, unknown>, projec
   const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean; projectRevision?: string };
   if (!payload.ok) {
     throw new Error(payload.diagnostics?.[0]?.message ?? `Operation ${name} failed`);
+  }
+  return { filesWritten: payload.filesWritten ?? [], projectRevision: payload.projectRevision };
+}
+
+async function postOperationBatch(id: string, operations: IPlannedEditorOperation[], projectRevision: string | undefined): Promise<{ filesWritten: string[]; projectRevision?: string }> {
+  const response = await fetch("/api/operations", {
+    body: JSON.stringify({ id, operations, projectRevision }),
+    headers: { "content-type": "application/json" },
+    method: "POST",
+  });
+  const payload = await response.json() as { diagnostics?: Array<{ message: string }>; filesWritten?: string[]; ok: boolean; projectRevision?: string };
+  if (!payload.ok) {
+    throw new Error(payload.diagnostics?.[0]?.message ?? `Operation batch ${id} failed`);
   }
   return { filesWritten: payload.filesWritten ?? [], projectRevision: payload.projectRevision };
 }

@@ -1,11 +1,16 @@
-import { access, mkdir, readFile, readdir, rename, rm, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { access, readFile, readdir } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
+
+import {
+  hashAuthoringTransactionBytes,
+  publishAuthoringTransaction,
+  type IAuthoringTransactionFaultInjection,
+} from "@threenative/authoring";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { formatOverlayAddUsage, listOverlayStyles, overlayBuildScript, resolveOverlayScaffold, resolveOverlayTemplateFiles, supportedOverlayFlags } from "../overlays/scaffoldRegistry.js";
 
-type TransactionPhase = "stage" | "commit" | "cleanup";
-interface IOverlayAddOptions { beforeCommit?: (index: number, path: string) => void | Promise<void>; cwd?: string; transactionHook?: (phase: TransactionPhase, index: number, path: string) => void | Promise<void> }
+interface IOverlayAddOptions { cwd?: string; faultInjection?: IAuthoringTransactionFaultInjection }
 interface IJsonObject { [key: string]: unknown }
 interface IOverlayDocument extends IJsonObject { overlays: IJsonObject[]; schema: string; version: string }
 
@@ -32,9 +37,11 @@ export async function overlayAddCommand(argv: readonly string[], options: IOverl
   const projectPath = resolve(cwd, project ?? ".");
   const packagePath = resolve(projectPath, "package.json");
   const configPath = resolve(projectPath, "threenative.config.json");
+  let packageBytes: Buffer;
   let packageJson: IJsonObject;
   try {
-    packageJson = JSON.parse(await readFile(packagePath, "utf8")) as IJsonObject;
+    packageBytes = await readFile(packagePath);
+    packageJson = JSON.parse(packageBytes.toString("utf8")) as IJsonObject;
     const config = JSON.parse(await readFile(configPath, "utf8")) as IJsonObject;
     if (config.schema !== "threenative.project") throw new Error("unsupported config");
   } catch {
@@ -69,12 +76,13 @@ export async function overlayAddCommand(argv: readonly string[], options: IOverl
   // lexicographically first existing document is the deterministic owner.
   const canonicalOverlayPath = resolve(projectPath, "content/overlays/webview.overlays.json");
   const overlayPath = overlayFiles.includes(canonicalOverlayPath) ? canonicalOverlayPath : overlayFiles[0] ?? canonicalOverlayPath;
-  const parsedOverlayDocuments: Array<{ document: IOverlayDocument; path: string }> = [];
+  const parsedOverlayDocuments: Array<{ bytes: Buffer; document: IOverlayDocument; path: string }> = [];
   for (const path of overlayFiles) {
     try {
-      const document = JSON.parse(await readFile(path, "utf8")) as IOverlayDocument;
+      const bytes = await readFile(path);
+      const document = JSON.parse(bytes.toString("utf8")) as IOverlayDocument;
       if (document.schema !== "threenative.overlays" || !Array.isArray(document.overlays)) throw new Error("invalid overlay document");
-      parsedOverlayDocuments.push({ document, path });
+      parsedOverlayDocuments.push({ bytes, document, path });
     } catch {
       return conflict(json, relative(projectPath, path), "Existing overlay declaration is malformed or unsupported.");
     }
@@ -110,14 +118,26 @@ export async function overlayAddCommand(argv: readonly string[], options: IOverl
     devDependencies: { ...devDependencies, ...descriptor.devDependencies },
   };
 
-  const writes: Array<{ contents: string; path: string }> = [];
+  const writes: Array<{ baseHash: ReturnType<typeof hashAuthoringTransactionBytes> | null; contents: string; path: string }> = [];
   for (const file of plannedFiles) {
-    writes.push({ contents: await readFile(file.template, "utf8"), path: file.destination });
+    writes.push({ baseHash: null, contents: await readFile(file.template, "utf8"), path: file.destination });
   }
-  writes.push({ contents: `${JSON.stringify(nextOverlayDocument, null, 2)}\n`, path: overlayPath });
-  writes.push({ contents: `${JSON.stringify(nextPackage, null, 2)}\n`, path: packagePath });
+  const overlayOwner = parsedOverlayDocuments.find((item) => item.path === overlayPath);
+  writes.push({ baseHash: overlayOwner === undefined ? null : hashAuthoringTransactionBytes(overlayOwner.bytes), contents: `${JSON.stringify(nextOverlayDocument, null, 2)}\n`, path: overlayPath });
+  writes.push({ baseHash: hashAuthoringTransactionBytes(packageBytes), contents: `${JSON.stringify(nextPackage, null, 2)}\n`, path: packagePath });
   try {
-    await commitTransaction(writes, options.beforeCommit, options.transactionHook);
+    const publication = await publishAuthoringTransaction({
+      ...(options.faultInjection === undefined ? {} : { faultInjection: options.faultInjection }),
+      files: writes.map((write) => ({
+        baseHash: write.baseHash,
+        bytes: Buffer.from(write.contents),
+        path: relative(projectPath, write.path).split("\\").join("/"),
+      })),
+      projectPath,
+    });
+    if (!publication.ok || !publication.committed) {
+      throw new Error(publication.diagnostics.map((diagnostic) => `${diagnostic.code}: ${diagnostic.message}`).join("; "));
+    }
   } catch (error) {
     return failure("TN_OVERLAY_SCAFFOLD_WRITE_FAILED", json, `Overlay scaffold transaction failed: ${error instanceof Error ? error.message : String(error)}.`, projectPath, "Resolve the filesystem error and retry; the project files were restored.");
   }
@@ -198,48 +218,3 @@ async function findOverlayDocuments(root: string): Promise<string[]> {
   return found.sort();
 }
 async function exists(path: string): Promise<boolean> { try { await access(path); return true; } catch { return false; } }
-async function commitTransaction(writes: readonly { contents: string; path: string }[], beforeCommit?: IOverlayAddOptions["beforeCommit"], transactionHook?: IOverlayAddOptions["transactionHook"]): Promise<void> {
-  const nonce = `${process.pid}-${Date.now()}`;
-  const staged: Array<{ backup: string; existed: boolean; path: string; stage: string }> = [];
-  try {
-    for (const write of writes) {
-      await mkdir(dirname(write.path), { recursive: true });
-      const stage = `${write.path}.tn-overlay-${nonce}.stage`;
-      const item = { backup: `${write.path}.tn-overlay-${nonce}.backup`, existed: await exists(write.path), path: write.path, stage };
-      staged.push(item);
-      await transactionHook?.("stage", staged.length - 1, write.path);
-      await writeFile(stage, write.contents, "utf8");
-    }
-    for (let index = 0; index < staged.length; index += 1) {
-      const item = staged[index]!;
-      await beforeCommit?.(index, item.path);
-      await transactionHook?.("commit", index, item.path);
-      if (item.existed) await rename(item.path, item.backup);
-      await rename(item.stage, item.path);
-    }
-  } catch (error) {
-    for (const item of [...staged].reverse()) {
-      await rm(item.stage, { force: true });
-      if (await exists(item.backup)) {
-        await rm(item.path, { force: true });
-        await rename(item.backup, item.path);
-      } else if (!item.existed) {
-        await rm(item.path, { force: true });
-      }
-    }
-    throw error;
-  }
-  // Cleanup happens only after the commit is irrevocably complete. A cleanup
-  // failure cannot trigger rollback after another backup has been deleted.
-  for (let index = 0; index < staged.length; index += 1) {
-    const item = staged[index]!;
-    if (!item.existed) continue;
-    try {
-      await transactionHook?.("cleanup", index, item.backup);
-      await rm(item.backup, { force: true });
-    } catch {
-      // A stale, uniquely named backup is safe; cleanup must never roll back
-      // an already committed transaction after other backups were deleted.
-    }
-  }
-}

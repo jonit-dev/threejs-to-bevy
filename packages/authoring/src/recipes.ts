@@ -1,14 +1,16 @@
 import { authoringDiagnostic, type IAuthoringDiagnostic } from "./diagnostics.js";
 import {
-  dispatchAuthoringOperation,
   getAuthoringOperationDescriptor,
   type AuthoringOperationName,
 } from "./operationRegistry.js";
 import { type IAuthoringOperationResult } from "./operations.js";
 import { loadAuthoringProject } from "./project.js";
-import { copyFile, cp, mkdir, mkdtemp, readFile, rename, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
+} from "./batches.js";
+import { resolve } from "node:path";
 
 export type AuthoringRecipeId =
   | "collectible"
@@ -157,78 +159,47 @@ export async function applyAuthoringRecipe(options: IApplyAuthoringRecipeOptions
   }
 
   const projectPath = resolve(options.projectPath);
-  const transactionRoot = await mkdtemp(join(tmpdir(), "tn-authoring-recipe-"));
-  const stagedProjectPath = join(transactionRoot, "project");
-  try {
-    await cp(projectPath, stagedProjectPath, {
-      filter: (source) => !isIgnoredTransactionPath(projectPath, source),
-      recursive: true,
-    });
-    const staged = await applyAuthoringRecipeOperations({ ...options, projectPath: stagedProjectPath }, { ...plan, projectPath: stagedProjectPath });
-    if (!staged.ok) {
-      return remapRecipeResult(staged, projectPath, false);
-    }
-    staged.filesWritten = await changedRecipeFiles(stagedProjectPath, projectPath, staged.filesWritten);
-    staged.changed = staged.filesWritten.length > 0;
-    await commitRecipeFiles(stagedProjectPath, projectPath, staged.filesWritten);
-    return remapRecipeResult(staged, projectPath, true);
-  } finally {
-    await rm(transactionRoot, { force: true, recursive: true });
-  }
-}
-
-async function applyAuthoringRecipeOperations(
-  options: IApplyAuthoringRecipeOptions & { projectPath: string },
-  plan: IAuthoringRecipePlanResult,
-): Promise<IAuthoringRecipeApplyResult> {
-  const operationResults: IAuthoringRecipeOperationResult[] = [];
-  const diagnostics = [...plan.diagnostics];
-  const filesWritten = new Set<string>();
-  let changed = false;
-  let stoppedAt: number | undefined;
-  const existingProject = await loadAuthoringProject({ projectPath: options.projectPath });
-  const adoptedEntityIds = new Set(existingProject.documents.flatMap((document) => {
-    if (document.kind !== "scene" || !isRecord(document.data) || !Array.isArray(document.data.entities)) {
-      return [];
-    }
-    return document.data.entities.flatMap((entity) => isRecord(entity) && typeof entity.id === "string" ? [entity.id] : []);
+  const project = await loadAuthoringProject({ projectPath });
+  const decisions = plan.operations.map((operation, index) => ({
+    index,
+    operation,
+    policy: recipeOperationPolicy(operation, project.documents),
   }));
-
-  const stopOnError = options.stopOnError ?? true;
-  for (const [index, operation] of plan.operations.entries()) {
-    const entityId = typeof operation.args.entityId === "string" ? operation.args.entityId : undefined;
-    const preservesAdoptedEntity = entityId !== undefined
-      && adoptedEntityIds.has(entityId)
-      && ["scene.set_character_controller", "scene.set_collider", "scene.set_rigid_body", "scene.set_transform"].includes(operation.name);
-    const preservesAdoptedCamera = operation.name === "scene.set_camera_component" && entityId !== undefined && adoptedEntityIds.has(entityId);
-    const dispatched = preservesAdoptedEntity || preservesAdoptedCamera
-      ? { changed: false, diagnostics: [], filesWritten: [], ok: true, projectPath: options.projectPath }
-      : await dispatchAuthoringOperation({ args: operation.args, name: operation.name, projectPath: options.projectPath });
-    if (operation.name === "scene.add_entity" && entityId !== undefined && dispatched.diagnostics.some((diagnostic) => diagnostic.code === "TN_AUTHORING_DUPLICATE_ENTITY_ID")) {
-      adoptedEntityIds.add(entityId);
-    }
-    const result = idempotentOperationResult(dispatched);
-    operationResults.push({ result, trace: { ...operation, index } });
-    diagnostics.push(...result.diagnostics);
-    for (const file of result.filesWritten) {
-      filesWritten.add(file);
-    }
-    changed = changed || result.changed;
-    if (!result.ok && stopOnError) {
-      stoppedAt = index;
-      break;
-    }
-  }
-
-  const ok = plan.ok && operationResults.length === plan.operations.length && operationResults.every((entry) => entry.result.ok);
+  const operations = decisions.filter((decision) => decision.policy === undefined).map((decision) => ({
+    args: decision.operation.args,
+    name: decision.operation.name as AuthoringOperationName,
+  }));
+  const batch = operations.length === 0 ? undefined : await applyAuthoringBatch({
+    batch: {
+      id: `recipe-${plan.recipeId}`,
+      operations,
+      schema: AUTHORING_BATCH_SCHEMA,
+      version: AUTHORING_BATCH_VERSION,
+    },
+    projectPath,
+    stopOnError: options.stopOnError,
+  });
+  const appliedResults = [...(batch?.operationResults ?? [])];
+  const operationResults = decisions.map(({ index, operation, policy }) => ({
+    result: policy === undefined
+      ? (appliedResults.shift()?.result ?? failedBatchOperationResult(projectPath, batch?.diagnostics ?? []))
+      : adoptedRecipeOperationResult(projectPath, operation, policy),
+    trace: { ...operation, index },
+  }));
+  const policyDiagnostics = decisions.flatMap(({ operation, policy }) => policy === undefined
+    ? []
+    : adoptedRecipeOperationResult(projectPath, operation, policy).diagnostics);
+  const diagnostics = [...plan.diagnostics, ...(batch?.diagnostics ?? []), ...policyDiagnostics];
+  const committed = batch?.committed ?? true;
+  const ok = committed && operationResults.every((entry) => entry.result.ok);
   return {
     ...plan,
-    changed,
+    changed: batch?.committed === true && batch.changed,
     diagnostics,
-    filesWritten: [...filesWritten].sort(),
+    filesWritten: batch?.committed === true ? batch.filesWritten : [],
     ok,
     operationResults,
-    ...(stoppedAt === undefined ? {} : { stoppedAt }),
+    ...(batch?.stoppedAt === undefined ? {} : { stoppedAt: decisions.filter((decision) => decision.policy === undefined)[batch.stoppedAt]?.index }),
   };
 }
 
@@ -244,59 +215,74 @@ function failedRecipeApply(plan: IAuthoringRecipePlanResult, projectPath: string
   return { ...plan, changed: false, diagnostics, filesWritten: [], ok: false, operationResults: [] };
 }
 
-function idempotentOperationResult(result: IAuthoringOperationResult): IAuthoringOperationResult {
-  const errors = result.diagnostics.filter((diagnostic) => diagnostic.severity === "error");
-  if (errors.length === 0 || !errors.every((diagnostic) => diagnostic.code.startsWith("TN_AUTHORING_DUPLICATE_"))) {
-    return result;
-  }
+type RecipeExistingOutputPolicy = "adopt" | "preserve-adopted-target";
+
+interface IRecipeOperationPolicy {
+  collection: readonly string[];
+  diagnosticCode: string;
+  identityArg: string;
+  policy: RecipeExistingOutputPolicy;
+  scopeArg: string;
+  sourceKind: string;
+}
+
+// Recipe retries and starter adoption are product policy, not transaction behavior.
+// The batch engine sees only operations that this policy declares safe to publish.
+const RECIPE_OPERATION_POLICIES: Partial<Record<string, IRecipeOperationPolicy>> = {
+  "input.add_action": { collection: ["actions"], diagnosticCode: "TN_AUTHORING_DUPLICATE_INPUT_ACTION_ID", identityArg: "actionId", policy: "adopt", scopeArg: "inputDocId", sourceKind: "input" },
+  "input.add_axis": { collection: ["axes"], diagnosticCode: "TN_AUTHORING_DUPLICATE_INPUT_AXIS_ID", identityArg: "axisId", policy: "adopt", scopeArg: "inputDocId", sourceKind: "input" },
+  "material.create": { collection: ["materials"], diagnosticCode: "TN_AUTHORING_DUPLICATE_MATERIAL_ID", identityArg: "materialId", policy: "adopt", scopeArg: "materialId", sourceKind: "material" },
+  "material.set": { collection: ["materials"], diagnosticCode: "TN_AUTHORING_DUPLICATE_MATERIAL_ID", identityArg: "materialId", policy: "preserve-adopted-target", scopeArg: "materialId", sourceKind: "material" },
+  "scene.add_entity": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.add_group": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "groupId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.add_prefab": { collection: ["prefabs"], diagnosticCode: "TN_AUTHORING_DUPLICATE_PREFAB_ID", identityArg: "prefabId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.add_resource": { collection: ["resources"], diagnosticCode: "TN_AUTHORING_DUPLICATE_RESOURCE_ID", identityArg: "resourceId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.add_ui_node": { collection: ["ui", "nodes"], diagnosticCode: "TN_AUTHORING_DUPLICATE_UI_NODE_ID", identityArg: "uiNodeId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.attach_script": { collection: ["systems"], diagnosticCode: "TN_AUTHORING_DUPLICATE_SYSTEM_ID", identityArg: "systemId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.bind_ui": { collection: ["ui", "bindings"], diagnosticCode: "TN_AUTHORING_DUPLICATE_UI_BINDING_ID", identityArg: "uiNodeId", policy: "adopt", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_camera_component": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_character_controller": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_collider": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_light": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_rigid_body": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+  "scene.set_transform": { collection: ["entities"], diagnosticCode: "TN_AUTHORING_DUPLICATE_ENTITY_ID", identityArg: "entityId", policy: "preserve-adopted-target", scopeArg: "sceneId", sourceKind: "scene" },
+};
+
+function recipeOperationPolicy(operation: IAuthoringRecipeOperation, documents: Awaited<ReturnType<typeof loadAuthoringProject>>["documents"]): IRecipeOperationPolicy | undefined {
+  const policy = RECIPE_OPERATION_POLICIES[operation.name];
+  if (policy === undefined) return undefined;
+  const identity = operation.args[policy.identityArg];
+  const scope = operation.args[policy.scopeArg];
+  if (typeof identity !== "string" || typeof scope !== "string") return undefined;
+  const document = documents.find((candidate) => candidate.kind === policy.sourceKind && isRecord(candidate.data) && candidate.data.id === scope);
+  if (document === undefined || !isRecord(document.data)) return undefined;
+  const collection = policy.collection.reduce<unknown>((value, key) => isRecord(value) ? value[key] : undefined, document.data);
+  if (!Array.isArray(collection)) return undefined;
+  const exists = collection.some((value) => isRecord(value) && (policy.collection.at(-1) === "bindings" ? value.node : value.id) === identity);
+  return exists ? policy : undefined;
+}
+
+function adoptedRecipeOperationResult(projectPath: string, operation: IAuthoringRecipeOperation, policy: IRecipeOperationPolicy): IAuthoringOperationResult {
+  const identity = operation.args[policy.identityArg];
   return {
-    ...result,
-    diagnostics: result.diagnostics.map((diagnostic) => diagnostic.severity === "error"
-      ? { ...diagnostic, message: `${diagnostic.message} Recipe output already exists; keeping it and continuing.`, severity: "info" }
-      : diagnostic),
+    changed: false,
+    diagnostics: [authoringDiagnostic({
+      code: policy.diagnosticCode,
+      message: policy.policy === "adopt"
+        ? `Recipe output '${String(identity)}' already exists; adopting it and continuing.`
+        : `Recipe target '${String(identity)}' already exists; preserving its authored values.`,
+      path: `/${policy.identityArg}`,
+      severity: "info",
+      value: identity,
+    })],
+    filesWritten: [],
     ok: true,
-  };
-}
-
-function remapRecipeResult(result: IAuthoringRecipeApplyResult, projectPath: string, committed: boolean): IAuthoringRecipeApplyResult {
-  return {
-    ...result,
-    changed: committed ? result.changed : false,
-    filesWritten: committed ? result.filesWritten : [],
     projectPath,
-    operationResults: result.operationResults.map((entry) => ({
-      ...entry,
-      result: { ...entry.result, projectPath },
-    })),
   };
 }
 
-function isIgnoredTransactionPath(projectPath: string, source: string): boolean {
-  const relativePath = source.slice(projectPath.length).replace(/^[/\\]+/u, "");
-  const firstSegment = relativePath.split(/[/\\]/u)[0];
-  return firstSegment === "node_modules" || firstSegment === ".git" || firstSegment === "dist" || firstSegment === "artifacts";
-}
-
-async function commitRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<void> {
-  for (const file of files) {
-    const destination = resolve(projectPath, file);
-    const temporary = `${destination}.tn-recipe-${process.pid}.tmp`;
-    await mkdir(dirname(destination), { recursive: true });
-    await copyFile(resolve(stagedProjectPath, file), temporary);
-    await rename(temporary, destination);
-  }
-}
-
-async function changedRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<string[]> {
-  const changed: string[] = [];
-  for (const file of files) {
-    const staged = await readFile(resolve(stagedProjectPath, file));
-    const existing = await readFile(resolve(projectPath, file)).catch(() => undefined);
-    if (existing === undefined || !staged.equals(existing)) {
-      changed.push(file);
-    }
-  }
-  return changed;
+function failedBatchOperationResult(projectPath: string, diagnostics: IAuthoringDiagnostic[]): IAuthoringOperationResult {
+  return { changed: false, diagnostics, filesWritten: [], ok: false, projectPath };
 }
 
 interface IRecipePlanner {

@@ -1,8 +1,11 @@
 import assert from "node:assert/strict";
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 
 import { getAuthoringOperationDescriptor } from "./operationRegistry.js";
-import { listAuthoringRecipeIds, planAuthoringRecipe } from "./recipes.js";
+import { applyAuthoringRecipe, listAuthoringRecipeIds, planAuthoringRecipe } from "./recipes.js";
 
 test("should produce deterministic operations for third-person-controller", () => {
   const plan = planAuthoringRecipe({
@@ -129,5 +132,51 @@ test("should expose gameplay block metadata for maintained recipes", () => {
     const plan = planAuthoringRecipe({ args, recipeId });
     assert.equal(plan.ok, true, `${recipeId} should plan`);
     assert.equal(plan.gameplayBlocks.some((block) => block.startsWith("controller.") || block.startsWith("objective.") || block.startsWith("world.") || block.startsWith("proof.")), true, `${recipeId} should expose gameplay block metadata`);
+  }
+});
+
+test("recipe remains atomic and adoption-aware through batch engine", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-recipe-batch-"));
+  try {
+    await mkdir(join(root, "content", "scenes"), { recursive: true });
+    const scenePath = join(root, "content", "scenes", "arena.scene.json");
+    const original = `${JSON.stringify({
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "arena",
+      entities: [
+        { id: "player", transform: { position: [4, 0.5, 4] } },
+        { id: "camera.main" },
+      ],
+      prefabs: [],
+      resources: [],
+      systems: [],
+      ui: { bindings: [], nodes: [] },
+    }, null, 2)}\n`;
+    await writeFile(scenePath, original, "utf8");
+
+    const adopted = await applyAuthoringRecipe({
+      args: { cameraId: "camera.main", entityId: "player", sceneId: "arena" },
+      projectPath: root,
+      recipeId: "third-person-controller",
+    });
+    assert.equal(adopted.ok, true);
+    assert.equal(adopted.changed, false);
+    assert.deepEqual(adopted.filesWritten, []);
+    assert.equal(adopted.diagnostics.every((diagnostic) => diagnostic.severity !== "error"), true);
+    assert.equal(await readFile(scenePath, "utf8"), original);
+
+    const failed = await applyAuthoringRecipe({
+      args: { entityId: "runner", inputDocId: "arena-input", sceneId: "missing" },
+      projectPath: root,
+      recipeId: "kinematic-character",
+    });
+    assert.equal(failed.ok, false);
+    assert.equal(failed.changed, false);
+    assert.deepEqual(failed.filesWritten, []);
+    assert.equal(await readFile(scenePath, "utf8"), original);
+    await assert.rejects(access(join(root, "content", "input", "arena-input.input.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });

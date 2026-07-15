@@ -2,6 +2,7 @@ import { resolveScriptAlias, formatDeprecationDiagnostic } from "./legacyAliases
 
 export { verifyAdvancedUiArtifacts, type IAdvancedUiArtifactReport } from "./advancedUi.js";
 export { runAgentIoBudgetGate, type AgentIoBudgetCommand, type AgentIoBudgetMeasurement, type AgentIoBudgetResult } from "./agentIoBudget.js";
+export { runAuthoringBatchScaleGate, AUTHORING_BATCH_SCALE_FILE_COUNTS, AUTHORING_BATCH_SCALE_SIZES, type IAuthoringBatchScaleGateResult } from "./authoringBatchScaleGate.js";
 export { API_CARD_BUDGET_BYTES, renderScriptApiCard, renderScriptApiCardFromSource, scriptContextMembers, validateApiCard, type ApiCardValidationResult } from "./apiCard.js";
 export { checkDocs, formatDocsReport } from "./docs.js";
 export { loadRejectedBoundaryCatalog, verifyBoundaryDiagnosticsCatalog, REQUIRED_BOUNDARY_FIXTURES } from "./boundaryDiagnostics.js";

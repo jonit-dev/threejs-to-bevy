@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { overlayAddCommand } from "./overlayAdd.js";
-import { overlayBuildScript, resolveOverlayScaffold } from "../overlays/scaffoldRegistry.js";
+import { overlayBuildScript, resolveOverlayScaffold, resolveOverlayTemplateFiles } from "../overlays/scaffoldRegistry.js";
 
 async function project(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-overlay-add-"));
@@ -142,11 +142,11 @@ test("should reject dependencies already declared in the opposite role", async (
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("should roll back every file when a staged commit fails", async () => {
+test("should roll back every file when journaled promotion fails", async () => {
   const root = await project();
   try {
     const before = await readFile(join(root, "package.json"), "utf8");
-    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, beforeCommit(index) { if (index === 2) throw new Error("injected write failure"); } });
+    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, faultInjection: { afterTransition: 5, mode: "error" } });
     const payload = JSON.parse(result.stdout) as { code: string };
     assert.equal(payload.code, "TN_OVERLAY_SCAFFOLD_WRITE_FAILED");
     assert.equal(await readFile(join(root, "package.json"), "utf8"), before);
@@ -155,11 +155,11 @@ test("should roll back every file when a staged commit fails", async () => {
   } finally { await rm(root, { recursive: true, force: true }); }
 });
 
-test("should remove prior stages when staging fails", async () => {
+test("should remove journal stages when preparation fails", async () => {
   const root = await project();
   try {
     const before = await readFile(join(root, "package.json"), "utf8");
-    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, transactionHook(phase, index) { if (phase === "stage" && index === 1) throw new Error("injected staging failure"); } });
+    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, faultInjection: { afterTransition: 1, mode: "error" } });
     assert.equal((JSON.parse(result.stdout) as { code: string }).code, "TN_OVERLAY_SCAFFOLD_WRITE_FAILED");
     assert.equal(await readFile(join(root, "package.json"), "utf8"), before);
     await assert.rejects(access(join(root, "overlay/menu/index.html")));
@@ -169,7 +169,9 @@ test("should remove prior stages when staging fails", async () => {
 test("should keep committed files when backup cleanup fails", async () => {
   const root = await project();
   try {
-    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, transactionHook(phase) { if (phase === "cleanup") throw new Error("injected cleanup failure"); } });
+    const descriptor = resolveOverlayScaffold()!;
+    const committedTransition = resolveOverlayTemplateFiles(import.meta.url, descriptor).length + 6;
+    const result = await overlayAddCommand(["menu", "--json"], { cwd: root, faultInjection: { afterTransition: committedTransition, mode: "error" } });
     const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as { scripts: Record<string, string> };
     assert.equal(result.exitCode, 0);
     assert.equal(typeof packageJson.scripts["build:overlay:menu"], "string");

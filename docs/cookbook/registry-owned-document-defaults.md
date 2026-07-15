@@ -31,6 +31,15 @@ Current preset IDs are `game-archetype.top-down`,
 bespoke nodes and shares the existing `recipes` plus `provenance` contract;
 visual similarity alone is not a reason to replace local UI source.
 
+Choose the narrowest mutation surface that preserves intent. Use one
+registry-backed operation for one local change; use a maintained recipe when
+its adoption/idempotence policy matches the complete pattern; use an authoring
+batch when ordered operations across multiple documents must validate and
+publish as one unit. Prefer a prefab or PlacementSet for repeated content, and
+a separate scene for a genuinely separate world. Large pretty-printed source
+documents remain supported; a growth warning is design feedback, not a reason
+to minify JSON or hand-shard it.
+
 ## source-delta
 ```json
 {"content/flow/match.flow.json":{"preset":"flow.ready-playing-win"}}

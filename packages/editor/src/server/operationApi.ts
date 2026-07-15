@@ -1,8 +1,12 @@
 import {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
   authoringDiagnostic,
   authoringOperationResult,
   dispatchAuthoringOperation,
   validateAuthoringProject,
+  type AuthoringOperationName,
   type IAuthoringOperationResult,
 } from "@threenative/authoring";
 
@@ -19,6 +23,12 @@ export interface IEditorOperationApiResult extends IAuthoringOperationResult {
   projectRevision: string;
 }
 
+export interface IEditorOperationBatchRequest {
+  id: string;
+  operations: Array<{ args: Record<string, unknown>; name: string }>;
+  projectRevision?: string;
+}
+
 export async function applyEditorOperationApi(options: {
   projectPath: string;
   request: IEditorOperationRequest;
@@ -29,7 +39,10 @@ export async function applyEditorOperationApi(options: {
     return withRevision(authoringOperationResult({ diagnostics: [guard], projectPath: options.projectPath }), options.request.projectRevision);
   }
 
-  const operation = await dispatchEditorOperation(options.projectPath, options.request.name, options.request.args);
+  const recipe = buildServerCompositeRecipePlan(options.request.name, options.request.args);
+  const operation = recipe === undefined
+    ? await dispatchEditorOperation(options.projectPath, options.request.name, options.request.args)
+    : await runOperationBatch(options.projectPath, `editor-${options.request.name}`, recipe.operations);
   if (operation.ok) {
     const validation = await validateAuthoringProject({ projectPath: operation.projectPath });
     return withRevision({
@@ -41,6 +54,19 @@ export async function applyEditorOperationApi(options: {
   return withRevision(operation, options.request.projectRevision);
 }
 
+export async function applyEditorOperationBatchApi(options: {
+  projectPath: string;
+  request: IEditorOperationBatchRequest;
+  rootPath?: string;
+}): Promise<IEditorOperationApiResult> {
+  const guard = validateProjectRoot(options.projectPath, options.rootPath);
+  if (guard !== undefined) {
+    return withRevision(authoringOperationResult({ diagnostics: [guard], projectPath: options.projectPath }), options.request.projectRevision);
+  }
+  const operation = await runOperationBatch(options.projectPath, options.request.id, options.request.operations);
+  return withRevision(operation, options.request.projectRevision);
+}
+
 async function dispatchEditorOperation(projectPath: string, name: string, args: Record<string, unknown>): Promise<IAuthoringOperationResult> {
   try {
     const registryResult = await dispatchAuthoringOperation({ args, name, projectPath });
@@ -48,10 +74,6 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
       return registryResult;
     }
 
-    const recipe = buildServerCompositeRecipePlan(name, args);
-    if (recipe !== undefined) {
-      return runCompositeRecipe(projectPath, recipe.operations);
-    }
     return registryResult;
   } catch (error) {
     return authoringOperationResult({
@@ -69,19 +91,20 @@ async function dispatchEditorOperation(projectPath: string, name: string, args: 
   }
 }
 
-async function runCompositeRecipe(projectPath: string, steps: Array<{ args: Record<string, unknown>; name: string }>): Promise<IAuthoringOperationResult> {
-  const operations: IAuthoringOperationResult[] = [];
-  for (const step of steps) {
-    const operation = await dispatchAuthoringOperation({ args: step.args, name: step.name, projectPath });
-    operations.push(operation);
-    if (!operation.ok) {
-      break;
-    }
-  }
+async function runOperationBatch(projectPath: string, id: string, operations: Array<{ args: Record<string, unknown>; name: string }>): Promise<IAuthoringOperationResult> {
+  const result = await applyAuthoringBatch({
+    batch: {
+      id,
+      operations: operations.map((operation) => ({ ...operation, name: operation.name as AuthoringOperationName })),
+      schema: AUTHORING_BATCH_SCHEMA,
+      version: AUTHORING_BATCH_VERSION,
+    },
+    projectPath,
+  });
   return authoringOperationResult({
-    changed: operations.some((operation) => operation.changed),
-    diagnostics: operations.flatMap((operation) => operation.diagnostics),
-    filesWritten: [...new Set(operations.flatMap((operation) => operation.filesWritten))],
+    changed: result.changed,
+    diagnostics: result.diagnostics,
+    filesWritten: result.filesWritten,
     projectPath,
   });
 }

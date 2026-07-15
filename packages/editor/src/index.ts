@@ -24,8 +24,8 @@ export type { IEditorProjectApiResult, IEditorProjectDocumentGroup } from "./ser
 export { loadEditorProjectApi, validateEditorProjectApi } from "./server/projectApi.js";
 export type { IEditorProjectWatchEvent } from "./server/projectWatch.js";
 export { classifyEditorProjectWatchPath } from "./server/projectWatch.js";
-export type { IEditorOperationApiResult, IEditorOperationRequest } from "./server/operationApi.js";
-export { applyEditorOperationApi } from "./server/operationApi.js";
+export type { IEditorOperationApiResult, IEditorOperationBatchRequest, IEditorOperationRequest } from "./server/operationApi.js";
+export { applyEditorOperationApi, applyEditorOperationBatchApi } from "./server/operationApi.js";
 export type { IEditorScriptSourceApiResult, IEditorScriptSourceSummary } from "./server/scriptSourceApi.js";
 export { listEditorScriptSources, readEditorScriptSource, scaffoldEditorScriptSource, writeEditorScriptSource } from "./server/scriptSourceApi.js";
 export type { IEditorChatApplyApiRequest, IEditorChatApplyApiResult, IEditorChatPlanApiRequest } from "./server/chatApi.js";

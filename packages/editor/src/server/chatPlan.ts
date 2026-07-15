@@ -1,4 +1,4 @@
-import { authoringDiagnostic, listAuthoringOperationDescriptors, type IAuthoringDiagnostic, type IAuthoringOperationDescriptor } from "@threenative/authoring";
+import { authoringDiagnostic, listAuthoringOperationDescriptors, type IAuthoringBatchPlanResult, type IAuthoringDiagnostic, type IAuthoringOperationDescriptor } from "@threenative/authoring";
 
 import type { IEditorProjectApiResult } from "./projectApi.js";
 
@@ -25,6 +25,7 @@ export interface IEditorChatContext {
 export interface IEditorChatPlan {
   affectedFiles: string[];
   approvalToken: string;
+  batchPlan?: IAuthoringBatchPlanResult;
   diagnostics: IAuthoringDiagnostic[];
   id: string;
   message: string;

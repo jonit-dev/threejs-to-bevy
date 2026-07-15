@@ -307,14 +307,14 @@ test("should refresh retained UI preview after source-backed UI edits", async ()
   }
 });
 
-test("should add primitive through operation sequence", async () => {
+test("should add primitive through one atomic operation batch", async () => {
   useEditorStore.getState().reset({ project: { projectRevision: "rev:1" } });
   const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
   const restoreDateNow = mockDateNow(123456789);
   const restoreFetch = mockFetch(async (input, init) => {
-    if (String(input) === "/api/operation") {
-      const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
-      operations.push(body);
+    if (String(input) === "/api/operations") {
+      const body = JSON.parse(String(init?.body)) as { operations: Array<{ args: Record<string, unknown>; name: string }>; projectRevision?: string };
+      operations.push(...body.operations.map((operation) => ({ ...operation, projectRevision: body.projectRevision })));
       return jsonResponse({ filesWritten: ["content/scenes/arena.scene.json"], ok: true });
     }
     assert.equal(String(input), "/api/project");
@@ -355,9 +355,9 @@ test("should submit add object choices with correct operation payloads", async (
     const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
     const restoreDateNow = mockDateNow(123456789);
     const restoreFetch = mockFetch(async (input, init) => {
-      if (String(input) === "/api/operation") {
-        const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
-        operations.push(body);
+      if (String(input) === "/api/operations") {
+        const body = JSON.parse(String(init?.body)) as { operations: Array<{ args: Record<string, unknown>; name: string }>; projectRevision?: string };
+        operations.push(...body.operations.map((operation) => ({ ...operation, projectRevision: body.projectRevision })));
         return jsonResponse({ filesWritten: ["content/scenes/arena.scene.json"], ok: true });
       }
       assert.equal(String(input), "/api/project");
@@ -390,9 +390,9 @@ test("should add custom GLB assets through a source prefab and entity", async ()
   const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
   const restoreDateNow = mockDateNow(123456789);
   const restoreFetch = mockFetch(async (input, init) => {
-    if (String(input) === "/api/operation") {
-      const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
-      operations.push(body);
+    if (String(input) === "/api/operations") {
+      const body = JSON.parse(String(init?.body)) as { operations: Array<{ args: Record<string, unknown>; name: string }>; projectRevision?: string };
+      operations.push(...body.operations.map((operation) => ({ ...operation, projectRevision: body.projectRevision })));
       return jsonResponse({ filesWritten: ["content/scenes/menu.scene.json"], ok: true });
     }
     assert.equal(String(input), "/api/project");
@@ -429,10 +429,10 @@ test("should add flat terrain through source-backed operations", async () => {
   const operations: Array<{ args: Record<string, unknown>; name: string; projectRevision?: string }> = [];
   const restoreDateNow = mockDateNow(123456789);
   const restoreFetch = mockFetch(async (input, init) => {
-    if (String(input) === "/api/operation") {
-      const body = JSON.parse(String(init?.body)) as { args: Record<string, unknown>; name: string; projectRevision?: string };
-      operations.push(body);
-      return jsonResponse({ filesWritten: [body.name.startsWith("environment.") ? "content/environment/arena.environment.json" : "content/scenes/arena.scene.json"], ok: true });
+    if (String(input) === "/api/operations") {
+      const body = JSON.parse(String(init?.body)) as { operations: Array<{ args: Record<string, unknown>; name: string }>; projectRevision?: string };
+      operations.push(...body.operations.map((operation) => ({ ...operation, projectRevision: body.projectRevision })));
+      return jsonResponse({ filesWritten: ["content/environment/arena.environment.json", "content/scenes/arena.scene.json"], ok: true });
     }
     assert.equal(String(input), "/api/project");
     return jsonResponse({
@@ -659,6 +659,7 @@ test("should apply approved chat plan and refresh project", async () => {
       pendingPlan: {
         affectedFiles: ["content/scenes/arena.scene.json"],
         approvalToken: "approve:1",
+        batchPlan: batchPlanFixture(),
         diagnostics: [],
         id: "plan:1",
         message: "add cube",
@@ -740,6 +741,54 @@ test("should keep chat apply disabled for diagnostic-only plans", async () => {
   }
 });
 
+test("editor refuses apply after previewed source changes", async () => {
+  useEditorStore.getState().reset({
+    chat: {
+      draft: "add cube",
+      pendingPlan: {
+        affectedFiles: ["content/scenes/arena.scene.json"],
+        approvalToken: "approve:stale",
+        batchPlan: batchPlanFixture(),
+        diagnostics: [],
+        id: "plan:stale",
+        message: "add cube",
+        ok: true,
+        operations: [{ args: { entityId: "chat-cube", sceneId: "arena" }, description: "Add cube", name: "scene.add_entity" }],
+        projectRevision: "rev:1",
+        risks: [],
+        summary: "Add cube.",
+      },
+      status: "planned",
+      transcript: [],
+    },
+    project: { projectRevision: "rev:1" },
+  });
+  const calls: string[] = [];
+  const restore = mockFetch(async (input) => {
+    calls.push(String(input));
+    assert.equal(String(input), "/api/ai/apply");
+    return jsonResponse({
+      batchResult: { ...batchPlanFixture(), committed: false, filesWritten: [], recovered: false },
+      changedSourceFiles: [],
+      diagnostics: [{ code: "TN_AUTHORING_BATCH_CONFLICT", file: "content/scenes/arena.scene.json", message: "Source changed after preview.", severity: "error" }],
+      generatedProofFiles: [],
+      liveUpdate: { affectedEntities: [], affectedFiles: [], diagnostics: [], kind: "none", reason: "conflict" },
+      ok: false,
+      operationResults: [],
+    });
+  });
+  try {
+    await useEditorStore.getState().applyChatPlan();
+
+    assert.deepEqual(calls, ["/api/ai/apply"]);
+    assert.equal(useEditorStore.getState().chat.status, "error");
+    assert.equal(useEditorStore.getState().chat.applyResult?.diagnostics[0]?.code, "TN_AUTHORING_BATCH_CONFLICT");
+    assert.equal(useEditorStore.getState().status, "Source changed after preview.");
+  } finally {
+    restore();
+  }
+});
+
 function mockFetch(handler: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>): () => void {
   const previous = globalThis.fetch;
   globalThis.fetch = handler as typeof fetch;
@@ -752,6 +801,32 @@ function jsonResponse(payload: unknown): Response {
   return {
     json: async () => payload,
   } as Response;
+}
+
+function batchPlanFixture() {
+  return {
+    changed: true,
+    copiedBytes: 1,
+    diagnostics: [],
+    documents: [{ addressableItemsAfter: 2, addressableItemsBefore: 1, bytesAfter: 2, bytesBefore: 1, path: "content/scenes/arena.scene.json" }],
+    files: [{ baseHash: "sha256:base", bytesAfter: 2, bytesBefore: 1, change: "modified" as const, nextHash: "sha256:next", owner: "source" as const, path: "content/scenes/arena.scene.json", structuralDiff: { added: 1, changed: 0, removed: 0, samplePaths: ["/entities/0"], truncated: false } }],
+    filesCreated: [],
+    filesDeleted: [],
+    filesModified: ["content/scenes/arena.scene.json"],
+    filesRead: ["content/scenes/arena.scene.json"],
+    filesStaged: ["content/scenes/arena.scene.json"],
+    inputBytes: 1,
+    ok: true,
+    operationResults: [],
+    operations: [{ args: { entityId: "chat-cube", sceneId: "arena" }, index: 0, name: "scene.add_entity" }],
+    outputBytes: 2,
+    planHash: `sha256:${"a".repeat(64)}`,
+    projectPath: "/project",
+    stagedBytes: 2,
+    timingsMs: { plan: 1, validate: 1 },
+    touchedPaths: ["content/scenes/arena.scene.json"],
+    transactionId: "authoring-test",
+  };
 }
 
 function mockDateNow(value: number): () => void {

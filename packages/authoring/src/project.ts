@@ -11,6 +11,7 @@ export interface IAuthoringProject {
 }
 
 export interface ILoadAuthoringProjectOptions {
+  onRead?: (projectRelativePath: string) => void;
   projectPath: string;
 }
 
@@ -21,6 +22,7 @@ export async function loadAuthoringProject(options: ILoadAuthoringProjectOptions
   const diagnostics: IAuthoringDiagnostic[] = [];
 
   for (const file of candidateFiles) {
+    options.onRead?.(file);
     const result = await readAuthoringJsonDocument(projectPath, file);
     diagnostics.push(...result.diagnostics);
     if (result.document !== undefined) {

@@ -51,6 +51,45 @@ stable diagnostics before partial mutation, and must not persist changes to
 `dist/**`, emitted IR JSON, `scripts.bundle.js`, runtime handles, or other
 generated artifacts.
 
+## Journaled Publication
+
+Related authoring writes publish through one project-scoped transaction. A
+plan records the exact SHA-256 hash of every existing touched source file and
+uses `null` for an absent file. Immediately before publication, while holding
+the project authoring lock, the publisher compares every current base hash to
+the planned value. A mismatch fails with `TN_AUTHORING_BATCH_CONFLICT`, reports
+the path plus expected and actual hashes, and promotes no files.
+
+Transaction stages, backups, the journal, and lock metadata live under
+`.tn/authoring-transactions/**` and `.tn/authoring.lock`, outside durable
+`content/**` and `src/scripts/**` source. Staged files are created on the same
+filesystem as the project. The journal records each target's old and new hash
+and the corresponding stage and backup paths before any target rename occurs.
+Project source discovery must ignore these transaction artifacts.
+
+The lock covers recovery, base-hash verification, and publication; planning
+does not hold it. Lock acquisition is bounded. A lock is eligible for stale
+recovery only after its age threshold and when its recorded process is no
+longer alive. A live lock is never silently broken.
+
+An ordinary process error before the committed journal marker restores the
+complete old file set before returning a failure. A process interruption may
+leave a prepared or publishing journal; the next authoring mutation must
+recover that journal under the same lock before checking or publishing new
+work. Recovery rolls a prepared or publishing transaction back to the old
+state. A committed marker is the publication boundary: recovery preserves the
+complete new state and only removes transaction artifacts. Cleanup failure
+after that marker must never roll durable source back. A missing, corrupt, or
+unsupported journal fails recovery closed with
+`TN_AUTHORING_TRANSACTION_RECOVERY_FAILED` and leaves its artifacts available
+for inspection.
+
+This is journaled crash recovery, not a claim that multiple filesystem renames
+are physically atomic. At API boundaries, a failed precondition or handled
+publish error exposes no partial durable change; after interruption, recovery
+converges to one complete old or complete new state before another mutation is
+accepted.
+
 ## Compact Scene Instances
 
 Scene documents may use `instances` to keep repeated prefab-backed entities out

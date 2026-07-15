@@ -1,4 +1,6 @@
 import { authoringDiagnostic } from "./diagnostics.js";
+import { normalizeRelativePath, type AuthoringDocumentKind } from "./documents.js";
+import { loadAuthoringProject } from "./project.js";
 import {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,
@@ -131,6 +133,15 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
 export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
+export type AuthoringOperationMutationPolicy = "read-only" | "source-mutation";
+
+export interface IAuthoringOperationTargetContext {
+  args: Record<string, unknown>;
+  recordRead?: (projectRelativePath: string) => void;
+  projectPath: string;
+}
+
+export type AuthoringOperationTargetResolver = (context: IAuthoringOperationTargetContext) => Promise<string[]>;
 
 export interface IAuthoringOperationArgumentDescriptor {
   constraints?: {
@@ -166,17 +177,33 @@ export interface IAuthoringOperationEditorAdapterDescriptor {
   surface: "api";
 }
 
+export interface IAuthoringOperationAdapterExclusion {
+  category: "product-exclusion";
+  owner: string;
+  reason: string;
+  reviewed: string;
+}
+
+export interface IAuthoringOperationAdapterExclusions {
+  cli?: IAuthoringOperationAdapterExclusion;
+  editor?: IAuthoringOperationAdapterExclusion;
+  editorSmoke?: IAuthoringOperationAdapterExclusion;
+}
+
 export interface IAuthoringOperationDescriptor<TName extends string = AuthoringOperationName> {
   adapters?: {
     cli?: IAuthoringOperationCliAdapterDescriptor;
     editor?: IAuthoringOperationEditorAdapterDescriptor;
   };
+  adapterExclusions?: IAuthoringOperationAdapterExclusions;
   arguments: IAuthoringOperationArgumentDescriptor[];
   description: string;
+  mutationPolicy: AuthoringOperationMutationPolicy;
   name: TName;
   pathPolicy: AuthoringOperationPathPolicy;
   resultShape: AuthoringOperationResultShape;
   sourceFamily: AuthoringOperationSourceFamily;
+  targetResolver: AuthoringOperationTargetResolver;
 }
 
 export interface IDispatchAuthoringOperationOptions extends IAuthoringOperationContext {
@@ -963,7 +990,7 @@ const operationEntries = [
   operation(descriptor("scene.set_camera_component", "Set a typed camera component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
-    stringArg("mode", false),
+    stringArg("mode", false, ["third-person-follow", "perspective", "orthographic"]),
     stringArg("targetId", false),
     numberArg("fovY", false),
     numberArg("near", false),
@@ -974,7 +1001,7 @@ const operationEntries = [
   operation(descriptor("scene.set_light", "Set a typed Light component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
-    stringArg("kind", false),
+    stringArg("kind", false, ["ambient", "directional", "point", "spot"]),
     numberArg("intensity", false),
     stringArg("color", false),
     numberArg("range", false),
@@ -1017,7 +1044,7 @@ const operationEntries = [
   operation(descriptor("scene.set_rigid_body", "Set a typed RigidBody component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
-    stringArg("kind", false),
+    stringArg("kind", false, ["dynamic", "kinematic", "static"]),
     numberArg("mass", false),
     numberArg("damping", false),
     numberArg("gravityScale", false),
@@ -1041,7 +1068,7 @@ const operationEntries = [
   operation(descriptor("scene.set_collider", "Set a typed Collider component with defaults.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
-    stringArg("kind", false),
+    stringArg("kind", false, ["box", "capsule", "cylinder", "mesh", "sphere"]),
     vectorArg("size", false),
     vectorArg("center", false),
     numberArg("radius", false),
@@ -1056,7 +1083,7 @@ const operationEntries = [
     stringArg("moveZAxis", false),
     numberArg("speed", false),
     booleanArg("blocking", false),
-    stringArg("grounding", false),
+    stringArg("grounding", false, ["none", "raycast"]),
     numberArg("slopeLimit", false),
     numberArg("stepOffset", false),
   ]), async ({ args, projectPath }) =>
@@ -1352,15 +1379,24 @@ function operationDescriptor(operation: IAuthoringOperationDescriptor): IAuthori
                 }),
           },
         }),
+    ...(operation.adapterExclusions === undefined
+      ? {}
+      : {
+          adapterExclusions: Object.fromEntries(
+            Object.entries(operation.adapterExclusions).map(([surface, exclusion]) => [surface, { ...exclusion }]),
+          ),
+        }),
     arguments: operation.arguments.map((argument) => ({
       ...argument,
       ...(argument.constraints === undefined ? {} : { constraints: { ...argument.constraints, ...(argument.constraints.enumValues === undefined ? {} : { enumValues: [...argument.constraints.enumValues] }) } }),
     })),
     description: operation.description,
+    mutationPolicy: operation.mutationPolicy,
     name: operation.name,
     pathPolicy: operation.pathPolicy,
     resultShape: operation.resultShape,
     sourceFamily: operation.sourceFamily,
+    targetResolver: operation.targetResolver,
   };
 }
 
@@ -1560,13 +1596,167 @@ function descriptor<const TName extends string>(
   args: IAuthoringOperationArgumentDescriptor[],
 ): IAuthoringOperationDescriptor<TName> {
   return {
+    adapterExclusions: {
+      cli: adapterExclusion("Operation is available through the registry-backed authoring batch command, but has no dedicated descriptor-derived CLI argv surface."),
+      editor: adapterExclusion("Operation is available through the editor batch API, but has no dedicated inspector or modal product surface."),
+      editorSmoke: adapterExclusion("Operation is covered by registry and batch contract tests, but is outside the focused editor-required smoke workflow."),
+    },
     arguments: args,
     description,
+    mutationPolicy: inferMutationPolicy(name),
     name,
     pathPolicy,
     resultShape: "authoring-operation-result",
     sourceFamily,
+    targetResolver: (context) => resolveDescriptorTargets(name, sourceFamily, context),
   };
+}
+
+function inferMutationPolicy(name: string): AuthoringOperationMutationPolicy {
+  return name.endsWith(".list") || name.includes(".inspect") || name.includes(".validate")
+    ? "read-only"
+    : "source-mutation";
+}
+
+async function resolveDescriptorTargets(
+  operationName: string,
+  sourceFamily: AuthoringOperationSourceFamily,
+  context: IAuthoringOperationTargetContext,
+): Promise<string[]> {
+  const explicitFile = context.args.file;
+  if (typeof explicitFile === "string" && explicitFile.trim() !== "") {
+    return [normalizeRelativePath(explicitFile)];
+  }
+  const kind = targetDocumentKind(sourceFamily);
+  if (kind === undefined) return [];
+  if (sourceFamily === "distribution") return ["content/distribution.json"];
+  if (sourceFamily === "project") return ["content/project.authoring.json"];
+  const project = await loadAuthoringProject({ onRead: context.recordRead, projectPath: context.projectPath });
+  if (sourceFamily === "archetype") return resolveArchetypeTargets(operationName, context.args, project.documents);
+  const id = targetDocumentId(sourceFamily, context.args);
+  if (operationName === "material.set" && id !== undefined) {
+    const catalog = project.documents.find((document) => document.kind === "material" && documentArrayContainsId(document.data, "materials", id));
+    if (catalog !== undefined) return [catalog.projectRelativePath];
+  }
+  const matches = project.documents.filter((document) =>
+    document.kind === kind && (id === undefined || documentId(document.data) === id));
+  const matchedTargets = matches.map((document) => document.projectRelativePath);
+  if (sourceFamily === "generator" && ("recipe" in context.args || "recipePath" in context.args)) {
+    const recipePath = typeof context.args.recipePath === "string"
+      ? context.args.recipePath
+      : id === undefined ? undefined : `content/generators/${id}.recipe.json`;
+    return [...new Set([...matchedTargets, ...(recipePath === undefined ? [] : [normalizeRelativePath(recipePath)]), ...(id === undefined ? [] : [`content/generators/${id}.generator.json`])])].sort();
+  }
+  if (operationName === "scene.attach_script" && typeof context.args.modulePath === "string") {
+    const sceneTargets = matchedTargets.length > 0
+      ? matchedTargets
+      : id === undefined ? [] : [defaultTargetPath(kind, id)].filter((path): path is string => path !== undefined);
+    return [...new Set([...sceneTargets, normalizeRelativePath(context.args.modulePath)])].sort();
+  }
+  if (matchedTargets.length > 0) return matchedTargets.sort();
+  const fallback = id === undefined ? undefined : defaultTargetPath(kind, id);
+  return fallback === undefined ? [] : [fallback];
+}
+
+function resolveArchetypeTargets(
+  operationName: string,
+  args: Record<string, unknown>,
+  documents: Awaited<ReturnType<typeof loadAuthoringProject>>["documents"],
+): string[] {
+  if (operationName === "archetype.list") return [];
+  const actorId = typeof args.actorId === "string" ? args.actorId : undefined;
+  if (actorId === undefined) return [];
+  if (operationName === "archetype.update") {
+    const scene = documents.find((document) => document.kind === "scene" && sceneContainsEntity(document.data, actorId));
+    return scene === undefined ? [] : [scene.projectRelativePath];
+  }
+  const requestedSceneId = typeof args.sceneId === "string" ? args.sceneId : undefined;
+  const scene = documents.find((document) => document.kind === "scene"
+    && (requestedSceneId === undefined || documentId(document.data) === requestedSceneId));
+  const scenePath = scene?.projectRelativePath ?? `content/scenes/${requestedSceneId ?? "main"}.scene.json`;
+  const archetype = typeof args.archetype === "string" ? args.archetype : undefined;
+  if (archetype === "character") {
+    return [
+      scenePath,
+      `content/input/${actorId}.input.json`,
+      `content/schemas/${actorId}.character.schema.json`,
+      `content/systems/${actorId}.systems.json`,
+      `src/scripts/${actorId}.behavior.ts`,
+    ].sort();
+  }
+  if (archetype === "vehicle" || archetype === "pickup" || archetype === "camera-boom") {
+    const suffix = archetype.replace(/-/gu, "");
+    const targets = [
+      scenePath,
+      `content/systems/${actorId}.${suffix}.systems.json`,
+      `src/scripts/${actorId}.${suffix}.ts`,
+      ...(archetype === "pickup" ? [] : [`content/schemas/${actorId}.${suffix}.schema.json`]),
+    ];
+    if (archetype === "pickup") {
+      const ui = documents.find((document) => document.kind === "ui");
+      if (ui !== undefined) targets.push(ui.projectRelativePath);
+    }
+    return targets.sort();
+  }
+  return [scenePath];
+}
+
+function sceneContainsEntity(value: unknown, entityId: string): boolean {
+  if (!isObject(value) || !Array.isArray(value.entities)) return false;
+  return value.entities.some((entity) => isObject(entity) && entity.id === entityId);
+}
+
+function documentArrayContainsId(value: unknown, property: string, id: string): boolean {
+  if (!isObject(value) || !Array.isArray(value[property])) return false;
+  return value[property].some((entry) => isObject(entry) && entry.id === id);
+}
+
+function targetDocumentKind(sourceFamily: AuthoringOperationSourceFamily): AuthoringDocumentKind | undefined {
+  if (sourceFamily === "system") return "systems";
+  if (sourceFamily === "target") return "target";
+  if (sourceFamily === "archetype") return "scene";
+  return sourceFamily === "asset" || sourceFamily === "audio" || sourceFamily === "distribution"
+    || sourceFamily === "environment" || sourceFamily === "flow" || sourceFamily === "generator"
+    || sourceFamily === "input" || sourceFamily === "material" || sourceFamily === "mesh"
+    || sourceFamily === "prefab" || sourceFamily === "project" || sourceFamily === "resources"
+    || sourceFamily === "runtime" || sourceFamily === "schema" || sourceFamily === "scene"
+    || sourceFamily === "sequence" || sourceFamily === "ui"
+    ? sourceFamily
+    : undefined;
+}
+
+function targetDocumentId(sourceFamily: AuthoringOperationSourceFamily, args: Record<string, unknown>): string | undefined {
+  const familyIdArguments: Partial<Record<AuthoringOperationSourceFamily, string[]>> = {
+    archetype: ["sceneId"],
+    audio: ["audioDocId"],
+    input: ["inputDocId"],
+    resources: ["resourcesDocId"],
+    scene: ["sceneId"],
+    schema: ["schemaDocId"],
+    system: ["systemsId", "systemId"],
+    target: ["targetProfileId"],
+    ui: ["uiDocId"],
+  };
+  const candidates = familyIdArguments[sourceFamily] ?? [`${sourceFamily}Id`, "documentId"];
+  return candidates.map((key) => args[key]).find((value): value is string => typeof value === "string" && value.trim() !== "");
+}
+
+function defaultTargetPath(kind: AuthoringDocumentKind, id: string): string | undefined {
+  const directories: Partial<Record<AuthoringDocumentKind, string>> = {
+    asset: "assets", audio: "audio", environment: "environment", flow: "flow", generator: "generators",
+    input: "input", material: "materials", mesh: "meshes", prefab: "prefabs", resources: "resources",
+    runtime: "runtime", scene: "scenes", schema: "schemas", sequence: "sequences", systems: "systems",
+    target: "targets", ui: "ui",
+  };
+  const suffixes: Partial<Record<AuthoringDocumentKind, string>> = {
+    asset: "assets", material: "materials", mesh: "meshes", systems: "systems",
+  };
+  const directory = directories[kind];
+  return directory === undefined ? undefined : `content/${directory}/${id}.${suffixes[kind] ?? kind}.json`;
+}
+
+function documentId(value: unknown): string | undefined {
+  return isObject(value) && typeof value.id === "string" ? value.id : undefined;
 }
 
 function operation<const TName extends string>(
@@ -1580,14 +1770,27 @@ function withCli<const TName extends string>(
   descriptor: IAuthoringOperationDescriptor<TName>,
   cli: IAuthoringOperationCliAdapterDescriptor,
 ): IAuthoringOperationDescriptor<TName> {
-  return { ...descriptor, adapters: { ...descriptor.adapters, cli } };
+  const { cli: _cli, ...adapterExclusions } = descriptor.adapterExclusions ?? {};
+  return { ...descriptor, adapterExclusions, adapters: { ...descriptor.adapters, cli } };
 }
 
 function withEditor<const TName extends string>(
   descriptor: IAuthoringOperationDescriptor<TName>,
   editor: IAuthoringOperationEditorAdapterDescriptor,
 ): IAuthoringOperationDescriptor<TName> {
-  return { ...descriptor, adapters: { ...descriptor.adapters, editor } };
+  const adapterExclusions = { ...descriptor.adapterExclusions };
+  delete adapterExclusions.editor;
+  if (editor.smoke !== undefined) delete adapterExclusions.editorSmoke;
+  return { ...descriptor, adapterExclusions, adapters: { ...descriptor.adapters, editor } };
+}
+
+function adapterExclusion(reason: string): IAuthoringOperationAdapterExclusion {
+  return {
+    category: "product-exclusion",
+    owner: "authoring-operation-registry",
+    reason,
+    reviewed: "2026-07-14",
+  };
 }
 
 function cloneJsonObject(value: Record<string, unknown>): Record<string, unknown> {

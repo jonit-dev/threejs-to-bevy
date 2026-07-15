@@ -54,7 +54,7 @@ test("should stop and report failed operations deterministically", async () => {
   try {
     const result = await openProject(root)
       .transaction()
-      .operation("scene.add_entity", {
+      .unsafeOperation("scene.add_entity", {
         sceneId: "arena",
       })
       .operation("scene.add_entity", {
@@ -74,6 +74,33 @@ test("should stop and report failed operations deterministically", async () => {
   }
 });
 
+test("transaction delegates to atomic authoring batch", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-client-atomic-"));
+  try {
+    await writeScene(root, "arena");
+    const file = join(root, "content/scenes/arena.scene.json");
+    const before = await readFile(file);
+    const result = await openProject(root)
+      .transaction()
+      .operation("scene.add_prefab", {
+        prefabId: "prefab.player",
+        primitive: "box",
+        sceneId: "arena",
+      })
+      .unsafeOperation("scene.add_entity", { sceneId: "arena" })
+      .commit();
+
+    assert.equal(result.ok, false);
+    assert.equal(result.committed, false);
+    assert.match(result.transactionId, /^authoring-[0-9a-f-]{36}$/);
+    assert.match(result.planHash, /^sha256:[0-9a-f]{64}$/);
+    assert.deepEqual(result.filesWritten, []);
+    assert.deepEqual(await readFile(file), before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should support collecting multiple failed operation diagnostics when requested", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-client-continue-"));
   try {
@@ -83,7 +110,7 @@ test("should support collecting multiple failed operation diagnostics when reque
         entityId: "player",
         sceneId: "arena",
       })
-      .operation("scene.delete_entity", {
+      .unsafeOperation("scene.delete_entity", {
         entityId: "player",
         sceneId: "arena",
       })
