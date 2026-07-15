@@ -538,27 +538,33 @@ Current UI rows use these labels:
       screenshots, observed adapter regions, retained diffs, and exact paired
       contact sheets at 1280x720 and 390x844 in
       `pnpm verify:focused verify:feature-parity-ui-native`.
-- [x] `P1` Portable UI shadow/linear-gradient metadata and web DOM rendering
-- [x] `P1` Partial/diagnostic: native UI shadows and gradients are preserved as
-      metadata/components and trace observations; they are not currently claimed
-      as native-rendered pixels.
+- [x] `P1` Promoted: portable UI shadows and linear gradients render on both
+      adapters. Native uses cached sliced radial-falloff shadow textures and
+      cached generated linear-gradient images, graded as bounded presence,
+      placement, color, and angle approximations using isolated with/without
+      captures plus measured pixel bounds and mean colors in
+      `pnpm verify:focused verify:feature-parity-ui-native`.
 - [x] `P1` Build-time UI theme tokens and token refs lower to concrete retained layout/style/image fields before web or Bevy runtime mapping
 - [x] `P1` Source-level reusable UI component instances expand to ordinary retained UI nodes with deterministic IDs and generated-node provenance before runtime mapping
 - [x] `P1` UI screen stack, modal/dialog roles, focus scopes, restore policy, and input-capture metadata validate in IR with deterministic web focus-restoration and Bevy modal input-capture dispatch trace proof
 - [x] `P1` Bounded game UI recipes generate ordinary editable source nodes, bindings, screens, focus order, and provenance with required screenshot/accessibility proof artifacts
 - [x] `P1` Responsive target-class UI recipe metadata, bounded virtual range metadata for large retained lists, deterministic web/Bevy visible-range traces, and desktop/mobile UI-fit artifact checks
 - [x] `P1` Common UI affordance metadata for input glyph prompts, tooltips, localization fallback/cases, progress/cooldown presentation, toast queues, and logical feedback hooks with web/native observation traces
-- [x] `P1` Partial/diagnostic: bounded retained UI effect presets for glow,
-      outline, pulse, tint, and focus rings have renderer escape-hatch
-      diagnostics plus web/native strategy traces; they are not claimed as
-      full rendered effect parity.
+- [x] `P1` Promoted: bounded retained UI glow, outline, pulse, tint, and focus
+      ring presets render from live hover/focus/selected/disabled/predicate
+      state on both adapters. Idle/hover/selected capture pairs must differ in
+      bounded pixels, pulse timing starts at activation, tint intensity modulates
+      the authored color, and strategy traces match the authored fallback.
 - [x] `P1` Partial/diagnostic: world-attached retained UI for nameplates,
       health bars, interact prompts, pickup labels, quest markers, and
       off-screen indicators has matching web/Bevy projection traces alongside
       renderer captures; rendered placement/bounding-box parity remains
       required before promotion.
 - [x] `P1` Basic UI text size, alignment, and wrapping
-- [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering
+- [x] `P1` Portable UI text weight/decoration metadata and web DOM rendering;
+      native bold text selects an explicit `boldAsset`, with
+      the selected face recorded in the native trace and
+      `TN_BEVY_UI_FONT_WEIGHT_FALLBACK` when the declared family lacks one.
 - [x] `P1` Rich text styling: font assets, inline spans, and native-rendered weight/decoration
 - [x] `P1` Basic UI image nodes
 - [x] `P1` Partial/diagnostic: UI image atlas/nine-slice metadata is preserved

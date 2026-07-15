@@ -149,7 +149,7 @@ fn spawn_node(
                 spread: shadow.spread,
             });
         }
-        if let Some(text_style) = rendered_text_style(node) {
+        if let Some(text_style) = rendered_text_style(node, fonts) {
             entity_mut.insert(text_style);
         }
         if node
@@ -168,6 +168,7 @@ fn spawn_node(
         }
     }
 
+    spawn_native_ui_visual_layers(world, entity, node);
     spawn_runtime_children(world, entity, node, fonts);
 
     entities_by_id.insert(node.id.clone(), entity);

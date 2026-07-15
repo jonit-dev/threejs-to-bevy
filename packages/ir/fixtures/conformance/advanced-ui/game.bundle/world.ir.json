@@ -51,7 +51,7 @@
     "QuestState": {
       "targetActive": true
     },
-    "Selection": { "current": "pickup.energy" }
+    "Selection": { "current": "pickup.energy", "itemSelected": false }
   },
   "events": {},
   "prefabs": []

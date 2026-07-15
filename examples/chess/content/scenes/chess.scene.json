@@ -1884,6 +1884,7 @@
       "id": "ChessGame",
       "value": {
         "blackChoiceText": "PLAY BLACK",
+        "moveHighlightActive": false,
         "moveHistoryText": "No moves yet",
         "opponentCapturedText": "—",
         "opponentClockText": "TIME 14:57",
@@ -2313,7 +2314,23 @@
           "fontSize": 14,
           "fontWeight": "bold",
           "wrap": "word"
-        }
+        },
+        "effects": [
+          {
+            "id": "move-history.active",
+            "kind": "glow",
+            "trigger": "predicate",
+            "predicate": {
+              "resource": "ChessGame",
+              "field": "moveHighlightActive",
+              "equals": true
+            },
+            "color": "#d6ad69",
+            "radius": 8,
+            "intensity": 0.65,
+            "fallback": "shadow"
+          }
+        ]
       },
       {
         "id": "opponent-captured-card",

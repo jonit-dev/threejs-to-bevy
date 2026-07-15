@@ -1,4 +1,5 @@
 import type { IUiEffectPresetIr, IUiIr, IUiNodeIr } from "@threenative/ir";
+import { resolveUiEffectStrategy } from "@threenative/ir/uiEffects";
 
 export interface IUiEffectTrace {
   effects: IUiEffectTraceEntry[];
@@ -28,7 +29,7 @@ function collectUiEffectEntries(node: IUiNodeIr, states: Set<string>, effects: I
         kind: effect.kind,
         node: node.id,
         state: effect.trigger,
-        strategy: effectStrategy(effect),
+        strategy: resolveUiEffectStrategy(effect),
       });
     }
   }
@@ -37,11 +38,4 @@ function collectUiEffectEntries(node: IUiNodeIr, states: Set<string>, effects: I
 
 function isEffectActive(effect: IUiEffectPresetIr, states: Set<string>): boolean {
   return effect.trigger === "predicate" || states.has(effect.trigger);
-}
-
-function effectStrategy(effect: IUiEffectPresetIr): string {
-  if (effect.kind === "glow" || effect.kind === "pulse") {
-    return effect.fallback === undefined || effect.fallback === "none" ? "direct" : `fallback:${effect.fallback}`;
-  }
-  return "direct";
 }

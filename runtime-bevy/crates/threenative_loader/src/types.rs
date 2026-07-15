@@ -1943,6 +1943,7 @@ pub struct UiScreenStackIr {
 #[serde(rename_all = "camelCase")]
 pub struct UiFontAssetIr {
     pub asset: String,
+    pub bold_asset: Option<String>,
     pub fallback_family: Option<String>,
     pub family: String,
     #[serde(default)]

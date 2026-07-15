@@ -36,6 +36,11 @@ export async function verifyConformance(options = {}) {
     owner: { kind: "aggregate", name: "input-ui-polish" },
     root,
   });
+  const uiNativeTargets = resolveArtifactTargets({
+    gate: "feature-parity-ui-native",
+    owner: { kind: "aggregate", name: "feature-parity-ui-native" },
+    root,
+  });
   const reportPath = options.reportPath ?? targets.reportPath;
   const artifactDir = options.artifactDir ?? resolve(reportPath, "..");
   let fixtureCatalog = options.fixtureCatalog;
@@ -174,6 +179,7 @@ export async function verifyConformance(options = {}) {
   const inputUiPolishDiffPath = options.inputUiPolishDiffPath ?? resolve(inputUiPolishTargets.absoluteDir, "diff.json");
   const inputUiPolishNativeReportPath = options.inputUiPolishNativeReportPath ?? resolve(inputUiPolishTargets.absoluteDir, "native-report.json");
   const inputUiPolishWebReportPath = options.inputUiPolishWebReportPath ?? resolve(inputUiPolishTargets.absoluteDir, "web-report.json");
+  const uiVisualStatesContactSheetPath = options.uiVisualStatesContactSheetPath ?? resolve(uiNativeTargets.absoluteDir, "states/contact-sheet.png");
   const nativeV9SupportStressReportPath = options.nativeV9SupportStressReportPath ?? resolve(artifactDir, "support-stress/bevy.report.json");
   const artifacts = {
     ...targets.metadata,
@@ -249,6 +255,7 @@ export async function verifyConformance(options = {}) {
     inputUiPolishNativeReportPath,
     inputUiPolishReportPath,
     inputUiPolishWebReportPath,
+    uiVisualStatesContactSheetPath,
     nativeV9SupportStressReportPath,
   };
   const evidence = buildEvidence({ artifacts });
@@ -577,8 +584,8 @@ export async function verifyConformance(options = {}) {
     [
       "input/UI polish behavioral and visual evidence",
       process.execPath,
-      [resolve(root, "scripts/verify-input-ui-polish.mjs")],
-      { timeoutMs: 180000 },
+      [resolve(root, "scripts/verify-feature-parity-ui-native.mjs")],
+      { timeoutMs: 420000 },
     ],
     [
       "bevy native V9 support stress observation report",
@@ -652,6 +659,12 @@ function buildEvidence({ artifacts }) {
           artifactPaths: [artifacts.inputUiPolishContactSheetPath],
           feature: "input/UI polish contact sheet",
           fixture: "input-ui-polish",
+          kind: "visual-contact-sheet",
+        },
+        {
+          artifactPaths: [artifacts.uiVisualStatesContactSheetPath],
+          feature: "retained UI idle, hover, and selected styled states",
+          fixture: "advanced-ui",
           kind: "visual-contact-sheet",
         },
       ],

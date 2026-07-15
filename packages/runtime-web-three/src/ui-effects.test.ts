@@ -39,7 +39,7 @@ test("should report active selected glow strategy", () => {
         kind: "glow",
         node: "inventory.slot.0",
         state: "selected",
-        strategy: "fallback:shadow",
+        strategy: "shadow",
       },
     ],
   });

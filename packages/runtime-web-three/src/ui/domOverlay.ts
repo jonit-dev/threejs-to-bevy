@@ -1,3 +1,5 @@
+import { resolveUiEffectStrategy } from "@threenative/ir/uiEffects";
+
 import type { IRenderedUi, IRenderedUiNode } from "./renderUi.js";
 
 export interface IUiDomOverlay {
@@ -7,12 +9,17 @@ export interface IUiDomOverlay {
 }
 
 interface IUiDomOverlayState {
+  focused: Set<string>;
+  hovered: Set<string>;
   openMenuId?: string;
 }
 
+const effectStylesInstalled = new WeakSet<Document>();
+
 export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = document, assetBase?: string): IUiDomOverlay {
   const nodes = new Map<string, HTMLElement>();
-  const state: IUiDomOverlayState = {};
+  const state: IUiDomOverlayState = { focused: new Set(), hovered: new Set() };
+  installUiEffectStyles(doc);
   const element = createNodeElement(rendered.root, rendered, nodes, doc, state);
   element.classList.add("tn-ui-overlay");
   Object.assign(element.style, {
@@ -23,7 +30,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     position: "absolute",
   });
   applySafeAreaStyle(element, rendered.safeArea);
-  updateNodeElement(rendered.root, nodes, assetBase);
+  updateNodeElement(rendered.root, nodes, state, assetBase);
   updateContextMenus(rendered.root, nodes, state);
   const handleDocumentClick = (event: Event) => {
     if (state.openMenuId === undefined) {
@@ -48,7 +55,7 @@ export function createUiDomOverlay(rendered: IRenderedUi, doc: Document = docume
     element,
     update() {
       rendered.update();
-      updateNodeElement(rendered.root, nodes, assetBase);
+      updateNodeElement(rendered.root, nodes, state, assetBase);
       updateContextMenus(rendered.root, nodes, state);
     },
   };
@@ -67,6 +74,26 @@ function createNodeElement(
   element.dataset.threenativeUiId = node.id;
   element.dataset.threenativeUiKind = node.kind;
   Object.assign(element.style, baseStyle(node));
+
+  if ((node.effects?.length ?? 0) > 0) {
+    const refreshEffects = () => applyUiEffects(element, currentRenderedNode(rendered, node.id) ?? node, state);
+    element.addEventListener("pointerenter", () => {
+      state.hovered.add(node.id);
+      refreshEffects();
+    });
+    element.addEventListener("pointerleave", () => {
+      state.hovered.delete(node.id);
+      refreshEffects();
+    });
+    element.addEventListener("focus", () => {
+      state.focused.add(node.id);
+      refreshEffects();
+    });
+    element.addEventListener("blur", () => {
+      state.focused.delete(node.id);
+      refreshEffects();
+    });
+  }
 
   if (node.focusable) {
     element.tabIndex = 0;
@@ -260,12 +287,13 @@ function createElementForKind(node: IRenderedUiNode, doc: Document): HTMLElement
   return doc.createElement("div");
 }
 
-function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement>, assetBase?: string): void {
+function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement>, state: IUiDomOverlayState, assetBase?: string): void {
   const element = nodes.get(node.id);
   if (element === undefined) {
     return;
   }
   Object.assign(element.style, baseStyle(node));
+  applyUiEffects(element, node, state);
 
   if (node.kind === "text") {
     updateRichTextElement(element, node);
@@ -349,7 +377,7 @@ function updateNodeElement(node: IRenderedUiNode, nodes: Map<string, HTMLElement
   applyAccessibilityAttributes(element, node);
 
   for (const child of node.children) {
-    updateNodeElement(child, nodes, assetBase);
+    updateNodeElement(child, nodes, state, assetBase);
   }
 }
 
@@ -429,6 +457,53 @@ function baseStyle(node: IRenderedUiNode): Partial<CSSStyleDeclaration> {
     style.width = "160px";
   }
   return style;
+}
+
+function currentRenderedNode(rendered: IRenderedUi, nodeId: string): IRenderedUiNode | undefined {
+  return renderedNodesById(rendered.root).get(nodeId);
+}
+
+function applyUiEffects(element: HTMLElement, node: IRenderedUiNode, state: IUiDomOverlayState): void {
+  const base = baseStyle(node);
+  element.style.animation = "";
+  element.style.backgroundColor = base.backgroundColor ?? "";
+  element.style.boxShadow = base.boxShadow ?? "";
+  element.style.outline = "";
+  element.style.outlineOffset = "";
+  for (const effect of node.effects ?? []) {
+    if (!uiEffectActive(effect.trigger, effect.id, node, state)) continue;
+    const color = effect.color ?? "#ffffff";
+    const radius = effect.radius ?? 4;
+    const strategy = resolveUiEffectStrategy(effect);
+    if (strategy === "none") continue;
+    if (strategy === "shadow") {
+      element.style.boxShadow = `0 0 ${radius}px ${effect.intensity ?? 3}px ${color}`;
+    } else if (strategy === "tint") {
+      const percentage = Math.round(Math.max(0, Math.min(1, effect.intensity ?? 0.5)) * 100);
+      element.style.backgroundColor = `color-mix(in srgb, ${base.backgroundColor ?? "transparent"}, ${color} ${percentage}%)`;
+    } else {
+      element.style.outline = `${Math.max(1, effect.intensity ?? 2)}px solid ${color}`;
+      element.style.outlineOffset = `${radius}px`;
+    }
+    if (effect.kind === "pulse" && effect.pulse !== undefined) {
+      element.style.animation = `tn-ui-effect-pulse ${effect.pulse.durationMs}ms ease-in-out ${effect.pulse.iterations ?? "infinite"} alternate`;
+    }
+  }
+}
+
+function uiEffectActive(trigger: string, effectId: string, node: IRenderedUiNode, state: IUiDomOverlayState): boolean {
+  if (trigger === "hover") return state.hovered.has(node.id);
+  if (trigger === "focus") return state.focused.has(node.id);
+  if (trigger === "disabled") return node.disabled === true;
+  return node.effectStates?.[effectId] === true;
+}
+
+function installUiEffectStyles(doc: Document): void {
+  if (effectStylesInstalled.has(doc)) return;
+  effectStylesInstalled.add(doc);
+  const style = doc.createElement("style");
+  style.textContent = "@keyframes tn-ui-effect-pulse{from{filter:brightness(1);opacity:1}to{filter:brightness(1.35);opacity:.55}}";
+  doc.head?.append(style);
 }
 
 function openContextMenu(

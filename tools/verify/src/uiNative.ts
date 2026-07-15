@@ -90,7 +90,7 @@ export async function validateUiNativeReport(
 
   const scope = isRecord(report.capabilityScope) ? report.capabilityScope : {};
   if (scope.dpi !== "unsupported-diagnostic" || scope.ime !== "platform-diagnostic" || scope.virtualKeyboard !== "platform-diagnostic") diagnostics.push(diagnostic("TN_VERIFY_UI_NATIVE_CAPABILITY_SCOPE_INVALID", "DPI scaling, IME, and virtual keyboard claims must remain target-scoped diagnostics.", "capabilityScope"));
-  if (scope.screenReader !== "accessibility-metadata-only" || scope.worldUi !== "projection-trace-only" || scope.nativeStyles !== "trace-only") diagnostics.push(diagnostic("TN_VERIFY_UI_NATIVE_CAPABILITY_SCOPE_INVALID", "Screen-reader, world UI, and native style claims must remain metadata/trace-only.", "capabilityScope"));
+  if (scope.screenReader !== "accessibility-metadata-only" || scope.worldUi !== "projection-trace-only" || scope.nativeStyles !== "bounded-rendered") diagnostics.push(diagnostic("TN_VERIFY_UI_NATIVE_CAPABILITY_SCOPE_INVALID", "Screen-reader and world UI claims remain metadata/trace-only; native styles require bounded rendered proof.", "capabilityScope"));
 
   const webBehavior = parseRecord(contents.get("tools/verify/artifacts/feature-parity-ui-native/behavior/web.json"));
   const nativeBehavior = parseRecord(contents.get("tools/verify/artifacts/feature-parity-ui-native/behavior/native.json"));
@@ -121,15 +121,49 @@ function validateArtifactContent(path: string, evidenceKind: UiEvidenceKind | un
   if (evidenceKind === "behavior-report") return validateBehavior(value, path, runId);
   if (evidenceKind === "accessibility-snapshot") return validateAccessibility(value, path, runId);
   if (path.endsWith("viewport-report.json") && (value.schema !== "threenative.ui-parity-viewports" || value.ok !== true || value.runId !== runId || !isRecord(value.viewports) || !isRecord(value.viewports.desktop) || !isRecord(value.viewports.mobile))) return [diagnostic("TN_VERIFY_UI_NATIVE_VIEWPORT_REPORT_INVALID", "Viewport evidence must report current-run desktop and mobile captures.", path)];
+  if (path.endsWith("feature-parity-ui-native/visual-observations.json")) {
+    const authored = isRecord(value.authored) ? value.authored : {};
+    const gradient = isRecord(authored.gradient) ? authored.gradient : {};
+    const shadow = isRecord(authored.shadow) ? authored.shadow : {};
+    const features = isRecord(value.features) ? value.features : {};
+    const states = isRecord(value.states) ? value.states : {};
+    const observations = [features.gradient, features.shadow, states.hover, states.selected];
+    const paired = observations.every((observation) => isRecord(observation)
+      && validCausalPixelChange(observation.web)
+      && validCausalPixelChange(observation.native));
+    const authoredValid = gradient.kind === "linear"
+      && typeof gradient.from === "string" && typeof gradient.to === "string" && typeof gradient.angle === "number"
+      && typeof shadow.color === "string" && [shadow.offsetX, shadow.offsetY, shadow.blur, shadow.spread].every((entry) => typeof entry === "number");
+    if (value.schema !== "threenative.ui-visual-observations" || value.version !== "0.1.0" || value.runId !== runId || !paired || !authoredValid) {
+      return [diagnostic("TN_VERIFY_UI_NATIVE_VISUAL_OBSERVATION_INVALID", "Visual observations must bind authored colors/placement and non-zero causal pixels for web/native hover, selected, shadow, and gradient captures.", path)];
+    }
+  }
   if (path.endsWith("input-ui-polish/verification-report.json") && value.ok !== true) return [diagnostic("TN_VERIFY_UI_NATIVE_LINKED_GATE_FAILED", "Linked input/UI polish evidence must pass.", path)];
   if (path.endsWith("feature-parity-ui-native/native-trace.json")) {
     const attachments = isRecord(value.attachments) && Array.isArray(value.attachments.projections) ? value.attachments.projections.filter(isRecord) : [];
     const effects = isRecord(value.visualEffects) && Array.isArray(value.visualEffects.effects) ? value.visualEffects.effects.filter(isRecord) : [];
+    const presets = isRecord(value.effects) && Array.isArray(value.effects.effects) ? value.effects.effects.filter(isRecord) : [];
+    const textStyles = isRecord(value.textStyles) && Array.isArray(value.textStyles.styles) ? value.textStyles.styles.filter(isRecord) : [];
     const worldObserved = attachments.some((entry) => entry.node === "enemy.nameplate");
     const styleObserved = effects.some((entry) => entry.node === "advanced.ui" && isRecord(entry.gradient) && isRecord(entry.shadow));
-    if (value.schema !== "threenative.ui-native-trace" || !worldObserved || !styleObserved) return [diagnostic("TN_VERIFY_UI_NATIVE_TRACE_INVALID", "Native trace must retain exact world-attachment and gradient/shadow partial observations.", path)];
+    const presetsObserved = presets.some((entry) => entry.node === "selected.item" && entry.strategy === "shadow")
+      && presets.some((entry) => entry.node === "focused.confirm" && entry.strategy === "outline");
+    const boldFaceObserved = textStyles.some((entry) => entry.node === "bold.face.proof" && entry.fontWeight === "bold" && entry.fontAsset === "assets/fonts/ui-bold.ttf");
+    if (value.schema !== "threenative.ui-native-trace" || !worldObserved || !styleObserved || !presetsObserved || !boldFaceObserved) return [diagnostic("TN_VERIFY_UI_NATIVE_TRACE_INVALID", "Native trace must retain exact world attachment, rendered gradient/shadow/preset strategies, and explicit bold face selection.", path)];
   }
   return [];
+}
+
+function validCausalPixelChange(value: unknown): boolean {
+  if (!isRecord(value) || !isRecord(value.bounds) || typeof value.changedPixels !== "number" || value.changedPixels < 20 || typeof value.differingPixelRatio !== "number" || value.differingPixelRatio <= 0) return false;
+  const bounds = value.bounds;
+  const boundsValid = [bounds.bottom, bounds.left, bounds.right, bounds.top].every((entry) => typeof entry === "number" && Number.isFinite(entry));
+  const baseline = Array.isArray(value.meanBaselineRgb) ? value.meanBaselineRgb : [];
+  const variant = Array.isArray(value.meanVariantRgb) ? value.meanVariantRgb : [];
+  const colorsValid = baseline.length === 3 && variant.length === 3
+    && [...baseline, ...variant].every((entry) => typeof entry === "number" && Number.isFinite(entry))
+    && baseline.some((entry, index) => entry !== variant[index]);
+  return boundsValid && colorsValid;
 }
 
 function validatePng(path: string, content: string | Uint8Array): VerificationDiagnostic[] {
@@ -140,8 +174,10 @@ function validatePng(path: string, content: string | Uint8Array): VerificationDi
     return [diagnostic("TN_VERIFY_UI_NATIVE_SCREENSHOT_INVALID", "UI rendered evidence must be a decodable PNG.", path)];
   }
   const viewport = path.includes("/mobile/") ? VIEWPORTS.mobile : VIEWPORTS.desktop;
+  const stateSheet = path.endsWith("feature-parity-ui-native/states/contact-sheet.png");
   const expectedWidth = path.endsWith("contact-sheet.png") ? viewport.width * 2 : viewport.width;
-  if (frame.width !== expectedWidth || frame.height !== viewport.height) return [diagnostic("TN_VERIFY_UI_NATIVE_SCREENSHOT_DIMENSIONS_INVALID", `Expected ${expectedWidth}x${viewport.height} UI evidence.`, path)];
+  const expectedHeight = stateSheet ? viewport.height * 3 : viewport.height;
+  if (frame.width !== expectedWidth || frame.height !== expectedHeight) return [diagnostic("TN_VERIFY_UI_NATIVE_SCREENSHOT_DIMENSIONS_INVALID", `Expected ${expectedWidth}x${expectedHeight} UI evidence.`, path)];
   if (path.endsWith("diff.png")) return [];
   const colors = new Set<string>();
   let minLuma = 255;

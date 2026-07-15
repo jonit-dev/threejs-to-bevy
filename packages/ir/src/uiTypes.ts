@@ -247,6 +247,7 @@ export interface IUiMinimapMetadataIr {
 
 export interface IUiFontAssetIr {
   asset: string;
+  boldAsset?: string;
   fallbackFamily?: string;
   family: string;
   glyphRanges?: Array<{ from: number; to: number }>;

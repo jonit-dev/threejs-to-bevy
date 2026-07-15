@@ -1777,6 +1777,7 @@ test("should preserve responsive overrides at both viewports through structured 
                 id: "score",
                 type: "text",
                 text: "Score 0",
+                effects: [{ id: "score.active", kind: "glow", trigger: "predicate", predicate: { resource: "GameState", field: "active", equals: true }, fallback: "shadow" }],
                 responsive: [
                   { target: "desktop", layout: { left: 24, top: 32, width: 480 }, style: { fontSize: 24, opacity: 1 } },
                   { target: "mobile", layout: { left: 12, top: 16, width: 280 }, style: { fontSize: 18, opacity: 0.5 } },
@@ -1809,6 +1810,7 @@ test("should preserve responsive overrides at both viewports through structured 
     const panel = ui.root.children.find((node: { id: string }) => node.id === "panel");
 
     assert.deepEqual(score.binding, { field: "scoreText", kind: "resource", name: "GameState" });
+    assert.deepEqual(score.effects, [{ id: "score.active", kind: "glow", trigger: "predicate", predicate: { resource: "GameState", field: "active", equals: true }, fallback: "shadow" }]);
     assert.deepEqual(score.responsive, [
       { layout: { inset: { left: 24, top: 32 }, position: "absolute", width: 480 }, style: { fontSize: 24, opacity: 1 }, target: "desktop" },
       { layout: { inset: { left: 12, top: 16 }, position: "absolute", width: 280 }, style: { fontSize: 18, opacity: 0.5 }, target: "mobile" },

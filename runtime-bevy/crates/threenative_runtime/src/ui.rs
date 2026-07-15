@@ -7,8 +7,13 @@ use bevy::a11y::{
 use bevy::input::mouse::{MouseScrollUnit, MouseWheel};
 use bevy::prelude::*;
 use bevy::render::camera::ClearColorConfig;
+use bevy::render::{
+    render_asset::RenderAssetUsages,
+    render_resource::{Extent3d, TextureDimension, TextureFormat},
+};
 use bevy::text::BreakLineOn;
-use bevy::ui::{IsDefaultUiCamera, TargetCamera};
+use bevy::ui::prelude::{BorderRect, ImageScaleMode, SliceScaleMode, TextureSlicer};
+use bevy::ui::{FocusPolicy, IsDefaultUiCamera, TargetCamera};
 use serde::Serialize;
 use thiserror::Error;
 use threenative_components::ThreeNativeId;
@@ -176,6 +181,31 @@ impl NativeUiBindingTargets {
 pub struct NativeUiBar {
     pub max: f32,
     pub value: f32,
+}
+
+#[derive(Clone, Component, Debug, Eq, PartialEq)]
+pub struct NativeUiVisualLayer {
+    pub kind: String,
+    pub owner: String,
+}
+
+#[derive(Clone, Component, Debug, PartialEq)]
+pub struct NativeUiEffectLayer {
+    pub active_since_seconds: Option<f32>,
+    pub base_color: Color,
+    pub effect: String,
+    pub kind: String,
+    pub owner: Entity,
+    pub pulse_duration_seconds: Option<f32>,
+    pub pulse_iterations: Option<u32>,
+    pub strategy: String,
+    pub trigger: String,
+}
+
+#[derive(Clone, Component, Debug, Default, PartialEq)]
+pub struct NativeUiEffectState {
+    pub predicates: HashMap<String, bool>,
+    pub selected: bool,
 }
 
 #[derive(Clone, Component, Debug, Eq, PartialEq)]
@@ -368,6 +398,7 @@ pub struct NativeUiRenderedShadow {
 
 #[derive(Clone, Component, Debug, PartialEq)]
 pub struct NativeUiRenderedTextStyle {
+    pub font_asset: Option<String>,
     pub font_family: Option<String>,
     pub font_weight: Option<String>,
     pub spans: Vec<NativeUiRenderedTextSpanStyle>,
@@ -433,6 +464,8 @@ pub struct NativeUiTextStyleTrace {
 #[derive(Debug, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NativeUiTextStyleObservation {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub font_asset: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub font_family: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -1062,6 +1095,13 @@ pub fn route_native_ui_to_active_scene_camera(world: &mut World) -> bool {
 pub fn diagnose_native_ui_visual_support(ui: &UiIr) -> Vec<UiDiagnostic> {
     let mut diagnostics = Vec::new();
     diagnose_node_visual_support(&ui.root, "ui.ir.json/root", &mut diagnostics);
+    diagnose_node_font_weight_fallbacks(&ui.root, "ui.ir.json/root", &ui.fonts, &mut diagnostics);
+    diagnostics
+}
+
+pub fn diagnose_native_ui_font_weight_fallbacks(ui: &UiIr) -> Vec<UiDiagnostic> {
+    let mut diagnostics = Vec::new();
+    diagnose_node_font_weight_fallbacks(&ui.root, "ui.ir.json/root", &ui.fonts, &mut diagnostics);
     diagnostics
 }
 
@@ -1122,6 +1162,67 @@ fn diagnose_node_visual_support(node: &UiNodeIr, path: &str, diagnostics: &mut V
     }
     for (index, child) in node.children.iter().enumerate() {
         diagnose_node_visual_support(child, &format!("{path}/children/{index}"), diagnostics);
+    }
+}
+
+fn diagnose_node_font_weight_fallbacks(
+    node: &UiNodeIr,
+    path: &str,
+    fonts: &[UiFontAssetIr],
+    diagnostics: &mut Vec<UiDiagnostic>,
+) {
+    let style = node.style.as_ref();
+    if style.and_then(|style| style.font_weight.as_deref()) == Some("bold") {
+        diagnose_font_weight_fallback(
+            style.and_then(|style| style.font_family.as_deref()),
+            format!("{path}/style/fontWeight"),
+            fonts,
+            diagnostics,
+        );
+    }
+    for (index, span) in node.spans.iter().enumerate() {
+        if span.weight.as_ref().is_some_and(ui_font_weight_is_bold) {
+            diagnose_font_weight_fallback(
+                span.font_family
+                    .as_deref()
+                    .or_else(|| style.and_then(|style| style.font_family.as_deref())),
+                format!("{path}/spans/{index}/weight"),
+                fonts,
+                diagnostics,
+            );
+        }
+    }
+    for (index, child) in node.children.iter().enumerate() {
+        diagnose_node_font_weight_fallbacks(
+            child,
+            &format!("{path}/children/{index}"),
+            fonts,
+            diagnostics,
+        );
+    }
+}
+
+fn diagnose_font_weight_fallback(
+    family: Option<&str>,
+    path: String,
+    fonts: &[UiFontAssetIr],
+    diagnostics: &mut Vec<UiDiagnostic>,
+) {
+    let Some(font) = fonts
+        .iter()
+        .find(|font| Some(font.family.as_str()) == family)
+    else {
+        return;
+    };
+    if font.bold_asset.is_none() {
+        diagnostics.push(UiDiagnostic {
+            code: "TN_BEVY_UI_FONT_WEIGHT_FALLBACK".to_owned(),
+            message: format!(
+                "Native UI requested bold family '{}' without a boldAsset; the regular face is used.",
+                font.family
+            ),
+            path,
+        });
     }
 }
 
@@ -1259,7 +1360,7 @@ fn native_ui_shadow(shadow: &UiShadowIr) -> NativeUiShadow {
     }
 }
 
-fn rendered_text_style(node: &UiNodeIr) -> Option<NativeUiRenderedTextStyle> {
+fn rendered_text_style(node: &UiNodeIr, fonts: &[UiFontAssetIr]) -> Option<NativeUiRenderedTextStyle> {
     let style = node.style.as_ref();
     let font_family = style.and_then(|style| style.font_family.clone());
     let font_weight = style.and_then(|style| style.font_weight.clone());
@@ -1291,6 +1392,12 @@ fn rendered_text_style(node: &UiNodeIr) -> Option<NativeUiRenderedTextStyle> {
         return None;
     }
     Some(NativeUiRenderedTextStyle {
+        font_asset: native_ui_font_asset_path(
+            fonts,
+            font_family.as_deref(),
+            font_weight.as_deref() == Some("bold"),
+        )
+        .map(str::to_owned),
         font_family,
         font_weight,
         spans,
@@ -1378,6 +1485,7 @@ fn sequential_target(order: &[String], current: &str, input: &str) -> Option<Str
     }
 }
 
+include!("ui/visuals.rs");
 include!("ui/widgets.rs");
 
 include!("ui/interactions.rs");
@@ -1385,6 +1493,16 @@ include!("ui/interactions.rs");
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn native_ui_shadow_texture_is_a_soft_ring_with_a_transparent_center() {
+        let pixels = native_ui_shadow_pixels();
+        let alpha = |x: usize, y: usize| pixels[(y * 32 + x) * 4 + 3];
+
+        assert_eq!(alpha(16, 16), 0);
+        assert!(alpha(7, 16) > alpha(0, 16));
+        assert!(alpha(7, 16) > 200);
+    }
 
     #[test]
     fn native_ui_binding_targets_cache_bound_nodes() {

@@ -235,9 +235,7 @@ pub fn trace_native_ui_effect_presets(
         .flat_map(|node| {
             node.effects.iter().filter_map(|effect| {
                 if effect.trigger != "predicate"
-                    && !active_states
-                        .iter()
-                        .any(|state| *state == effect.trigger.as_str())
+                    && !active_states.contains(&effect.trigger.as_str())
                 {
                     return None;
                 }
@@ -246,7 +244,7 @@ pub fn trace_native_ui_effect_presets(
                     kind: effect.kind.clone(),
                     node: node.id.clone(),
                     state: effect.trigger.clone(),
-                    strategy: native_ui_effect_strategy(effect),
+                    strategy: native_ui_effect_render_strategy(effect),
                 })
             })
         })
@@ -255,18 +253,6 @@ pub fn trace_native_ui_effect_presets(
         format!("{}:{}", left.node, left.effect).cmp(&format!("{}:{}", right.node, right.effect))
     });
     NativeUiEffectPresetTrace { effects }
-}
-
-fn native_ui_effect_strategy(effect: &threenative_loader::UiEffectPresetIr) -> String {
-    match effect.kind.as_str() {
-        "glow" | "pulse" => effect
-            .fallback
-            .as_ref()
-            .filter(|fallback| fallback.as_str() != "none")
-            .map(|fallback| format!("fallback:{fallback}"))
-            .unwrap_or_else(|| "direct".to_owned()),
-        _ => "direct".to_owned(),
-    }
 }
 
 pub fn trace_native_ui_attachment_projection(
@@ -371,6 +357,7 @@ pub fn trace_native_ui_text_styles(world: &mut World) -> NativeUiTextStyleTrace 
     let mut styles = query
         .iter(world)
         .map(|(id, style)| NativeUiTextStyleObservation {
+            font_asset: style.font_asset.clone(),
             font_family: style.font_family.clone(),
             font_weight: style.font_weight.clone(),
             node: id.0.clone(),

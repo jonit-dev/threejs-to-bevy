@@ -96,6 +96,55 @@ test("ui dom overlay should reflect script-driven disabled and value state", () 
   assert.equal(pause?.getAttribute("aria-disabled"), null);
 });
 
+test("ui dom overlay should render effect presets for interaction and bound states", () => {
+  const ui = makeUi();
+  ui.root.children?.push(
+    {
+      effects: [
+        { color: "#ffd54a", fallback: "shadow", id: "hover.glow", kind: "glow", radius: 12, trigger: "hover" },
+        { color: "#ffffff", id: "focus.ring", intensity: 3, kind: "focusRing", radius: 2, trigger: "focus" },
+      ],
+      focusable: true,
+      id: "effect-target",
+      kind: "button",
+      label: "Effects",
+    },
+    {
+      binding: { kind: "resource", name: "Selected" },
+      effects: [{ color: "#66ccff", id: "selected.outline", kind: "outline", trigger: "selected" }],
+      id: "selected-target",
+      kind: "row",
+    },
+    {
+      binding: { kind: "resource", name: "Selected" },
+      effects: [{ color: "#ff0033", id: "selected.tint", kind: "tint", trigger: "selected" }],
+      id: "tint-target",
+      kind: "row",
+      style: { backgroundColor: "#101820" },
+    },
+    {
+      effects: [{ color: "#ff4466", id: "danger.pulse", kind: "pulse", predicate: { field: "danger", resource: "UiState", equals: true }, pulse: { durationMs: 600, iterations: 2 }, trigger: "predicate" }],
+      id: "predicate-target",
+      kind: "row",
+    },
+  );
+  const world = makeWorld();
+  world.resources = { ...world.resources, Selected: true, UiState: { danger: true } };
+  const overlay = createUiDomOverlay(renderUi(ui, world), new FakeDocument() as unknown as Document);
+  const interactive = findByUiId(overlay.element, "effect-target");
+
+  interactive?.dispatch("pointerenter");
+  assert.equal(interactive?.style.boxShadow, "0 0 12px 3px #ffd54a");
+  interactive?.dispatch("pointerleave");
+  assert.equal(interactive?.style.boxShadow, "");
+  interactive?.dispatch("focus");
+  assert.equal(interactive?.style.outline, "3px solid #ffffff");
+  assert.equal(interactive?.style.outlineOffset, "2px");
+  assert.equal(findByUiId(overlay.element, "selected-target")?.style.outline, "2px solid #66ccff");
+  assert.equal(findByUiId(overlay.element, "tint-target")?.style.backgroundColor, "color-mix(in srgb, #101820, #ff0033 50%)");
+  assert.equal(findByUiId(overlay.element, "predicate-target")?.style.animation, "tn-ui-effect-pulse 600ms ease-in-out 2 alternate");
+});
+
 test("ui dom overlay should navigate focus with tab keys and activate focused controls", () => {
   const rendered = renderUi(makeUi(), makeWorld());
   const overlay = createUiDomOverlay(rendered, new FakeDocument() as unknown as Document);
@@ -383,6 +432,12 @@ class FakeElement {
 
   click(): void {
     for (const listener of this.listeners.get("click") ?? []) {
+      listener();
+    }
+  }
+
+  dispatch(type: string): void {
+    for (const listener of this.listeners.get(type) ?? []) {
       listener();
     }
   }

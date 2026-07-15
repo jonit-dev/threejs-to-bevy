@@ -27,6 +27,7 @@ use threenative_runtime::{
     stylized_nature::native_compatible_model_scene_path,
     systems_host::NativeGameLoopState,
     trace_report::write_pretty_json_report,
+    ui::NativeUiEffectState,
 };
 
 const MIN_CAPTURE_FRAME: u32 = 2;
@@ -63,6 +64,19 @@ struct CaptureTransformTraceOptions {
 struct CaptureViewportOptions {
     height: f32,
     width: f32,
+}
+
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+enum CaptureUiState {
+    Focus,
+    Hover,
+    Selected,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+struct CaptureUiStateOptions {
+    node_id: String,
+    state: CaptureUiState,
 }
 
 #[derive(Resource)]
@@ -134,9 +148,13 @@ fn main() -> ExitCode {
         Ok(options) => options,
         Err(code) => return code,
     };
+    let ui_state_options = match take_ui_state_options(&mut args) {
+        Ok(options) => options,
+        Err(code) => return code,
+    };
     if args.len() != 4 && args.len() != 5 && args.len() != 7 {
         eprintln!(
-            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--transform-trace <entity-id> <output-json>]"
+            "Usage: threenative_capture <bundle-path> <bookmark-id> <output-png> [request-frame] [<output-png-2> <request-frame-2>] [--viewport <width> <height>] [--ui-state <node-id> <focus|hover|selected>] [--transform-trace <entity-id> <output-json>]"
         );
         return ExitCode::from(2);
     }
@@ -222,6 +240,12 @@ fn main() -> ExitCode {
             .any(|entity| entity.id == *bookmark_id && entity.components.camera.is_some())
     {
         eprintln!("bookmark '{bookmark_id}' was not found or no camera could be updated");
+        return ExitCode::from(1);
+    }
+    if let Some(options) = ui_state_options
+        && !apply_capture_ui_state(app.world_mut(), &options)
+    {
+        eprintln!("UI node '{}' was not found for capture state", options.node_id);
         return ExitCode::from(1);
     }
     for capture in &captures {
@@ -348,6 +372,62 @@ fn take_viewport_options(
         return Err(ExitCode::from(2));
     }
     Ok(Some(CaptureViewportOptions { height, width }))
+}
+
+fn take_ui_state_options(
+    args: &mut Vec<String>,
+) -> Result<Option<CaptureUiStateOptions>, ExitCode> {
+    let Some(index) = args.iter().position(|arg| arg == "--ui-state") else {
+        return Ok(None);
+    };
+    if index + 2 >= args.len() {
+        eprintln!("--ui-state requires <node-id> <focus|hover|selected>");
+        return Err(ExitCode::from(2));
+    }
+    let node_id = args[index + 1].clone();
+    let state = match args[index + 2].as_str() {
+        "focus" => CaptureUiState::Focus,
+        "hover" => CaptureUiState::Hover,
+        "selected" => CaptureUiState::Selected,
+        _ => {
+            eprintln!("--ui-state must be focus, hover, or selected");
+            return Err(ExitCode::from(2));
+        }
+    };
+    args.drain(index..=index + 2);
+    if args.iter().any(|arg| arg == "--ui-state") {
+        eprintln!("--ui-state may only be provided once");
+        return Err(ExitCode::from(2));
+    }
+    Ok(Some(CaptureUiStateOptions { node_id, state }))
+}
+
+fn apply_capture_ui_state(world: &mut World, options: &CaptureUiStateOptions) -> bool {
+    let entity = world
+        .query::<(Entity, &ThreeNativeId)>()
+        .iter(world)
+        .find_map(|(entity, id)| (id.0 == options.node_id).then_some(entity));
+    let Some(entity) = entity else {
+        return false;
+    };
+    match options.state {
+        CaptureUiState::Focus => {
+            world.init_resource::<bevy::a11y::Focus>();
+            world.resource_mut::<bevy::a11y::Focus>().0 = Some(entity);
+        }
+        CaptureUiState::Hover => {
+            world.entity_mut(entity).insert(Interaction::Hovered);
+        }
+        CaptureUiState::Selected => {
+            let mut entity = world.entity_mut(entity);
+            if let Some(mut state) = entity.get_mut::<NativeUiEffectState>() {
+                state.selected = true;
+            } else {
+                entity.insert(NativeUiEffectState { selected: true, ..Default::default() });
+            }
+        }
+    }
+    true
 }
 
 fn parse_frame(value: Option<&String>, fallback: u32) -> Result<u32, ExitCode> {
@@ -705,6 +785,27 @@ mod tests {
             take_viewport_options(&mut args).expect("omitted viewport"),
             None
         );
+    }
+
+    #[test]
+    fn ui_state_options_are_removed_from_positional_capture_args() {
+        let mut args = vec![
+            "threenative_capture".to_owned(),
+            "bundle".to_owned(),
+            "camera.main".to_owned(),
+            "frame.png".to_owned(),
+            "--ui-state".to_owned(),
+            "selected.item".to_owned(),
+            "hover".to_owned(),
+        ];
+
+        let state = take_ui_state_options(&mut args)
+            .expect("UI state should parse")
+            .expect("UI state should exist");
+
+        assert_eq!(args.len(), 4);
+        assert_eq!(state.node_id, "selected.item");
+        assert_eq!(state.state, CaptureUiState::Hover);
     }
 
     #[test]

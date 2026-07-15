@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { copyFile, cp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -90,6 +90,98 @@ export async function verifyFeatureParityUiNative(options = {}) {
   }
   await writeJson(resolve(artifactDir, "viewport-report.json"), viewportReport);
 
+  const captureFixtures = resolve(artifactDir, "_capture-fixtures");
+  const selectedFixture = resolve(captureFixtures, "selected.bundle");
+  const visualFixture = resolve(captureFixtures, "visual.bundle");
+  const noShadowFixture = resolve(captureFixtures, "no-shadow.bundle");
+  const noGradientFixture = resolve(captureFixtures, "no-gradient.bundle");
+  await createFixtureVariant(fixture, selectedFixture, {
+    world(world) { world.resources.Selection.itemSelected = true; },
+  });
+  const removeEffects = (ui) => visitUiNodes(ui.root, (node) => { node.effects = []; });
+  await createFixtureVariant(fixture, visualFixture, { ui: removeEffects });
+  await createFixtureVariant(fixture, noShadowFixture, { ui(ui) { removeEffects(ui); delete ui.root.style.shadow; } });
+  await createFixtureVariant(fixture, noGradientFixture, { ui(ui) { removeEffects(ui); delete ui.root.style.gradient; } });
+
+  const desktop = viewports.desktop;
+  const statePaths = {};
+  for (const state of ["idle", "hover", "selected"]) {
+    const stateDir = resolve(artifactDir, "states", state);
+    await mkdir(stateDir, { recursive: true });
+    const webPath = resolve(stateDir, "web.png");
+    const nativePath = resolve(stateDir, "native.png");
+    if (state === "idle") {
+      await Promise.all([
+        copyFile(resolve(artifactDir, "viewports/desktop/web.png"), webPath),
+        copyFile(resolve(artifactDir, "viewports/desktop/native.png"), nativePath),
+      ]);
+    } else {
+      const stateFixture = state === "selected" ? selectedFixture : fixture;
+      const uiState = state === "hover" ? { nodeId: "selected.item", state: "hover" } : undefined;
+      await captureWebScreenshot({ bundlePath: stateFixture, cameraId: "camera.main", outputPath: webPath, repoRoot, viewport: desktop, uiState });
+      await captureBevyScreenshot({ bundlePath: stateFixture, cameraId: "camera.main", outputPath: nativePath, repoRoot, viewport: desktop, uiState });
+    }
+    const artifacts = await writeCalibrationDiffArtifacts({ artifactDir: stateDir, bevyScreenshotPath: nativePath, webScreenshotPath: webPath });
+    statePaths[state] = { nativePath, webPath, ...artifacts };
+  }
+  await writeStateContactSheet(statePaths, resolve(artifactDir, "states/contact-sheet.png"));
+
+  const featurePaths = {};
+  for (const feature of ["shadow", "gradient"]) {
+    const featureDir = resolve(artifactDir, "features", feature);
+    await mkdir(featureDir, { recursive: true });
+    const webPath = resolve(featureDir, "web.png");
+    const nativePath = resolve(featureDir, "native.png");
+    if (feature === "shadow") {
+      await captureWebScreenshot({ bundlePath: visualFixture, cameraId: "camera.main", outputPath: webPath, repoRoot, viewport: desktop });
+      await captureBevyScreenshot({ bundlePath: visualFixture, cameraId: "camera.main", outputPath: nativePath, repoRoot, viewport: desktop });
+    } else {
+      await Promise.all([
+        copyFile(resolve(artifactDir, "features/shadow/web.png"), webPath),
+        copyFile(resolve(artifactDir, "features/shadow/native.png"), nativePath),
+      ]);
+    }
+    const withoutFixture = feature === "shadow" ? noShadowFixture : noGradientFixture;
+    const withoutWebPath = resolve(featureDir, "without-web.png");
+    const withoutNativePath = resolve(featureDir, "without-native.png");
+    await captureWebScreenshot({ bundlePath: withoutFixture, cameraId: "camera.main", outputPath: withoutWebPath, repoRoot, viewport: desktop });
+    await captureBevyScreenshot({ bundlePath: withoutFixture, cameraId: "camera.main", outputPath: withoutNativePath, repoRoot, viewport: desktop });
+    featurePaths[feature] = { nativePath, webPath, withoutNativePath, withoutWebPath };
+  }
+
+  const observations = {
+    authored: { gradient: bundle.ui.root.style.gradient, shadow: bundle.ui.root.style.shadow },
+    features: {},
+    runId,
+    schema: "threenative.ui-visual-observations",
+    states: {},
+    version: "0.1.0",
+  };
+  for (const state of ["hover", "selected"]) {
+    observations.states[state] = {};
+    for (const adapter of ["web", "native"]) {
+      const change = analyzePngChange(
+        await readFile(statePaths.idle[`${adapter}Path`]),
+        await readFile(statePaths[state][`${adapter}Path`]),
+      );
+      if (change.changedPixels < 20) throw new Error(`${adapter} ${state} capture did not produce visible effect pixels`);
+      observations.states[state][adapter] = change;
+    }
+  }
+  for (const feature of ["shadow", "gradient"]) {
+    observations.features[feature] = {};
+    for (const adapter of ["web", "native"]) {
+      const change = analyzePngChange(
+        await readFile(featurePaths[feature][`without${adapter === "web" ? "Web" : "Native"}Path`]),
+        await readFile(featurePaths[feature][`${adapter}Path`]),
+      );
+      if (change.changedPixels < 20 || change.bounds === null) throw new Error(`${adapter} ${feature} capture did not produce visible placed pixels`);
+      observations.features[feature][adapter] = change;
+    }
+  }
+  await writeJson(resolve(artifactDir, "visual-observations.json"), observations);
+  await rm(captureFixtures, { force: true, recursive: true });
+
   const diagnosticSources = {
     TN_BEVY_UI_ABSOLUTE_PIXEL_SCALE_BOUNDARY: "runtime-bevy/crates/threenative_runtime/src/ui.rs",
     TN_BEVY_UI_HORIZONTAL_SCROLL_PARTIAL: "runtime-bevy/crates/threenative_runtime/src/ui.rs",
@@ -117,7 +209,7 @@ export async function verifyFeatureParityUiNative(options = {}) {
   }));
   const report = {
     artifacts: artifactPaths,
-    capabilityScope: { dpi: "unsupported-diagnostic", ime: "platform-diagnostic", nativeStyles: "trace-only", screenReader: "accessibility-metadata-only", virtualKeyboard: "platform-diagnostic", worldUi: "projection-trace-only" },
+    capabilityScope: { dpi: "unsupported-diagnostic", ime: "platform-diagnostic", nativeStyles: "bounded-rendered", screenReader: "accessibility-metadata-only", virtualKeyboard: "platform-diagnostic", worldUi: "projection-trace-only" },
     diagnostics: [],
     evidenceManifest: { entries, runId },
     generatedBy: "scripts/verify-feature-parity-ui-native.mjs",
@@ -154,10 +246,77 @@ export function comparePngs(leftBytes, rightBytes) {
   }
   return { differingPixelRatio: round(differing / pixels), meanAbsoluteError: round(absolute / (pixels * 3 * 255)) };
 }
+export function analyzePngChange(baselineBytes, variantBytes) {
+  const baseline = PNG.sync.read(baselineBytes);
+  const variant = PNG.sync.read(variantBytes);
+  if (baseline.width !== variant.width || baseline.height !== variant.height) throw new Error("causal UI captures have different dimensions");
+  let bottom = -1;
+  let changedPixels = 0;
+  let left = baseline.width;
+  let right = -1;
+  let top = baseline.height;
+  const baselineTotals = [0, 0, 0];
+  const variantTotals = [0, 0, 0];
+  for (let index = 0; index < baseline.data.length; index += 4) {
+    if (baseline.data[index] === variant.data[index]
+      && baseline.data[index + 1] === variant.data[index + 1]
+      && baseline.data[index + 2] === variant.data[index + 2]) continue;
+    const pixel = index / 4;
+    const x = pixel % baseline.width;
+    const y = Math.floor(pixel / baseline.width);
+    left = Math.min(left, x);
+    right = Math.max(right, x);
+    top = Math.min(top, y);
+    bottom = Math.max(bottom, y);
+    changedPixels += 1;
+    for (let channel = 0; channel < 3; channel += 1) {
+      baselineTotals[channel] += baseline.data[index + channel];
+      variantTotals[channel] += variant.data[index + channel];
+    }
+  }
+  const mean = (totals) => totals.map((value) => changedPixels === 0 ? 0 : Math.round(value / changedPixels));
+  return {
+    bounds: changedPixels === 0 ? null : { bottom, left, right, top },
+    changedPixels,
+    differingPixelRatio: round(changedPixels / (baseline.width * baseline.height)),
+    meanBaselineRgb: mean(baselineTotals),
+    meanVariantRgb: mean(variantTotals),
+  };
+}
 function round(value) { return Math.round(value * 1_000_000) / 1_000_000; }
 function hash(bytes) { return createHash("sha256").update(bytes).digest("hex"); }
 async function fileHash(path) { return hash(await readFile(path)); }
 async function writeJson(path, value) { await mkdir(dirname(path), { recursive: true }); await writeFile(path, `${JSON.stringify(value, null, 2)}\n`); }
+async function createFixtureVariant(source, target, mutations) {
+  await cp(source, target, { recursive: true });
+  if (mutations.ui !== undefined) {
+    const path = resolve(target, "ui.ir.json");
+    const value = JSON.parse(await readFile(path, "utf8"));
+    mutations.ui(value);
+    await writeJson(path, value);
+  }
+  if (mutations.world !== undefined) {
+    const path = resolve(target, "world.ir.json");
+    const value = JSON.parse(await readFile(path, "utf8"));
+    mutations.world(value);
+    await writeJson(path, value);
+  }
+}
+function visitUiNodes(node, visit) {
+  visit(node);
+  for (const child of node.children ?? []) visitUiNodes(child, visit);
+}
+async function writeStateContactSheet(states, outputPath) {
+  const first = PNG.sync.read(await readFile(states.idle.webPath));
+  const sheet = new PNG({ height: first.height * 3, width: first.width * 2 });
+  for (const [row, state] of ["idle", "hover", "selected"].entries()) {
+    const web = PNG.sync.read(await readFile(states[state].webPath));
+    const native = PNG.sync.read(await readFile(states[state].nativePath));
+    PNG.bitblt(web, sheet, 0, 0, web.width, web.height, 0, row * first.height);
+    PNG.bitblt(native, sheet, 0, 0, native.width, native.height, first.width, row * first.height);
+  }
+  await writeFile(outputPath, PNG.sync.write(sheet));
+}
 
 if (process.argv[1]?.endsWith("verify-feature-parity-ui-native.mjs")) {
   const report = await verifyFeatureParityUiNative();

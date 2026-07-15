@@ -10,6 +10,8 @@ export interface IRenderedUiNode {
   anchorId?: string;
   children: IRenderedUiNode[];
   disabled?: boolean;
+  effects?: IUiNodeIr["effects"];
+  effectStates?: Readonly<Record<string, boolean>>;
   focusable: boolean;
   id: string;
   image?: IUiNodeIr["image"];
@@ -181,6 +183,15 @@ function renderNode(node: IUiNodeIr, world: IWorldIr, target: UiTargetProfileCla
     ...(node.anchorId === undefined ? {} : { anchorId: node.anchorId }),
     children: node.children?.map((child) => renderNode(child, world, target)) ?? [],
     ...(node.disabled === undefined ? {} : { disabled: node.disabled }),
+    ...(node.effects === undefined ? {} : {
+      effects: node.effects,
+      effectStates: Object.fromEntries(node.effects.map((effect) => [
+        effect.id,
+        effect.trigger === "selected"
+          ? bindingValue === true
+          : effect.trigger === "predicate" && uiEffectPredicatePasses(effect.predicate, world),
+      ])),
+    }),
     focusable: node.focusable ?? (node.kind === "button" || node.kind === "textInput" || node.kind === "touchControl" || node.kind === "slider" || node.kind === "scrollbar"),
     id: node.id,
     ...(node.image === undefined ? {} : { image: node.image }),
@@ -201,6 +212,20 @@ function renderNode(node: IUiNodeIr, world: IWorldIr, target: UiTargetProfileCla
     value: typeof bindingValue === "number" ? bindingValue : node.value,
     ...(node.valueText === undefined ? {} : { valueText: node.valueText }),
   };
+}
+
+function uiEffectPredicatePasses(predicate: NonNullable<IUiNodeIr["effects"]>[number]["predicate"], world: IWorldIr): boolean {
+  if (predicate === undefined) return false;
+  let value: unknown;
+  if (predicate.resource !== undefined) {
+    value = world.resources?.[predicate.resource];
+  } else if (predicate.component !== undefined && predicate.entity !== undefined) {
+    value = world.entities.find((entity) => entity.id === predicate.entity)?.components[predicate.component];
+  }
+  if (predicate.field !== undefined && value !== null && typeof value === "object" && !Array.isArray(value)) {
+    value = (value as Record<string, unknown>)[predicate.field];
+  }
+  return predicate.equals === undefined ? Boolean(value) : value === predicate.equals;
 }
 
 function responsiveLayout(node: IUiNodeIr, target: UiTargetProfileClass): IUiNodeIr["layout"] {

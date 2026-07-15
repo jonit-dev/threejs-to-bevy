@@ -257,7 +257,15 @@ pub fn app_from_bundle_with_options(
     app.init_resource::<audio::NativeAudioDiagnostics>();
     if let Some(ui) = bundle.ui.as_ref() {
         ui::map_ui_into_world(app.world_mut(), ui)?;
+        ui::sync_native_ui_effect_states(app.world_mut(), &bundle);
+        app.init_resource::<bevy::a11y::Focus>();
         if let Some(diagnostic) = ui::diagnose_native_ui_font_fallback(app.world()) {
+            warn!(
+                "{}: {} ({})",
+                diagnostic.code, diagnostic.message, diagnostic.path
+            );
+        }
+        for diagnostic in ui::diagnose_native_ui_font_weight_fallbacks(ui) {
             warn!(
                 "{}: {} ({})",
                 diagnostic.code, diagnostic.message, diagnostic.path
@@ -278,6 +286,8 @@ pub fn app_from_bundle_with_options(
             (
                 ui::reconcile_native_ui_responsive_layout,
                 ui::scroll_native_ui,
+                ui::sync_native_ui_focus_from_interaction.before(ui::sync_native_ui_effect_layers),
+                ui::sync_native_ui_effect_layers,
                 ui::dispatch_native_ui_actions.before(run_scripted_runtime_systems),
                 ui::apply_queued_native_ui_service_effects.after(run_scripted_runtime_systems),
             ),
@@ -410,6 +420,7 @@ pub fn app_from_bundle_with_options(
             Update,
             (
                 run_scripted_runtime_systems,
+                sync_scripted_native_ui_effect_states.before(ui::sync_native_ui_effect_layers),
                 audio::play_new_native_audio_events,
                 audio::apply_native_audio_service_effects,
                 audio::apply_native_audio_controls,
@@ -616,6 +627,12 @@ fn is_lit_material(materials: &MaterialsIr, material_id: &str) -> bool {
 #[derive(Resource)]
 pub struct ScriptedRuntimeBundle {
     pub(crate) bundle: LoadedBundle,
+}
+
+fn sync_scripted_native_ui_effect_states(world: &mut World) {
+    world.resource_scope(|world, runtime: Mut<ScriptedRuntimeBundle>| {
+        ui::sync_native_ui_effect_states(world, &runtime.bundle);
+    });
 }
 
 struct ScriptedRuntimeMainThread;

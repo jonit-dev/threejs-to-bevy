@@ -379,9 +379,25 @@ fn text_style(
                 .as_ref()
                 .and_then(|style| style.font_family.as_deref())
         });
+    let bold = span
+        .and_then(|span| span.weight.as_ref())
+        .is_some_and(ui_font_weight_is_bold)
+        || span.is_none()
+            && node
+                .style
+                .as_ref()
+                .and_then(|style| style.font_weight.as_deref())
+                == Some("bold");
     let font = font_family
         .and_then(|family| fonts.iter().find(|font| font.family == family))
-        .and_then(|font| asset_server.map(|asset_server| asset_server.load(font.asset.clone())))
+        .and_then(|font| {
+            let asset = if bold {
+                font.bold_asset.as_ref().unwrap_or(&font.asset)
+            } else {
+                &font.asset
+            };
+            asset_server.map(|asset_server| asset_server.load(asset.clone()))
+        })
         .or_else(|| {
             world
                 .get_resource::<NativeUiFallbackFont>()
@@ -404,8 +420,26 @@ fn text_style(
             .and_then(|span| span.font_size)
             .or_else(|| node.style.as_ref().and_then(|style| style.font_size))
             .unwrap_or_else(|| TextStyle::default().font_size),
-        ..Default::default()
     }
+}
+
+fn ui_font_weight_is_bold(weight: &serde_json::Value) -> bool {
+    weight.as_str() == Some("bold") || weight.as_u64().is_some_and(|weight| weight >= 600)
+}
+
+pub fn native_ui_font_asset_path<'a>(
+    fonts: &'a [UiFontAssetIr],
+    family: Option<&str>,
+    bold: bool,
+) -> Option<&'a str> {
+    let font = fonts
+        .iter()
+        .find(|font| Some(font.family.as_str()) == family)?;
+    Some(if bold {
+        font.bold_asset.as_deref().unwrap_or(&font.asset)
+    } else {
+        &font.asset
+    })
 }
 
 fn value_to_string(value: &serde_json::Value) -> String {

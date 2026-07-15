@@ -99,7 +99,7 @@ export const scriptLifecycleKeys = new Set([
   "writes",
 ]);
 export const uiKeys = new Set(["nodes", "bindings"]);
-export const uiNodeKeys = new Set(["id", "action", "attachTo", "component", "label", "layout", "responsive", "src", "style", "text", "type", "value", "virtualRange"]);
+export const uiNodeKeys = new Set(["id", "action", "attachTo", "component", "effects", "label", "layout", "responsive", "src", "style", "text", "type", "value", "virtualRange"]);
 export const uiComponentInstanceKeys = new Set(["ref", "props"]);
 export const uiStyleKeys = new Set(["backgroundColor", "borderColor", "borderRadius", "borderWidth", "color", "fontSize", "fontWeight", "opacity", "textAlign", "textDecoration", "wrap"]);
 export const uiBindingKeys = new Set(["fields", "format", "node", "resource"]);
@@ -454,6 +454,7 @@ export interface ISceneUiNode {
   action?: string;
   attachTo?: Record<string, unknown>;
   component?: ISceneUiComponentInstance;
+  effects?: Array<Record<string, unknown>>;
   label?: string;
   layout?: Record<string, unknown>;
   responsive?: Array<{ layout?: Record<string, unknown>; style?: ISceneUiStyle; target: "desktop" | "mobile" | "tablet" }>;

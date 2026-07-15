@@ -62,12 +62,33 @@ test("should reject accessibility snapshots that echo roles without exercised st
   assert.equal(diagnostics.some((entry) => entry.code === "TN_VERIFY_UI_NATIVE_ACCESSIBILITY_INVALID" && entry.path === path), true);
 });
 
+test("should reject visual observations without causal state and feature pixels", async () => {
+  const fixture = makeFixture();
+  const path = "tools/verify/artifacts/feature-parity-ui-native/visual-observations.json";
+  fixture.artifacts.set(path, json(visualObservations(0)));
+  fixture.report = makeReport(fixture.artifacts);
+  const diagnostics = await validate(fixture);
+  assert.equal(diagnostics.some((entry) => entry.code === "TN_VERIFY_UI_NATIVE_VISUAL_OBSERVATION_INVALID" && entry.path === path), true);
+});
+
+test("should reject native trace without explicit bold face selection", async () => {
+  const fixture = makeFixture();
+  const path = "tools/verify/artifacts/feature-parity-ui-native/native-trace.json";
+  const trace = JSON.parse(fixture.artifacts.get(path) as string) as Record<string, unknown>;
+  trace.textStyles = { styles: [] };
+  fixture.artifacts.set(path, json(trace));
+  fixture.report = makeReport(fixture.artifacts);
+  const diagnostics = await validate(fixture);
+  assert.equal(diagnostics.some((entry) => entry.code === "TN_VERIFY_UI_NATIVE_TRACE_INVALID" && entry.path === path), true);
+});
+
 function makeFixture(): { artifacts: Map<string, string | Uint8Array>; report: Record<string, unknown> } {
   const artifacts = new Map<string, string | Uint8Array>();
   for (const path of requiredUiParityArtifacts()) {
     if (path.endsWith(".png")) {
       const mobile = path.includes("/mobile/");
-      artifacts.set(path, png((mobile ? 390 : 1280) * (path.endsWith("contact-sheet.png") ? 2 : 1), mobile ? 844 : 720, true));
+      const stateSheet = path.endsWith("feature-parity-ui-native/states/contact-sheet.png");
+      artifacts.set(path, png((mobile ? 390 : 1280) * (path.endsWith("contact-sheet.png") ? 2 : 1), (mobile ? 844 : 720) * (stateSheet ? 3 : 1), true));
     }
   }
   for (const name of ["desktop", "mobile"]) {
@@ -81,7 +102,9 @@ function makeFixture(): { artifacts: Map<string, string | Uint8Array>; report: R
   artifacts.set("tools/verify/artifacts/feature-parity-ui-native/accessibility/native.json", json(accessibility("native")));
   artifacts.set("tools/verify/artifacts/feature-parity-ui-native/native-trace.json", json({
     attachments: { projections: [{ node: "enemy.nameplate" }] },
+    effects: { effects: [{ node: "selected.item", strategy: "shadow" }, { node: "focused.confirm", strategy: "outline" }] },
     schema: "threenative.ui-native-trace",
+    textStyles: { styles: [{ fontAsset: "assets/fonts/ui-bold.ttf", fontFamily: "ui-proof", fontWeight: "bold", node: "bold.face.proof", spans: [] }] },
     visualEffects: { effects: [{ gradient: {}, node: "advanced.ui", shadow: {} }] },
   }));
   const diagnosticEntries = ([
@@ -93,6 +116,7 @@ function makeFixture(): { artifacts: Map<string, string | Uint8Array>; report: R
     ["TN_IR_UI_WIDGET_VIRTUAL_KEYBOARD_UNSUPPORTED", "packages/ir/src/uiValidation.ts"],
   ] as const).map(([code, source]) => ({ code, source }));
   artifacts.set("tools/verify/artifacts/feature-parity-ui-native/platform-diagnostics.json", json({ entries: diagnosticEntries, runId, schema: "threenative.ui-parity-diagnostics", version: "0.1.0" }));
+  artifacts.set("tools/verify/artifacts/feature-parity-ui-native/visual-observations.json", json(visualObservations(100)));
   for (const { code, source } of diagnosticEntries) artifacts.set(source, `${artifacts.get(source) ?? ""}\n${code}`);
   artifacts.set("tools/verify/artifacts/input-ui-polish/verification-report.json", json({
     artifacts: { contactSheet: "linked/contact.png", diff: "linked/diff.png", nativeReport: "linked/native.json", webReport: "linked/web.json" },
@@ -126,10 +150,22 @@ function makeFixture(): { artifacts: Map<string, string | Uint8Array>; report: R
   return { artifacts, report: makeReport(artifacts) };
 }
 
+function visualObservations(changedPixels: number): Record<string, unknown> {
+  const change = { bounds: { bottom: 100, left: 10, right: 100, top: 10 }, changedPixels, differingPixelRatio: changedPixels / 1_000, meanBaselineRgb: [10, 20, 30], meanVariantRgb: [20, 30, 40] };
+  return {
+    authored: { gradient: { angle: 90, from: "#172033", kind: "linear", to: "#0f172a" }, shadow: { blur: 12, color: "#00000099", offsetX: 4, offsetY: 6, spread: 1 } },
+    features: { gradient: { native: change, web: change }, shadow: { native: change, web: change } },
+    runId,
+    schema: "threenative.ui-visual-observations",
+    states: { hover: { native: change, web: change }, selected: { native: change, web: change } },
+    version: "0.1.0",
+  };
+}
+
 function makeReport(artifacts: ReadonlyMap<string, string | Uint8Array>): Record<string, unknown> {
   return {
     artifacts: requiredUiParityArtifacts(),
-    capabilityScope: { dpi: "unsupported-diagnostic", ime: "platform-diagnostic", nativeStyles: "trace-only", screenReader: "accessibility-metadata-only", virtualKeyboard: "platform-diagnostic", worldUi: "projection-trace-only" },
+    capabilityScope: { dpi: "unsupported-diagnostic", ime: "platform-diagnostic", nativeStyles: "bounded-rendered", screenReader: "accessibility-metadata-only", virtualKeyboard: "platform-diagnostic", worldUi: "projection-trace-only" },
     evidenceManifest: {
       entries: requiredUiParityArtifacts().map((path) => {
         const content = artifacts.get(path)!;

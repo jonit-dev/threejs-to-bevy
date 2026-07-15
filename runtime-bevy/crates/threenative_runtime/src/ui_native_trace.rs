@@ -15,11 +15,11 @@ use threenative_runtime::{
         NativeUiAction, NativeUiActionEvent, NativeUiActionQueue,
         NativeUiAttachmentProjectionTrace, NativeUiDisabled, NativeUiEffectPresetTrace,
         NativeUiImageRenderTrace, NativeUiKind, NativeUiTextEditOperation, NativeUiTextEditTrace,
-        NativeUiVisualEffectTrace, NativeUiWidget, apply_native_ui_service_effects,
-        dispatch_native_ui_actions, map_ui_into_world, queue_native_ui_text_input_value,
-        trace_native_ui_attachment_projection, trace_native_ui_effect_presets,
-        trace_native_ui_image_rendering, trace_native_ui_text_edit, trace_native_ui_visual_effects,
-        trace_ui_navigation,
+        NativeUiTextStyleTrace, NativeUiVisualEffectTrace, NativeUiWidget,
+        apply_native_ui_service_effects, dispatch_native_ui_actions, map_ui_into_world,
+        queue_native_ui_text_input_value, trace_native_ui_attachment_projection,
+        trace_native_ui_effect_presets, trace_native_ui_image_rendering, trace_native_ui_text_edit,
+        trace_native_ui_text_styles, trace_native_ui_visual_effects, trace_ui_navigation,
     },
     ui_debug::report_native_ui_accessibility,
 };
@@ -33,6 +33,7 @@ struct UiNativeTraceReport {
     images: NativeUiImageRenderTrace,
     schema: &'static str,
     text_edit: NativeUiTextEditTrace,
+    text_styles: NativeUiTextStyleTrace,
     version: &'static str,
     visual_effects: NativeUiVisualEffectTrace,
 }
@@ -162,6 +163,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 NativeUiTextEditOperation::Backspace,
             ],
         ),
+        text_styles: trace_native_ui_text_styles(app.world_mut()),
         version: "0.1.0",
         visual_effects: trace_native_ui_visual_effects(app.world_mut()),
     };

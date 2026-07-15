@@ -414,6 +414,7 @@ export type {
   IShaderUniformIr,
   IShaderVertexProgramIr,
   IMaterialsIr,
+  IMeshRendererLodLevelIr,
   IMeshRendererComponent,
   IRigidBodyComponent,
   ITargetProfile,
@@ -479,6 +480,7 @@ export type {
   Vec3,
 } from "./types.js";
 export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from "./validate.js";
+export { resolveUiEffectStrategy, type UiEffectRenderStrategy } from "./uiEffects.js";
 export { UI_NODE_KINDS, type UiNodeKind } from "./uiTypes.js";
 export { validateCameraViews } from "./camera.js";
 export { validateEnvironmentSceneIr } from "./environment.js";

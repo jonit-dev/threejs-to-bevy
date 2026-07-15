@@ -35,6 +35,7 @@ async function loadCliModules(root) {
  * @param {string} options.outputPath
  * @param {string} [options.cameraId]
  * @param {{ width: number; height: number }} [options.viewport]
+ * @param {{ nodeId: string; state: "focus" | "hover" }} [options.uiState]
  */
 export async function captureWebScreenshot(options) {
   const root = options.repoRoot ?? repoRootFromModule;
@@ -48,6 +49,12 @@ export async function captureWebScreenshot(options) {
     const bookmark = encodeURIComponent(options.cameraId ?? "camera.calibration");
     await page.goto(`${server.url}?bundle=/bundle&bookmark=${bookmark}`, { waitUntil: "domcontentloaded" });
     await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 15_000 });
+    if (options.uiState !== undefined) {
+      const selector = `[data-threenative-ui-id=${JSON.stringify(options.uiState.nodeId)}]`;
+      if (options.uiState.state === "hover") await page.hover(selector);
+      else await page.focus(selector);
+      await page.waitForTimeout(50);
+    }
     await page.screenshot({ path: options.outputPath });
   } finally {
     await browser.close();
@@ -62,10 +69,12 @@ export async function captureWebScreenshot(options) {
  * @param {string} options.repoRoot
  * @param {string} [options.cameraId]
  * @param {{ width: number; height: number }} [options.viewport]
+ * @param {{ nodeId: string; state: "focus" | "hover" | "selected" }} [options.uiState]
  */
 export async function captureBevyScreenshot(options) {
   const { cargoCaptureEnv, resolveCargoCommand } = await loadCliModules(options.repoRoot);
   const viewportArgs = options.viewport === undefined ? [] : ["--viewport", String(options.viewport.width), String(options.viewport.height)];
+  const uiStateArgs = options.uiState === undefined ? [] : ["--ui-state", options.uiState.nodeId, options.uiState.state];
   await execFileAsync(
     resolveCargoCommand(),
     [
@@ -80,6 +89,7 @@ export async function captureBevyScreenshot(options) {
       options.cameraId ?? "camera.calibration",
       resolve(options.outputPath),
       ...viewportArgs,
+      ...uiStateArgs,
     ],
     {
       cwd: resolve(options.repoRoot, "runtime-bevy"),

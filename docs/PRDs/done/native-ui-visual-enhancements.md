@@ -1,7 +1,34 @@
 # PRD: Native UI Visual Enhancements (Shadows, Glow, Gradients, Effect Presets)
 
-Status: proposed
+Status: completed
 Date: 2026-07-12
+
+Completed: 2026-07-14. Completion audit closed 2026-07-15 after replacing
+generic screenshot claims with causal idle/hover/selected and isolated
+with/without visual evidence.
+
+## Completion audit
+
+- Effect presets use the shared IR fallback resolver on both adapters. Web and
+  native render live hover, focus, selected, disabled, and predicate states;
+  pulse timing is activation-relative and tint intensity modulates color.
+- Native shadow drawing consumes `NativeUiRenderedShadow`, uses a cached sliced
+  soft-ring texture, and applies authored color, offset, blur, and spread.
+  Native gradient drawing consumes `NativeUiRenderedGradient` and caches the
+  generated linear image by endpoints and angle.
+- Native bold requests resolve `boldAsset`; missing variants retain the regular
+  face with `TN_BEVY_UI_FONT_WEIGHT_FALLBACK`. The native trace binds the proof
+  fixture's bold request to `assets/fonts/ui-bold.ttf`.
+- `verify:feature-parity-ui-native` now retains paired idle, hover, and selected
+  screenshots, isolated shadow/gradient with/without captures, exact state
+  contact sheets, and `visual-observations.json` with causal pixel bounds and
+  mean colors. Aggregate conformance enrolls the combined styled-state sheet.
+- Structured authoring preserves effect presets, the cookbook documents the
+  reusable pattern, and chess authors a predicate-driven active-move glow with
+  web iterate plus desktop playtest evidence under `examples/chess/artifacts/`.
+- Final verification passed: IR tests (384), native UI tests (22), native rich
+  text test, web effect test, UI registry/gate tests, focused UI-native gate,
+  aggregate conformance, docs consistency, and cookbook verification.
 
 ## Problem
 

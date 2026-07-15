@@ -285,6 +285,7 @@ test("should pass matching gate commands and save report path", async () => {
     assert.equal(result.evidence.ui.behavioral[0]?.fixture, "rich-ui-navigation");
     assert.equal(result.evidence.ui.behavioral[1]?.fixture, "input-ui-polish");
     assert.equal(result.evidence.ui.visualStyle[0]?.artifactPaths[0].endsWith("tools/verify/artifacts/input-ui-polish/contact-sheet.png"), true);
+    assert.equal(result.evidence.ui.visualStyle[1]?.artifactPaths[0].endsWith("tools/verify/artifacts/feature-parity-ui-native/states/contact-sheet.png"), true);
     const report = JSON.parse(await readFile(result.reportPath, "utf8"));
     assert.equal(report.status, "pass");
     assert.equal(report.steps.length, 33);
@@ -406,6 +407,7 @@ test("should pass matching gate commands and save report path", async () => {
     assert.deepEqual(report.evidence.ui.behavioral.map((item) => item.fixture), ["rich-ui-navigation", "input-ui-polish"]);
     assert.equal(report.evidence.ui.structural[0]?.fixture, "retained-ui");
     assert.equal(report.evidence.ui.visualStyle[0]?.kind, "visual-contact-sheet");
+    assert.equal(report.evidence.ui.visualStyle[1]?.fixture, "advanced-ui");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

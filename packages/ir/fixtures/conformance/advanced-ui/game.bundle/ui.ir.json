@@ -1,6 +1,9 @@
 {
   "schema": "threenative.ui",
   "version": "0.1.0",
+  "fonts": [
+    { "asset": "assets/fonts/ui-regular.ttf", "boldAsset": "assets/fonts/ui-bold.ttf", "family": "ui-proof" }
+  ],
   "focusOrder": ["player.name", "audio.volume", "selected.item", "focused.confirm", "mobile.jump"],
   "root": {
     "id": "advanced.ui",
@@ -13,6 +16,7 @@
     ],
     "style": {
       "backgroundColor": "#111827",
+      "fontWeight": "bold",
       "gradient": { "kind": "linear", "from": "#172033", "to": "#0f172a", "angle": 90 },
       "shadow": { "color": "#00000099", "offsetX": 4, "offsetY": 6, "blur": 12, "spread": 1 }
     },
@@ -60,11 +64,25 @@
         "id": "selected.item",
         "kind": "button",
         "label": "Crystal Key",
-        "action": "InspectItem",
-        "focusable": true,
+      "action": "InspectItem",
+      "focusable": true,
+      "binding": {
+        "kind": "resource",
+        "name": "Selection",
+        "field": "itemSelected"
+      },
         "navigation": { "left": "audio.volume", "right": "focused.confirm" },
-        "effects": [
-          {
+      "effects": [
+        {
+          "id": "selected.item.hover",
+          "kind": "glow",
+          "trigger": "hover",
+          "color": "#fbbf24",
+          "radius": 8,
+          "intensity": 0.6,
+          "fallback": "outline"
+        },
+        {
             "id": "selected.item.glow",
             "kind": "glow",
             "trigger": "selected",
@@ -215,6 +233,13 @@
           "occlusion": "show",
           "sortPriority": 5
         }
+      },
+      {
+        "id": "bold.face.proof",
+        "kind": "text",
+        "text": "",
+        "layout": { "position": "absolute", "inset": { "left": 0, "top": 0 }, "width": 1, "height": 1 },
+        "style": { "fontFamily": "ui-proof", "fontWeight": "bold", "opacity": 0 }
       }
     ]
   }

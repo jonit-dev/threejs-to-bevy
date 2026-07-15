@@ -1020,6 +1020,9 @@ export function validateUiNodes(diagnostics: IAuthoringDiagnostic[], file: strin
     validateOptionalString(diagnostics, file, `${path}/src`, node.src, "UI image src must be a non-empty asset id or source path.");
     validateOptionalNumber(diagnostics, file, `${path}/value`, node.value, "UI node value must be a finite number.");
     validateUiComponentInstance(diagnostics, file, `${path}/component`, node.component);
+    if (node.effects !== undefined && !Array.isArray(node.effects)) {
+      diagnostics.push(typeDiagnostic(file, `${path}/effects`, "UI node effects must be an array.", node.effects));
+    }
     validateUiStyle(diagnostics, file, `${path}/style`, node.style);
     validateUiResponsiveRules(diagnostics, file, `${path}/responsive`, node.responsive);
     validateUiVirtualRange(diagnostics, file, `${path}/virtualRange`, node.virtualRange);

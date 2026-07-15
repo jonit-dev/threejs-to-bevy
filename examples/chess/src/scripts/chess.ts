@@ -248,6 +248,7 @@ export const chessGame = defineBehavior(
     }
 
     const patchHud = (value: Record<string, unknown>): void => context.resources.patch("ChessGame", {
+      moveHighlightActive: state.moveHistoryText !== "",
       moveHistoryText: state.moveHistoryText === "" ? "No moves yet" : state.moveHistoryText,
       ...value,
     });

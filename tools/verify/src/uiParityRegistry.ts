@@ -33,6 +33,16 @@ const viewportArtifacts = (adapter: "native" | "web"): UiParityEvidence[] => ["d
 }));
 
 const pairedRendered = [...viewportArtifacts("web"), ...viewportArtifacts("native")] as const;
+const effectStateRendered = (["idle", "hover", "selected"] as const).flatMap((state) => (["web", "native"] as const).map((adapter) => ({
+  adapter,
+  artifact: `tools/verify/artifacts/feature-parity-ui-native/states/${state}/${adapter}.png`,
+  kind: "rendered-screenshot" as const,
+})));
+const featureRendered = (feature: "gradient" | "shadow") => (["web", "native"] as const).map((adapter) => ({
+  adapter,
+  artifact: `tools/verify/artifacts/feature-parity-ui-native/features/${feature}/${adapter}.png`,
+  kind: "rendered-screenshot" as const,
+}));
 const pairedBehavior = [
   { adapter: "web", artifact: "tools/verify/artifacts/feature-parity-ui-native/behavior/web.json", kind: "behavior-report" },
   { adapter: "native", artifact: "tools/verify/artifacts/feature-parity-ui-native/behavior/native.json", kind: "behavior-report" },
@@ -58,6 +68,10 @@ export const UI_PARITY_ROWS: readonly UiParityRow[] = [
   { claim: "promoted", evidence: pairedBehavior, id: "node.text-input", nodeKinds: ["textInput"], requiredTier: "behavioral" },
   { capability: "ui:touch-control", claim: "promoted", evidence: pairedBehavior, fixtureId: "input-ui-polish", id: "node.touch-control", nodeKinds: ["touchControl"], requiredTier: "behavioral" },
   { claim: "promoted", evidence: pairedRendered, id: "layout.responsive", requiredTier: "rendered" },
+  { claim: "promoted", evidence: featureRendered("gradient"), id: "style.gradient", requiredTier: "rendered" },
+  { claim: "promoted", evidence: featureRendered("shadow"), id: "style.shadow", requiredTier: "rendered" },
+  { claim: "promoted", evidence: effectStateRendered, id: "style.effect-presets", requiredTier: "rendered" },
+  { claim: "promoted", evidence: [...pairedRendered, { adapter: "native", artifact: nativeTraceArtifact, kind: "trace" }], id: "text.bold-font", requiredTier: "rendered" },
   { capability: "ui:disabled-runtime-update", claim: "promoted", evidence: pairedBehavior, fixtureId: "input-ui-polish", id: "state.disabled-value", requiredTier: "behavioral" },
   { capability: "ui:focus-navigation", claim: "promoted", evidence: pairedBehavior, fixtureId: "input-ui-polish", id: "focus.sequential-explicit", requiredTier: "behavioral" },
   {
@@ -75,7 +89,6 @@ export const UI_PARITY_ROWS: readonly UiParityRow[] = [
   { claim: "unsupported", diagnosticCodes: ["TN_CATALOG_UI_IME_TARGET_UNSUPPORTED"], evidence: [{ adapter: "shared", artifact: platformDiagnosticsArtifact, kind: "diagnostic" }], id: "platform.ime", requiredTier: "unsupported" },
   { claim: "unsupported", diagnosticCodes: ["TN_IR_UI_WIDGET_VIRTUAL_KEYBOARD_UNSUPPORTED", "TN_INPUT_UI_VIRTUAL_KEYBOARD_DIAGNOSTIC_ONLY"], evidence: [{ adapter: "shared", artifact: platformDiagnosticsArtifact, kind: "diagnostic" }], id: "platform.virtual-keyboard", requiredTier: "unsupported" },
   { claim: "partial", evidence: [{ adapter: "native", artifact: nativeTraceArtifact, kind: "trace" }], id: "layout.world-attachment", requiredTier: "rendered" },
-  { claim: "partial", evidence: [{ adapter: "native", artifact: nativeTraceArtifact, kind: "trace" }], id: "style.native-gradient-shadow", requiredTier: "rendered" },
 ] as const;
 
 export const UI_PARITY_SUPPORT_ARTIFACTS = [
@@ -84,6 +97,15 @@ export const UI_PARITY_SUPPORT_ARTIFACTS = [
   "tools/verify/artifacts/feature-parity-ui-native/viewports/mobile/contact-sheet.png",
   "tools/verify/artifacts/feature-parity-ui-native/viewports/mobile/diff.png",
   "tools/verify/artifacts/feature-parity-ui-native/viewport-report.json",
+  "tools/verify/artifacts/feature-parity-ui-native/visual-observations.json",
+  "tools/verify/artifacts/feature-parity-ui-native/states/contact-sheet.png",
+  ...(["idle", "hover", "selected"] as const).flatMap((state) => [
+    `tools/verify/artifacts/feature-parity-ui-native/states/${state}/contact-sheet.png`,
+    `tools/verify/artifacts/feature-parity-ui-native/states/${state}/diff.png`,
+  ]),
+  ...(["gradient", "shadow"] as const).flatMap((feature) => (["web", "native"] as const).map((adapter) =>
+    `tools/verify/artifacts/feature-parity-ui-native/features/${feature}/without-${adapter}.png`,
+  )),
   "tools/verify/artifacts/input-ui-polish/verification-report.json",
 ] as const;
 

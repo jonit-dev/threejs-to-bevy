@@ -4,8 +4,18 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { resolveUiEffectStrategy } from "./uiEffects.js";
 import { validateBundle } from "./validate.js";
 import { writeJson, writeTestBundle } from "./testFixtures.js";
+
+test("ui effect strategy should honor rendered fallback semantics", () => {
+  assert.equal(resolveUiEffectStrategy({ id: "outline", kind: "outline", trigger: "focus" }), "outline");
+  assert.equal(resolveUiEffectStrategy({ id: "ring", kind: "focusRing", trigger: "focus" }), "outline");
+  assert.equal(resolveUiEffectStrategy({ id: "tint", kind: "tint", trigger: "disabled" }), "tint");
+  assert.equal(resolveUiEffectStrategy({ id: "glow", kind: "glow", trigger: "selected" }), "outline");
+  assert.equal(resolveUiEffectStrategy({ fallback: "shadow", id: "glow", kind: "glow", trigger: "selected" }), "shadow");
+  assert.equal(resolveUiEffectStrategy({ fallback: "none", id: "pulse", kind: "pulse", trigger: "hover" }), "none");
+});
 
 test("ui should reject dom event handler", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ui-handler-"));
@@ -764,6 +774,26 @@ test("ui should validate rich text spans with bundle local font assets", async (
     const result = await validateBundle(root);
 
     assert.equal(result.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("ui should reject a non-bundle-local bold font variant", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ui-bold-font-path-"));
+  try {
+    await writeTestBundle(root, { manifest: { entry: { ui: "ui.ir.json" } } });
+    await writeJson(root, "ui.ir.json", {
+      schema: "threenative.ui",
+      version: "0.1.0",
+      fonts: [{ asset: "assets/fonts/menu-regular.ttf", boldAsset: "../menu-bold.ttf", family: "menu" }],
+      root: { id: "title", kind: "text", text: "Paused", style: { fontFamily: "menu", fontWeight: "bold" } },
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_UI_FONT_ASSET_INVALID" && diagnostic.path === "ui.ir.json/fonts/0/boldAsset"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

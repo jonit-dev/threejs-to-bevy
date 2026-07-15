@@ -69,8 +69,9 @@ Current support:
 
   | Feature | Contract state |
   | --- | --- |
-  | Gradients and shadows | Web DOM overlay renders CSS gradients/shadows. Native preserves metadata/components and exposes visual traces only; native pixel rendering is not promoted. |
-  | Effect presets | Metadata/diagnostic boundary with web/native strategy traces; not promoted as rendered effect parity. |
+  | Gradients and shadows | Web renders CSS gradients/shadows. Native renders cached linear-gradient textures and cached sliced radial-falloff shadow layers. Native blur shape and arbitrary-angle sampling are bounded adapter approximations; presence, placement, color, and strategy are promoted. |
+  | Effect presets | Web and native render outline, focus-ring, glow fallback, tint, and pulse pixels from live hover/focus/selected/disabled/predicate state. The authored fallback selects `none`, `outline`, `shadow`, or `tint`; native shadow glow uses the bounded shadow approximation. |
+  | Font weight | Web uses CSS weight. Native selects `boldAsset` for bold text and reports `TN_BEVY_UI_FONT_WEIGHT_FALLBACK` when a declared family has no bold face; synthetic bolding is not used. |
   | Atlas and nine-slice image metadata | Web exposes atlas/nine-slice metadata for overlay/debug proof and applies scale/flip/tile CSS where possible. Native preserves image metadata and traces it; native atlas/nine-slice pixel rendering is not promoted. |
   | Safe area | Web overlay applies `safe-area-inset-*` padding for avoided edges. Native preserves safe-area metadata in navigation traces. |
   | Context menus | Web context menus clamp to the viewport. Native context-menu behavior remains metadata/trace-only. |
@@ -83,8 +84,7 @@ Current support:
 
 - UI parity claims are truth-graded in
   [bevy-feature-parity.md](../../bevy-feature-parity.md): promoted rows name a
-  registry evidence tier and current-run artifact, while trace-only native shadows/gradients, effect
-  presets, world-attached rendered placement, nested/axis scroll,
+  registry evidence tier and current-run artifact, while world-attached rendered placement, nested/axis scroll,
   spatial fallback navigation, and focus narration remain partial/diagnostic.
 - `pnpm verify:focused verify:feature-parity-ui-native` captures the same
   retained UI fixture in web and native renderers at 1280x720 and 390x844. The
@@ -92,12 +92,17 @@ Current support:
   regions, retains paired pixel diffs and exact contact sheets, compares live
   actions/state/focus/caret reports, and compares normalized AccessKit/ARIA
   metadata. A run ID and SHA-256 manifest prevent stale or artifact-less row
-  promotion. The captures prove the registry's bounded rendered rows; they do not promote native
-  gradient/shadow rendering, actual screen-reader output, or rendered
-  world-attachment placement.
+  promotion. Dedicated `states/{idle,hover,selected}` pairs and isolated
+  `features/{shadow,gradient}` with/without captures must produce causal pixel
+  changes; `visual-observations.json` binds their changed-pixel bounds and mean
+  colors to the authored shadow/gradient values. The native trace also binds a
+  bold request to its explicit `boldAsset`. These artifacts prove bounded native
+  gradient/shadow/effect rendering and explicit bold-face selection; they do not promote exact CSS blur equivalence,
+  actual screen-reader output, or rendered world-attachment placement.
 - `pnpm verify:conformance` now emits explicit UI evidence categories:
   structural retained-UI reports, behavioral runtime proof for promoted
-  focus/action/state delivery, and diagnostic traces for retained partial
+  focus/action/state delivery, a three-row web/native idle-hover-selected contact
+  sheet, and diagnostic traces for retained partial
   input/UI rows. Input/UI polish diagrams are not treated as rendered proof.
 - Unsupported UI boundaries remain explicit for virtual keyboard behavior,
   arbitrary grid named areas/dense packing, render-to-texture/world transforms,

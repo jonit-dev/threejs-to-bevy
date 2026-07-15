@@ -7,7 +7,7 @@ use std::{
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
     NativeUiRenderedTextStyle, diagnose_native_ui_visual_support, map_ui_into_world,
-    trace_native_ui_text_styles,
+    native_ui_font_asset_path, trace_native_ui_text_styles,
 };
 
 #[test]
@@ -15,6 +15,14 @@ fn should_map_rich_text_sections_to_bevy_text_bundles() {
     let root = write_rich_text_bundle();
     let bundle = load_bundle(&root).expect("bundle should load");
     let ui = bundle.ui.as_ref().expect("ui should load");
+    assert_eq!(
+        native_ui_font_asset_path(&ui.fonts, Some("menu"), false),
+        Some("assets/fonts/menu.ttf")
+    );
+    assert_eq!(
+        native_ui_font_asset_path(&ui.fonts, Some("menu"), true),
+        Some("assets/fonts/menu-bold.ttf")
+    );
     let mut app = App::new();
     app.add_plugins(MinimalPlugins);
     app.init_resource::<Assets<Font>>();
@@ -88,7 +96,7 @@ fn write_rich_text_bundle() -> PathBuf {
     write(
         &root,
         "ui.ir.json",
-        r##"{ "schema": "threenative.ui", "version": "0.1.0", "fonts": [{ "asset": "assets/fonts/menu.ttf", "family": "menu" }], "root": { "id": "title", "kind": "text", "spans": [{ "text": "Paused", "fontFamily": "menu", "fontSize": 24, "color": "#ffffff", "weight": "bold", "decoration": "underline" }, { "text": "!", "fontFamily": "menu", "fontSize": 18, "color": "#ffcc00", "italic": true }] } }"##,
+        r##"{ "schema": "threenative.ui", "version": "0.1.0", "fonts": [{ "asset": "assets/fonts/menu.ttf", "boldAsset": "assets/fonts/menu-bold.ttf", "family": "menu" }], "root": { "id": "title", "kind": "text", "spans": [{ "text": "Paused", "fontFamily": "menu", "fontSize": 24, "color": "#ffffff", "weight": "bold", "decoration": "underline" }, { "text": "!", "fontFamily": "menu", "fontSize": 18, "color": "#ffcc00", "italic": true }] } }"##,
     );
     write(
         &root,

@@ -389,6 +389,9 @@ function validateUiFonts(ui: IUiIr, path: string, diagnostics: IIrDiagnostic[]):
     if (font.asset.trim() === "" || font.asset.startsWith("/") || font.asset.includes("..") || /^[a-z]+:/i.test(font.asset)) {
       diagnostics.push({ code: "TN_IR_UI_FONT_ASSET_INVALID", message: "UI font asset must be a bundle-relative path.", path: `${fontPath}/asset`, suggestion: "Store the font inside the bundle and reference it with a relative path such as 'assets/fonts/body.ttf'." });
     }
+    if (font.boldAsset !== undefined && (font.boldAsset.trim() === "" || font.boldAsset.startsWith("/") || font.boldAsset.includes("..") || /^[a-z]+:/i.test(font.boldAsset))) {
+      diagnostics.push({ code: "TN_IR_UI_FONT_ASSET_INVALID", message: "UI bold font asset must be a bundle-relative path.", path: `${fontPath}/boldAsset`, suggestion: "Store the bold face inside the bundle and reference it with a relative path such as 'assets/fonts/body-bold.ttf'." });
+    }
     if (font.weight !== undefined && !(font.weight === "normal" || font.weight === "bold" || typeof font.weight === "number" && Number.isInteger(font.weight) && font.weight >= 100 && font.weight <= 900)) {
       diagnostics.push({ code: "TN_IR_UI_FONT_WEIGHT_INVALID", message: "UI font weight must be normal, bold, or an integer from 100 to 900.", path: `${fontPath}/weight`, suggestion: "Use 'normal', 'bold', or a CSS-compatible numeric weight." });
     }

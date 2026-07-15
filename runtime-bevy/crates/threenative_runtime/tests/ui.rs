@@ -2,7 +2,7 @@ use std::{
     collections::BTreeMap,
     fs,
     path::PathBuf,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use bevy::a11y::{AccessibilityNode, accesskit::Role};
@@ -13,12 +13,14 @@ use threenative_components::ThreeNativeId;
 use threenative_loader::{UiIr, UiNodeIr, load_bundle};
 use threenative_runtime::ui::{
     NativeUiAction, NativeUiActionEvent, NativeUiActionQueue, NativeUiBar, NativeUiDisabled,
-    NativeUiGradient, NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker,
+    NativeUiEffectLayer, NativeUiEffectState, NativeUiGradient, NativeUiImageSrc, NativeUiKind, NativeUiMinimapMarker,
     NativeUiMinimapPathPoint, NativeUiRenderedGradient, NativeUiRenderedShadow,
     NativeUiRenderedTextStyle, NativeUiScrollContainer, NativeUiShadow, NativeUiStyle,
-    NativeUiWidget, build_native_ui, diagnose_native_ui_visual_support, dispatch_native_ui_actions,
-    install_native_ui_overlay_camera, map_ui_into_world, queue_native_ui_text_input_value,
-    route_native_ui_to_active_scene_camera, trace_native_ui_affordances,
+    NativeUiVisualLayer, NativeUiWidget, build_native_ui, diagnose_native_ui_visual_support,
+    dispatch_native_ui_actions, install_native_ui_overlay_camera, map_ui_into_world,
+    queue_native_ui_text_input_value, route_native_ui_to_active_scene_camera,
+    sync_native_ui_effect_layers, sync_native_ui_effect_states,
+    sync_native_ui_focus_from_interaction, trace_native_ui_affordances,
     trace_native_ui_attachment_projection, trace_native_ui_effect_presets,
     trace_native_ui_screen_dispatch, trace_native_ui_text_styles,
     trace_native_ui_virtual_list_range, trace_native_ui_visual_effects, trace_ui_navigation,
@@ -114,8 +116,13 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .world()
         .get::<Children>(hud)
         .expect("hud should have children");
+    let authored_children = children
+        .iter()
+        .copied()
+        .filter(|entity| app.world().get::<ThreeNativeId>(*entity).is_some())
+        .collect::<Vec<_>>();
     assert_eq!(
-        children.iter().copied().collect::<Vec<_>>(),
+        authored_children,
         vec![label, health, portrait, pause, inventory]
     );
 
@@ -155,10 +162,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
         .get::<AccessibilityNode>(portrait)
         .expect("image accessibility should be preserved");
     assert_eq!(portrait_accessibility.role(), Role::Image);
-    assert_eq!(
-        portrait_accessibility.name().as_deref(),
-        Some("Hero portrait")
-    );
+    assert_eq!(portrait_accessibility.name(), Some("Hero portrait"));
     assert!(app.world().get::<UiImage>(portrait).is_some());
     let button_label = only_child(app.world(), pause);
     let button_text = app
@@ -257,6 +261,7 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
             .get::<NativeUiRenderedTextStyle>(hud)
             .expect("hud should promote native text style metadata"),
         &NativeUiRenderedTextStyle {
+            font_asset: None,
             font_family: None,
             font_weight: Some("bold".to_owned()),
             spans: Vec::new(),
@@ -294,6 +299,214 @@ fn ui_should_spawn_bevy_entities_with_stable_ids_and_hierarchy() {
     assert_eq!(inventory_style.grid_template_rows.len(), 1);
 
     fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_should_spawn_renderable_shadow_and_gradient_layers() {
+    let root = write_ui_bundle();
+    let bundle = load_bundle(&root).expect("ui bundle should load");
+    let ui = bundle.ui.as_ref().expect("ui ir should be loaded");
+    let mut app = App::new();
+
+    map_ui_into_world(app.world_mut(), ui).expect("ui should map into world");
+
+    let mut layers = app.world_mut().query::<(&NativeUiVisualLayer, &UiImage)>();
+    let rendered = layers
+        .iter(app.world())
+        .map(|(layer, image)| {
+            (
+                layer.kind.as_str(),
+                layer.owner.as_str(),
+                image.texture.id(),
+            )
+        })
+        .collect::<Vec<_>>();
+    assert!(
+        rendered
+            .iter()
+            .any(|(kind, owner, _)| *kind == "shadow" && *owner == "hud")
+    );
+    assert!(
+        rendered
+            .iter()
+            .any(|(kind, owner, _)| *kind == "gradient" && *owner == "hud")
+    );
+
+    let shadow = app
+        .world_mut()
+        .query::<(&NativeUiVisualLayer, &bevy::ui::prelude::ImageScaleMode)>()
+        .iter(app.world())
+        .find(|(layer, _)| layer.kind == "shadow")
+        .map(|(_, scale)| scale.clone());
+    assert!(matches!(
+        shadow,
+        Some(bevy::ui::prelude::ImageScaleMode::Sliced(_))
+    ));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_should_render_effect_layers_from_live_interaction_state() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "active-move",
+            "kind": "button",
+            "label": "Nf3",
+            "effects": [
+                { "color": "#ffd54a", "fallback": "shadow", "id": "active.glow", "kind": "glow", "radius": 12, "trigger": "hover" },
+                { "color": "#ffffff", "id": "active.outline", "intensity": 2, "kind": "outline", "radius": 2, "trigger": "focus" }
+            ]
+        }
+    }))
+    .expect("effect UI should deserialize");
+    let mut app = App::new();
+    app.init_resource::<Time>();
+    app.init_resource::<bevy::a11y::Focus>();
+    map_ui_into_world(app.world_mut(), &ui).expect("effect UI should map into world");
+    app.add_systems(
+        Update,
+        (
+            sync_native_ui_focus_from_interaction,
+            sync_native_ui_effect_layers,
+        )
+            .chain(),
+    );
+
+    let owner = collect_ui_entities(app.world_mut())["active-move"];
+    let initial_visibility = app
+        .world_mut()
+        .query::<(&NativeUiEffectLayer, &Visibility)>()
+        .iter(app.world())
+        .map(|(layer, visibility)| (layer.strategy.as_str(), *visibility))
+        .collect::<Vec<_>>();
+    assert_eq!(initial_visibility.len(), 2);
+    assert!(
+        initial_visibility
+            .iter()
+            .all(|(_, visibility)| *visibility == Visibility::Hidden)
+    );
+
+    app.world_mut()
+        .entity_mut(owner)
+        .insert(Interaction::Pressed);
+    app.update();
+
+    let rendered = app
+        .world_mut()
+        .query::<(&NativeUiEffectLayer, &Visibility, Option<&UiImage>)>()
+        .iter(app.world())
+        .map(|(layer, visibility, image)| (layer.strategy.as_str(), *visibility, image.is_some()))
+        .collect::<Vec<_>>();
+    assert!(rendered.contains(&("shadow", Visibility::Visible, true)));
+    assert!(rendered.contains(&("outline", Visibility::Visible, false)));
+}
+
+#[test]
+fn ui_should_render_selected_and_predicate_effect_states_from_bundle_values() {
+    let root = write_ui_bundle();
+    fs::write(
+        root.join("world.ir.json"),
+        r#"{ "schema": "threenative.world", "version": "0.1.0", "entities": [], "resources": { "Selected": true, "UiState": { "danger": true } } }"#,
+    )
+    .expect("world fixture should update");
+    fs::write(
+        root.join("ui.ir.json"),
+        r##"{ "schema": "threenative.ui", "version": "0.1.0", "root": { "id": "status", "kind": "row", "binding": { "kind": "resource", "name": "Selected" }, "effects": [{ "color": "#66ccff", "id": "selected.outline", "kind": "outline", "trigger": "selected" }, { "color": "#ff4466", "fallback": "tint", "id": "danger.tint", "kind": "tint", "predicate": { "resource": "UiState", "field": "danger", "equals": true }, "trigger": "predicate" }] } }"##,
+    )
+    .expect("UI fixture should update");
+    let bundle = load_bundle(&root).expect("effect bundle should load");
+    let ui = bundle.ui.as_ref().expect("effect UI should load");
+    let mut app = App::new();
+    app.init_resource::<Time>();
+    map_ui_into_world(app.world_mut(), ui).expect("effect UI should map");
+    sync_native_ui_effect_states(app.world_mut(), &bundle);
+    app.add_systems(Update, sync_native_ui_effect_layers);
+    app.update();
+
+    let visible = app
+        .world_mut()
+        .query::<(&NativeUiEffectLayer, &Visibility)>()
+        .iter(app.world())
+        .filter(|(_, visibility)| **visibility == Visibility::Visible)
+        .map(|(layer, _)| layer.effect.as_str())
+        .collect::<Vec<_>>();
+    assert!(visible.contains(&"selected.outline"));
+    assert!(visible.contains(&"danger.tint"));
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn ui_pulse_should_start_when_its_trigger_becomes_active() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "late-pulse",
+            "kind": "button",
+            "effects": [{
+                "id": "late-pulse.effect",
+                "kind": "pulse",
+                "trigger": "selected",
+                "color": "#ff4466",
+                "pulse": { "durationMs": 1000, "iterations": 1 },
+                "fallback": "outline"
+            }]
+        }
+    })).expect("pulse UI should deserialize");
+    let mut app = App::new();
+    app.init_resource::<Time>();
+    map_ui_into_world(app.world_mut(), &ui).expect("pulse UI should map");
+    app.add_systems(Update, sync_native_ui_effect_layers);
+
+    app.world_mut().resource_mut::<Time>().advance_by(Duration::from_secs(10));
+    app.update();
+    let owner = collect_ui_entities(app.world_mut())["late-pulse"];
+    app.world_mut().entity_mut(owner).get_mut::<NativeUiEffectState>().unwrap().selected = true;
+    app.update();
+    app.world_mut().resource_mut::<Time>().advance_by(Duration::from_millis(250));
+    app.update();
+
+    let alpha = app.world_mut().query::<(&NativeUiEffectLayer, &BorderColor)>()
+        .iter(app.world())
+        .next()
+        .expect("pulse outline should render")
+        .1.0
+        .to_srgba()
+        .alpha;
+    assert!((alpha - 0.55).abs() < 0.02, "late pulse should be a quarter-cycle after activation, got {alpha}");
+}
+
+#[test]
+fn ui_tint_should_modulate_authored_color_by_intensity() {
+    let ui: UiIr = serde_json::from_value(serde_json::json!({
+        "schema": "threenative.ui",
+        "version": "0.1.0",
+        "root": {
+            "id": "tint",
+            "kind": "row",
+            "effects": [{ "id": "tint.effect", "kind": "tint", "trigger": "selected", "color": "#ff0033", "intensity": 0.25 }]
+        }
+    })).expect("tint UI should deserialize");
+    let mut app = App::new();
+    app.init_resource::<Time>();
+    map_ui_into_world(app.world_mut(), &ui).expect("tint UI should map");
+    let owner = collect_ui_entities(app.world_mut())["tint"];
+    app.world_mut().entity_mut(owner).get_mut::<NativeUiEffectState>().unwrap().selected = true;
+    app.add_systems(Update, sync_native_ui_effect_layers);
+    app.update();
+
+    let alpha = app.world_mut().query::<(&NativeUiEffectLayer, &BackgroundColor)>()
+        .iter(app.world())
+        .next()
+        .expect("tint layer should render")
+        .1.0
+        .to_srgba()
+        .alpha;
+    assert!((alpha - 0.25).abs() < 0.01, "tint intensity should control overlay alpha, got {alpha}");
 }
 
 #[test]
@@ -880,11 +1093,11 @@ fn should_apply_screen_stack_input_capture() {
     assert_eq!(trace.events.len(), 2);
     assert_eq!(trace.events[0].screen.as_deref(), Some("hud"));
     assert_eq!(trace.events[0].blocked_by.as_deref(), Some("confirm"));
-    assert_eq!(trace.events[0].dispatched, false);
+    assert!(!trace.events[0].dispatched);
     assert_eq!(trace.events[0].action.as_deref(), Some("Pause"));
     assert_eq!(trace.events[1].screen.as_deref(), Some("confirm"));
     assert_eq!(trace.events[1].blocked_by, None);
-    assert_eq!(trace.events[1].dispatched, true);
+    assert!(trace.events[1].dispatched);
     assert_eq!(trace.events[1].action.as_deref(), Some("Cancel"));
 }
 
@@ -982,7 +1195,7 @@ fn should_preserve_native_ui_effect_observations() {
     assert_eq!(trace.effects[0].node, "inventory.slot.0");
     assert_eq!(trace.effects[0].effect, "selected.glow");
     assert_eq!(trace.effects[0].state, "selected");
-    assert_eq!(trace.effects[0].strategy, "fallback:shadow");
+    assert_eq!(trace.effects[0].strategy, "shadow");
 }
 
 #[test]
@@ -1016,7 +1229,7 @@ fn should_clamp_off_screen_attached_ui_marker() {
     assert_eq!(trace.projections.len(), 1);
     assert_eq!(trace.projections[0].target, "quest.target");
     assert_eq!(trace.projections[0].camera, "main.camera");
-    assert_eq!(trace.projections[0].clamped, true);
+    assert!(trace.projections[0].clamped);
     assert_eq!(trace.projections[0].screen.x, 800.0);
 }
 

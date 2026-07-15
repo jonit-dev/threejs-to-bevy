@@ -40,7 +40,7 @@ import { emitEnvironment, type IEnvironmentDeclaration } from "./environment.js"
 import { inputToIr } from "./input.js";
 import { emitPersistence } from "./persistence.js";
 import { emitOverlays, emitStructuredOverlays, validateOverlaySystemEventDrift } from "../overlay/emit.js";
-import { sceneToWorld } from "./scene-to-world.js";
+import { sceneToWorld, throwGeneratedLodAssetIdCollision } from "./scene-to-world.js";
 import {
   readBundleRootAssets,
   readStructuredAssets,
@@ -153,6 +153,15 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   if (rootOverlays !== undefined && structuredOverlays !== undefined) throw new Error("TN_COMPILER_OVERLAY_DUPLICATE: declare overlays in either the TypeScript root or structured source, not both.");
   const overlays = rootOverlays ?? structuredOverlays;
   if (overlays !== undefined && ecs !== undefined) validateOverlaySystemEventDrift(overlays.overlays, ecs.systems);
+  assertNoBundleGeneratedLodAssetIdCollisions(
+    emitted?.generatedLodAssetIds ?? [],
+    emitted?.assets ?? [],
+    [
+      ...authoredAssets,
+      ...mergeAudioAssets([], bundleRoot.audio),
+      ...(environment?.assets ?? []),
+    ],
+  );
   const generatedMeshPayloads = prepareGeneratedMeshPayloads(mergeById([
     ...authoredAssets,
     ...mergeEnvironmentAssets(mergeAudioAssets(emitted?.assets ?? [], bundleRoot.audio), environment?.assets ?? []),
@@ -586,6 +595,7 @@ function structuredUiNode(data: Record<string, unknown>): IUiNodeIr[] {
     ...copyOptionalUiNumber(data, "value"),
     ...copyOptionalUiString(data, "valueText"),
     ...(isRecord(data.binding) ? { binding: cloneRecord(data.binding) as IUiNodeIr["binding"] } : {}),
+    ...(Array.isArray(data.effects) ? { effects: JSON.parse(JSON.stringify(data.effects)) as IUiNodeIr["effects"] } : {}),
     ...(isRecord(data.image) ? { image: cloneRecord(data.image) as IUiNodeIr["image"] } : {}),
     ...(isRecord(data.minimap) ? { minimap: cloneRecord(data.minimap) as unknown as IUiNodeIr["minimap"] } : {}),
     ...(isRecord(data.navigation) ? { navigation: cloneRecord(data.navigation) as IUiNodeIr["navigation"] } : {}),
@@ -947,11 +957,36 @@ function mergeSceneEmits(emits: ReturnType<typeof sceneToWorld>[]): ReturnType<t
   if (emits.length === 0) {
     return undefined;
   }
+  const generatedLodAssetIds = emits.flatMap((emit) => emit.generatedLodAssetIds);
+  const assets = emits.flatMap((emit) => emit.assets);
+  assertNoBundleGeneratedLodAssetIdCollisions(generatedLodAssetIds, assets, []);
   return {
-    assets: mergeById(emits.flatMap((emit) => emit.assets)),
+    assets: mergeById(assets),
+    generatedLodAssetIds: [...new Set(generatedLodAssetIds)].sort((left, right) => left.localeCompare(right)),
     materials: mergeById(emits.flatMap((emit) => emit.materials)),
     world: emits.map((emit) => emit.world).reduce((merged, world) => mergeWorlds(merged, world) ?? merged),
   };
+}
+
+function assertNoBundleGeneratedLodAssetIdCollisions(
+  generatedLodAssetIds: readonly string[],
+  emittedAssets: readonly { id: string }[],
+  otherAssets: readonly { id: string }[],
+): void {
+  const generatedCounts = new Map<string, number>();
+  for (const id of generatedLodAssetIds) {
+    generatedCounts.set(id, (generatedCounts.get(id) ?? 0) + 1);
+  }
+  const emittedCounts = new Map<string, number>();
+  for (const asset of emittedAssets) {
+    emittedCounts.set(asset.id, (emittedCounts.get(asset.id) ?? 0) + 1);
+  }
+  const otherIds = new Set(otherAssets.map((asset) => asset.id));
+  for (const id of generatedCounts.keys()) {
+    if ((generatedCounts.get(id) ?? 0) > 1 || (emittedCounts.get(id) ?? 0) > 1 || otherIds.has(id)) {
+      throwGeneratedLodAssetIdCollision(id);
+    }
+  }
 }
 
 function mergeEcsEmits(emits: IEcsEmitResult[]): IEcsEmitResult | undefined {
