@@ -50,6 +50,7 @@ interface IIterateCompactSummary {
 }
 
 type IIterateCompactScenario = IPlaytestIterateSummary | { pass: true; scenario: string };
+const ITERATE_PLAYTEST_CONCURRENCY = 3;
 
 export async function iterateCommand(
   argv: readonly string[],
@@ -366,32 +367,49 @@ async function runPlaytestScenarios(options: {
   projectPath: string;
   scenarios: readonly string[];
 }): Promise<{ diagnostics: IIterateDiagnostic[]; scenarioSummaries: IPlaytestIterateSummary[] }> {
-  const diagnostics: IIterateDiagnostic[] = [];
-  const scenarioSummaries: IPlaytestIterateSummary[] = [];
-  for (const scenario of options.scenarios) {
+  const results = await mapWithConcurrency(options.scenarios, ITERATE_PLAYTEST_CONCURRENCY, async (scenario) => {
     const scenarioOut = resolve(options.playtestDir, safeFilePart(scenario.replace(/\.playtest\.json$/, "")));
     const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, ...(options.auditWrites ? ["--audit-writes"] : []), "--json"], options.projectPath);
     const parsed = parseJsonPayload(result.stdout);
     if (isPlaytestSummaryPayload(parsed)) {
       const summary = summarizePlaytestForIterate(parsed);
-      scenarioSummaries.push(summary);
-      diagnostics.push(...normalizeDiagnostics(readDiagnostics(parsed)));
+      const diagnostics = normalizeDiagnostics(readDiagnostics(parsed));
       if (result.exitCode !== 0 && !diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
         diagnostics.push({ code: "TN_ITERATE_PLAYTEST_SCENARIO_FAILED", message: `Playtest scenario '${scenario}' failed.`, scenario, severity: "error" });
       }
-    } else {
-      diagnostics.push(...commandDiagnostics(result, parsed).map((diagnostic) => ({ ...diagnostic, scenario })));
-      scenarioSummaries.push({
+      return { diagnostics, summary };
+    }
+    const diagnostics = commandDiagnostics(result, parsed).map((diagnostic) => ({ ...diagnostic, scenario }));
+    return {
+      diagnostics,
+      summary: {
         artifact: undefined,
         assertions: [],
-        diagnostics: commandDiagnostics(result, parsed).map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message, severity: diagnostic.severity })),
+        diagnostics: diagnostics.map((diagnostic) => ({ code: diagnostic.code, message: diagnostic.message, severity: diagnostic.severity })),
         pass: false,
         scenario,
         truncated: false,
-      });
+      },
+    };
+  });
+  return {
+    diagnostics: results.flatMap((result) => result.diagnostics),
+    scenarioSummaries: results.map((result) => result.summary),
+  };
+}
+
+async function mapWithConcurrency<T, TResult>(values: readonly T[], concurrency: number, map: (value: T) => Promise<TResult>): Promise<TResult[]> {
+  const results = new Array<TResult>(values.length);
+  let nextIndex = 0;
+  const workers = Array.from({ length: Math.min(concurrency, values.length) }, async () => {
+    while (nextIndex < values.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      results[index] = await map(values[index] as T);
     }
-  }
-  return { diagnostics, scenarioSummaries };
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 function artifactPaths(value: unknown): string[] {

@@ -17,4 +17,5 @@ test("should classify continuity and beyond-one-shot prompts", () => {
   assert.equal(classifications.get("lane-runner"), "continuity");
   assert.equal(classifications.get("checkpoint-race"), "beyond-one-shot");
   assert.equal(classifications.get("physics-knockdown"), "beyond-one-shot");
+  assert.equal(classifications.get("grid-push-puzzle"), "beyond-one-shot");
 });

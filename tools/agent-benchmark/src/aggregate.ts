@@ -508,7 +508,7 @@ async function readBehaviorCounters(runReportPath: string): Promise<IRunWithBeha
   const artifactForensics = commands.filter(isArtifactForensicsCommand);
   const discovery = commands.filter(isDiscoveryCommand);
   const engineSourceSearch = commands.filter(isEngineSourceSearchCommand);
-  const iterate = commands.filter((command) => /\btn\s+(?:--\s+)?iterate\b/.test(command));
+  const iterate = commands.filter(isIterateCommand);
   const repeatedFileRead = repeatedFileReadCommands(commands);
   const standaloneVerify = commands.filter(isStandaloneVerifyCommand);
   return {
@@ -553,7 +553,7 @@ async function findEventsPath(runReportPath: string): Promise<string | undefined
 function commandFromEvent(line: string): string | undefined {
   try {
     const parsed = JSON.parse(line) as unknown;
-    if (!isRecord(parsed) || !isRecord(parsed.item) || parsed.item.type !== "command_execution") {
+    if (!isRecord(parsed) || parsed.type !== "item.completed" || !isRecord(parsed.item) || parsed.item.type !== "command_execution") {
       return undefined;
     }
     return typeof parsed.item.command === "string" ? parsed.item.command : undefined;
@@ -575,7 +575,14 @@ function isDiscoveryCommand(command: string): boolean {
     || /\btn\s+(?:--\s+)?game\s+plan\b/.test(command)
     || /\btn\s+(?:--\s+)?project\s+map\b/.test(command)
     || /\btn\s+(?:--\s+)?scene\s+inspect\b/.test(command)
-    || /\btn\s+(?:--\s+)?playtest\s+(?:--discover|--suggest-scenario)\b/.test(command);
+    || /\btn\s+(?:--\s+)?playtest\s+(?:--discover|--suggest-scenario)\b/.test(command)
+    || /packages\/cli\/dist\/index\.js\s+(?:cookbook\b|game\s+plan\b|project\s+map\b|scene\s+inspect\b)/.test(command)
+    || /packages\/cli\/dist\/index\.js\s+playtest\b.*(?:--discover|--suggest-scenario)\b/.test(command);
+}
+
+function isIterateCommand(command: string): boolean {
+  return /\btn\s+(?:--\s+)?iterate\b/.test(command)
+    || /packages\/cli\/dist\/index\.js\s+iterate\b/.test(command);
 }
 
 function isEngineSourceSearchCommand(command: string): boolean {

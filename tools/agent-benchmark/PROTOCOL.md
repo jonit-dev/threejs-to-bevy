@@ -15,14 +15,31 @@ takes to reach the same playable game prompt in two conditions:
 3. Token cap: 300,000 total session tokens.
 4. Stop when the agent claims playable, hits the token cap, or the operator
    stops a run for setup failure.
-5. Record the final session token count and distinct repair iteration count in
-   `session.json` at the candidate project root.
+5. Derive the final session token count from the AI agent's authoritative
+   usage event and record the distinct repair iteration count in `session.json`
+   at the candidate project root. For Codex, use `capture-session` against the
+   JSONL event stream; do not estimate tokens from files or command output.
 6. For version 2 sessions, also capture transcript-derived `inputTokens`,
    `cachedInputTokens`, `uncachedInputTokens`, `outputTokens`,
    `toolOutputBytes`, and `failedCommandCount`. Keep `tokenCount` as the raw
    headline total. Record `toolStepCount` as the number of completed command
    tool executions in the agent session; off-recipe ThreeNative reruns should
    stay at or below 30 steps.
+
+`tokenCount` means actual AI-agent burn: Codex
+`turn.completed.usage.input_tokens + output_tokens`, or the equivalent
+provider usage counters for another agent. Scaffold-created JSON/source bytes
+are excluded. Command stdout/stderr bytes are reported separately as
+`toolOutputBytes` and are never converted to tokens.
+
+```bash
+node tools/agent-benchmark/dist/index.js capture-session \
+  --events <candidate>/codex-events.jsonl \
+  --template <candidate>/session.template.json \
+  --out <candidate>/session.json \
+  --stop-reason claimed-playable \
+  --json
+```
 
 ## Playable Definition
 
@@ -43,8 +60,10 @@ prompt has committed neutral assertions in
 
 Continuity prompts currently include `collector` and `lane-runner`.
 Beyond-one-shot prompts currently include `checkpoint-race` and
-`physics-knockdown`. The aggregate gate counts only successful runs whose
-proof assertions pass for the shared prompt contract.
+`physics-knockdown`. The exploratory `grid-push-puzzle` prompt is also
+classified beyond-one-shot, but does not become a gate until it has three
+admissible repeats per condition. The aggregate gate counts only successful
+runs whose proof assertions pass for the shared prompt contract.
 
 ## Human Rubric
 

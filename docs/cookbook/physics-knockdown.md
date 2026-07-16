@@ -18,11 +18,7 @@ keywords:
 
 ## commands
 ```bash
-tn scene add-prefab arena prefab.target --primitive box --color "#f97316" --project . --json
-tn scene add-entity arena target.01 --prefab prefab.target --project . --json
-tn scene set-transform arena target.01 --position -1,0.4,-1 --project . --json
-tn physics add-rigid-body arena target.01 --kind dynamic --mass 1 --project . --json
-tn physics add-collider arena target.01 --kind box --size 0.5,0.5,0.5 --project . --json
+tn add physics-target --count 5 --prefix target --project . --json
 ```
 
 ## source-delta
@@ -49,9 +45,15 @@ export function physicsKnockdown(context: ScriptContext): void {
 
 ## proof
 ```bash
-tn authoring validate --project . --json
-tn build --project . --json
+tn iterate --project . --json
 ```
+
+Use the compact game-plan match as the front door: run `tn game plan`, show
+this cookbook entry from its emitted `cookbookId`, apply the bounded target
+commands, add the script-owned score/retry behavior plus one committed
+scenario, and run `tn iterate` once. Do not open the planning worksheet,
+sibling agent skills, or deep artifacts unless the plan/iterate diagnostic
+says a required field or repair path is missing.
 
 ## character-push
 

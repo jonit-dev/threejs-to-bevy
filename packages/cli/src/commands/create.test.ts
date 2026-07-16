@@ -81,18 +81,18 @@ test("should create starter template files", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-create-"));
   try {
     const result = await createProject(["my-game", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; planningInstructions: string; referenceDocs: string[]; template: string };
+    const payload = JSON.parse(result.stdout) as { code: string; nextCommands: string[]; path: string; startCommand: string; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "structured-source-starter");
-    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
+    assert.equal(payload.startCommand, "pnpm run game:plan");
     assert.equal(payload.nextCommands.includes("pnpm run dev:web"), true);
     assert.equal(payload.nextCommands.includes("pnpm run iterate"), true);
     assert.equal(payload.nextCommands.includes("pnpm run game:plan"), true);
-    assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
-    assert.equal(payload.referenceDocs.includes("tn help scaffold"), true);
-    assert.deepEqual((payload as { agentSkills?: string[] }).agentSkills, [".claude/skills/threenative-workflow/SKILL.md", ".codex/skills/threenative-workflow/SKILL.md"]);
+    assert.equal("planningInstructions" in payload, false);
+    assert.equal("agentSkills" in payload, false);
+    assert.equal("referenceDocs" in payload, false);
 
     const files = await readdir(payload.path);
     assert.equal(files.includes(".gitignore"), true);
@@ -141,14 +141,21 @@ test("should create starter template files", async () => {
     assert.match(agentInstructions, /tn scene \.\.\. --json/);
     assert.match(agentInstructions, /Do not edit them as the fix/);
     assert.match(agentInstructions, /AGENT_GAME_PLAN\.md/);
+    assert.match(agentInstructions, /TN_GAME_PLAN_OFF_RECIPE/);
+    assert.match(agentInstructions, /custom-author.*starter/i);
+    assert.match(agentInstructions, /acceptance criteria/i);
     assert.match(planningInstructions, /tn asset source search --game-category <category> --format glb --direct-only --json/);
+    assert.match(planningInstructions, /tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project \. --json/);
     assert.match(planningInstructions, /Player\/hero/);
     assert.match(planningInstructions, /Audio feedback/);
     assert.match(planningInstructions, /React webview UI/);
     assert.match(planningInstructions, /tn game release --project \. --json/);
     assert.match(claudeInstructions, /Use `AGENTS\.md`/);
-    assert.match(codexSkill, /Use `AGENTS\.md` as the authoritative local instructions/);
+    assert.match(codexSkill, /This skill is the compact front door/);
+    assert.match(codexSkill, /Open\s+`AGENT_GAME_PLAN\.md` only if planning fails/);
     assert.match(codexSkill, /pnpm tn -- iterate --project \. --json/);
+    assert.match(codexSkill, /TN_GAME_PLAN_OFF_RECIPE/);
+    assert.match(codexSkill, /core verbs.*acceptance criteria/i);
 
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
@@ -270,8 +277,7 @@ test("should initialize starter project through init alias with create payload s
       command: string;
       nextCommands: string[];
       path: string;
-      planningInstructions: string;
-      referenceDocs: string[];
+      startCommand: string;
       template: string;
     };
 
@@ -279,10 +285,8 @@ test("should initialize starter project through init alias with create payload s
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.command, "init");
     assert.equal(payload.template, "structured-source-starter");
-    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
-    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"]);
-    assert.equal(payload.referenceDocs.includes("AGENT_GAME_PLAN.md"), true);
-    assert.equal(payload.referenceDocs.includes("docs/workflows/developer-workflow.md"), true);
+    assert.equal(payload.startCommand, "pnpm run game:plan");
+    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run iterate", "pnpm run dev:web"]);
 
     const files = await readdir(payload.path);
     const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
@@ -336,12 +340,9 @@ test("should print explicit first-project next commands in human output", async 
     assert.match(result.stdout, /pnpm install/);
     assert.match(result.stdout, /AGENT_GAME_PLAN\.md/);
     assert.match(result.stdout, /pnpm run game:plan/);
-    assert.match(result.stdout, /pnpm run validate/);
-    assert.match(result.stdout, /pnpm run build/);
     assert.match(result.stdout, /pnpm run iterate/);
     assert.match(result.stdout, /pnpm run dev:web/);
-    assert.match(result.stdout, /pnpm run verify/);
-    assert.match(result.stdout, /tn help scaffold/);
+    assert.doesNotMatch(result.stdout, /pnpm run validate|pnpm run build|pnpm run verify/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -477,13 +478,12 @@ test("should create racing kit rally starter with reusable race scene structure"
   const root = await mkdtemp(join(tmpdir(), "tn-create-racing-kit-"));
   try {
     const result = await createProject(["rally", "--template", "racing-kit-rally-starter", "--json"], { cwd: root });
-    const payload = JSON.parse(result.stdout) as { code: string; path: string; planningInstructions: string; referenceDocs?: string[]; template: string };
+    const payload = JSON.parse(result.stdout) as { code: string; path: string; startCommand: string; template: string };
 
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "racing-kit-rally-starter");
-    assert.equal(payload.planningInstructions, "AGENT_GAME_PLAN.md");
-    assert.equal(payload.referenceDocs?.includes("AGENT_GAME_PLAN.md"), true);
+    assert.equal(payload.startCommand, "pnpm run game:plan");
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;

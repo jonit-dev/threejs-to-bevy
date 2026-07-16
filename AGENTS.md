@@ -110,12 +110,38 @@ fail/retry path, feedback moments, high-value assets, script modules/exports,
 proof commands, polish pass, animation clip wiring for active characters, and
 relative scale checks.
 
+Inspect planner diagnostics and proposed mechanic responsibilities before
+applying any scaffold, recipe, or `nextAuthoringCommand`. If the plan reports
+`TN_GAME_PLAN_OFF_RECIPE`, or the proposed mechanic does not cover the goal's
+core verbs and acceptance criteria, keep the structured-source starter and
+custom-author the missing loop in `content/**/*.json` and
+`src/scripts/**/*.ts`. Run the emitted `nextInspectionCommand` first so the
+custom work extends the starter's actual source owners. Never substitute a
+keyword-adjacent scaffold for the requested game. `TN_ITERATE_OK` proves only
+the committed scenarios that ran; completion still requires prompt-level
+acceptance evidence.
+
 Asset sourcing starts with the shipped SQLite catalog:
 
 ```bash
 tn asset source search --game-category <category> --format glb --direct-only --json
 tn asset source get <asset-source-id> --json
 ```
+
+When no suitable catalog asset exists, a bounded Blender recipe is an option
+for creating a simple project-local GLB:
+
+```bash
+tn tool status blender --json
+tn tool install blender --accept-download --json  # only when the tool is missing
+tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
+tn asset inspect assets/generated/<asset-id>.glb --json
+tn model-test assets/generated/<asset-id>.glb --json
+```
+
+Blender is authoring-only; use the bounded recipe contract rather than
+arbitrary Blender Python or add-ons. If installation is unavailable, record
+the diagnostic and continue with a catalog or authored asset fallback.
 
 Prefer catalog/open-source pack assets or authored custom meshes for hero,
 primary obstacle/enemy/vehicle, reward/interactable, and dominant environment

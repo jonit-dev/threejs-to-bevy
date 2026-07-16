@@ -48,6 +48,7 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
       ["trigger-sequence", "--mode", "ordered", "--count", "3", "--prefix", "checkpoint"],
       ["score", "--resource", "GameScore", "--win-at", "3"],
       ["projectile", "--launcher", "player", "--projectile", "ball"],
+      ["physics-target", "--count", "5", "--prefix", "target"],
       ["follow-camera", "--camera", "camera.main", "--target", "player"],
     ];
     for (const args of cases) {
@@ -82,6 +83,8 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     assert.equal(scene.resources.some((resource) => resource.id === "TriggerSequence" && Array.isArray(resource.value?.triggers)), true);
     assert.equal(scene.resources.some((resource) => resource.id === "GameScore" && resource.value?.winAt === 3), true);
     assert.equal(scene.resources.some((resource) => resource.id === "ProjectileLauncher" && resource.value?.launcher === "player"), true);
+    assert.equal(scene.resources.some((resource) => resource.id === "PhysicsTargets" && resource.value?.count === 5), true);
+    assert.equal(scene.entities.filter((entity) => entity.id.startsWith("target.")).length, 5);
     assert.equal(scene.prefabs.some((prefab) => prefab.id === "ball.prefab"), true);
     assert.equal(scene.resources.some((resource) => resource.id === "ProjectilePhysics" && resource.value?.rigidBody !== undefined), true);
     assert.equal(scene.entities.find((entity) => entity.id === "camera.main")?.components?.camera?.target, "player");

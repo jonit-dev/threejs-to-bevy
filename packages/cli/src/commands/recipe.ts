@@ -62,6 +62,7 @@ async function applyRecipeTransaction(recipeId: string, args: Record<string, unk
       result.filesWritten = Array.from(new Set([...result.filesWritten, scaffoldedScript])).sort();
     }
     await scaffoldProofRecipe(result, stagedProjectPath);
+    await scaffoldVehicleCheckpointArtifacts(result, args, stagedProjectPath);
     if (!result.ok) {
       return remapRecipeResult(result, projectPath, false);
     }
@@ -87,7 +88,17 @@ async function stageRecipeSources(projectPath: string, stagedProjectPath: string
   const scriptOperation = plan.operations.find((operation) => operation.name === "scene.attach_script");
   const modulePath = stringArg(scriptOperation?.args ?? {}, "modulePath");
   const proofPath = gameKitRecipeIds.has(plan.recipeId) ? `content/proofs/${plan.recipeId}.proof.json` : undefined;
-  const paths = [...new Set([...operationTargets.flat(), ...(modulePath === undefined ? [] : [modulePath]), ...(proofPath === undefined ? [] : [proofPath])])].sort();
+  const vehicleSystemsPath = plan.recipeId === "vehicle-checkpoint"
+    ? `content/systems/${stringArg(scriptOperation?.args ?? {}, "sceneId") ?? "arena"}.systems.json`
+    : undefined;
+  const vehicleUiPath = plan.recipeId === "vehicle-checkpoint" ? "content/ui/hud.ui.json" : undefined;
+  const paths = [...new Set([
+    ...operationTargets.flat(),
+    ...(modulePath === undefined ? [] : [modulePath]),
+    ...(proofPath === undefined ? [] : [proofPath]),
+    ...(vehicleSystemsPath === undefined ? [] : [vehicleSystemsPath]),
+    ...(vehicleUiPath === undefined ? [] : [vehicleUiPath]),
+  ])].sort();
   for (const path of paths) {
     const source = resolve(projectPath, path);
     const destination = resolve(stagedProjectPath, path);
@@ -133,7 +144,7 @@ async function scaffoldRecipeScript(recipeId: string, args: Record<string, unkno
     : {
         exportName,
         modulePath,
-        source: recipeScriptSource(recipeId, exportName, recipePlan.scriptResponsibilities),
+        source: recipeScriptSource(recipeId, exportName, recipePlan.scriptResponsibilities, args),
       };
   if (script === undefined) {
     return undefined;
@@ -155,11 +166,37 @@ async function scaffoldRecipeScript(recipeId: string, args: Record<string, unkno
   return script.modulePath;
 }
 
-function recipeScriptSource(recipeId: string, exportName: string, responsibilities: readonly string[]): string {
+function recipeScriptSource(recipeId: string, exportName: string, responsibilities: readonly string[], args: Record<string, unknown>): string {
   const metadata = recipeId === "top-down-collector" || recipeId === "kinematic-character" || recipeId === "lane-runner"
     ? `{ schedule: "fixedUpdate", reads: ["Transform"], writes: ["Transform"] }`
     : `{ schedule: "fixedUpdate" }`;
-  const body = recipeId === "top-down-collector" || recipeId === "kinematic-character"
+  const vehicleId = stringArg(args, "vehicleId") ?? "player";
+  const body = recipeId === "vehicle-checkpoint"
+    ? `  const vehicle = context.entity(${JSON.stringify(vehicleId)});
+  if (vehicle === undefined) return;
+  const initial = { checkpointCount: 5, finished: false, nextCheckpoint: 0, progressText: "Checkpoint 0 / 5", statusText: "DRIVE THROUGH THE GATES - R/ENTER: RETRY", time: 0, timeText: "Time 0.0s" };
+  const race = context.resources.get("RaceState", initial);
+  if (context.input.action("retry")) {
+    vehicle.transform().setPosition([0, 0.35, 2]);
+    context.resources.patch("RaceState", initial);
+    return;
+  }
+  if (race.finished) return;
+  const throttle = context.input.axis("Throttle");
+  const steer = context.input.axis("Steer");
+  if (throttle === 0 && steer === 0) return;
+  const transform = vehicle.transform();
+  const position = transform.position;
+  const nextPosition: [number, number, number] = [position[0] + steer * 0.06, position[1], position[2] - throttle * 0.1];
+  transform.setPosition(nextPosition);
+  race.time += context.time.fixedDelta;
+  while (race.nextCheckpoint < race.checkpointCount && nextPosition[2] <= 0.3 - race.nextCheckpoint * 2) race.nextCheckpoint += 1;
+  race.finished = race.nextCheckpoint >= race.checkpointCount;
+  race.progressText = \`Checkpoint \${race.nextCheckpoint} / \${race.checkpointCount}\`;
+  race.timeText = \`Time \${race.time.toFixed(1)}s\`;
+  race.statusText = race.finished ? \`FINISH! \${race.timeText} - R/ENTER: RETRY\` : \`NEXT GATE \${race.nextCheckpoint + 1} - R/ENTER: RETRY\`;
+  context.resources.patch("RaceState", race);`
+    : recipeId === "top-down-collector" || recipeId === "kinematic-character"
     ? `  const moveX = context.input.axis("MoveX");
   const moveZ = context.input.axis("MoveZ");
   const actor = context.query({ with: ["Transform"] })[0];
@@ -221,6 +258,114 @@ async function scaffoldProofRecipe(result: IAuthoringRecipeApplyResult, projectP
   );
   result.changed = true;
   result.filesWritten = Array.from(new Set([...result.filesWritten, relativePath])).sort();
+}
+
+async function scaffoldVehicleCheckpointArtifacts(result: IAuthoringRecipeApplyResult, args: Record<string, unknown>, projectPath: string): Promise<void> {
+  if (!result.ok || result.recipeId !== "vehicle-checkpoint") return;
+  const sceneId = stringArg(args, "sceneId") ?? "arena";
+  const scenePath = `content/scenes/${sceneId}.scene.json`;
+  const systemsPath = `content/systems/${sceneId}.systems.json`;
+  const uiPath = "content/ui/hud.ui.json";
+  const scene = await readJsonObject(resolve(projectPath, scenePath));
+  scene.systems = recordArray(scene.systems).filter((system) => system.id !== "move-player-to-goal");
+  await writeJson(resolve(projectPath, scenePath), scene);
+  if (await pathExists(resolve(projectPath, systemsPath))) {
+    const systems = await readJsonObject(resolve(projectPath, systemsPath));
+    systems.systems = recordArray(systems.systems).filter((system) => system.id !== "move-player-to-goal");
+    await writeJson(resolve(projectPath, systemsPath), systems);
+  }
+  const ui = await pathExists(resolve(projectPath, uiPath))
+    ? await readJsonObject(resolve(projectPath, uiPath))
+    : { bindings: [], id: "hud", nodes: [], schema: "threenative.ui", version: "0.1.0" };
+  const nodes = recordArray(ui.nodes);
+  const bindings = recordArray(ui.bindings);
+  ui.nodes = nodes;
+  ui.bindings = bindings;
+  upsertUiText(nodes, "race.progress", "Checkpoint 0 / 5", 32);
+  upsertUiText(nodes, "race.timer", "Time 0.0s", 64);
+  upsertUiText(nodes, "race.status", "DRIVE THROUGH THE GATES - R/ENTER: RETRY", 96);
+  upsertUiBinding(bindings, "race.progress", "RaceState.progressText");
+  upsertUiBinding(bindings, "race.timer", "RaceState.timeText");
+  upsertUiBinding(bindings, "race.status", "RaceState.statusText");
+  await writeJson(resolve(projectPath, uiPath), ui);
+  const scenarioPath = "playtests/vehicle-checkpoint.playtest.json";
+  const retryScenarioPath = "playtests/vehicle-checkpoint-retry.playtest.json";
+  await writeJson(resolve(projectPath, scenarioPath), vehicleCheckpointScenario(stringArg(args, "vehicleId") ?? "player"));
+  await writeJson(resolve(projectPath, retryScenarioPath), vehicleCheckpointRetryScenario(stringArg(args, "vehicleId") ?? "player"));
+  result.changed = true;
+  result.filesWritten = Array.from(new Set([
+    ...result.filesWritten,
+    scenePath,
+    ...(await pathExists(resolve(projectPath, systemsPath)) ? [systemsPath] : []),
+    uiPath,
+    scenarioPath,
+    retryScenarioPath,
+  ])).sort();
+}
+
+function upsertUiText(nodes: Record<string, unknown>[], id: string, text: string, top: number): void {
+  const next = { id, layout: { align: "center", justify: "center", top, width: 1280 }, text, type: "text" };
+  const existing = nodes.find((node) => node.id === id);
+  if (existing === undefined) nodes.push(next);
+  else Object.assign(existing, next);
+}
+
+function upsertUiBinding(bindings: Record<string, unknown>[], node: string, resource: string): void {
+  const existing = bindings.find((binding) => binding.node === node);
+  if (existing === undefined) bindings.push({ node, resource });
+  else existing.resource = resource;
+}
+
+function vehicleCheckpointScenario(vehicleId: string): Record<string, unknown> {
+  return {
+    artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      hud: [
+        { id: "race.progress", textIncludes: "Checkpoint 5 / 5" },
+        { id: "race.status", textIncludes: "FINISH" },
+      ],
+      movement: { axis: "z", entity: vehicleId, minDistance: 7.5, minVelocity: 0.001 },
+      resources: [
+        { gte: 5, id: "RaceState", path: "nextCheckpoint" },
+        { equals: true, id: "RaceState", path: "finished" },
+        { gte: 0.1, id: "RaceState", path: "time" },
+      ],
+    },
+    name: "vehicle-checkpoint",
+    schemaVersion: 1,
+    steps: [{ holdFrames: 70, label: "drive-through-ordered-gates", press: "KeyW", release: true }],
+    subject: vehicleId,
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+}
+
+function vehicleCheckpointRetryScenario(vehicleId: string): Record<string, unknown> {
+  return {
+    artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      hud: [{ id: "race.status", textIncludes: "RETRY" }],
+      resources: [
+        { equals: 0, id: "RaceState", path: "nextCheckpoint" },
+        { equals: false, id: "RaceState", path: "finished" },
+        { equals: 0, id: "RaceState", path: "time" },
+      ],
+    },
+    name: "vehicle-checkpoint-retry",
+    schemaVersion: 1,
+    steps: [
+      { holdFrames: 70, label: "finish-before-retry", press: "KeyW", release: true },
+      { holdFrames: 1, label: "retry", press: "KeyR", release: true },
+      { label: "observe-reset", release: false, waitFrames: 3 },
+    ],
+    subject: vehicleId,
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
 }
 
 function hasNamedExport(source: string, exportName: string): boolean {
@@ -356,6 +501,24 @@ async function pathExists(path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+async function readJsonObject(path: string): Promise<Record<string, unknown>> {
+  const value = JSON.parse(await readFile(path, "utf8")) as unknown;
+  return isRecord(value) ? value : {};
+}
+
+async function writeJson(path: string, value: unknown): Promise<void> {
+  await mkdir(resolve(path, ".."), { recursive: true });
+  await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+function recordArray(value: unknown): Record<string, unknown>[] {
+  return Array.isArray(value) ? value.filter(isRecord) : [];
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function stringArg(args: Record<string, unknown>, key: string): string | undefined {

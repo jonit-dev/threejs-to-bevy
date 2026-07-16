@@ -12,6 +12,7 @@
     "promptId": { "type": "string", "minLength": 1 },
     "condition": { "enum": ["vanilla", "threenative", "typed-spec"] },
     "tokenCount": { "type": "number", "minimum": 0 },
+    "tokenAccounting": { "const": "codex-turn-usage" },
     "inputTokens": { "type": "number", "minimum": 0 },
     "cachedInputTokens": { "type": "number", "minimum": 0 },
     "uncachedInputTokens": { "type": "number", "minimum": 0 },

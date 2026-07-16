@@ -27,24 +27,33 @@ everything in context at once.
 
 ## Default Loop
 
-1. Before creating or substantially changing the game, open
-   `AGENT_GAME_PLAN.md` as the first game-creation action, then run
+1. Before creating or substantially changing the game, run
    `tn game plan --goal "<game idea>" --project . --json`
    (add `--apply` for supported scaffolds).
    The package aliases are `pnpm run game:plan` and `pnpm run game:improve`.
-   Read `docs/API-CARD.md` before inspecting repository package source.
-2. Worked examples first: `tn cookbook search <query> --json`, then
-   `tn cookbook show <id> --json`; use `tn cookbook list --json` to browse all
-   patterns before inventing a new gameplay, camera, UI, physics, asset, or
-   polish pattern.
+   Its compact output and plan artifact are the checklist; open
+   `AGENT_GAME_PLAN.md` only when the command fails or omits a required field.
+   Inspect diagnostics and proposed mechanic responsibilities before applying
+   a scaffold, recipe, or `nextAuthoringCommand`. If the plan reports
+   `TN_GAME_PLAN_OFF_RECIPE`, or no proposal covers the goal's core verbs and
+   acceptance criteria, custom-author the missing loop on top of this starter
+   in `content/**/*.json` and `src/scripts/**/*.ts`. Run the emitted
+   `nextInspectionCommand` first to inspect the starter's real source owners.
+2. Use the plan's matching `mechanicDecomposition[].cookbookId` with
+   `tn cookbook show <id> --json`. Search only when no match is emitted; list
+   only when search also has no match. Read `docs/API-CARD.md` only when the
+   cookbook script needs a contract detail.
 3. Author with deterministic CLI edits: `tn actor ... --json`,
    `tn scene ... --json`, `tn ui ... --json`, `tn flow ... --json`, and
    `tn add <mechanic-block> ... --json`. Edit JSON directly only when no
    command covers the change.
 4. After changes, run `tn iterate --project . --json` (or `pnpm run iterate`)
    as the default repair loop; fix the owning durable source and rerun.
-   Start with the compact playtest report or compact stdout; open deep logs
-   only when those diagnostics point to deeper evidence.
+   Start with compact stdout; inspect reports or deep logs only when a
+   diagnostic points to them.
+   `TN_ITERATE_OK` proves only the committed scenarios that ran. Before a
+   completion claim, inspect their assertion coverage and add prompt-specific
+   proof for any user acceptance criterion they do not represent.
 5. For custom sound effects, probe with `tn game providers --project . --json`.
    When ElevenLabs is available, prefer one bounded
    `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`

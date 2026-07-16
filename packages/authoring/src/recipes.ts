@@ -450,21 +450,26 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
       const sceneId = requiredStringValue(args, "sceneId");
       const vehicleId = requiredStringValue(args, "vehicleId");
       const cameraId = requiredStringValue(args, "cameraId");
-      const checkpointId = optionalStringValue(args, "checkpointId") ?? "checkpoint.01";
+      const checkpointPrefix = optionalStringValue(args, "checkpointPrefix") ?? "checkpoint";
       const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
+      const checkpointIds = Array.from({ length: 5 }, (_, index) => `${checkpointPrefix}.${String(index + 1).padStart(2, "0")}`);
       return [
         operation("input.add_axis", { inputDocId, axisId: "Steer", negativeKeys: ["KeyA", "ArrowLeft"], positiveKeys: ["KeyD", "ArrowRight"] }),
         operation("input.add_axis", { inputDocId, axisId: "Throttle", negativeKeys: ["KeyS", "ArrowDown"], positiveKeys: ["KeyW", "ArrowUp"] }),
+        operation("input.add_action", { inputDocId, actionId: "retry", keys: ["KeyR", "Enter"] }),
         operation("scene.add_prefab", { sceneId, prefabId: `${vehicleId}.prefab`, primitive: "box", color: optionalStringValue(args, "vehicleColor") ?? "#2563eb" }),
         operation("scene.add_entity", { sceneId, entityId: vehicleId, prefabId: `${vehicleId}.prefab` }),
         operation("scene.set_transform", { sceneId, entityId: vehicleId, position: optionalVector3Value(args, "vehiclePosition") ?? [0, 0.35, 2], scale: [1.4, 0.55, 2.2] }),
         operation("scene.set_rigid_body", { sceneId, entityId: vehicleId, kind: "kinematic" }),
         operation("scene.set_collider", { sceneId, entityId: vehicleId, kind: "box", size: [1.4, 0.55, 2.2] }),
         operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: vehicleId, fovY: 60 }),
-        operation("scene.add_prefab", { sceneId, prefabId: `${checkpointId}.prefab`, primitive: "torus", color: optionalStringValue(args, "checkpointColor") ?? "#22c55e" }),
-        operation("scene.add_entity", { sceneId, entityId: checkpointId, prefabId: `${checkpointId}.prefab` }),
-        operation("scene.set_transform", { sceneId, entityId: checkpointId, position: optionalVector3Value(args, "checkpointPosition") ?? [0, 1.2, -8], scale: [2, 2, 0.2] }),
-        operation("scene.set_collider", { sceneId, entityId: checkpointId, kind: "box", size: [2.2, 2.2, 0.35], trigger: true }),
+        operation("scene.add_prefab", { sceneId, prefabId: `${checkpointPrefix}.prefab`, primitive: "torus", color: optionalStringValue(args, "checkpointColor") ?? "#22c55e" }),
+        ...checkpointIds.flatMap((checkpointId, index) => [
+          operation("scene.add_entity", { sceneId, entityId: checkpointId, prefabId: `${checkpointPrefix}.prefab` }),
+          operation("scene.set_transform", { sceneId, entityId: checkpointId, position: [0, 1.2, -index * 2], scale: [2, 2, 0.2] }),
+          operation("scene.set_collider", { sceneId, entityId: checkpointId, kind: "box", size: [2.2, 2.2, 0.35], trigger: true }),
+        ]),
+        operation("scene.add_resource", { sceneId, resourceId: "RaceState", value: { checkpointCount: 5, finished: false, progressText: "Checkpoint 0 / 5", nextCheckpoint: 0, statusText: "DRIVE THROUGH THE GATES - R/ENTER: RETRY", time: 0, timeText: "Time 0.0s" } }),
         operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "vehicle-checkpoint", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "vehicleCheckpointSystem" }),
       ];
     },

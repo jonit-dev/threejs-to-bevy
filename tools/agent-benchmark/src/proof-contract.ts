@@ -55,6 +55,16 @@ export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[]
     classification: "beyond-one-shot",
     promptId: "physics-knockdown",
   },
+  {
+    assertions: [
+      assertion("grid-movement", "Keyboard input moves the player between visible grid cells while walls block movement."),
+      assertion("crate-push", "The player can push crates but cannot pull them through the grid."),
+      assertion("goal-progress", "Pushing crates onto goal tiles updates visible progress and placing every crate reaches a clear win state."),
+      assertion("retry-path", "The game exposes a reset or retry path."),
+    ],
+    classification: "beyond-one-shot",
+    promptId: "grid-push-puzzle",
+  },
 ];
 
 const contractsByPrompt = new Map(BENCHMARK_PROOF_CONTRACTS.map((contract) => [contract.promptId, contract]));
@@ -160,6 +170,9 @@ function promptKeywords(contract: IBenchmarkPromptProofContract): string[] {
   }
   if (contract.promptId === "physics-knockdown") {
     return ["targets", "score", "retry"];
+  }
+  if (contract.promptId === "grid-push-puzzle") {
+    return ["grid", "crates", "goal", "reset"];
   }
   return [];
 }

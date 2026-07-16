@@ -60,7 +60,7 @@ the cookbook is no longer only a proposal, the status front door is no longer
 too large for an agent context, and generated-game release evidence no longer
 requires maintaining 21 equivalent examples.
 
-## Challenge 1: The Core Product Claim Is Improved, Not Yet Proven
+## Challenge 1: The Core Product Claim Passes The Current Benchmark, But Is Still Bounded
 
 The benchmark record now has three different answers because it measures three
 different things:
@@ -70,21 +70,53 @@ different things:
 2. Recipe-matched scaffold-first reruns passed dramatically at 0.124x and
    0.083x vanilla. This proves that a collapsed, recipe-backed loop can beat
    freestyle Three.js, but the prompts matched the recipes built for them.
-3. The July 7 off-recipe round still failed: checkpoint-race was 3.614x
-   vanilla and physics-knockdown was 2.008x, with 47-53 median ThreeNative tool
-   steps. Guided equal-proof collector evidence later reached 0.454x vanilla,
-   but the aggregate verdict still failed its command budget.
+3. The July 7 off-recipe round failed: checkpoint-race was 3.614x vanilla and
+   physics-knockdown was 2.008x, with 47-53 median ThreeNative tool steps.
+4. Fresh clean-context evidence now passes for three distinct shapes. Collector
+   reached 0.801x vanilla raw tokens and 0.615x cost-weighted tokens. The
+   three-repeat physics-knockdown round reached 0.563x raw and 0.436x
+   cost-weighted, with median tool steps 5 versus vanilla's 10 and median
+   failed commands 0 versus 1. The three-repeat checkpoint-race replacement
+   reached 0.635x raw and 0.563x cost-weighted, with median tool steps 5 versus
+   vanilla's 8 and zero median failed commands. Every direct and vanilla run
+   passed its prompt's equal-proof contract.
 
-The known paved-road failures behind much of that cost have since been fixed:
-emitted commands execute, recipes compose with starters, discovery is compact,
-and churn classes are gated. However, no fresh Round 5B checkpoint-race and
-physics-knockdown matrix has yet demonstrated that those fixes close the broad
-off-recipe gap. The project should therefore say **"the measured bottlenecks
-were repaired; general authoring efficiency remains unverified"**, not either
-"agents cannot use it" or "the benchmark is solved."
+These token totals come from each Codex event stream's authoritative final
+`turn.completed.usage` counters. Generated project JSON/source and command
+output bytes are explicitly excluded from token totals; cached input, uncached
+input, output, and cost-weighted totals remain separately auditable.
 
-This is still the decisive technical/product gate. Without a fresh comparable
-round, additional capability work rests on an unvalidated assumption.
+The known paved-road failures behind much of the earlier cost have been fixed:
+emitted commands execute, reusable mechanic blocks and recipes compose with
+starters, discovery is compact, generated browser summaries map to the neutral
+proof contract, and churn classes are gated. Both former Round 5B failures now
+pass without relaxing their proof or budget. The combined 21-run decision
+report passes across collector, checkpoint-race, and physics-knockdown.
+
+This satisfies the current benchmark gate. It does not prove arbitrary-game
+generality: the sample remains three prompt shapes, and the optimized paths are
+now part of the measured product. Future authoring work should preserve these
+ratchets and test genuinely unfamiliar mechanics instead of repeatedly tuning
+the same prompts.
+
+A July 15 exploratory grid-pushing puzzle supplied that unfamiliar shape and
+found a semantic false green. In a clean ThreeNative session, `tn game plan`
+mapped crate pushing to the existing physics-target block; `tn iterate` then
+passed the block's own scenarios and the agent claimed completion, while the
+prepared grid-movement, crate-push, goal-progress, and retry contract remained
+0/4. The run used 215,837 raw tokens and four tool steps, but those efficiency
+numbers are inadmissible because the final result was the wrong game. A vanilla
+control produced a polished 4/4 DOM puzzle but exceeded the 300,000-token cap
+and failed the scorer's canvas requirement, so no comparative ratio is claimed.
+The retained exploratory report is
+`tools/agent-benchmark/GRID-PUSH-EXPLORATORY-2026-07-15.md`.
+
+The corrected rerun now rejects that semantic mismatch, stays on the starter,
+custom-authors the requested loop, and passes all four browser-backed prompt
+assertions. It is still not an efficiency win: 2,825,566 raw tokens, 457,976
+cost-weighted tokens, 24 tool steps, and nine failed commands exceed the session
+budget. The next bounded problem is reducing off-recipe portable-script and
+playtest repair cost, not adding a grid-puzzle scaffold.
 
 ## Challenge 2: The System Has A Release Candidate, Not A Shipped Game
 
@@ -193,16 +225,22 @@ patterns. Record confusion, retry behavior, fun/boring moments, device/browser,
 and whether the player voluntarily replays. Fix only blockers observed in that
 flow.
 
-### 3. Run the fresh Round 5B decision matrix
+### 3. Preserve the passing authoring-efficiency ratchet
 
-After the emitted-command, recipe, churn, and session-cost gates are green,
-rerun checkpoint-race and physics-knockdown with the committed equal-proof
-protocol and at least three repeats per condition. Do not add matching recipes
-before the run. Publish raw tokens, cost-weighted tokens, tool steps, failed
-commands, retry chains, proof pass rates, and screenshot/gameplay scores.
+Collector, physics-knockdown, and checkpoint-race now pass their committed
+equal-proof and budget gates across three repeats per condition. Keep the raw
+and cost-weighted provider usage, tool-step, failed-command, retry-chain,
+proof, and screenshot/gameplay fields as release ratchets for authoring-loop
+changes.
 
-This round should answer whether the July 9 repairs generalized. It should not
-be postponed for more features.
+The next benchmark expansion should use an unfamiliar mechanic selected before
+implementation. Do not add another prompt-shaped path merely to improve the
+existing three-prompt score.
+
+The grid-pushing probe is now that preselected forcing function. Its corrected
+single rerun proves actionable off-recipe fallback and prompt-level coverage,
+but misses the token budget. Before a three-repeat matrix, reduce unfamiliar
+custom-authoring repair cost without adding a grid-puzzle recipe.
 
 ### 4. Let those two results choose the roadmap
 
@@ -234,11 +272,12 @@ the critique: the loop is collapsed, emitted commands are tested, cookbook and
 mutation surfaces exist, the meta-layer is smaller, native breadth is formally
 frozen, and a credible release candidate exists.
 
-The project now needs to **collect the evidence those investments were built
-to produce**. The highest-value next work is not another engine feature. It is
-to publish and human-test Metro, rerun the broad off-recipe benchmark, and let
-those results force a continue/narrow/pivot decision.
+The project has now collected the authoring evidence those investments were
+built to produce: the clean-context collector and both former off-recipe
+failures pass. The highest-value next work is not another engine feature or
+another tuned rerun of these prompts. It is to hold the benchmark ratchet while
+testing genuinely new authoring shapes and external usability.
 
 The guaranteed-waste path is now even clearer: continuing to add parity,
-rendering, distribution, and proof slices while the fresh Round 5B result and
-public player evidence remain missing.
+rendering, distribution, and proof slices without a new authoring or user
+forcing function.

@@ -11,9 +11,10 @@ import { collectCandidatePlaytestDiagnostics } from "./playtest-diagnostics.js";
 import { prepareRound, prepareRound5b } from "./prepare.js";
 import { inferBenchmarkProofFromArtifacts } from "./proof-adapter.js";
 import { isBenchmarkReport, readSession } from "./schemas.js";
+import { captureBenchmarkSession } from "./session-capture.js";
 import { sessionMetricEvidenceDiagnostics } from "./session-evidence.js";
 import { inspectPreparedRound } from "./status.js";
-import { type BenchmarkCondition, type IBenchmarkRunReport } from "./types.js";
+import { type BenchmarkCondition, type BenchmarkStopReason, type IBenchmarkRunReport } from "./types.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const command = argv[0];
@@ -38,8 +39,40 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
   if (command === "audit") {
     return auditCommand(argv.slice(1));
   }
-  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n       tn-agent-benchmark matrix --report <benchmark-report.json> [--require-typed-spec] [--json]\n       tn-agent-benchmark prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--round-5b --audit-report <audit.json>] [--json]\n       tn-agent-benchmark status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]\n       tn-agent-benchmark next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]\n       tn-agent-benchmark audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]\n");
+  if (command === "capture-session") {
+    return captureSessionCommand(argv.slice(1));
+  }
+  process.stderr.write("Usage: tn-agent-benchmark score --candidate <dir> --condition <vanilla|threenative|typed-spec> [--session <path>] [--out <path>] [--json]\n       tn-agent-benchmark capture-session --events <codex-events.jsonl> --template <session.template.json> --out <session.json> [--stop-reason <reason>] [--json]\n       tn-agent-benchmark aggregate --runs <dir-or-file> [--out <path>] [--json]\n       tn-agent-benchmark matrix --report <benchmark-report.json> [--require-typed-spec] [--json]\n       tn-agent-benchmark prepare --out <round-dir> [--prompt collector] [--repeats 3] [--conditions typed-spec,threenative,vanilla] [--round-5b --audit-report <audit.json>] [--json]\n       tn-agent-benchmark status --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--require-complete] [--json]\n       tn-agent-benchmark next --manifest <round-5-prepare-manifest.json> [--condition <vanilla|threenative|typed-spec>] [--json]\n       tn-agent-benchmark audit --matrix-report <benchmark-report.json> --session-cost <verification-report.json> [--round-manifest <round-5-prepare-manifest.json>] [--protocol ROUND-5-PROTOCOL.md] [--json]\n");
   return 1;
+}
+
+async function captureSessionCommand(argv: readonly string[]): Promise<number> {
+  const json = argv.includes("--json");
+  const eventsPath = readFlag(argv, "--events");
+  const templatePath = readFlag(argv, "--template");
+  const outPath = readFlag(argv, "--out");
+  if (eventsPath === undefined || templatePath === undefined || outPath === undefined) {
+    return writeResult({ code: "TN_BENCH_USAGE", message: "Usage: capture-session --events <codex-events.jsonl> --template <session.template.json> --out <session.json> [--json]" }, json, 1);
+  }
+  const stopReason = readFlag(argv, "--stop-reason") as BenchmarkStopReason | undefined;
+  if (stopReason !== undefined && !["claimed-playable", "token-cap", "operator-stopped", "failed-setup"].includes(stopReason)) {
+    return writeResult({ code: "TN_BENCH_CAPTURE_SESSION_STOP_REASON_INVALID", message: "--stop-reason is invalid." }, json, 1);
+  }
+  try {
+    const result = await captureBenchmarkSession({
+      eventsPath,
+      iterationCount: readOptionalNumberFlag(argv, "--iteration-count"),
+      notes: readFlag(argv, "--notes"),
+      outPath,
+      playability: readOptionalNumberFlag(argv, "--playability"),
+      stopReason,
+      templatePath,
+      visual: readOptionalNumberFlag(argv, "--visual"),
+    });
+    return writeResult({ code: "TN_BENCH_CAPTURE_SESSION_OK", ...result }, json, 0);
+  } catch (error) {
+    return writeResult({ code: "TN_BENCH_CAPTURE_SESSION_FAILED", message: error instanceof Error ? error.message : String(error), ok: false }, json, 1);
+  }
 }
 
 async function scoreCommand(argv: readonly string[]): Promise<number> {
@@ -69,8 +102,8 @@ async function scoreCommand(argv: readonly string[]): Promise<number> {
     version: 2 as const,
   };
   const capture = await captureCandidate({ candidate, outDir, url });
-  const playtestDiagnostics = await collectCandidatePlaytestDiagnostics(candidate);
   const proofResult = await inferBenchmarkProofFromArtifacts({ candidate, promptId: session.promptId });
+  const playtestDiagnostics = proofResult.proof?.ok === true ? [] : await collectCandidatePlaytestDiagnostics(candidate);
   const sessionEvidenceDiagnostics = sessionResult.session === undefined
     ? []
     : sessionMetricEvidenceDiagnostics(sessionResult.session, { context: "score", runId: sessionResult.session.runId });
@@ -327,6 +360,14 @@ function relativePath(from: string, to: string): string {
 function readFlag(argv: readonly string[], flag: string): string | undefined {
   const index = argv.indexOf(flag);
   return index < 0 ? undefined : argv[index + 1];
+}
+
+function readOptionalNumberFlag(argv: readonly string[], flag: string): number | undefined {
+  const value = readFlag(argv, flag);
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed < 0) throw new Error(`${flag} must be a non-negative number.`);
+  return parsed;
 }
 
 function readConditionFlag(argv: readonly string[]): BenchmarkCondition | "invalid" | undefined {

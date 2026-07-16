@@ -263,7 +263,7 @@ async function templateDiagnosticsFor(
       suggestedFix: "Move validate/build/playtest commands under focused fallback guidance and make pnpm run iterate the first post-edit loop.",
     });
   }
-  if (!/compact\s+playtest/i.test(agentsDocText) || !/deep\s+logs/i.test(agentsDocText)) {
+  if (!/compact\s+(?:playtest|stdout)/i.test(agentsDocText) || !/deep\s+logs/i.test(agentsDocText)) {
     diagnostics.push({
       code: "TN_TEMPLATE_COMPACT_REPORT_GUIDANCE_MISSING",
       message: `${templateName}: AGENTS.md must direct agents to compact reports before deep frame/effect logs.`,
@@ -349,16 +349,17 @@ async function templateDiagnosticsFor(
   if (!readmeText.includes("AGENT_GAME_PLAN.md")) {
     missingReferences.push("README.md");
   }
-  if (!agentsText.includes("AGENT_GAME_PLAN.md") || !/first game-creation action/i.test(agentsText)) {
+  const startsWithCompactPlan = /before creating or substantially changing the game[\s\S]{0,160}(?:tn|pnpm\s+tn\s+--)\s+game\s+plan/i.test(agentsText);
+  if (!agentsText.includes("AGENT_GAME_PLAN.md") || (!/first game-creation action/i.test(agentsText) && !startsWithCompactPlan)) {
     missingReferences.push("AGENTS.md");
   }
   if (missingReferences.length > 0) {
     diagnostics.push({
       code: "TN_TEMPLATE_AGENT_PLAN_REFERENCE_MISSING",
-      message: `${templateName}: ${missingReferences.join(" and ")} must point agents to AGENT_GAME_PLAN.md as the first game-creation action.`,
+      message: `${templateName}: ${missingReferences.join(" and ")} must make the compact game plan the first game-creation action and retain AGENT_GAME_PLAN.md as the detailed fallback.`,
       path: missingReferences.includes("AGENTS.md") ? agentsPath : readmePath,
       severity: "error",
-      suggestedFix: "Reference AGENT_GAME_PLAN.md from starter README and AGENTS.md before source mutation guidance.",
+      suggestedFix: "Run tn game plan before source mutation and reference AGENT_GAME_PLAN.md from starter README and AGENTS.md as the detailed fallback.",
     });
   }
 

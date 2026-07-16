@@ -153,12 +153,16 @@ test("vehicle checkpoint adopts starter entities, scaffolds its export, and is i
     assert.equal(Buffer.byteLength(second.stdout, "utf8") < 2_048, true, `Expected compact retry JSON, received ${Buffer.byteLength(second.stdout, "utf8")} bytes.`);
     assert.equal(scene.entities.filter((entity) => entity.id === "player").length, 1);
     assert.equal(scene.entities.filter((entity) => entity.id === "checkpoint.01").length, 1);
+    assert.equal(scene.entities.filter((entity) => entity.id.startsWith("checkpoint.")).length, 5);
     assert.deepEqual(scene.entities.find((entity) => entity.id === "player")?.transform, { position: [4, 0.5, 4], scale: [0.8, 0.8, 0.8] });
     assert.equal(scene.systems.filter((system) => system.id === "vehicle-checkpoint").length, 1);
     assert.match(script, /export function starterSystem/);
     assert.match(script, /export const vehicleCheckpointSystem = defineBehavior/);
-    assert.match(script, /context\.resources\.get\("RecipeState"/);
+    assert.match(script, /context\.resources\.get\("RaceState"/);
+    assert.match(script, /race\.nextCheckpoint/);
     assert.equal(firstPayload.filesWritten.includes("src/scripts/player.ts"), true);
+    assert.equal(firstPayload.filesWritten.includes("playtests/vehicle-checkpoint.playtest.json"), true);
+    assert.equal(firstPayload.filesWritten.includes("playtests/vehicle-checkpoint-retry.playtest.json"), true);
     assert.equal(secondPayload.diagnostics.some((diagnostic) => diagnostic.severity === "error"), false);
   } finally {
     await rm(root, { force: true, recursive: true });

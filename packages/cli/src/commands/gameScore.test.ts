@@ -575,6 +575,50 @@ test("should map checkpoint racing goals to vehicle and checkpoint blocks", asyn
   }
 });
 
+test("should map knockdown goals to the registered physics-target mechanic block", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-physics-target-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "physics knockdown targets", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      mechanicDecomposition: Array<{ command: string }>;
+      nextAuthoringCommand?: string;
+      stopAfterCommandWhenScenarioEmitted?: boolean;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.mechanicDecomposition.some((row) => row.command === "tn add physics-target --count 5 --project . --json"), true);
+    assert.equal(payload.nextAuthoringCommand, "tn add physics-target --count 5 --project . --json");
+    assert.equal(payload.stopAfterCommandWhenScenarioEmitted, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep unfamiliar grid-push goals on the starter instead of applying an unrelated mechanic", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-grid-push-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "grid puzzle where a player pushes crates onto goals", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      authoringMode?: string;
+      diagnostics: Array<{ code: string }>;
+      mechanicDecomposition: Array<{ command?: string }>;
+      nextAuthoringCommand?: string;
+      nextInspectionCommand?: string;
+      stopAfterCommandWhenScenarioEmitted?: boolean;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE"), true);
+    assert.equal(payload.authoringMode, "custom-on-starter");
+    assert.equal(payload.nextAuthoringCommand, undefined);
+    assert.equal(payload.nextInspectionCommand, "tn authoring inspect --project . --json");
+    assert.equal(payload.stopAfterCommandWhenScenarioEmitted, false);
+    assert.equal(payload.mechanicDecomposition.some((row) => row.command?.includes("physics-target") === true), false);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should preserve non-mutating plan contract when inventory has gaps", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-inventory-gaps-"));
   try {

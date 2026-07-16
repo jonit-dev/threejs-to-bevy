@@ -1,7 +1,7 @@
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-export type MechanicBlockId = "follow-camera" | "projectile" | "score" | "spawner" | "timer" | "trigger-sequence";
+export type MechanicBlockId = "follow-camera" | "physics-target" | "projectile" | "score" | "spawner" | "timer" | "trigger-sequence";
 
 export interface IMechanicBlockResult {
   block: MechanicBlockId;
@@ -37,6 +37,7 @@ const definitions: readonly IMechanicBlockDefinition[] = [
   { id: "trigger-sequence", summary: "Add ordered or unordered checkpoint/trigger sequence metadata.", write: addTriggerSequenceBlock },
   { id: "score", summary: "Add score, win, and retry state tied to named events.", write: addScoreBlock },
   { id: "projectile", summary: "Add launcher input, projectile prefab, and physics metadata.", write: addProjectileBlock },
+  { id: "physics-target", summary: "Add a visible set of dynamic collider targets for push or knockdown mechanics.", write: addPhysicsTargetBlock },
   { id: "follow-camera", summary: "Retarget or annotate an existing camera follow relationship.", write: addFollowCameraBlock },
 ];
 
@@ -121,6 +122,10 @@ function removeBlockSceneContent(scene: Record<string, unknown>, block: Mechanic
     resourceIds.add("ProjectilePhysics");
     resourceIds.add("ProjectileLauncher");
     if (typeof details.projectile === "string") prefabIds.add(`${details.projectile}.prefab`);
+  } else if (block === "physics-target") {
+    for (const id of Array.isArray(details.targets) ? details.targets : []) if (typeof id === "string") entityIds.add(id);
+    if (typeof details.prefab === "string") prefabIds.add(details.prefab);
+    resourceIds.add("PhysicsTargets");
   } else if (block === "follow-camera") {
     resourceIds.add("FollowCamera");
     const camera = typeof details.camera === "string" ? details.camera : undefined;
@@ -274,6 +279,68 @@ async function addProjectileBlock(options: IMechanicBlockOptions): Promise<IMech
   return writeBlockArtifacts(options.projectPath, "projectile", { launcher, projectile, scenePath }, [scenePath, scriptPath]);
 }
 
+async function addPhysicsTargetBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
+  const count = parsePositiveInteger(readFlag(options.args, "--count")) ?? 5;
+  const prefix = readFlag(options.args, "--prefix") ?? "target";
+  const prefab = `${prefix}.prefab`;
+  const scenePath = await resolveScenePath(options.projectPath);
+  const systemsPath = await resolveSystemsPath(options.projectPath, scenePath);
+  const inputPath = await resolveInputPath(options.projectPath, scenePath);
+  const uiPath = await resolveUiPath(options.projectPath);
+  const scene = await readJsonObject(resolve(options.projectPath, scenePath));
+  const systems = await readJsonObject(resolve(options.projectPath, systemsPath));
+  const input = await readJsonObject(resolve(options.projectPath, inputPath));
+  const ui = await readJsonObject(resolve(options.projectPath, uiPath));
+  const prefabs = arrayOfRecords(scene.prefabs);
+  const entities = arrayOfRecords(scene.entities);
+  const resources = arrayOfRecords(scene.resources);
+  scene.prefabs = prefabs;
+  scene.entities = entities;
+  scene.resources = resources;
+  upsertPrefab(prefabs, prefab, "box", "#f97316");
+  upsertPrefab(prefabs, "prefab.push-ball", "sphere", "#facc15");
+  upsertEntity(entities, "push.ball", "prefab.push-ball", [0, 0.28, 1.4], [0.42, 0.42, 0.42]);
+  const targets: string[] = [];
+  for (let index = 0; index < count; index += 1) {
+    const id = `${prefix}.${String(index + 1).padStart(2, "0")}`;
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    targets.push(id);
+    upsertPhysicsTarget(entities, id, prefab, [(column - 1) * 0.85, 0.55, -2.4 - (row * 0.9)]);
+  }
+  upsertResource(resources, "PhysicsTargets", { count, statusText: `${count} knockdown targets ready`, targets });
+  if (!resources.some((resource) => resource.id === "GameScore")) {
+    resources.push({ id: "GameScore", value: { score: 0, scoreText: `Score 0 / ${count}`, statusText: "SPACE: LAUNCH  •  ENTER/R: RETRY", winAt: count, won: false } });
+  }
+  const actions = arrayOfRecords(input.actions);
+  input.actions = actions;
+  upsertInputAction(actions, "launch", ["keyboard.Space"]);
+  upsertInputAction(actions, "retry", ["keyboard.Enter", "keyboard.KeyR"]);
+  const nodes = arrayOfRecords(ui.nodes);
+  const bindings = arrayOfRecords(ui.bindings);
+  ui.nodes = nodes;
+  ui.bindings = bindings;
+  upsertUiText(nodes, "physics-target.score", "Score 0", 32);
+  upsertUiText(nodes, "physics-target.status", "SPACE: LAUNCH  •  ENTER/R: RETRY", 68);
+  upsertUiBinding(bindings, "physics-target.score", "GameScore.scoreText");
+  upsertUiBinding(bindings, "physics-target.status", "GameScore.statusText");
+  const systemList = arrayOfRecords(systems.systems);
+  systems.systems = systemList;
+  upsertSystem(systemList, "run-physics-target", "src/scripts/physicsTarget.ts", "runPhysicsTarget");
+  const scriptPath = "src/scripts/physicsTarget.ts";
+  await writeJson(resolve(options.projectPath, scenePath), scene);
+  await writeJson(resolve(options.projectPath, systemsPath), systems);
+  await writeJson(resolve(options.projectPath, inputPath), input);
+  await writeJson(resolve(options.projectPath, uiPath), ui);
+  await writeFile(resolve(options.projectPath, scriptPath), physicsTargetScript(count), "utf8");
+  const result = await writeBlockArtifacts(options.projectPath, "physics-target", { count, prefab, scenePath, targets }, [inputPath, scenePath, scriptPath, systemsPath, uiPath]);
+  await writeJson(resolve(options.projectPath, result.scenarioPath), physicsTargetScenario(count));
+  const retryScenarioPath = "playtests/block-physics-target-retry.playtest.json";
+  await writeJson(resolve(options.projectPath, retryScenarioPath), physicsTargetRetryScenario(count));
+  result.filesWritten = [...new Set([...result.filesWritten, retryScenarioPath])].sort();
+  return result;
+}
+
 async function addFollowCameraBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
   const camera = readFlag(options.args, "--camera") ?? "camera.main";
   const target = readFlag(options.args, "--target") ?? "player";
@@ -383,9 +450,30 @@ async function resolveSystemsPath(projectPath: string, scenePath: string): Promi
   }
 }
 
+async function resolveInputPath(projectPath: string, scenePath: string): Promise<string> {
+  const sceneFile = scenePath.split("/").pop() ?? "arena.scene.json";
+  const stem = sceneFile.endsWith(".scene.json") ? sceneFile.slice(0, -".scene.json".length) : "arena";
+  const candidate = `content/input/${stem}.input.json`;
+  try {
+    await readFile(resolve(projectPath, candidate), "utf8");
+    return candidate;
+  } catch {
+    const entries = await readdir(resolve(projectPath, "content/input")).catch(() => []);
+    const first = entries.find((entry) => entry.endsWith(".input.json"));
+    return first === undefined ? candidate : `content/input/${first}`;
+  }
+}
+
+async function resolveUiPath(projectPath: string): Promise<string> {
+  const entries = await readdir(resolve(projectPath, "content/ui")).catch(() => []);
+  const first = entries.find((entry) => entry.endsWith(".ui.json"));
+  return first === undefined ? "content/ui/hud.ui.json" : `content/ui/${first}`;
+}
+
 function blockScenario(block: MechanicBlockId, details: Record<string, unknown>, subject: string): Record<string, unknown> {
   const resources: Record<MechanicBlockId, Record<string, unknown>[]> = {
     "follow-camera": [{ equals: details.target, id: "FollowCamera", path: "target" }],
+    "physics-target": [{ gte: 1, id: "PhysicsTargets", path: "count" }],
     projectile: [{ gte: 1, id: "ProjectileLauncher", path: "speed" }],
     score: [{ gte: 0, id: typeof details.resource === "string" ? details.resource : "GameScore", path: "score" }],
     spawner: [{ gte: 1, id: "MechanicSpawner", path: "count" }],
@@ -459,6 +547,21 @@ function upsertEntity(entities: Record<string, unknown>[], id: string, prefab: s
   }
 }
 
+function upsertPhysicsTarget(entities: Record<string, unknown>[], id: string, prefab: string, position: [number, number, number]): void {
+  const next = {
+    components: {
+      Collider: { kind: "box", size: [0.42, 0.9, 0.42] },
+      RigidBody: { kind: "dynamic", mass: 1 },
+    },
+    id,
+    prefab,
+    transform: { position, scale: [0.42, 0.9, 0.42] },
+  };
+  const existing = entities.find((entity) => entity.id === id);
+  if (existing === undefined) entities.push(next);
+  else Object.assign(existing, next);
+}
+
 function upsertResource(resources: Record<string, unknown>[], id: string, value: Record<string, unknown>): void {
   const existing = resources.find((resource) => resource.id === id);
   if (existing === undefined) {
@@ -475,6 +578,126 @@ function upsertCountdown(countdowns: Record<string, unknown>[], next: Record<str
   } else {
     Object.assign(existing, next);
   }
+}
+
+function upsertInputAction(actions: Record<string, unknown>[], id: string, bindings: string[]): void {
+  const existing = actions.find((action) => action.id === id);
+  if (existing === undefined) actions.push({ bindings, id });
+  else existing.bindings = bindings;
+}
+
+function upsertSystem(systems: Record<string, unknown>[], id: string, module: string, exportName: string): void {
+  const next = { id, script: { export: exportName, module }, source: "behavior-metadata" };
+  const existing = systems.find((system) => system.id === id);
+  if (existing === undefined) systems.push(next);
+  else Object.assign(existing, next);
+}
+
+function upsertUiText(nodes: Record<string, unknown>[], id: string, text: string, top: number): void {
+  const next = { id, layout: { align: "center", justify: "center", top, width: 1280 }, text, type: "text" };
+  const existing = nodes.find((node) => node.id === id);
+  if (existing === undefined) nodes.push(next);
+  else Object.assign(existing, next);
+}
+
+function upsertUiBinding(bindings: Record<string, unknown>[], node: string, resource: string): void {
+  const existing = bindings.find((binding) => binding.node === node);
+  if (existing === undefined) bindings.push({ node, resource });
+  else existing.resource = resource;
+}
+
+function physicsTargetScenario(count: number): Record<string, unknown> {
+  return {
+    artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      movement: { axis: "z", entity: "push.ball", minDistance: 2.5, minVelocity: 0.001 },
+      resources: [{ gte: 1, id: "GameScore", path: "score" }],
+    },
+    name: "block-physics-target",
+    schemaVersion: 1,
+    steps: [{ holdFrames: 1, label: "launch-ball", press: "Space", release: true }, { label: "observe-targets", release: false, waitFrames: 50 }],
+    subject: "push.ball",
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: Math.max(5, count),
+  };
+}
+
+function physicsTargetRetryScenario(count: number): Record<string, unknown> {
+  return {
+    artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      resources: [{ equals: 0, id: "GameScore", path: "score" }, { textIncludes: "RETRY", id: "GameScore", path: "statusText" }],
+    },
+    name: "block-physics-target-retry",
+    schemaVersion: 1,
+    steps: [
+      { holdFrames: 1, label: "launch-before-retry", press: "Space", release: true },
+      { label: "wait-for-score", release: false, waitFrames: 50 },
+      { holdFrames: 1, label: "retry", press: "Enter", release: true },
+      { label: "observe-reset", release: false, waitFrames: Math.max(2, count) },
+    ],
+    subject: "push.ball",
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+}
+
+function physicsTargetScript(count: number): string {
+  const knocked = Array.from({ length: count }, () => "false").join(", ");
+  const targets = Array.from({ length: count }, (_, index) => {
+    const column = index % 3;
+    const row = Math.floor(index / 3);
+    return `[${(column - 1) * 0.85}, 0.55, ${-2.4 - (row * 0.9)}]`;
+  }).join(",\n      ");
+  return `import { defineBehavior } from "@threenative/script-stdlib";
+import type { ProjectContext } from "../../.threenative/types/project-context";
+
+export const runPhysicsTarget = defineBehavior(
+  { id: "run-physics-target", schedule: "fixedUpdate", writes: ["Transform"] },
+  (context: ProjectContext): void => {
+    const ball = context.entity("push.ball");
+    if (!ball) return;
+    const starts = [
+      ${targets}
+    ] as const;
+    const state = context.state("physics-target", { launched: false, knocked: [${knocked}] });
+    const score = context.resources.get("GameScore", { score: 0, scoreText: "Score 0 / ${count}", statusText: "SPACE: LAUNCH  •  ENTER/R: RETRY", winAt: ${count}, won: false });
+    if (context.input.action("retry")) {
+      state.launched = false;
+      state.knocked = [${knocked}];
+      ball.transform().position = [0, 0.28, 1.4];
+      for (let index = 0; index < starts.length; index += 1) context.entity(\`target.\${String(index + 1).padStart(2, "0")}\`)?.transform().setPosition(starts[index]);
+      context.resources.patch("GameScore", { score: 0, scoreText: "Score 0 / ${count}", statusText: "SPACE: LAUNCH  •  ENTER/R: RETRY", won: false });
+      return;
+    }
+    if (context.input.action("launch") && !state.launched) state.launched = true;
+    if (!state.launched) return;
+    const ballTransform = ball.transform();
+    const ballPosition = ballTransform.position;
+    ballTransform.position = [ballPosition[0], ballPosition[1], ballPosition[2] - context.time.fixedDelta * 7.5];
+    for (let index = 0; index < starts.length; index += 1) {
+      if (state.knocked[index]) continue;
+      const target = context.entity(\`target.\${String(index + 1).padStart(2, "0")}\`);
+      if (!target) continue;
+      const position = target.transform().position;
+      const dx = position[0] - ballTransform.position[0];
+      const dz = position[2] - ballTransform.position[2];
+      if (dx * dx + dz * dz >= 0.32) continue;
+      state.knocked[index] = true;
+      target.transform().position = [position[0] + (index % 2 === 0 ? -0.55 : 0.55), 0.18, position[2] - 0.7];
+      score.score += 1;
+      score.won = score.score >= score.winAt;
+      score.scoreText = \`Score \${score.score} / \${score.winAt}\`;
+      score.statusText = score.won ? "ALL TARGETS DOWN!  ENTER/R: RETRY" : "TARGET DOWN!  ENTER/R: RETRY";
+      context.resources.patch("GameScore", score);
+    }
+  },
+);
+`;
 }
 
 async function readJsonObject(path: string): Promise<Record<string, unknown>> {

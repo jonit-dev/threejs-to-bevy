@@ -31,6 +31,7 @@ export interface IBenchmarkSession {
   runId: string;
   schema: "threenative.agent-benchmark-session";
   stopReason: BenchmarkStopReason;
+  tokenAccounting?: "codex-turn-usage";
   tokenCount: number;
   toolStepCount?: number;
   toolOutputBytes?: number;

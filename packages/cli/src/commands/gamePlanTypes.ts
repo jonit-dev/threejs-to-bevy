@@ -31,6 +31,7 @@ export interface IGameplayBlockDescriptor {
 export interface IGamePlan {
   acceptanceCriteria: string[];
   archetype: string;
+  authoringMode: "bounded-match" | "custom-on-starter";
   archetypeDetails: {
     controls: string[];
     lookProfile: Record<string, unknown>;

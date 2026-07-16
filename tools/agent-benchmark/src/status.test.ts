@@ -302,7 +302,7 @@ function session(candidate: { condition: BenchmarkCondition; runId: string }): u
 }
 
 function event(command: string): string {
-  return JSON.stringify({ item: { command, type: "command_execution" } });
+  return JSON.stringify({ item: { command, type: "command_execution" }, type: "item.completed" });
 }
 
 function runReport(candidate: { condition: BenchmarkCondition; path: string; runId: string }, options: { proofOk: boolean }): unknown {

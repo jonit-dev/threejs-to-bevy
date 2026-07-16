@@ -135,6 +135,18 @@ Current support:
   vanilla comparison gate. Aggregate reports also emit per-run churn budget
   diagnostics for engine-source searches, standalone verify commands, artifact
   forensics, missing iterate use, and missing discovery.
+- The exploratory `grid-push-puzzle` prompt adds a beyond-one-shot neutral
+  contract for blocked grid movement, push-only crates, goal/win progression,
+  and retry. Its first clean pair is intentionally not a passing matrix:
+  ThreeNative selected and proved the unrelated physics-target block, while the
+  vanilla control passed the four prompt assertions but exceeded the token cap
+  and rendered a DOM grid rather than a canvas. The retained report is
+  `tools/agent-benchmark/GRID-PUSH-EXPLORATORY-2026-07-15.md`. A corrected
+  ThreeNative rerun emitted the off-recipe starter fallback, custom-authored the
+  puzzle, and passed 4/4 browser assertions. It remains inadmissible for
+  efficiency because 2,825,566 raw and 457,976 cost-weighted tokens exceeded
+  the session cap; the retained corrected evidence is under
+  `tools/verify/artifacts/agent-benchmark/exploratory-grid-push-fixed-2026-07-15/`.
 - Guided Round-5 collector preparation tells ThreeNative agents to use the
   scaffold-first `tn game plan --apply` plus `xvfb-run -a tn iterate` path and
   stop after a passing iterate instead of running standalone proof loops. The

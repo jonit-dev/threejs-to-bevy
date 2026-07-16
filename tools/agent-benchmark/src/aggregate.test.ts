@@ -176,6 +176,30 @@ test("should count instruction-adoption behavior from codex event sidecars", asy
   assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_CHURN_ENGINE_SOURCE_SEARCH_EXCEEDED"), true);
 });
 
+test("should count completed absolute CLI discovery and iterate commands once", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-absolute-cli-"));
+  const paths = await writeRepeatedRunReports(root, { threenativeTokens: 1000, vanillaTokens: 1000 });
+  const plan = "/repo/packages/cli/dist/index.js game plan --goal test --project . --json";
+  const iterate = "/repo/packages/cli/dist/index.js iterate --project . --json";
+  await writeFile(
+    join(root, "codex-events.jsonl"),
+    [
+      JSON.stringify({ item: { command: plan, type: "command_execution" }, type: "item.started" }),
+      commandEvent(plan),
+      JSON.stringify({ item: { command: iterate, type: "command_execution" }, type: "item.started" }),
+      commandEvent(iterate),
+    ].join("\n"),
+  );
+
+  const report = await aggregateRunReports(paths);
+  const summary = report.promptSummaries[0];
+
+  assert.equal(report.verdict.status, "pass");
+  assert.equal(summary?.behaviorMedian.discoveryCommandCount, 1);
+  assert.equal(summary?.behaviorMedian.iterateCommandCount, 1);
+  assert.equal(summary?.withinInstructionAdoptionBudget, true);
+});
+
 test("should emit engine-source-search diagnostic with offending command when budget exceeded", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-behavior-budget-"));
   const paths = await writeRepeatedRunReports(root, { threenativeTokens: 1000, vanillaTokens: 1000 });

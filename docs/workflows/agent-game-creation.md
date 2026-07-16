@@ -117,6 +117,21 @@ tn asset source search --game-category <category> --format glb --direct-only --j
 tn asset source get <asset-source-id> --json
 ```
 
+When the catalog does not contain a suitable model, agents can create a simple
+project-local GLB with the bounded Blender provider:
+
+```bash
+tn tool status blender --json
+tn tool install blender --accept-download --json  # only when the tool is missing
+tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
+tn asset inspect assets/generated/<asset-id>.glb --json
+tn model-test assets/generated/<asset-id>.glb --json
+```
+
+Blender is authoring-only. Use bounded recipes rather than arbitrary Blender
+Python, add-ons, or remote recipes; if the tool cannot be installed, record the
+diagnostic and continue with the documented asset fallback order.
+
 Record catalog ID, source URL, provenance URL, origin, license evidence, review
 status, downloaded date, and conversion notes next to committed assets. Use
 `tn asset inspect` and `tn model-test` after downloading or referencing a

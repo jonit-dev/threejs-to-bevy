@@ -75,6 +75,21 @@ tn asset inspect assets --recursive --json
 tn model-test assets/<model>.glb --json
 ```
 
+If catalog search does not produce a suitable model, a bounded Blender recipe
+is an option for creating a simple project-local GLB:
+
+```bash
+tn tool status blender --json
+tn tool install blender --accept-download --json  # only when the tool is missing
+tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
+tn asset inspect assets/generated/<asset-id>.glb --json
+tn model-test assets/generated/<asset-id>.glb --json
+```
+
+Blender is authoring-only. Use the bounded recipe contract, not arbitrary
+Blender Python, add-ons, or remote recipes; if installation is unavailable,
+record the diagnostic and use the next asset fallback.
+
 For outdoor or arena games that need a dressed world, start from the generated
 biome source path before hand-placing environment props:
 
@@ -93,8 +108,8 @@ Record selected catalog records next to committed assets.
 | World/environment |  |  |  |  |  |  |  |  |  |  |
 
 Only after catalog search fails should you check curated open-source packs,
-compatible GitHub/open-source packs, authored custom meshes, and finally
-primitive fallback geometry.
+compatible GitHub/open-source packs, the bounded Blender generator or other
+authored custom meshes, and finally primitive fallback geometry.
 
 ## Animation And Scale Plan
 

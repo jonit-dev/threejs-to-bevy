@@ -109,7 +109,7 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release.\n");
     await mkdir(join(templatePath, "docs"), { recursive: true });
     await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Open AGENT_GAME_PLAN.md as the first game-creation action. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact playtest reports before deep logs, then use game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Before creating or substantially changing the game, run tn game plan. Open AGENT_GAME_PLAN.md only when the compact plan is insufficient. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact stdout before deep logs, then use game:plan, game:improve, game:qa, and game:release.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), "Plan first, then get models somehow.\n");
 
     const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });

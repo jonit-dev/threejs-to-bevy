@@ -65,6 +65,12 @@ input playtest. `tn game score --project . --json` should not report
 `TN_GAME_MOTION_FEEL_UNPROVEN` or `TN_GAME_VISUAL_BASELINE_PLACEHOLDER`.
 Judge the screenshot against the `threenative-game-quality` skill.
 
+`TN_ITERATE_OK` means the committed scenarios that ran passed; it is not a
+semantic claim that the user's requested game was built. Compare scenario
+assertion IDs and observations with the prompt's core verbs and acceptance
+criteria, then add or repair prompt-specific scenarios until every requirement
+has evidence.
+
 `tn iterate` artifacts are fast repair-loop evidence only; they do not replace
 `game:qa`, `game:release`, or desktop playtest evidence before completion
 claims.

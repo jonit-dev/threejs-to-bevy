@@ -4,6 +4,18 @@ This index separates open planning work from completed PRDs and historical
 milestone batches. For current implementation status, read
 [../STATUS.md](../STATUS.md) first.
 
+## Active Initiatives
+
+### Off-Recipe Authoring Efficiency (2026-07-15)
+
+The [active off-recipe authoring efficiency PRD](PRD-off-recipe-authoring-efficiency-2026-07-15.md)
+turns the grid-push false match and over-budget corrected run into a bounded
+program: semantic intent coverage, compact project inspection, one-pass
+portable-script preflight, conventional input/pending-write semantics,
+descriptor-owned reusable spatial mechanics, plan-derived proof, semantic
+iterate completion, and an 18-session equal-proof rerun against compliant
+vanilla Three.js.
+
 ## Completed Initiatives
 
 ### Systems Code Quality Remediation (2026-07-14)

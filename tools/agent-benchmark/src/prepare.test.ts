@@ -44,14 +44,38 @@ test("should prepare round-5 candidate slots", async () => {
   assert.match(operator, new RegExp(`--out ${escapeRegExp(join(outDir, "collector-typed-spec-r1", "run-report.json"))}`));
   assert.match(operator, new RegExp(`status --manifest ${escapeRegExp(join(outDir, "round-5-prepare-manifest.json"))} --require-complete`));
   assert.match(operator, /tn-agent-benchmark\/dist\/index\.js audit|tools\/agent-benchmark\/dist\/index\.js audit/);
-  assert.match(operator, /GameState\.scoreText/);
-  assert.match(operator, /GameState\.statusText/);
+  assert.match(operator, /pickup-objective/);
+  assert.match(operator, /win-state/);
+  assert.match(operator, /capture-session/);
   assert.match(prompt, /collects at least five visible pickups/);
   assert.equal(session.condition, "threenative");
   assert.equal(session.failedCommandCount, 0);
   assert.equal(session.promptId, "collector");
   assert.equal(session.runId, "collector-threenative-r1");
   assert.equal(session.toolStepCount, 0);
+});
+
+test("should require off-recipe agents to inspect scaffold fit and prove the prompt contract", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-grid-push-"));
+  const outDir = join(root, "round-grid-push");
+  await prepareRound({
+    conditions: ["threenative"],
+    outDir,
+    promptId: "grid-push-puzzle",
+    promptsDir: "prompts",
+    repeats: 1,
+    root: process.cwd(),
+  });
+
+  const operator = await readFile(join(outDir, "candidates", "grid-push-puzzle-threenative-r1", "OPERATOR.md"), "utf8");
+  assert.match(operator, /Inspect the planner diagnostics/i);
+  assert.match(operator, /TN_GAME_PLAN_OFF_RECIPE/);
+  assert.match(operator, /custom-author.*starter/i);
+  assert.match(operator, /nextInspectionCommand/);
+  assert.match(operator, /core verbs.*acceptance criteria/i);
+  assert.match(operator, /grid-movement/);
+  assert.match(operator, /artifacts\/proof\/grid-push-puzzle-proof\.json/);
+  assert.doesNotMatch(operator, /When the bounded command emits a scenario, do not inspect/);
 });
 
 test("should generate three-prompt matrix manifest when audit is green", async () => {
@@ -85,6 +109,15 @@ test("should generate three-prompt matrix manifest when audit is green", async (
   for (const promptId of manifest.prompts) {
     assert.equal(manifest.candidates.filter((candidate) => candidate.runId.startsWith(`${promptId}-`)).length, 9);
   }
+  const checkpointOperator = await readFile(join(outDir, "candidates", "checkpoint-race-threenative-r1", "OPERATOR.md"), "utf8");
+  assert.match(checkpointOperator, /ordered-checkpoints/);
+  assert.match(checkpointOperator, /timer-or-counter/);
+  assert.match(checkpointOperator, /game plan --goal "\$\(cat benchmark-prompt\.txt\)"/);
+  assert.doesNotMatch(checkpointOperator, /game plan --goal "\$\(cat benchmark-prompt\.txt\)" --project \. --apply/);
+  assert.match(checkpointOperator, /TN_ITERATE_OK.*proves only the scenarios that were run/);
+  assert.match(checkpointOperator, /artifacts\/proof\/checkpoint-race-proof\.json/);
+  assert.match(checkpointOperator, /round-5b-prepare-manifest\.json/);
+  assert.doesNotMatch(checkpointOperator, /pickup-objective|collector-proof\.json|--goal "collector"/);
 });
 
 test("should refuse manifest generation when audit is incomplete", async () => {

@@ -232,17 +232,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     code: "TN_CREATE_OK",
     command: commandName,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: [installCommand, "pnpm run game:plan", "pnpm run validate", "pnpm run build", "pnpm run iterate", "pnpm run dev:web", "pnpm run verify"],
+    nextCommands: [installCommand, "pnpm run game:plan", "pnpm run iterate", "pnpm run dev:web"],
     path: projectPath,
-    planningInstructions: agentGamePlanPath,
-    agentSkills: agentSkillDestinationRoots.map((skillsRoot) => `${skillsRoot}/threenative-workflow/SKILL.md`),
-    referenceDocs: [
-      agentGamePlanPath,
-      "docs/workflows/developer-workflow.md",
-      "docs/workflows/ai-workflows.md",
-      "tn help scaffold",
-      "tn help visual-qa",
-    ],
+    startCommand: "pnpm run game:plan",
     renderProfile,
     template: definition.canonical,
     authoring: authoringMode,
@@ -262,7 +254,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nPlanning: open ${agentGamePlanPath} and run pnpm run game:plan before mutating game source.\nNext commands:\n  cd ${projectPath}\n  ${installCommand}\n  pnpm run game:plan\n  pnpm run validate\n  pnpm run build\n  pnpm run iterate\n  pnpm run dev:web\n  pnpm run verify\nDocs: ${agentGamePlanPath}, tn help scaffold, tn help visual-qa\n`,
+    stdout: `${payload.message}\nStart with pnpm run game:plan; use ${agentGamePlanPath} only if planning reports a missing field.\nNext commands:\n  cd ${projectPath}\n  ${installCommand}\n  pnpm run game:plan\n  pnpm run iterate\n  pnpm run dev:web\n`,
   };
 }
 

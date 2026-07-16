@@ -210,6 +210,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       "Proof includes authoring validation, build, playtest motion, screenshot, game score, QA, and release checks.",
     ],
     archetype: archetype.id,
+    authoringMode: matchedKit === undefined && !isPhysicsTargetGoal(goal) ? "custom-on-starter" : "bounded-match",
     archetypeDetails: {
       controls: archetype.controls,
       lookProfile: archetype.lookProfile,
@@ -230,7 +231,12 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     diagnostics: [
       ...buildPlanDiagnostics(inventory),
-      ...(matchedKit === undefined ? [{ code: "TN_GAME_PLAN_OFF_RECIPE", message: `Goal does not match a promoted game kit; nearest archetype is '${archetype.id}'.`, severity: "info" as const }] : []),
+      ...(matchedKit === undefined ? [{
+        code: "TN_GAME_PLAN_OFF_RECIPE",
+        message: `Goal does not match a promoted game kit; keep the structured-source starter and custom-author the requested loop instead of applying an unrelated recipe. Nearest archetype is '${archetype.id}'.`,
+        severity: "info" as const,
+        suggestedFix: "Inspect the mechanic decomposition against the goal's core verbs and acceptance criteria. Use content/**/*.json and src/scripts/**/*.ts on top of the starter when no bounded match covers them.",
+      }] : []),
     ],
     goal,
     inventory: {
@@ -1100,8 +1106,15 @@ async function writeScaffoldEvidence(projectPath: string, evidence: { archetype:
 }
 
 function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Record<string, unknown> {
+  const matchedKit = plan.kitCandidates.find((candidate) => candidate.score >= 1);
+  const nextAuthoringCommand = isPhysicsTargetGoal(plan.goal)
+    ? plan.mechanicDecomposition.find((row) => row.command?.includes("physics-target"))?.command
+    : matchedKit === undefined
+      ? undefined
+      : plan.mechanicDecomposition[0]?.command;
   return {
     archetype: plan.archetype,
+    authoringMode: plan.authoringMode,
     code: plan.code,
     diagnostics: plan.diagnostics,
     fileMap: {
@@ -1115,10 +1128,14 @@ function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Re
     message: "Full game plan written to artifacts/game-production/plan.json.",
     milestones: plan.phases.map((phase) => ({ id: phase.id, order: phase.order, summary: phase.summary })),
     mutate: plan.mutate,
+    nextAuthoringCommand,
+    nextInspectionCommand: matchedKit === undefined ? "tn authoring inspect --project . --json" : undefined,
+    nextProofCommand: "tn iterate --project . --json",
     planArtifactPath,
     proofCommands: plan.proofCommands,
     recipeIds: plan.recipeIds,
     schema: "threenative.game-plan-summary",
+    stopAfterCommandWhenScenarioEmitted: nextAuthoringCommand !== undefined,
     version: "0.1.0",
   };
 }
@@ -1195,7 +1212,9 @@ function buildMechanicDecomposition(
     }),
     mechanicRow({
       block: spawn,
-      command: spawn === undefined ? "tn add spawner --project . --json" : "tn add spawner --project . --json",
+      command: isPhysicsTargetGoal(goal)
+        ? "tn add physics-target --count 5 --project . --json"
+        : "tn add spawner --project . --json",
       cookbookEntries,
       fallbackCookbookId: "kinematic-hazard",
       mechanic: "hazards-or-rewards",
@@ -1204,6 +1223,10 @@ function buildMechanicDecomposition(
     }),
   ];
   return rows;
+}
+
+function isPhysicsTargetGoal(goal: string): boolean {
+  return /\b(?:knock(?:down)?|physics|projectile)\b/i.test(goal);
 }
 
 function mechanicRow(options: {
@@ -1333,17 +1356,6 @@ function buildGamePlanSteps(
         sceneId: defaults.sceneId,
       },
       summary: "Use when the requested game focuses on dodging or timing around clear hazards.",
-    }),
-    recipeStep({
-      apply: false,
-      id: "physics-target-slice",
-      phase: "gameplay",
-      recipe: "physics-target",
-      recipeArgs: {
-        sceneId: defaults.sceneId,
-        targetId: "target.01",
-      },
-      summary: "Use when physical impact, projectile contact, or target knocking is central to the loop.",
     }),
     recipeStep({
       apply: false,
@@ -1545,7 +1557,7 @@ function buildGameplayBlocks(goal: string, includeAll = false): IGameplayBlockDe
       id: "spawn.region-sampler",
       kind: "spawn",
       proof: ["tn game qa --project . --run-proof --json"],
-      recipeIds: ["physics-target", "vehicle-checkpoint"],
+      recipeIds: ["vehicle-checkpoint"],
       scriptResponsibilities: ["owns deterministic spawn points", "owns blocked-region rejection"],
       source: "gameblocks-inspired",
     }));

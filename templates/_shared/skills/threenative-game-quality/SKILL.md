@@ -20,7 +20,20 @@ surfaces.
 2. If no direct record fits, use the repo's open-source 3D asset kit workflow
    and a coherent curated pack.
 3. Then a compatible GitHub/open-source pack.
-4. Then generated/local custom GLB or mesh assets.
+4. Then generated/local custom GLB or mesh assets. For a simple custom GLB,
+   use the bounded Blender recipe path when it is a better fit than manual
+   modeling:
+
+   ```bash
+   tn tool status blender --json
+   tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
+   tn asset inspect assets/generated/<asset-id>.glb --json
+   ```
+
+   Install Blender only when needed with
+   `tn tool install blender --accept-download --json`; it is an
+   authoring-only tool, and the recipe contract does not accept arbitrary
+   Blender Python, add-ons, or remote recipes.
 5. Primitives only as the last fallback, for prototype or runtime fallback
    fields.
 

@@ -57,10 +57,20 @@ production plan with:
 tn game plan --goal "<game idea>" --project . --json
 ```
 
-Use catalog-first asset sourcing, author portable physics metadata for physical
-mechanics, keep high-value surfaces visually intentional, and prove gameplay
-with `tn playtest`. Before release claims, rerun committed scenarios with
-`--target desktop`.
+Use catalog-first asset sourcing. When no suitable catalog asset exists, a
+bounded Blender recipe is an option for creating a simple project-local GLB:
+
+```bash
+tn tool status blender --json
+tn tool install blender --accept-download --json  # only when the tool is missing
+tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
+```
+
+Blender is authoring-only; use the bounded recipe contract rather than
+arbitrary Blender Python or add-ons. Author portable physics metadata for
+physical mechanics, keep high-value surfaces visually intentional, and prove
+gameplay with `tn playtest`. Before release claims, rerun committed scenarios
+with `--target desktop`.
 
 ## Verification
 

@@ -33,6 +33,9 @@ export function validateSession(value: unknown): ISchemaValidationResult {
   requireOptionalNonNegativeNumber(value, "identicalAssertionRepeatCount", diagnostics);
   requireOptionalNonNegativeNumber(value, "maxConsecutiveSameDiagnostic", diagnostics);
   requireOptionalNonNegativeNumber(value, "toolStepCount", diagnostics);
+  if (value.tokenAccounting !== undefined && value.tokenAccounting !== "codex-turn-usage") {
+    diagnostics.push({ code: "TN_BENCH_SCHEMA_TOKEN_ACCOUNTING", message: "tokenAccounting must be codex-turn-usage when present.", severity: "error" });
+  }
   validateOptionalChurnCounters(value.churnCounters, diagnostics);
   if (!isRecord(value.humanRubric)) {
     diagnostics.push({ code: "TN_BENCH_SCHEMA_HUMAN_RUBRIC", message: "Session humanRubric must be an object.", severity: "error" });

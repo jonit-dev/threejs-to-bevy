@@ -255,6 +255,33 @@ test("should run all scenarios when no scenario flag given", async () => {
   }
 });
 
+test("should run independent scenarios with bounded concurrency and stable output order", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-concurrent-scenarios-"));
+  try {
+    await mkdir(join(root, "playtests"), { recursive: true });
+    for (const name of ["a", "b", "c", "d"]) await writeFile(join(root, "playtests", `${name}.playtest.json`), "{}\n");
+    let active = 0;
+    let maxActive = 0;
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async (args) => {
+        const scenario = args[args.indexOf("--scenario") + 1] ?? "";
+        active += 1;
+        maxActive = Math.max(maxActive, active);
+        await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
+        active -= 1;
+        return playtestSummaryResult(scenario.replace(/^playtests\//, "").replace(/\.playtest\.json$/, ""), true);
+      },
+    });
+    const payload = JSON.parse(result.stdout) as { steps: Array<{ id: string; scenarios?: Array<{ scenario: string }> }> };
+
+    assert.equal(maxActive, 3);
+    assert.deepEqual(payload.steps.find((step) => step.id === "playtest")?.scenarios?.map((scenario) => scenario.scenario), ["a", "b", "c", "d"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("default iterate skips native scenarios unless --native is explicit", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-iterate-web-default-"));
   try {

@@ -116,6 +116,107 @@ test("should report failing neutral browser artifact proof", async () => {
   assert.equal(result.proof?.ok, false);
 });
 
+test("should infer off-recipe proof from a prompt-matched neutral artifact", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-checkpoint-proof-"));
+  await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  await writeFile(join(root, "artifacts", "proof", "checkpoint-race-proof.json"), `${JSON.stringify({
+    assertions: [
+      assertion("ordered-checkpoints", true, { evidence: "browser route run" }),
+      assertion("timer-or-counter", true, { checkpointCounter: "3 / 3" }),
+      assertion("finish-state", true, { status: "Finished" }),
+      assertion("retry-path", true, { status: "Press R to retry" }),
+    ],
+    promptId: "checkpoint-race",
+    schema: "threenative.agent-benchmark-proof",
+  }, null, 2)}\n`, "utf8");
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "checkpoint-race" });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.proof?.ok, true);
+  assert.equal(result.proof?.classification, "beyond-one-shot");
+});
+
+test("should infer physics knockdown proof only from observed impact and retry summaries", async () => {
+  const root = await candidateWithNamedSummaries([
+    {
+      assertions: [
+        assertion("movement", true, { distance: 128.75, threshold: 2.5 }),
+        assertion("resource.GameScore.score", true, { after: 4, before: 0 }),
+      ],
+      scenario: "block-physics-target",
+    },
+    {
+      assertions: [
+        assertion("resource.GameScore.score", true, { after: 0, before: 0 }),
+        assertion("resource.GameScore.statusText", true, { after: "SPACE: LAUNCH - ENTER/R: RETRY", before: "TARGET DOWN" }),
+      ],
+      scenario: "block-physics-target-retry",
+    },
+  ]);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "physics-knockdown" });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.proof?.ok, true);
+  assert.deepEqual(result.proof?.assertions.map((item) => item.id), ["launch-or-push", "target-displacement", "score-updates", "retry-path"]);
+});
+
+test("should reject physics knockdown summaries when score did not increase", async () => {
+  const root = await candidateWithNamedSummaries([{ assertions: [
+    assertion("movement", true, { distance: 12, threshold: 2.5 }),
+    assertion("resource.GameScore.score", true, { after: 0, before: 0 }),
+  ], scenario: "block-physics-target" }]);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "physics-knockdown" });
+
+  assert.equal(result.proof?.ok, false);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "score-updates")?.pass, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_EQUAL_PROOF_FAILED"), true);
+});
+
+test("should infer checkpoint race proof from ordered progress, timer, finish, and retry observations", async () => {
+  const root = await candidateWithNamedSummaries([
+    {
+      assertions: [
+        assertion("resource.RaceState.nextCheckpoint", true, { after: 5, before: 0 }),
+        assertion("resource.RaceState.time", true, { after: 1.3, before: 0 }),
+        assertion("resource.RaceState.finished", true, { after: true, before: false }),
+        assertion("hud.race.status", true, { after: { text: "FINISH! Time 1.3s - R/ENTER: RETRY" }, before: { text: "DRIVE" } }),
+      ],
+      scenario: "vehicle-checkpoint",
+    },
+    {
+      assertions: [
+        assertion("resource.RaceState.nextCheckpoint", true, { after: 0, before: 0 }),
+        assertion("resource.RaceState.finished", true, { after: false, before: false }),
+        assertion("hud.race.status", true, { after: { text: "DRIVE - R/ENTER: RETRY" }, before: { text: "DRIVE - R/ENTER: RETRY" } }),
+      ],
+      scenario: "vehicle-checkpoint-retry",
+    },
+  ]);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "checkpoint-race" });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.proof?.ok, true);
+  assert.deepEqual(result.proof?.assertions.map((item) => item.id), ["ordered-checkpoints", "timer-or-counter", "finish-state", "retry-path"]);
+});
+
+test("should reject checkpoint summaries without an observed finish transition", async () => {
+  const root = await candidateWithNamedSummaries([{ assertions: [
+    assertion("resource.RaceState.nextCheckpoint", true, { after: 5, before: 0 }),
+    assertion("resource.RaceState.time", true, { after: 1.3, before: 0 }),
+    assertion("resource.RaceState.finished", false, { after: false, before: false }),
+  ], scenario: "vehicle-checkpoint" }]);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "checkpoint-race" });
+
+  assert.equal(result.proof?.ok, false);
+  assert.equal(result.proof?.assertions.find((item) => item.id === "finish-state")?.pass, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_EQUAL_PROOF_FAILED"), true);
+});
+
 test("should infer failing collector proof from unchanged score and status assertions", async () => {
   const root = await candidateWithSummary([
     assertion("movement", true, { distance: 6.5 }),
@@ -158,6 +259,16 @@ async function candidateWithSummaries(summaries: unknown[][], diagnostics: unkno
     const summaryDir = join(root, "artifacts", `proof-${index}`);
     await mkdir(summaryDir, { recursive: true });
     await writeFile(join(summaryDir, "summary.json"), `${JSON.stringify({ assertions, diagnostics }, null, 2)}\n`, "utf8");
+  }
+  return root;
+}
+
+async function candidateWithNamedSummaries(summaries: Array<{ assertions: unknown[]; scenario: string }>): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-named-proof-adapter-"));
+  for (const [index, summary] of summaries.entries()) {
+    const summaryDir = join(root, "artifacts", `proof-${index}`);
+    await mkdir(summaryDir, { recursive: true });
+    await writeFile(join(summaryDir, "summary.json"), `${JSON.stringify({ ...summary, diagnostics: [] }, null, 2)}\n`, "utf8");
   }
   return root;
 }

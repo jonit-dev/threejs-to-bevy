@@ -53,14 +53,20 @@ export async function captureCandidate(options: { candidate: string; outDir: str
         });
         return { artifacts: {}, diagnostics };
       }
-      await page.mouse.click(640, 360);
+      const startButton = page.locator("button:visible").first();
+      if (await startButton.count() > 0) {
+        await startButton.click();
+      } else {
+        await page.mouse.click(640, 360);
+      }
       await page.waitForTimeout(100);
       await page.screenshot({ fullPage: false, path: beforeScreenshot });
-      for (const key of ["ArrowRight", "KeyD", "ArrowUp", "KeyW"]) {
+      const probeKeys = ["ArrowRight", "KeyD", "ArrowUp", "KeyW", "Space", "Enter"];
+      for (const key of probeKeys) {
         await page.keyboard.down(key);
       }
       await page.waitForTimeout(700);
-      for (const key of ["ArrowRight", "KeyD", "ArrowUp", "KeyW"].reverse()) {
+      for (const key of [...probeKeys].reverse()) {
         await page.keyboard.up(key);
       }
       await page.screenshot({ fullPage: false, path: afterScreenshot });
