@@ -1,7 +1,51 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { diagnosePortableSystem } from "./diagnostics.js";
+import { diagnosePortableScriptPreflight, diagnosePortableSystem } from "./diagnostics.js";
+
+test("should report module state closure and declaration failures together", () => {
+  const diagnostics = diagnosePortableScriptPreflight({
+    exportName: "updateGrid",
+    file: "src/scripts/grid.ts",
+    resourceReads: [],
+    resourceWrites: [],
+    source: `(context) => {
+      document.title = "grid";
+      const state = context.resources.get("GridState", { moves: 0 });
+      context.resources.patch("GridState", { moves: state.moves + 1 });
+    }`,
+    systemName: "update-grid",
+    upstreamDiagnostics: [
+      {
+        code: "TN_SCRIPT_MODULE_STATE_UNSUPPORTED",
+        file: "src/scripts/grid.ts",
+        fix: { instruction: "Move mutable state into a declared resource." },
+        message: "Script module declares mutable top-level module state.",
+        path: "scriptModules/src/scripts/grid.ts",
+        severity: "error",
+      },
+      {
+        code: "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED",
+        file: "src/scripts/grid.ts",
+        fix: { instruction: "Inline the helper into the exported behavior." },
+        message: "Export references a module-local helper.",
+        path: "systems/update-grid/script/sourceRef/moduleLocals/helper",
+        severity: "error",
+      },
+    ],
+  });
+
+  assert.deepEqual(diagnostics.map((item) => item.code), [
+    "TN_SCRIPT_MODULE_STATE_UNSUPPORTED",
+    "TN_SCRIPT_DOM_API_UNSUPPORTED",
+    "TN_SCRIPT_RESOURCE_READ_UNDECLARED",
+    "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
+    "TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED",
+  ]);
+  assert.equal(diagnostics.every((item) => item.fix?.instruction !== undefined), true);
+  assert.equal(diagnostics.find((item) => item.code === "TN_SCRIPT_RESOURCE_READ_UNDECLARED")?.fix?.snippet, 'resourceReads: ["GridState"]');
+  assert.equal(diagnostics.find((item) => item.code === "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED")?.fix?.snippet, 'resourceWrites: ["GridState"]');
+});
 
 test("should reject scripts browser api in portable system", () => {
   const diagnostics = diagnosePortableSystem({

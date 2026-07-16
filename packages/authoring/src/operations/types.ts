@@ -469,6 +469,7 @@ export interface IAttachScriptOptions extends IAuthoringOperationContext {
   systemId: string;
   modulePath: string;
   exportName: string;
+  source?: "behavior-metadata";
 }
 
 export interface IBindUiOptions extends IAuthoringOperationContext {

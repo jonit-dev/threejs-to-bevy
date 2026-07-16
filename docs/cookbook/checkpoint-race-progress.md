@@ -2,6 +2,7 @@
 id: checkpoint-race-progress
 goal: Plan checkpoint race progress with the maintained vehicle recipe metadata.
 category: gameplay
+scriptPath: src/scripts/player.ts
 surfaces:
   - checkpoint
   - vehicle
@@ -26,6 +27,34 @@ tn recipe apply vehicle-checkpoint --scene arena --vehicle player --camera camer
 ## source-delta
 ```json
 {"recipe":"Apply is transactional, adopts existing vehicle/camera entities without replacing their authored pose, creates five ordered checkpoint gates, owns RaceState timer/progress/finish/retry fields, binds the retained HUD, emits completion and retry scenarios, scaffolds the required script export, and is a no-op when retried unchanged."}
+```
+
+## script
+```ts
+import { defineBehavior, type ScriptContext } from "@threenative/script-stdlib";
+
+export const vehicleCheckpointSystem = defineBehavior(
+  { schedule: "fixedUpdate", writes: ["Transform"] },
+  (context: ScriptContext): void => {
+    const vehicle = context.entity("player");
+    if (vehicle === undefined) return;
+    const initial = { nextCheckpoint: 0, progressText: "Checkpoint 0 / 5", time: 0 };
+    const race = context.resources.get("RaceState", initial);
+    if (context.input.pressed("retry")) {
+      vehicle.transform().setPosition([0, 0.35, 2]);
+      context.resources.patch("RaceState", initial);
+      return;
+    }
+    const position = vehicle.transform().position;
+    vehicle.transform().setPosition([
+      position[0] + context.input.axis("Steer") * 0.06,
+      position[1],
+      position[2] - context.input.axis("Throttle") * 0.1,
+    ]);
+    race.time += context.time.fixedDelta;
+    context.resources.patch("RaceState", race);
+  },
+);
 ```
 
 ## proof

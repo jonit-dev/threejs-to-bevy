@@ -86,10 +86,10 @@ test("should create starter template files", async () => {
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "structured-source-starter");
-    assert.equal(payload.startCommand, "pnpm run game:plan");
+    assert.equal(payload.startCommand, "pnpm run game:plan -- --goal \"<game idea>\"");
     assert.equal(payload.nextCommands.includes("pnpm run dev:web"), true);
     assert.equal(payload.nextCommands.includes("pnpm run iterate"), true);
-    assert.equal(payload.nextCommands.includes("pnpm run game:plan"), true);
+    assert.equal(payload.nextCommands.includes("pnpm run game:plan -- --goal \"<game idea>\""), true);
     assert.equal("planningInstructions" in payload, false);
     assert.equal("agentSkills" in payload, false);
     assert.equal("referenceDocs" in payload, false);
@@ -152,10 +152,13 @@ test("should create starter template files", async () => {
     assert.match(planningInstructions, /tn game release --project \. --json/);
     assert.match(claudeInstructions, /Use `AGENTS\.md`/);
     assert.match(codexSkill, /This skill is the compact front door/);
+    assert.match(codexSkill, /Load only this skill at the start/);
     assert.match(codexSkill, /Open\s+`AGENT_GAME_PLAN\.md` only if planning fails/);
-    assert.match(codexSkill, /pnpm tn -- iterate --project \. --json/);
+    assert.match(codexSkill, /tn iterate --project \. --json/);
+    assert.doesNotMatch(codexSkill, /pnpm tn --/);
     assert.match(codexSkill, /TN_GAME_PLAN_OFF_RECIPE/);
     assert.match(codexSkill, /core verbs.*acceptance criteria/i);
+    assert.ok(codexSkill.indexOf("nextInspectionCommand") < codexSkill.indexOf("custom-author"));
 
     const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as {
       dependencies: Record<string, string>;
@@ -169,7 +172,7 @@ test("should create starter template files", async () => {
     assert.equal(packageJson.scripts.iterate, "tn iterate --project . --json");
     assert.equal(packageJson.scripts.playtest, "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json");
     assert.equal(packageJson.scripts["playtest:archetype"], "tn playtest --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json");
-    assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
+    assert.equal(packageJson.scripts["game:plan"], "node bin/tn game plan --project . --json");
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
     assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");
@@ -285,8 +288,8 @@ test("should initialize starter project through init alias with create payload s
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.command, "init");
     assert.equal(payload.template, "structured-source-starter");
-    assert.equal(payload.startCommand, "pnpm run game:plan");
-    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan", "pnpm run iterate", "pnpm run dev:web"]);
+    assert.equal(payload.startCommand, "pnpm run game:plan -- --goal \"<game idea>\"");
+    assert.deepEqual(payload.nextCommands, ["pnpm install", "pnpm run game:plan -- --goal \"<game idea>\"", "pnpm run iterate", "pnpm run dev:web"]);
 
     const files = await readdir(payload.path);
     const planningInstructions = await readFile(join(payload.path, "AGENT_GAME_PLAN.md"), "utf8");
@@ -315,6 +318,8 @@ test("should emit workspace-safe install commands and typecheck a starter with a
     });
     assert.match(await readFile(join(payload.path, "src", "scripts", "player.ts"), "utf8"), /from "\.\/lib\/movement"/u);
     await access(join(payload.path, "src", "scripts", "lib", "movement.ts"));
+    const packageJson = JSON.parse(await readFile(join(payload.path, "package.json"), "utf8")) as { pnpm?: { overrides?: Record<string, string> } };
+    assert.match(packageJson.pnpm?.overrides?.["@threenative/script-stdlib"] ?? "", /^file:/u);
 
     const install = spawnSync("pnpm", ["install", "--ignore-workspace"], {
       cwd: payload.path,
@@ -322,7 +327,7 @@ test("should emit workspace-safe install commands and typecheck a starter with a
     });
     assert.equal(install.status, 0, `${install.stdout}\n${install.stderr}`);
     const typecheck = spawnSync("pnpm", ["run", "typecheck"], {
-      cwd: process.cwd(),
+      cwd: payload.path,
       encoding: "utf8",
     });
     assert.equal(typecheck.status, 0, `${typecheck.stdout}\n${typecheck.stderr}`);
@@ -483,7 +488,7 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.equal(result.exitCode, 0);
     assert.equal(payload.code, "TN_CREATE_OK");
     assert.equal(payload.template, "racing-kit-rally-starter");
-    assert.equal(payload.startCommand, "pnpm run game:plan");
+    assert.equal(payload.startCommand, "pnpm run game:plan -- --goal \"<game idea>\"");
 
     const config = JSON.parse(await readFile(join(payload.path, "threenative.config.json"), "utf8")) as {
       entry: string;
@@ -531,7 +536,7 @@ test("should create racing kit rally starter with reusable race scene structure"
     assert.match(planningInstructions, /High-Value Surface Inventory/);
     assert.match(planningInstructions, /tn model-test assets\/<model>\.glb --json/);
     assert.equal(packageJson.scripts.tn, "node bin/tn");
-    assert.match(packageJson.scripts["game:plan"] ?? "", /tn game plan --goal/);
+    assert.equal(packageJson.scripts["game:plan"], "node bin/tn game plan --project . --json");
     assert.equal(packageJson.scripts["game:improve"], "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json");
     assert.equal(packageJson.scripts["game:qa"], "tn game qa --project . --run-proof --json");
     assert.equal(packageJson.scripts["game:release"], "tn game release --project . --json");

@@ -25,6 +25,13 @@ export async function addCommand(argv: readonly string[]): Promise<ICommandResul
       { exitCode: 1, json, stderr: !json },
     );
   }
+  const invalidArgument = invalidBlockArgument(normalizedArgv.slice(1), block.flags);
+  if (invalidArgument !== undefined) {
+    return diagnosticResult(
+      { block: blockId, code: "TN_ADD_BLOCK_ARGUMENT_INVALID", message: invalidArgument },
+      { exitCode: 1, json, stderr: !json },
+    );
+  }
   const result = await block.write({
     args: normalizedArgv.slice(1),
     projectPath: resolveProjectPath(normalizedArgv),
@@ -33,4 +40,16 @@ export async function addCommand(argv: readonly string[]): Promise<ICommandResul
     exitCode: 0,
     stdout: json ? `${JSON.stringify(result, null, 2)}\n` : `${result.message}\nProof: ${result.proofCommand}\n`,
   };
+}
+
+function invalidBlockArgument(args: readonly string[], blockFlags: readonly string[]): string | undefined {
+  const allowed = new Set([...blockFlags, "--json", "--project"]);
+  for (let index = 0; index < args.length; index += 1) {
+    const argument = args[index]!;
+    if (!argument.startsWith("--")) continue;
+    if (!allowed.has(argument)) return `Unknown argument '${argument}'. Supported flags: ${blockFlags.join(", ") || "none"}.`;
+    if (argument !== "--json" && (args[index + 1] === undefined || args[index + 1]!.startsWith("--"))) return `Argument '${argument}' requires a value.`;
+    if (argument !== "--json") index += 1;
+  }
+  return undefined;
 }

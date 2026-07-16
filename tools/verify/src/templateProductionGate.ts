@@ -174,13 +174,22 @@ async function templateDiagnosticsFor(
       suggestedFix: "Change game:qa to 'tn game qa --project . --run-proof --json'.",
     });
   }
-  if (hasNonEmptyString(scripts["game:plan"]) && (scripts["game:plan"].includes(">") || !scripts["game:plan"].includes("tn game plan") || !scripts["game:plan"].includes("--json"))) {
+  if (hasNonEmptyString(scripts["game:plan"]) && (scripts["game:plan"].includes(">") || !scripts["game:plan"].includes("node bin/tn game plan") || !scripts["game:plan"].includes("--json"))) {
     diagnostics.push({
       code: "TN_TEMPLATE_PRODUCTION_PLAN_ARTIFACT_MISSING",
       message: `${templateName}: package script 'game:plan' must let tn game plan persist artifacts/game-production/plan.json without redirecting compact stdout.`,
       path: packagePath,
       severity: "error",
-      suggestedFix: "Run 'tn game plan --goal <goal> --project . --json'; the CLI writes artifacts/game-production/plan.json.",
+      suggestedFix: "Use 'node bin/tn game plan --project . --json'; the caller supplies --goal and the project-pinned CLI writes artifacts/game-production/plan.json.",
+    });
+  }
+  if (hasNonEmptyString(scripts["game:plan"]) && (scripts["game:plan"].includes("--goal") || scripts["game:plan"].includes("--apply"))) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_PRODUCTION_PLAN_ALIAS_FIXED",
+      message: `${templateName}: package script 'game:plan' must forward the caller's goal and remain non-mutating.`,
+      path: packagePath,
+      severity: "error",
+      suggestedFix: "Set game:plan to 'node bin/tn game plan --project . --json' and invoke it as 'pnpm run game:plan -- --goal \"<game idea>\"'.",
     });
   }
   if (hasNonEmptyString(scripts["game:improve"]) && !scripts["game:improve"].includes("artifacts/game-production/plan.json")) {
@@ -254,13 +263,13 @@ async function templateDiagnosticsFor(
       suggestedFix: "Document tn game providers, tn audio generate-sfx, project-local .env, and local/catalog/procedural offline fallback audio.",
     });
   }
-  if (!/pnpm run iterate[\s\S]{0,120}default repair loop/i.test(agentsDocText)) {
+  if (!/(?:tn iterate --project \. --json|pnpm run iterate)[\s\S]{0,160}default repair loop/i.test(agentsDocText)) {
     diagnostics.push({
       code: "TN_TEMPLATE_ITERATE_FIRST_MISSING",
-      message: `${templateName}: AGENTS.md must make pnpm run iterate the default repair loop after source/script/gameplay changes.`,
+      message: `${templateName}: AGENTS.md must make tn iterate the default repair loop after source/script/gameplay changes.`,
       path: agentsPath,
       severity: "error",
-      suggestedFix: "Move validate/build/playtest commands under focused fallback guidance and make pnpm run iterate the first post-edit loop.",
+      suggestedFix: "Move validate/build/playtest commands under focused fallback guidance and make tn iterate --project . --json the first post-edit loop.",
     });
   }
   if (!/compact\s+(?:playtest|stdout)/i.test(agentsDocText) || !/deep\s+logs/i.test(agentsDocText)) {

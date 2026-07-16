@@ -118,6 +118,17 @@ cost-weighted tokens, 24 tool steps, and nine failed commands exceed the session
 budget. The next bounded problem is reducing off-recipe portable-script and
 playtest repair cost, not adding a grid-puzzle scaffold.
 
+The fresh July 16 rerun completed the attempt across all 18 frozen slots.
+Sixteen sessions emitted authoritative final usage and every one exceeded the
+immutable 300,000 raw-token cap; two ThreeNative wave-defense attempts reached
+the 25-command hard stop without an authoritative final usage event. Five
+ThreeNative reports also missed complete equal-proof scoring. Manual review
+found recognizable nonblank WebGL games in every completed or capped candidate,
+but that is functional evidence, not admissible efficiency evidence. The clean
+aggregate verdict is `fail`, the matrix is incomplete, and no ratio or
+smoothness claim is made. See
+`tools/agent-benchmark/OFF-RECIPE-EFFICIENCY-RERUN.md`.
+
 ## Challenge 2: The System Has A Release Candidate, Not A Shipped Game
 
 `metro-surfer-heist` is locally release-ready and the deployment workflow

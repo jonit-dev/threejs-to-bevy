@@ -133,6 +133,7 @@ export type {
   IApplyAuthoringRecipeOptions,
   IAuthoringRecipeApplyResult,
   IAuthoringRecipeArgumentDescriptor,
+  IAuthoringRecipeComposition,
   IAuthoringRecipeDescriptor,
   IAuthoringRecipeOperation,
   IAuthoringRecipeOperationResult,

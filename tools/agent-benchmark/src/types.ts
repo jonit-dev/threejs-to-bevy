@@ -2,7 +2,7 @@ import { type IScreenshotCompositionMetrics } from "@threenative/cli/screenshotM
 
 export type BenchmarkCondition = "threenative" | "typed-spec" | "vanilla";
 export type BenchmarkPromptClass = "beyond-one-shot" | "continuity";
-export type BenchmarkStopReason = "claimed-playable" | "token-cap" | "operator-stopped" | "failed-setup";
+export type BenchmarkStopReason = "claimed-playable" | "token-cap" | "tool-cap" | "turn-completed" | "operator-stopped" | "failed-setup";
 
 export interface IBenchmarkDiagnostic {
   code: string;
@@ -58,10 +58,65 @@ export interface IBenchmarkProofResult {
   requiredAssertionIds: string[];
 }
 
+export type BenchmarkObservationAction =
+  | { code: string; kind: "key"; phase: "down" | "press" | "up" }
+  | { button?: number; kind: "pointer"; phase: "click" | "down" | "move" | "up"; x: number; y: number }
+  | { durationMs: number; kind: "wait" };
+
+export type BenchmarkObservationPhase = "active" | "enemy-turn" | "failure" | "player-turn" | "success";
+export type BenchmarkObservationCapturePhase = "after" | "before" | "idle";
+export type BenchmarkObservationRole = "base" | "defender" | "enemy" | "goal" | "grid" | "objective" | "player" | "pushable" | "unit" | "wall";
+export type BenchmarkObservationValue = boolean | number | string;
+
+export interface IBenchmarkBrowserObservationActor {
+  cell?: [number, number];
+  id: string;
+  position?: [number, number, number];
+  roles: BenchmarkObservationRole[];
+  selected?: boolean;
+  visible: boolean;
+}
+
+export interface IBenchmarkBrowserObservationSample {
+  action?: BenchmarkObservationAction;
+  actors: IBenchmarkBrowserObservationActor[];
+  checkpoint: string;
+  metrics: Record<string, BenchmarkObservationValue>;
+  phase: BenchmarkObservationCapturePhase;
+  sequence: number;
+  state: BenchmarkObservationPhase;
+  timestampMs: number;
+  visibility: {
+    actorIds: string[];
+    canvas?: {
+      frameSha256: string;
+      nonblank: boolean;
+      webgl: boolean;
+    };
+    metricIds: string[];
+    inputCorrelated: boolean;
+    phase: boolean;
+  };
+}
+
+export interface IBenchmarkBrowserObservationRoute {
+  id: string;
+  samples: IBenchmarkBrowserObservationSample[];
+}
+
+export interface IBenchmarkBrowserObservationTrace {
+  observationProtocolVersion: string;
+  promptId: string;
+  routes: IBenchmarkBrowserObservationRoute[];
+  schema: "threenative.agent-benchmark-observation-trace";
+  version: 1;
+}
+
 export interface IBenchmarkRunReport {
   artifacts: {
     afterScreenshot?: string;
     beforeScreenshot?: string;
+    observationTrace?: string;
   };
   candidate: string;
   condition: BenchmarkCondition;
@@ -132,6 +187,10 @@ export interface IBenchmarkReport {
     failedCommandMedian: {
       threenative: number | null;
       vanilla: number | null;
+    };
+    humanRubricMedian: {
+      threenative: { playability: number | null; visual: number | null };
+      vanilla: { playability: number | null; visual: number | null };
     };
     iterationMedian: {
       threenative: number | null;
@@ -209,10 +268,14 @@ export interface IBenchmarkReport {
     vanillaMedianUncachedInputTokens: number | null;
     withinHalfX: boolean | null;
     withinEqualProofTokenBudget: boolean | null;
+    withinCostWeightedTokenBudget: boolean | null;
+    withinChurnMedianBudget: boolean | null;
     withinFailedCommandBudget: boolean | null;
     withinInstructionAdoptionBudget: boolean | null;
     withinRepeatBudget: boolean;
+    withinPerRunBudget: boolean | null;
     withinRetryChainBudget: boolean | null;
+    withinRubricBudget: boolean | null;
     withinStepBudget: boolean | null;
   }>;
   runCount: number;

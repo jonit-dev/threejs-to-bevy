@@ -14,7 +14,7 @@ export function resolveProjectPath(argv: readonly string[]): string {
 }
 
 export function readFlag(argv: readonly string[], flag: string): string | undefined {
-  const index = argv.indexOf(flag);
+  const index = argv.lastIndexOf(flag);
   if (index === -1) {
     return undefined;
   }

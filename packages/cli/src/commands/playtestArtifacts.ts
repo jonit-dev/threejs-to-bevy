@@ -25,6 +25,7 @@ export interface IPlaytestArtifactBundle {
 }
 
 export interface IPlaytestSummary {
+  acceptanceId?: string;
   after?: IPlaytestReport["after"];
   artifact?: string;
   artifacts: IPlaytestArtifactBundle;
@@ -76,6 +77,7 @@ export interface IPlaytestIterateAssertionSummary {
 }
 
 export interface IPlaytestIterateSummary {
+  acceptanceId?: string;
   artifact?: string;
   assertions: IPlaytestIterateAssertionSummary[];
   diagnostics: Array<{ code: string; message: string; severity?: string; suggestion?: string }>;
@@ -143,6 +145,7 @@ export async function writePlaytestArtifactBundle(options: {
   options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
   const { artifacts: summaryArtifacts, missingArtifacts } = await existingArtifacts(artifacts, Date.now() - options.durationMs - 1_000);
   const summary: IPlaytestSummary = {
+    ...(options.scenario.acceptanceId === undefined ? {} : { acceptanceId: options.scenario.acceptanceId }),
     ...(options.report.after === undefined ? {} : { after: options.report.after }),
     ...((options.report.artifact ?? summaryArtifacts.afterScreenshot) === undefined
       ? {}
@@ -318,6 +321,7 @@ export async function readPlaytestSummary(path: string): Promise<IPlaytestSummar
 
 export function summarizePlaytestForIterate(summary: IPlaytestSummary, byteBudget = 2048): IPlaytestIterateSummary {
   const payload: IPlaytestIterateSummary = {
+    ...(summary.acceptanceId === undefined ? {} : { acceptanceId: summary.acceptanceId }),
     ...(summary.pass ? {} : { artifact: summary.artifacts.summary }),
     assertions: summary.assertions
       .filter((assertion) => !assertion.pass)
@@ -402,6 +406,7 @@ function enforceIterateBudget(summary: IPlaytestIterateSummary, byteBudget: numb
     return candidate;
   }
   return {
+    ...(candidate.acceptanceId === undefined ? {} : { acceptanceId: candidate.acceptanceId }),
     artifact: candidate.artifact,
     assertions: candidate.assertions.slice(0, 1).map((assertion) => ({ id: assertion.id, pass: assertion.pass })),
     diagnostics: [],

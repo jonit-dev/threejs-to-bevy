@@ -112,6 +112,7 @@ export function createWebSystemRuntimeState(
     audio: options.audio,
     countdowns: createCountdownRuntimeState(),
     delayedCommands: [] as IWebDelayedCommand[],
+    inputEdges: createInputEdgeRuntimeState(),
     particles: new ParticleRuntimeController(options.assets),
     random: createDeterministicRandom(seed),
     randomSeedKey: runtimeSeedKey(seed),
@@ -125,6 +126,20 @@ export function createWebSystemRuntimeState(
   };
   recordInitialRuntimeWrites(world, runtimeState.writeLedger);
   return runtimeState;
+}
+
+function createInputEdgeRuntimeState() {
+  const observations = new Map<string, { frame: number; tick: number }>();
+  return {
+    read(kind: "pressed" | "released", name: string, frame: number, tick: number, active: boolean): boolean {
+      if (!active) return false;
+      const key = `${kind}:${name}`;
+      const observed = observations.get(key);
+      if (observed?.frame === frame) return observed.tick === tick;
+      observations.set(key, { frame, tick });
+      return true;
+    },
+  };
 }
 
 export interface IWebEntityLifecycleRuntimeState {
@@ -271,7 +286,7 @@ export function webSystemRuntimeStateFor(
 
 export function createSystemContext(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IScriptSystemQuery; delayedCommands?: IIrSystemDeclaration["delayedCommands"]; delta: number; elapsed?: number; fixedDelta: number; input?: IWebInputState; localData?: ILocalDataIr; mappedObjects?: ReadonlyMap<string, import("three").Object3D>; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; schedule?: IIrSystemDeclaration["schedule"]; systemName?: string; systems?: ISystemsIr; tick?: number; ui?: IUiIr; uiState?: IRenderedUi },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; componentDiff?: IComponentDiffCache; componentSchemas?: IIrSchemaFile; currentScene?: string | null; defaultQuery?: IScriptSystemQuery; delayedCommands?: IIrSystemDeclaration["delayedCommands"]; delta: number; elapsed?: number; fixedDelta: number; frame?: number; input?: IWebInputState; localData?: ILocalDataIr; mappedObjects?: ReadonlyMap<string, import("three").Object3D>; paused?: boolean; persistence?: IWebPersistenceService; prefabs?: IPrefabsIr; resourceObserver?: (observation: Omit<IResourceObservation, "frame" | "schedule" | "system" | "tick">) => void; runtimeState?: ReturnType<typeof createWebSystemRuntimeState>; schedule?: IIrSystemDeclaration["schedule"]; systemName?: string; systems?: ISystemsIr; tick?: number; ui?: IUiIr; uiState?: IRenderedUi },
 ): {
   commands: IQueuedCommand[];
   context: ISystemContext;
@@ -304,6 +319,11 @@ export function createSystemContext(
     systemName: options.systemName ?? "",
     tick: options.tick ?? 0,
   });
+  const inputEdge = (kind: "pressed" | "released", name: string): boolean => {
+    const active = kind === "pressed" ? options.input?.pressed(name) ?? false : options.input?.released(name) ?? false;
+    return options.runtimeState?.inputEdges.read(kind, name, options.frame ?? 0, options.tick ?? 0, active) ?? active;
+  };
+  const entityViews = new Map<string, ISystemEntityView>();
   const currentResourceValue = (resource: string): unknown => {
     for (let index = resources.length - 1; index >= 0; index -= 1) {
       const pending = resources[index];
@@ -315,7 +335,12 @@ export function createSystemContext(
   };
   const findEntity = (id: string): ISystemEntityView | undefined => {
     const entity = world.entities.find((candidate) => candidate.id === id);
-    return entity === undefined ? undefined : createEntityView(entity, commands);
+    if (entity === undefined) return undefined;
+    const existing = entityViews.get(entity.id);
+    if (existing !== undefined) return existing;
+    const view = createEntityView(entity, commands);
+    entityViews.set(entity.id, view);
+    return view;
   };
   const queuePhysicsBodyCommand = (
     service: "physics.addForce" | "physics.addTorque" | "physics.applyAngularImpulse" | "physics.applyImpulse" | "physics.setAngularVelocity" | "physics.setLinearVelocity",
@@ -607,16 +632,16 @@ export function createSystemContext(
           return options.input?.action(name) ?? false;
         },
         getButtonDown(name) {
-          return options.input?.pressed(name) ?? false;
+          return inputEdge("pressed", name);
         },
         getButtonUp(name) {
-          return options.input?.released(name) ?? false;
+          return inputEdge("released", name);
         },
         pressed(name) {
-          return options.input?.pressed(name) ?? false;
+          return inputEdge("pressed", name);
         },
         released(name) {
-          return options.input?.released(name) ?? false;
+          return inputEdge("released", name);
         },
       },
       entities: {
@@ -639,7 +664,8 @@ export function createSystemContext(
           return world.entities
             .filter((entity) => normalizeEntityTags(entity.tags).includes(tag))
             .sort((left, right) => left.id.localeCompare(right.id))
-            .map((entity) => createEntityView(entity, commands));
+            .map((entity) => findEntity(entity.id))
+            .filter((entity): entity is ISystemEntityView => entity !== undefined);
         },
       },
       entity(id) {
@@ -753,7 +779,8 @@ export function createSystemContext(
       query(query = options.defaultQuery ?? { with: [], without: [] }) {
         diagnoseUnknownQueryComponents(query, knownComponents, emittedQueryDiagnostics, options.systemName ?? "", diagnostics);
         return applyQueryWindow(world.entities.filter((entity) => matchesQuery(world, entity, query, options.componentDiff)), query)
-          .map((entity) => createEntityView(entity, commands));
+          .map((entity) => findEntity(entity.id))
+          .filter((entity): entity is ISystemEntityView => entity !== undefined);
       },
       random,
       scenes: {
@@ -1213,13 +1240,25 @@ function assetById(assets: IAssetsManifest | undefined, id: string): IAssetsMani
 }
 
 function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISystemEntityView {
-  const components = deepFreeze(cloneValue(entity.components)) as IWorldEntity["components"];
+  const pendingComponents = cloneValue(entity.components) as IWorldEntity["components"];
+  const components = new Proxy({} as IWorldEntity["components"], {
+    defineProperty: () => false,
+    deleteProperty: () => false,
+    get: (_target, property) => typeof property === "string" ? deepFreeze(cloneValue(pendingComponents[property])) : undefined,
+    getOwnPropertyDescriptor: (_target, property) => typeof property === "string" && property in pendingComponents
+      ? { configurable: true, enumerable: true, value: deepFreeze(cloneValue(pendingComponents[property])), writable: false }
+      : undefined,
+    has: (_target, property) => typeof property === "string" && property in pendingComponents,
+    ownKeys: () => Reflect.ownKeys(pendingComponents),
+    set: () => false,
+  });
   const tags = normalizeEntityTags(entity.tags);
   const queueTransformPatch = (value: Record<string, unknown>) => {
     const transform = fullTransform({
-      ...(isRecord(components.Transform) ? components.Transform : {}),
+      ...(isRecord(pendingComponents.Transform) ? pendingComponents.Transform : {}),
       ...cloneValue(value),
     });
+    pendingComponents.Transform = transform;
     commands.push({
       component: "Transform",
       entity: entity.id,
@@ -1231,7 +1270,7 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
   return {
     components,
     get<T = unknown>(component: unknown, defaults?: Record<string, unknown>): T {
-      const value = components[normalizeHandleName(component)];
+      const value = pendingComponents[normalizeHandleName(component)];
       if (defaults !== undefined && isRecord(defaults)) {
         return {
           ...cloneValue(defaults) as Record<string, unknown>,
@@ -1241,37 +1280,41 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
       return cloneValue(value) as T;
     },
     has(component: unknown): boolean {
-      return components[normalizeHandleName(component)] !== undefined;
+      return pendingComponents[normalizeHandleName(component)] !== undefined;
     },
     id: entity.id,
     patch(component: unknown, value: Record<string, unknown>): void {
       const componentName = normalizeHandleName(component);
-      const existing = components[componentName];
+      const existing = pendingComponents[componentName];
+      const next = {
+        ...(isRecord(existing) ? existing : {}),
+        ...cloneValue(value),
+      };
+      pendingComponents[componentName] = next;
       commands.push({
         component: componentName,
         entity: entity.id,
         kind: "setComponent",
         source: "entity",
-        value: {
-          ...(isRecord(existing) ? existing : {}),
-          ...cloneValue(value),
-        },
+        value: cloneValue(next),
       });
     },
     set(component: unknown, value: unknown): void {
-      commands.push({ component: normalizeHandleName(component), entity: entity.id, kind: "setComponent", source: "entity", value: cloneValue(value) });
+      const componentName = normalizeHandleName(component);
+      pendingComponents[componentName] = cloneValue(value);
+      commands.push({ component: componentName, entity: entity.id, kind: "setComponent", source: "entity", value: cloneValue(value) });
     },
     tags,
     transform(): ISystemTransformFacade {
       return {
         get position() {
-          return vec3((isRecord(components.Transform) ? components.Transform.position : undefined), [0, 0, 0]);
+          return vec3((isRecord(pendingComponents.Transform) ? pendingComponents.Transform.position : undefined), [0, 0, 0]);
         },
         set position(position) {
           queueTransformPatch({ position: vec3(position, [0, 0, 0]) });
         },
         positionOr(fallback) {
-          return vec3((isRecord(components.Transform) ? components.Transform.position : undefined), fallback);
+          return vec3((isRecord(pendingComponents.Transform) ? pendingComponents.Transform.position : undefined), fallback);
         },
         setPose(position, rotation) {
           queueTransformPatch({ position: vec3(position, [0, 0, 0]), rotation: quat(rotation, [0, 0, 0, 1]) });
@@ -1283,7 +1326,7 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
           queueTransformPatch({ rotation: quat(rotation, [0, 0, 0, 1]) });
         },
         yawOr(fallback) {
-          return yawFromQuat((isRecord(components.Transform) ? components.Transform.rotation : undefined), fallback);
+          return yawFromQuat((isRecord(pendingComponents.Transform) ? pendingComponents.Transform.rotation : undefined), fallback);
         },
       };
     },

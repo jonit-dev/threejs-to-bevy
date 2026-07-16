@@ -14,7 +14,8 @@ export const movePlayerToGoal = defineBehavior(
       const position = transform.position;
       const direction = context.input.getAxis("MoveX");
       const delta = context.time.fixedDelta;
-      transform.position = Vector3.add(position, movementDelta(direction, delta));
+      const nextPosition = Vector3.add(position, movementDelta(direction, delta));
+      transform.position = [nextPosition[0], nextPosition[1], nextPosition[2]];
     }
   },
 );

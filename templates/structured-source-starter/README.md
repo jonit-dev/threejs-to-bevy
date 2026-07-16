@@ -37,7 +37,7 @@ pnpm run types
 pnpm run typecheck
 pnpm run build
 pnpm run iterate
-pnpm run game:plan
+pnpm run game:plan -- --goal "<game idea>"
 pnpm run game:improve
 pnpm run recipe:controller
 pnpm run playtest

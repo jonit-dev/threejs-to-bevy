@@ -1,0 +1,37 @@
+{
+  "schema": "threenative.scripting-context-trace",
+  "version": "0.1.0",
+  "entity": {
+    "id": "player",
+    "components": {
+      "Transform": {
+        "position": [0, 1, 0],
+        "rotation": [0, 0, 0, 1],
+        "scale": [1, 1, 1]
+      },
+      "PlayerState": {
+        "hp": 3,
+        "status": "ready"
+      }
+    }
+  },
+  "operations": [
+    { "type": "transform.setPosition", "value": [2, 3, 4] },
+    { "type": "component.patch", "component": "PlayerState", "value": { "hp": 2 } },
+    { "type": "component.patch", "component": "PlayerState", "value": { "status": "moving" } }
+  ],
+  "expected": {
+    "positionReads": [[0, 1, 0], [2, 3, 4]],
+    "componentReads": [
+      { "hp": 3, "status": "ready" },
+      { "hp": 2, "status": "ready" },
+      { "hp": 2, "status": "moving" }
+    ],
+    "effectOrder": ["Transform", "PlayerState", "PlayerState"],
+    "inputTicks": [
+      { "action": true, "pressed": true, "released": false },
+      { "action": true, "pressed": false, "released": false },
+      { "action": false, "pressed": false, "released": true }
+    ]
+  }
+}

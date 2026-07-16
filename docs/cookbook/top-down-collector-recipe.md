@@ -72,3 +72,7 @@ tn authoring validate --project . --json
 tn build --project . --json
 tn iterate --project . --scenario playtests/top-down-collector.playtest.json --json
 ```
+
+The generic `pickup` scaffold proves the observable pickup effect through
+movement plus resource and HUD changes. Add a separate contact assertion only
+when the authored mechanic exposes contact events as part of its contract.

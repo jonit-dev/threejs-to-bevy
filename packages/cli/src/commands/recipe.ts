@@ -3,18 +3,23 @@ import {
   getAuthoringOperationDescriptor,
   hashAuthoringTransactionBytes,
   listAuthoringRecipeIds,
+  loadAuthoringProject,
   planAuthoringRecipe,
   publishAuthoringTransaction,
   type IAuthoringRecipeApplyResult,
   type IAuthoringRecipePlanResult,
 } from "@threenative/authoring";
 import { randomUUID } from "node:crypto";
-import { access, copyFile, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, copyFile, cp, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
 import { buildGameTaskGraph } from "../game/taskGraph.js";
+import { mechanicRecipeBlockIds, mechanicRecipeCompositions } from "../mechanicBlocks/descriptors.js";
+import { removeSpatialMechanicComposition, writeSpatialMechanicBlock } from "../mechanicBlocks/spatial.js";
+
+const recipeCompositions = mechanicRecipeCompositions();
 
 interface IRecipeCommandOptions {
   cwd?: string;
@@ -23,7 +28,8 @@ interface IRecipeCommandOptions {
 export async function recipeCommand(argv: readonly string[], options: IRecipeCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const positionals = readPositionals(normalizedArgv);
-  const recipeId = positionals[0] === "apply" ? positionals[1] : positionals[0];
+  const action = positionals[0] === "apply" || positionals[0] === "remove" ? positionals[0] : "apply";
+  const recipeId = positionals[0] === "apply" || positionals[0] === "remove" ? positionals[1] : positionals[0];
   const json = normalizedArgv.includes("--json");
   const fullJson = normalizedArgv.includes("--full-json");
   const dryRun = normalizedArgv.includes("--dry-run");
@@ -32,10 +38,16 @@ export async function recipeCommand(argv: readonly string[], options: IRecipeCom
   if (recipeId === undefined) {
     return renderUsage(json, "TN_RECIPE_ARGS_MISSING");
   }
+  if (action === "remove") {
+    if (mechanicRecipeBlockIds(recipeId).length === 0) return renderUsage(json, "TN_RECIPE_REMOVE_UNSUPPORTED");
+    const removed = await removeSpatialMechanicComposition(projectPath);
+    const payload = { ...removed, message: removed.ok ? "Spatial grid objective recipe removed." : "Spatial grid objective recipe removal failed.", recipeId };
+    return { exitCode: removed.ok ? 0 : 1, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
+  }
 
   const args = recipeArgs(normalizedArgv);
   if (dryRun) {
-    const plan = planAuthoringRecipe({ args, projectPath, recipeId });
+    const plan = planAuthoringRecipe({ args, projectPath, recipeCompositions, recipeId });
     return renderRecipePlan(plan, json);
   }
 
@@ -43,11 +55,12 @@ export async function recipeCommand(argv: readonly string[], options: IRecipeCom
   if (result.ok) {
     await persistGameTaskGraph(projectPath);
   }
-  return renderRecipeApply(result, json, fullJson);
+  const proofHandoff = result.ok ? await readPlanProofHandoff(projectPath) : undefined;
+  return renderRecipeApply(result, json, fullJson, proofHandoff);
 }
 
 async function applyRecipeTransaction(recipeId: string, args: Record<string, unknown>, projectPath: string): Promise<IAuthoringRecipeApplyResult> {
-  const preflight = planAuthoringRecipe({ args, projectPath, recipeId });
+  const preflight = planAuthoringRecipe({ args, projectPath, recipeCompositions, recipeId });
   if (!preflight.ok) {
     return { ...preflight, changed: false, filesWritten: [], operationResults: [] };
   }
@@ -55,11 +68,31 @@ async function applyRecipeTransaction(recipeId: string, args: Record<string, unk
   const stagedProjectPath = join(transactionRoot, "project");
   try {
     await stageRecipeSources(projectPath, stagedProjectPath, preflight);
+    const mechanicBlocks = mechanicRecipeBlockIds(recipeId);
+    if (mechanicBlocks.length > 0) {
+      await stageSpatialRecipeSources(projectPath, stagedProjectPath);
+    }
+    const replacedLegacyFiles = recipeId === "vehicle-checkpoint"
+      ? await removeVehicleCheckpointLegacySystems(stagedProjectPath, stringArg(args, "sceneId") ?? "arena")
+      : [];
     const scaffoldedScript = await scaffoldRecipeScript(recipeId, args, stagedProjectPath);
-    const result = await applyAuthoringRecipe({ args, projectPath: stagedProjectPath, recipeId });
+    const recipeArgsWithProvenance = await recipeArgsWithBehaviorProvenance(args, preflight, stagedProjectPath);
+    const result = await applyAuthoringRecipe({ args: recipeArgsWithProvenance, projectPath: stagedProjectPath, recipeCompositions, recipeId });
+    if (result.ok && mechanicBlocks.length > 0) {
+      const spatialResults = [];
+      for (const block of mechanicBlocks) {
+        spatialResults.push(await writeSpatialMechanicBlock(block, { args: [], projectPath: stagedProjectPath }));
+      }
+      result.changed = true;
+      result.filesWritten = Array.from(new Set(spatialResults.flatMap((entry) => entry.filesWritten))).sort();
+    }
     if (result.ok && scaffoldedScript !== undefined) {
       result.changed = true;
       result.filesWritten = Array.from(new Set([...result.filesWritten, scaffoldedScript])).sort();
+    }
+    if (result.ok && replacedLegacyFiles.length > 0) {
+      result.changed = true;
+      result.filesWritten = Array.from(new Set([...result.filesWritten, ...replacedLegacyFiles])).sort();
     }
     await scaffoldProofRecipe(result, stagedProjectPath);
     await scaffoldVehicleCheckpointArtifacts(result, args, stagedProjectPath);
@@ -79,8 +112,17 @@ async function applyRecipeTransaction(recipeId: string, args: Record<string, unk
   }
 }
 
+async function stageSpatialRecipeSources(projectPath: string, stagedProjectPath: string): Promise<void> {
+  for (const path of ["content/scenes", "content/input", "content/systems", "content/ui", "content/mechanics", "src/scripts", "playtests"]) {
+    await cp(resolve(projectPath, path), resolve(stagedProjectPath, path), { force: true, recursive: true }).catch((error: unknown) => {
+      if (!isMissingPathError(error)) throw error;
+    });
+  }
+}
+
 async function stageRecipeSources(projectPath: string, stagedProjectPath: string, plan: IAuthoringRecipePlanResult): Promise<void> {
   await mkdir(stagedProjectPath, { recursive: true });
+  const project = await loadAuthoringProject({ projectPath });
   const operationTargets = await Promise.all(plan.operations.map(async (operation) => {
     const descriptor = getAuthoringOperationDescriptor(operation.name);
     return descriptor === undefined ? [] : descriptor.targetResolver({ args: operation.args, projectPath });
@@ -93,6 +135,7 @@ async function stageRecipeSources(projectPath: string, stagedProjectPath: string
     : undefined;
   const vehicleUiPath = plan.recipeId === "vehicle-checkpoint" ? "content/ui/hud.ui.json" : undefined;
   const paths = [...new Set([
+    ...project.documents.map((document) => document.projectRelativePath),
     ...operationTargets.flat(),
     ...(modulePath === undefined ? [] : [modulePath]),
     ...(proofPath === undefined ? [] : [proofPath]),
@@ -107,6 +150,24 @@ async function stageRecipeSources(projectPath: string, stagedProjectPath: string
       if (!isMissingPathError(error)) throw error;
     });
   }
+  await cp(resolve(projectPath, "src/scripts"), resolve(stagedProjectPath, "src/scripts"), { force: true, recursive: true }).catch((error: unknown) => {
+    if (!isMissingPathError(error)) throw error;
+  });
+}
+
+async function recipeArgsWithBehaviorProvenance(
+  args: Record<string, unknown>,
+  plan: IAuthoringRecipePlanResult,
+  projectPath: string,
+): Promise<Record<string, unknown>> {
+  const scriptOperation = plan.operations.find((operation) => operation.name === "scene.attach_script");
+  const modulePath = stringArg(scriptOperation?.args ?? {}, "modulePath");
+  const exportName = stringArg(scriptOperation?.args ?? {}, "exportName");
+  if (modulePath === undefined || exportName === undefined) return args;
+  const source = await readFile(resolve(projectPath, modulePath), "utf8").catch(() => undefined);
+  return source !== undefined && hasBehaviorExport(source, exportName)
+    ? { ...args, systemSource: "behavior-metadata" }
+    : args;
 }
 
 async function publishRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]) {
@@ -135,7 +196,7 @@ async function persistGameTaskGraph(projectPath: string): Promise<void> {
 }
 
 async function scaffoldRecipeScript(recipeId: string, args: Record<string, unknown>, projectPath: string): Promise<string | undefined> {
-  const recipePlan = planAuthoringRecipe({ args, projectPath, recipeId });
+  const recipePlan = planAuthoringRecipe({ args, projectPath, recipeCompositions, recipeId });
   const scriptOperation = recipePlan.operations.find((operation) => operation.name === "scene.attach_script");
   const modulePath = stringArg(scriptOperation?.args ?? {}, "modulePath");
   const exportName = stringArg(scriptOperation?.args ?? {}, "exportName");
@@ -167,10 +228,16 @@ async function scaffoldRecipeScript(recipeId: string, args: Record<string, unkno
 }
 
 function recipeScriptSource(recipeId: string, exportName: string, responsibilities: readonly string[], args: Record<string, unknown>): string {
-  const metadata = recipeId === "top-down-collector" || recipeId === "kinematic-character" || recipeId === "lane-runner"
+  const metadata = recipeId === "vehicle-checkpoint"
+    ? `{ schedule: "fixedUpdate", reads: ["Transform"], resourceReads: ["RaceState"], resourceWrites: ["RaceState"], writes: ["Transform"] }`
+    : recipeId === "top-down-collector"
+    ? `{ schedule: "fixedUpdate", reads: ["Transform"], resourceReads: ["GameState"], resourceWrites: ["GameState"], writes: ["Transform"] }`
+    : recipeId === "kinematic-character" || recipeId === "lane-runner"
     ? `{ schedule: "fixedUpdate", reads: ["Transform"], writes: ["Transform"] }`
     : `{ schedule: "fixedUpdate" }`;
   const vehicleId = stringArg(args, "vehicleId") ?? "player";
+  const playerId = stringArg(args, "playerId") ?? "player";
+  const goalId = stringArg(args, "goalId") ?? "coin.01";
   const body = recipeId === "vehicle-checkpoint"
     ? `  const vehicle = context.entity(${JSON.stringify(vehicleId)});
   if (vehicle === undefined) return;
@@ -196,7 +263,28 @@ function recipeScriptSource(recipeId: string, exportName: string, responsibiliti
   race.timeText = \`Time \${race.time.toFixed(1)}s\`;
   race.statusText = race.finished ? \`FINISH! \${race.timeText} - R/ENTER: RETRY\` : \`NEXT GATE \${race.nextCheckpoint + 1} - R/ENTER: RETRY\`;
   context.resources.patch("RaceState", race);`
-    : recipeId === "top-down-collector" || recipeId === "kinematic-character"
+    : recipeId === "top-down-collector"
+    ? `  const player = context.entity(${JSON.stringify(playerId)});
+  const pickup = context.entity(${JSON.stringify(goalId)});
+  if (player === undefined || pickup === undefined) return;
+  const moveX = context.input.axis("MoveX");
+  const moveZ = context.input.axis("MoveZ");
+  if (moveX !== 0 || moveZ !== 0) {
+    const position = player.transform().position;
+    player.transform().setPosition([position[0] + moveX * 0.05, position[1], position[2] + moveZ * 0.05]);
+  }
+  const playerPosition = player.transform().position;
+  const pickupPosition = pickup.transform().position;
+  const dx = playerPosition[0] - pickupPosition[0];
+  const dz = playerPosition[2] - pickupPosition[2];
+  const pickupState = context.state(${JSON.stringify(`pickup.${goalId}`)}, { collected: false });
+  if (!pickupState.collected && dx * dx + dz * dz < 0.36) {
+    pickupState.collected = true;
+    const state = context.resources.get("GameState", { score: 0, scoreText: "Score 0" });
+    const score = typeof state.score === "number" ? state.score + 1 : 1;
+    context.resources.patch("GameState", { score, scoreText: \`Score \${score}\` });
+  }`
+    : recipeId === "kinematic-character"
     ? `  const moveX = context.input.axis("MoveX");
   const moveZ = context.input.axis("MoveZ");
   const actor = context.query({ with: ["Transform"] })[0];
@@ -263,17 +351,11 @@ async function scaffoldProofRecipe(result: IAuthoringRecipeApplyResult, projectP
 async function scaffoldVehicleCheckpointArtifacts(result: IAuthoringRecipeApplyResult, args: Record<string, unknown>, projectPath: string): Promise<void> {
   if (!result.ok || result.recipeId !== "vehicle-checkpoint") return;
   const sceneId = stringArg(args, "sceneId") ?? "arena";
-  const scenePath = `content/scenes/${sceneId}.scene.json`;
-  const systemsPath = `content/systems/${sceneId}.systems.json`;
+  const project = await loadAuthoringProject({ projectPath });
+  const scenePath = project.documents.find((document) => document.kind === "scene" && isRecord(document.data) && document.data.id === sceneId)?.projectRelativePath;
+  if (scenePath === undefined) return;
   const uiPath = "content/ui/hud.ui.json";
-  const scene = await readJsonObject(resolve(projectPath, scenePath));
-  scene.systems = recordArray(scene.systems).filter((system) => system.id !== "move-player-to-goal");
-  await writeJson(resolve(projectPath, scenePath), scene);
-  if (await pathExists(resolve(projectPath, systemsPath))) {
-    const systems = await readJsonObject(resolve(projectPath, systemsPath));
-    systems.systems = recordArray(systems.systems).filter((system) => system.id !== "move-player-to-goal");
-    await writeJson(resolve(projectPath, systemsPath), systems);
-  }
+  const vehicleId = stringArg(args, "vehicleId") ?? "player";
   const ui = await pathExists(resolve(projectPath, uiPath))
     ? await readJsonObject(resolve(projectPath, uiPath))
     : { bindings: [], id: "hud", nodes: [], schema: "threenative.ui", version: "0.1.0" };
@@ -290,17 +372,32 @@ async function scaffoldVehicleCheckpointArtifacts(result: IAuthoringRecipeApplyR
   await writeJson(resolve(projectPath, uiPath), ui);
   const scenarioPath = "playtests/vehicle-checkpoint.playtest.json";
   const retryScenarioPath = "playtests/vehicle-checkpoint-retry.playtest.json";
-  await writeJson(resolve(projectPath, scenarioPath), vehicleCheckpointScenario(stringArg(args, "vehicleId") ?? "player"));
-  await writeJson(resolve(projectPath, retryScenarioPath), vehicleCheckpointRetryScenario(stringArg(args, "vehicleId") ?? "player"));
+  await writeJson(resolve(projectPath, scenarioPath), vehicleCheckpointScenario(vehicleId));
+  await writeJson(resolve(projectPath, retryScenarioPath), vehicleCheckpointRetryScenario(vehicleId));
   result.changed = true;
   result.filesWritten = Array.from(new Set([
     ...result.filesWritten,
     scenePath,
-    ...(await pathExists(resolve(projectPath, systemsPath)) ? [systemsPath] : []),
     uiPath,
     scenarioPath,
     retryScenarioPath,
   ])).sort();
+}
+
+async function removeVehicleCheckpointLegacySystems(projectPath: string, sceneId: string): Promise<string[]> {
+  const project = await loadAuthoringProject({ projectPath });
+  const changedPaths: string[] = [];
+  for (const document of project.documents.filter((candidate) => candidate.kind === "scene" || candidate.kind === "systems")) {
+    if (document.kind === "scene" && (!isRecord(document.data) || document.data.id !== sceneId)) continue;
+    const systems = isRecord(document.data) ? recordArray(document.data.systems) : [];
+    const filtered = systems.filter((system) => system.id !== "move-player-to-goal");
+    if (filtered.length === systems.length) continue;
+    const data = await readJsonObject(resolve(projectPath, document.projectRelativePath));
+    data.systems = filtered;
+    await writeJson(resolve(projectPath, document.projectRelativePath), data);
+    changedPaths.push(document.projectRelativePath);
+  }
+  return changedPaths.sort();
 }
 
 function upsertUiText(nodes: Record<string, unknown>[], id: string, text: string, top: number): void {
@@ -334,7 +431,8 @@ function vehicleCheckpointScenario(vehicleId: string): Record<string, unknown> {
     },
     name: "vehicle-checkpoint",
     schemaVersion: 1,
-    steps: [{ holdFrames: 70, label: "drive-through-ordered-gates", press: "KeyW", release: true }],
+    setup: { entities: [{ entity: vehicleId, position: [0, 0.35, 2] }] },
+    steps: [{ holdFrames: 110, label: "drive-through-ordered-gates", press: "KeyW", release: true }],
     subject: vehicleId,
     target: "web",
     viewport: { height: 720, width: 1280 },
@@ -357,10 +455,11 @@ function vehicleCheckpointRetryScenario(vehicleId: string): Record<string, unkno
     name: "vehicle-checkpoint-retry",
     schemaVersion: 1,
     steps: [
-      { holdFrames: 70, label: "finish-before-retry", press: "KeyW", release: true },
+      { holdFrames: 110, label: "finish-before-retry", press: "KeyW", release: true },
       { holdFrames: 1, label: "retry", press: "KeyR", release: true },
       { label: "observe-reset", release: false, waitFrames: 3 },
     ],
+    setup: { entities: [{ entity: vehicleId, position: [0, 0.35, 2] }] },
     subject: vehicleId,
     target: "web",
     viewport: { height: 720, width: 1280 },
@@ -371,6 +470,11 @@ function vehicleCheckpointRetryScenario(vehicleId: string): Record<string, unkno
 function hasNamedExport(source: string, exportName: string): boolean {
   const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
   return new RegExp(`\\bexport\\s+(?:async\\s+)?(?:function|const|let|var|class)\\s+${escaped}\\b`, "u").test(source);
+}
+
+function hasBehaviorExport(source: string, exportName: string): boolean {
+  const escaped = exportName.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+  return new RegExp(`\\bexport\\s+const\\s+${escaped}\\s*=\\s*defineBehavior\\b`, "u").test(source);
 }
 
 async function changedRecipeFiles(stagedProjectPath: string, projectPath: string, files: readonly string[]): Promise<string[]> {
@@ -411,11 +515,42 @@ function renderRecipePlan(plan: IAuthoringRecipePlanResult, json: boolean): ICom
   };
 }
 
-function renderRecipeApply(result: IAuthoringRecipeApplyResult, json: boolean, fullJson: boolean): ICommandResult {
+interface IRecipeProofHandoff {
+  nextProofCommand: string;
+  planFound: boolean;
+  requiredAcceptanceIds: string[];
+}
+
+async function readPlanProofHandoff(projectPath: string): Promise<IRecipeProofHandoff> {
+  const nextProofCommand = "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json";
+  let value: unknown = {};
+  try {
+    value = JSON.parse(await readFile(resolve(projectPath, "artifacts/game-production/plan.json"), "utf8")) as unknown;
+  } catch {
+    value = {};
+  }
+  const requiredAcceptanceIds = isRecord(value) && isRecord(value.intentContract) && Array.isArray(value.intentContract.acceptanceAssertions)
+    ? value.intentContract.acceptanceAssertions
+      .filter((assertion): assertion is Record<string, unknown> => isRecord(assertion) && assertion.required === true && typeof assertion.id === "string")
+      .map((assertion) => String(assertion.id))
+    : [];
+  return { nextProofCommand, planFound: requiredAcceptanceIds.length > 0, requiredAcceptanceIds };
+}
+
+function renderRecipeApply(result: IAuthoringRecipeApplyResult, json: boolean, fullJson: boolean, proofHandoff?: IRecipeProofHandoff): ICommandResult {
   const fullPayload = {
     code: result.ok ? "TN_RECIPE_APPLY_OK" : "TN_RECIPE_APPLY_FAILED",
     message: result.ok ? `Recipe '${result.recipeId}' applied.` : `Recipe '${result.recipeId}' failed.`,
     ...result,
+    ...(proofHandoff === undefined ? {} : {
+      nextProofCommand: proofHandoff.nextProofCommand,
+      proofEnrollment: {
+        enrolledAcceptanceIds: [],
+        missingAcceptanceIds: proofHandoff.requiredAcceptanceIds,
+        planFound: proofHandoff.planFound,
+        requiredAcceptanceIds: proofHandoff.requiredAcceptanceIds,
+      },
+    }),
   };
   const alreadyPresentCount = result.diagnostics.filter((diagnostic) => diagnostic.severity === "info" && diagnostic.code.startsWith("TN_AUTHORING_DUPLICATE_")).length;
   const payload = fullJson
@@ -429,6 +564,15 @@ function renderRecipeApply(result: IAuthoringRecipeApplyResult, json: boolean, f
         filesWritten: result.filesWritten,
         gameplayBlocks: result.gameplayBlocks,
         message: fullPayload.message,
+        ...(proofHandoff === undefined ? {} : {
+          nextProofCommand: proofHandoff.nextProofCommand,
+          proofEnrollment: {
+            enrolledAcceptanceIds: [],
+            missingAcceptanceIds: proofHandoff.requiredAcceptanceIds,
+            planFound: proofHandoff.planFound,
+            requiredAcceptanceIds: proofHandoff.requiredAcceptanceIds,
+          },
+        }),
         ok: result.ok,
         projectPath: result.projectPath,
         proofCommands: result.proofCommands,

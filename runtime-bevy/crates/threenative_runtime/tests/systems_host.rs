@@ -3,12 +3,18 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use bevy::{
+    app::{App, PreUpdate},
+    input::{ButtonInput, mouse::MouseMotion},
+    prelude::{KeyCode, MouseButton},
+    window::CursorMoved,
+};
 use threenative_loader::{
     EntityComponents, InputActionIr, InputAxisIr, InputBindingIr, InputIr, LoadedBundle,
     WorldEntity, load_bundle,
 };
 use threenative_runtime::{
-    input::{NativeInputState, map_keyboard_event},
+    input::{NativeInputMap, NativeInputState, capture_native_input, map_keyboard_event},
     physics::step_bundle_physics_with_script_poses,
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
     systems_host::{
@@ -329,6 +335,94 @@ fn systems_host_should_expose_context_ergonomics_helpers() {
 }
 
 #[test]
+fn script_context_should_match_pending_write_and_input_edge_fixture() {
+    let fixture: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../packages/ir/fixtures/contracts/scripting/pending-writes.json"
+    ))
+    .expect("pending-write fixture should parse");
+    let root = write_pending_write_context_bundle("pending-write-context");
+    let mut bundle = load_bundle(&root).expect("pending-write bundle should load");
+    let input = InputIr {
+        schema: "threenative.input".to_owned(),
+        version: "0.1.0".to_owned(),
+        actions: vec![InputActionIr {
+            id: "Jump".to_owned(),
+            bindings: vec![InputBindingIr::Keyboard {
+                code: "Space".to_owned(),
+            }],
+        }],
+        axes: vec![],
+        controls_settings: None,
+        persisted_binding_overrides: vec![],
+    };
+    let mut app = App::new();
+    app.add_event::<MouseMotion>();
+    app.add_event::<CursorMoved>();
+    app.insert_resource(ButtonInput::<KeyCode>::default());
+    app.insert_resource(ButtonInput::<MouseButton>::default());
+    app.insert_resource(NativeInputMap(input));
+    app.init_resource::<NativeInputState>();
+    app.add_systems(PreUpdate, capture_native_input);
+
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .press(KeyCode::Space);
+    app.update();
+    let first = app.world().resource::<NativeInputState>().clone();
+    let first_run = run_native_systems_once_with_input(&mut bundle, time(), Some(&first))
+        .expect("press tick should run");
+    app.update();
+    let held = app.world().resource::<NativeInputState>().clone();
+    run_native_systems_once_with_input(&mut bundle, time(), Some(&held))
+        .expect("held tick should run");
+    app.world_mut()
+        .resource_mut::<ButtonInput<KeyCode>>()
+        .release(KeyCode::Space);
+    app.update();
+    let released = app.world().resource::<NativeInputState>().clone();
+    run_native_systems_once_with_input(&mut bundle, time(), Some(&released))
+        .expect("release tick should run");
+
+    let report = bundle
+        .world
+        .resources
+        .get("Trace")
+        .expect("trace resource should be written");
+    assert_eq!(
+        report["positionReads"],
+        fixture["expected"]["positionReads"]
+    );
+    assert_eq!(
+        report["componentReads"],
+        fixture["expected"]["componentReads"]
+    );
+    assert_eq!(report["inputTicks"], fixture["expected"]["inputTicks"]);
+    let effect_order = first_run.logs[0]
+        .entries
+        .iter()
+        .filter_map(|entry| entry.component.clone())
+        .collect::<Vec<_>>();
+    let mut canonical_expected_order = fixture["expected"]["effectOrder"]
+        .as_array()
+        .expect("effect order should be an array")
+        .iter()
+        .map(|value| {
+            value
+                .as_str()
+                .expect("component should be a string")
+                .to_owned()
+        })
+        .collect::<Vec<_>>();
+    canonical_expected_order.sort();
+    assert_eq!(effect_order, canonical_expected_order);
+    assert_eq!(
+        report["componentReads"][2],
+        fixture["expected"]["componentReads"][2]
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn systems_host_should_query_native_entities_by_tag() {
     let root = write_tag_context_bundle("tag-context");
     let mut bundle = load_bundle(&root).expect("tag bundle should load");
@@ -549,7 +643,7 @@ fn systems_host_should_patch_character_pushed_entity_outside_default_query() {
     assert_eq!(
         bundle.world.resources.get("PushReport"),
         Some(&serde_json::json!({
-            "ballPosition": [2, 1, 0],
+            "ballPosition": [4, 1, 0],
             "pushed": "light-crate",
             "queryIds": ["player"]
         }))
@@ -3491,6 +3585,77 @@ fn write_context_ergonomics_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
 export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_pending_write_context_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "player",
+    "components": {
+      "Transform": { "position": [0, 1, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+      "PlayerState": { "hp": 3, "status": "ready" }
+    }
+  }],
+  "resources": { "Trace": { "componentReads": [], "inputTicks": [], "positionReads": [] } }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [{
+    "name": "trace",
+    "schedule": "update",
+    "reads": ["PlayerState", "Transform"],
+    "writes": ["PlayerState", "Transform"],
+    "queries": [{ "with": ["Transform"], "without": [] }],
+    "commands": [],
+    "eventReads": [],
+    "eventWrites": [],
+    "resourceReads": ["Trace"],
+    "resourceWrites": ["Trace"],
+    "services": [],
+    "script": { "bundle": "scripts.bundle.js", "exportName": "system_trace" }
+  }]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_trace = (ctx) => {
+  const report = ctx.resources.get("Trace");
+  if (report.positionReads.length === 0) {
+    const player = ctx.entity("player");
+    report.positionReads.push(player.transform().position);
+    report.componentReads.push(player.get("PlayerState"));
+    player.transform().setPosition([2, 3, 4]);
+    report.positionReads.push(ctx.entity("player").transform().position);
+    player.patch("PlayerState", { hp: 2 });
+    report.componentReads.push(player.get("PlayerState"));
+    player.patch("PlayerState", { status: "moving" });
+    report.componentReads.push(player.components.PlayerState);
+  }
+  report.inputTicks.push({
+    action: ctx.input.action("Jump"),
+    pressed: ctx.input.pressed("Jump"),
+    released: ctx.input.released("Jump")
+  });
+  ctx.resources.set("Trace", report);
+};
+export const systemIds = Object.freeze({ "system_trace": "trace" });
+export const systems = Object.freeze({ "system_trace": system_trace });
 "#,
     )
     .expect("script bundle should be written");

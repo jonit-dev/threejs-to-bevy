@@ -18,7 +18,7 @@ export async function renderScriptApiCard(options: { root?: string } = {}): Prom
 }
 
 export function renderScriptApiCardFromSource(source: string): string {
-  const scriptContext = interfaceBody(source, "ScriptContext");
+  const scriptContext = scriptContextBody(source);
   const entity = interfaceBody(source, "ScriptEntity");
   const transform = interfaceBody(source, "ScriptTransformFacade");
   return `# ThreeNative API Card
@@ -118,12 +118,32 @@ export function validateApiCard(options: { card: string; source: string }): ApiC
 }
 
 export function scriptContextMembers(source: string): string[] {
-  const body = interfaceBody(source, "ScriptContext");
+  const body = scriptContextBody(source);
   return memberNames(body);
 }
 
+function scriptContextBody(source: string): string {
+  const marker = "interface ScriptContext";
+  const markerIndex = source.indexOf(marker);
+  const open = source.indexOf("{", markerIndex);
+  if (markerIndex === -1 || open === -1) {
+    return interfaceBody(source, "ScriptContext");
+  }
+  const declaration = source.slice(markerIndex + marker.length, open);
+  const extendsIndex = declaration.indexOf("extends");
+  const inherited = extendsIndex === -1
+    ? []
+    : declaration.slice(extendsIndex + "extends".length).split(",").map((name) => name.trim()).filter(Boolean);
+  const compatibilityFacades = ["ScriptInputFacade", "ScriptResourcesFacade", "ScriptTimeFacade"];
+  return [
+    ...inherited.map((name) => interfaceBody(source, name)),
+    ...compatibilityFacades.map((name) => interfaceBody(source, name)),
+    interfaceBody(source, "ScriptContext"),
+  ].filter(Boolean).join("\n");
+}
+
 function compactInterface(name: string, body: string): string {
-  return `interface ${name} {\n${body.trim().split("\n").map((line) => `  ${line.trim()}`).join("\n")}\n}`;
+  return `interface ${name} {\n${body.trim().split("\n").map((line) => line.trim()).filter((line) => line.length > 0).map((line) => `  ${line}`).join("\n")}\n}`;
 }
 
 function interfaceBody(source: string, name: string): string {

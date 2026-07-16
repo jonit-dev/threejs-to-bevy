@@ -1,5 +1,45 @@
 import { type IGameKitCandidate } from "../game/kits.js";
 
+export interface IGameIntentVerb {
+  action: string;
+  id: string;
+  object: string;
+  required: boolean;
+  subject: string;
+}
+
+export interface IGameAcceptanceAssertion {
+  description: string;
+  id: string;
+  kind: "interaction" | "movement" | "progress" | "retry";
+  proof?: IGameProofTemplateBinding;
+  required: boolean;
+}
+
+export type GameProofAssertionFamily = "blocked-movement" | "canvas-render" | "movement" | "objective-progress" | "push-only" | "retry" | "state-change" | "win-state";
+
+export interface IGameProofTemplateBinding {
+  family: GameProofAssertionFamily;
+  templateId: string;
+}
+
+export interface IGameIntentContract {
+  acceptanceAssertions: IGameAcceptanceAssertion[];
+  id: string;
+  prototype?: IGamePrototypeBinding;
+  requiredCapabilities: string[];
+  schema: "threenative.game-intent";
+  verbs: IGameIntentVerb[];
+  version: 1;
+}
+
+export interface IGamePrototypeBinding {
+  id: "alternating-grid-single-pursuit" | "continuous-arena-pooled-pressure";
+  proofRoles: Record<string, GamePrototypeProofRole>;
+}
+
+export type GamePrototypeProofRole = "canvas" | "failure" | "objective-outcomes" | "opponent-turn" | "primary-input" | "progression" | "retry";
+
 export interface IGamePlanStep {
   id: string;
   phase: string;
@@ -58,6 +98,7 @@ export interface IGamePlan {
     surface: string;
   }>;
   code: "TN_GAME_PLAN";
+  coveredResponsibilityIds: string[];
   design: {
     controls: string[];
     failRetry: string;
@@ -75,6 +116,7 @@ export interface IGamePlan {
     recommendedOperations: string[];
     sourceFamilies: Array<{ count: number; files: string[]; kind: string }>;
   };
+  intentContract: IGameIntentContract;
   gameplayBlocks: IGameplayBlockDescriptor[];
   kitCandidates: IGameKitCandidate[];
   mechanicDecomposition: Array<{
@@ -112,4 +154,6 @@ export interface IGamePlan {
     operations: string[];
   }>;
   steps: IGamePlanStep[];
+  uncoveredResponsibilityIds: string[];
+  version: 2;
 }

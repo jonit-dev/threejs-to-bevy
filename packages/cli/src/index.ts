@@ -110,8 +110,8 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   authoring: {
     description: "Inspect, validate, and atomically mutate structured authoring source documents.",
     implemented: true,
-    subcommands: ["batch", "compile-typed-spec", "inspect", "validate"],
-    usage: "tn authoring inspect [--project <path>] [--json]\n              tn authoring validate [--project <path>] [--json]\n              tn authoring compile-typed-spec [--entry <src/game.spec.ts>] [--project <path>] [--json]\n              tn authoring batch plan --file <path|-> [--project <path>] [--json]\n              tn authoring batch apply --file <path|-> [--project <path>] [--json]",
+    subcommands: ["batch", "compile-typed-spec", "inspect", "prototype", "script", "validate"],
+    usage: "tn authoring inspect [--project <path>] [--plan <plan.json>] [--json]\n              tn authoring validate [--project <path>] [--json]\n              tn authoring prototype --from-plan <plan.json> [--project <path>] [--run-proof] [--json]\n              tn authoring compile-typed-spec [--entry <src/game.spec.ts>] [--project <path>] [--json]\n              tn authoring batch plan --file <path|-> [--project <path>] [--json]\n              tn authoring batch apply --file <path|-> [--project <path>] [--json]\n              tn authoring script scaffold [--module src/scripts/<name>.ts] [--export <name>] [--entity <id>] [--resource <id>] [--input <id>] [--project <path>] [--json]\n              tn authoring script check [--module src/scripts/<name>.ts] [--export <name>] [--project <path>] [--json]",
   },
   bake: {
     description: "Bake deterministic portable lighting data into durable content.",

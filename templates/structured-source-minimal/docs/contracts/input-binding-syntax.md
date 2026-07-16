@@ -10,8 +10,7 @@ Bindings use the portable string form `device.control[.axis]`.
 Example:
 
 ```json
-{"actions":[{"id":"Select","bindings":["pointer.0","keyboard.Enter"]}]}
+{"actions":[{"id":"select","bindings":["pointer.0","keyboard.Enter"]}]}
 ```
 
 Bindings are strings, not device descriptor objects. Canonical keyboard codes keep durable source portable across web and native adapters.
-

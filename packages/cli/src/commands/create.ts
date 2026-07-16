@@ -232,9 +232,9 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
     code: "TN_CREATE_OK",
     command: commandName,
     message: `Created ${definition.canonical} project at '${projectPath}'.`,
-    nextCommands: [installCommand, "pnpm run game:plan", "pnpm run iterate", "pnpm run dev:web"],
+    nextCommands: [installCommand, "pnpm run game:plan -- --goal \"<game idea>\"", "pnpm run iterate", "pnpm run dev:web"],
     path: projectPath,
-    startCommand: "pnpm run game:plan",
+    startCommand: "pnpm run game:plan -- --goal \"<game idea>\"",
     renderProfile,
     template: definition.canonical,
     authoring: authoringMode,
@@ -254,7 +254,7 @@ export async function createProject(argv: readonly string[], options: ICreateOpt
 
   return {
     exitCode: 0,
-    stdout: `${payload.message}\nStart with pnpm run game:plan; use ${agentGamePlanPath} only if planning reports a missing field.\nNext commands:\n  cd ${projectPath}\n  ${installCommand}\n  pnpm run game:plan\n  pnpm run iterate\n  pnpm run dev:web\n`,
+    stdout: `${payload.message}\nStart with pnpm run game:plan -- --goal \"<game idea>\"; use ${agentGamePlanPath} only if planning reports a missing field.\nNext commands:\n  cd ${projectPath}\n  ${installCommand}\n  pnpm run game:plan -- --goal \"<game idea>\"\n  pnpm run iterate\n  pnpm run dev:web\n`,
   };
 }
 
@@ -630,6 +630,7 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
   const packageJson = JSON.parse(await readFile(packageJsonPath, "utf8")) as {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;
+    pnpm?: { overrides?: Record<string, string>; [key: string]: unknown };
   };
 
   packageJson.dependencies = rewriteDependency(packageJson.dependencies ?? {}, "@threenative/sdk", "packages/sdk");
@@ -648,6 +649,13 @@ async function rewriteLocalWorkspaceDependencies(projectPath: string): Promise<v
   packageJson.devDependencies = {
     ...packageJson.devDependencies,
     "@threenative/cli": "file:.threenative/cli",
+  };
+  packageJson.pnpm = {
+    ...packageJson.pnpm,
+    overrides: {
+      ...packageJson.pnpm?.overrides,
+      "@threenative/script-stdlib": `file:${resolve(repoRoot, "packages/script-stdlib")}`,
+    },
   };
 
   await writeFile(packageJsonPath, `${JSON.stringify(packageJson, null, 2)}\n`);

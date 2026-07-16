@@ -1,7 +1,9 @@
 import { access, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { dirname, join, resolve } from "node:path";
 
 import { readBehaviorBudgetRun } from "./aggregate.js";
+import { BENCHMARK_PROTOCOL } from "./protocol.js";
 import { isBenchmarkRunReport, readSession } from "./schemas.js";
 import { type BenchmarkCondition, type IBenchmarkBehaviorBudgetRun, type IBenchmarkDiagnostic, type IBenchmarkRunReport, type IBenchmarkSession } from "./types.js";
 
@@ -12,6 +14,7 @@ export interface IPreparedRoundManifest {
   repeats: number;
   schema: "threenative.agent-benchmark-round-prepare";
   version: 1;
+  protocol?: typeof BENCHMARK_PROTOCOL;
 }
 
 export interface IPreparedRoundCandidate {
@@ -101,7 +104,7 @@ export async function inspectPreparedRound(manifestPath: string, options: IInspe
     const hasSession = await exists(sessionPath);
     const hasRunReport = await exists(runReportPath);
     const sessionResult = hasSession
-      ? await inspectSession(sessionPath, candidate)
+      ? await inspectSession(sessionPath, candidate, manifest.protocol !== undefined)
       : { diagnostics: [], sessionOk: false };
     const runReportResult = hasRunReport
       ? await inspectRunReport(runReportPath, candidate)
@@ -281,7 +284,7 @@ function emptySummary(): IPreparedRoundStatus["summary"] {
   };
 }
 
-async function inspectSession(sessionPath: string, candidate: IPreparedRoundCandidate): Promise<{
+async function inspectSession(sessionPath: string, candidate: IPreparedRoundCandidate, requireRunnerAuthority: boolean): Promise<{
   diagnostics: IBenchmarkDiagnostic[];
   sessionOk: boolean;
 }> {
@@ -292,8 +295,48 @@ async function inspectSession(sessionPath: string, candidate: IPreparedRoundCand
   const diagnostics = [
     ...sessionMatchingDiagnostics(result.session, candidate),
     ...sessionCompletenessDiagnostics(result.session, candidate),
+    ...(requireRunnerAuthority ? await runnerAuthorityDiagnostics(result.session, candidate) : []),
   ];
   return { diagnostics, sessionOk: diagnostics.length === 0 };
+}
+
+async function runnerAuthorityDiagnostics(session: IBenchmarkSession, candidate: IPreparedRoundCandidate): Promise<IBenchmarkDiagnostic[]> {
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  const runnerResultPath = join(resolve(candidate.path), "runner-result.json");
+  const eventsPath = join(resolve(candidate.path), "codex-events.jsonl");
+  const rawEventsPath = join(resolve(candidate.path), "codex-app-events.jsonl");
+  let runner: unknown;
+  let events: string;
+  try {
+    [runner, events] = await Promise.all([
+      readFile(runnerResultPath, "utf8").then((text) => JSON.parse(text) as unknown),
+      readFile(eventsPath, "utf8"),
+      access(rawEventsPath),
+    ]).then(([parsed, eventText]) => [parsed, eventText] as [unknown, string]);
+  } catch (error) {
+    return [{
+      code: "TN_BENCH_ROUND_STATUS_RUNNER_AUTHORITY_MISSING",
+      message: `${candidate.runId}: authoritative runner-result.json, codex-events.jsonl, and codex-app-events.jsonl are required (${error instanceof Error ? error.message : String(error)}).`,
+      severity: "error",
+    }];
+  }
+  if (!isRecord(runner) || runner.schema !== "threenative.agent-benchmark-runner-result" || runner.version !== 1 || !isRecord(runner.tokenUsage) || !isRecord(runner.protocol)) {
+    diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_RESULT_INVALID", message: `${candidate.runId}: runner-result.json is invalid.`, severity: "error" });
+    return diagnostics;
+  }
+  if (typeof runner.codexVersion !== "string" || runner.codexVersion.length === 0) diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_CODEX_VERSION_MISSING", message: `${candidate.runId}: runner-result.json must record the Codex version.`, severity: "error" });
+  const eventsSha256 = createHash("sha256").update(events).digest("hex");
+  if (runner.eventsSha256 !== eventsSha256) diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_EVENTS_MISMATCH", message: `${candidate.runId}: codex-events.jsonl does not match its runner-result hash.`, severity: "error" });
+  const usage = runner.tokenUsage;
+  if (usage.inputTokens !== session.inputTokens || usage.cachedInputTokens !== session.cachedInputTokens || usage.outputTokens !== session.outputTokens || usage.totalTokens !== session.tokenCount) {
+    diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_USAGE_MISMATCH", message: `${candidate.runId}: session token metrics do not match authoritative runner usage.`, severity: "error" });
+  }
+  if (runner.toolStepCount !== session.toolStepCount) diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_TOOL_STEPS_MISMATCH", message: `${candidate.runId}: session toolStepCount does not match the runner result.`, severity: "error" });
+  if (runner.stopCause !== session.stopReason) diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_STOP_CAUSE_MISMATCH", message: `${candidate.runId}: session stopReason does not match the runner result.`, severity: "error" });
+  if (runner.protocol.model !== BENCHMARK_PROTOCOL.model || runner.protocol.reasoningEffort !== BENCHMARK_PROTOCOL.reasoningEffort || runner.protocol.maxRawTokens !== BENCHMARK_PROTOCOL.maxRawTokens || runner.protocol.maxToolSteps !== BENCHMARK_PROTOCOL.maxToolSteps || runner.protocol.tokenInterruptReserve !== BENCHMARK_PROTOCOL.tokenInterruptReserve) {
+    diagnostics.push({ code: "TN_BENCH_ROUND_STATUS_RUNNER_PROTOCOL_MISMATCH", message: `${candidate.runId}: runner protocol does not match the frozen benchmark protocol.`, severity: "error" });
+  }
+  return diagnostics;
 }
 
 async function inspectRunReport(runReportPath: string, candidate: IPreparedRoundCandidate): Promise<{

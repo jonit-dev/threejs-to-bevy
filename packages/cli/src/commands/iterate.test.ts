@@ -262,11 +262,13 @@ test("should run independent scenarios with bounded concurrency and stable outpu
     for (const name of ["a", "b", "c", "d"]) await writeFile(join(root, "playtests", `${name}.playtest.json`), "{}\n");
     let active = 0;
     let maxActive = 0;
+    const reusedBundles: boolean[] = [];
     const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
       ...passingIterateOptions(root),
       playtest: async (args) => {
         const scenario = args[args.indexOf("--scenario") + 1] ?? "";
         active += 1;
+        reusedBundles.push(args.includes("--reuse-bundle"));
         maxActive = Math.max(maxActive, active);
         await new Promise((resolveDelay) => setTimeout(resolveDelay, 10));
         active -= 1;
@@ -276,6 +278,7 @@ test("should run independent scenarios with bounded concurrency and stable outpu
     const payload = JSON.parse(result.stdout) as { steps: Array<{ id: string; scenarios?: Array<{ scenario: string }> }> };
 
     assert.equal(maxActive, 3);
+    assert.deepEqual(reusedBundles, [true, true, true, true]);
     assert.deepEqual(payload.steps.find((step) => step.id === "playtest")?.scenarios?.map((scenario) => scenario.scenario), ["a", "b", "c", "d"]);
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -410,6 +413,106 @@ test("should copy latest artifacts to a timestamped directory when keep is set",
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("should reject unrelated passing scaffold scenarios as prompt completion", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-unrelated-"));
+  try {
+    await writeAcceptancePlan(root, ["grid-movement", "push-only"]);
+    await writeAcceptanceScenario(root, "unrelated-smoke");
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => playtestSummaryResult("unrelated-smoke", true),
+    });
+    const payload = JSON.parse(result.stdout) as { acceptanceCoverage: { missing: string[]; observed: string[]; unrelated: string[] }; artifacts: { report: string }; code: string; nextProofCommand?: string; ok: boolean; promptCoverage: string; steps: Array<{ id: string; status: string }>; verdicts: { gameplay: string; visual: string } };
+    const report = JSON.parse(await readFile(payload.artifacts.report, "utf8")) as { diagnostics: Array<{ code: string; severity: string }> };
+
+    assert.equal(result.exitCode, 1, result.stdout);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.code, "TN_ITERATE_FAILED");
+    assert.equal(payload.promptCoverage, "fail");
+    assert.deepEqual(payload.acceptanceCoverage.observed, []);
+    assert.deepEqual(payload.acceptanceCoverage.missing, ["grid-movement", "push-only"]);
+    assert.deepEqual(payload.acceptanceCoverage.unrelated, ["unrelated-smoke"]);
+    assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
+    assert.deepEqual(payload.steps.map((step) => [step.id, step.status]), [
+      ["validate", "pass"],
+      ["build", "pass"],
+      ["screenshot", "pass"],
+      ["playtest", "pass"],
+    ]);
+    assert.deepEqual(payload.verdicts, { gameplay: "pass", visual: "pass" });
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_ITERATE_PROMPT_COVERAGE_INCOMPLETE" && diagnostic.severity === "warning"), true);
+    assert.ok(Buffer.byteLength(result.stdout, "utf8") < 2048);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should ignore stale deleted scenario artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-stale-"));
+  try {
+    await writeAcceptancePlan(root, ["grid-movement", "push-only"]);
+    await writeAcceptanceScenario(root, "current-grid", "grid-movement");
+    await mkdir(join(root, "artifacts/playtest/deleted-push/latest"), { recursive: true });
+    await writeFile(join(root, "artifacts/playtest/deleted-push/latest/summary.json"), `${JSON.stringify({ acceptanceId: "push-only", pass: true, scenario: "deleted-push" })}\n`);
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async () => playtestSummaryResult("current-grid", true),
+    });
+    const payload = JSON.parse(result.stdout) as { acceptanceCoverage: { missing: string[]; observed: string[] }; code: string; ok: boolean; promptCoverage: string };
+
+    assert.equal(result.exitCode, 1, result.stdout);
+    assert.equal(payload.ok, false);
+    assert.equal(payload.code, "TN_ITERATE_FAILED");
+    assert.equal(payload.promptCoverage, "fail");
+    assert.deepEqual(payload.acceptanceCoverage.observed, ["grid-movement"]);
+    assert.deepEqual(payload.acceptanceCoverage.missing, ["push-only"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should report prompt completion only from all current passing acceptance scenarios", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-iterate-full-coverage-"));
+  try {
+    await writeAcceptancePlan(root, ["grid-movement", "push-only"]);
+    await writeAcceptanceScenario(root, "current-grid", "grid-movement");
+    await writeAcceptanceScenario(root, "current-push", "push-only");
+    const result = await iterateCommand(["--project", root, "--json"], process.cwd(), {
+      ...passingIterateOptions(root),
+      playtest: async (args) => playtestSummaryResult(String(args[args.indexOf("--scenario") + 1]).split("/").at(-1)!.replace(".playtest.json", ""), true),
+    });
+    const payload = JSON.parse(result.stdout) as { acceptanceCoverage: { missing: string[]; observed: string[] }; code: string; nextProofCommand?: string; ok: boolean; promptCoverage: string; steps: Array<{ id: string; status: string }>; verdicts: { gameplay: string; visual: string } };
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.ok, true);
+    assert.equal(payload.code, "TN_ITERATE_OK");
+    assert.equal(payload.promptCoverage, "pass");
+    assert.deepEqual(payload.acceptanceCoverage.missing, []);
+    assert.deepEqual(payload.acceptanceCoverage.observed, ["grid-movement", "push-only"]);
+    assert.equal(payload.nextProofCommand, undefined);
+    assert.deepEqual(payload.steps.map((step) => [step.id, step.status]), [
+      ["validate", "pass"],
+      ["build", "pass"],
+      ["screenshot", "pass"],
+      ["playtest", "pass"],
+    ]);
+    assert.deepEqual(payload.verdicts, { gameplay: "pass", visual: "pass" });
+    assert.ok(Buffer.byteLength(result.stdout, "utf8") < 2048);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+async function writeAcceptancePlan(root: string, ids: string[]): Promise<void> {
+  await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+  await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({ intentContract: { acceptanceAssertions: ids.map((id) => ({ id, required: true })) } }, null, 2)}\n`);
+}
+
+async function writeAcceptanceScenario(root: string, name: string, acceptanceId?: string): Promise<void> {
+  await mkdir(join(root, "playtests"), { recursive: true });
+  await writeFile(join(root, `playtests/${name}.playtest.json`), `${JSON.stringify({ ...(acceptanceId === undefined ? {} : { acceptanceId }), name, schemaVersion: 1, steps: [{ release: true, waitFrames: 1 }], target: "web", viewport: { height: 720, width: 1280 }, warmupFrames: 0 }, null, 2)}\n`);
+}
 
 function passingIterateOptions(root: string): Parameters<typeof iterateCommand>[2] {
   return {

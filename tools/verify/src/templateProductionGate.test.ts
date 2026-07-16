@@ -98,7 +98,7 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"arena\" --project . --json",
+        "game:plan": "node bin/tn game plan --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -109,13 +109,14 @@ test("rejects maintained starters without catalog-first planning worksheet", asy
     await writeFile(join(templatePath, "README.md"), "Start with AGENT_GAME_PLAN.md, then run iterate, game:plan, game:improve, game:qa, and game:release.\n");
     await mkdir(join(templatePath, "docs"), { recursive: true });
     await writeFile(join(templatePath, "docs/API-CARD.md"), "# API Card\nScriptContext\n");
-    await writeFile(join(templatePath, "AGENTS.md"), "Before creating or substantially changing the game, run tn game plan. Open AGENT_GAME_PLAN.md only when the compact plan is insufficient. Read docs/API-CARD.md first. After changes, run pnpm run iterate as the default repair loop. Use compact stdout before deep logs, then use game:plan, game:improve, game:qa, and game:release.\n");
+    await writeFile(join(templatePath, "AGENTS.md"), "Before creating or substantially changing the game, run tn game plan. Open AGENT_GAME_PLAN.md only when the compact plan is insufficient. Read docs/API-CARD.md first. After changes, run tn iterate --project . --json as the default repair loop. Use compact stdout before deep logs, then use game:plan, game:improve, game:qa, and game:release.\n");
     await writeFile(join(templatePath, "AGENT_GAME_PLAN.md"), "Plan first, then get models somehow.\n");
 
     const result = await runTemplateProductionGate({ root, templates: ["structured-source-starter"] });
 
     assert.equal(result.ok, false);
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_AGENT_PLAN_ASSET_CATALOG_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_ITERATE_FIRST_MISSING"), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -134,7 +135,7 @@ test("should require starter scenario proof commands", async () => {
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"rally\" --project . --json",
+        "game:plan": "node bin/tn game plan --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -165,7 +166,7 @@ test("should require iterate as the starter repair loop", async () => {
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"arena\" --project . --json",
+        "game:plan": "node bin/tn game plan --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -195,7 +196,7 @@ test("should reject instructions that point agents at deep frame logs", async ()
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"arena\" --project . --json",
+        "game:plan": "node bin/tn game plan --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",
@@ -229,7 +230,7 @@ test("accepts maintained starters with production scripts metadata and instructi
     await writeFile(join(templatePath, "package.json"), `${JSON.stringify({
       scripts: {
         "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
-        "game:plan": "tn game plan --goal \"rally\" --project . --json",
+        "game:plan": "node bin/tn game plan --project . --json",
         "game:qa": "tn game qa --project . --run-proof --json",
         "game:release": "tn game release --project . --json",
         "game:score": "tn game score --project . --json",

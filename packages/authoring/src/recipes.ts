@@ -20,6 +20,7 @@ export type AuthoringRecipeId =
   | "lane-runner"
   | "obstacle-avoider"
   | "physics-target"
+  | "spatial-grid-objective"
   | "third-person-controller"
   | "top-down-collector"
   | "trigger-zone"
@@ -44,7 +45,17 @@ export interface IAuthoringRecipeDescriptor {
 export interface IAuthoringRecipePlanOptions {
   args: Record<string, unknown>;
   projectPath?: string;
+  recipeCompositions?: readonly IAuthoringRecipeComposition[];
   recipeId: AuthoringRecipeId | string;
+}
+
+export interface IAuthoringRecipeComposition {
+  gameplayBlocks: readonly string[];
+  proofCommands: readonly string[];
+  proofHints: readonly string[];
+  recipeId: AuthoringRecipeId | string;
+  scriptResponsibilities: readonly string[];
+  sourceOwners: Readonly<Record<string, readonly string[]>>;
 }
 
 export interface IAuthoringRecipePlanResult {
@@ -88,6 +99,7 @@ const authoringRecipeIds: AuthoringRecipeId[] = [
   "vehicle-checkpoint",
   "obstacle-avoider",
   "physics-target",
+  "spatial-grid-objective",
   "dressed-environment-kit",
 ];
 
@@ -135,7 +147,21 @@ export function planAuthoringRecipe(options: IAuthoringRecipePlanOptions): IAuth
   const diagnostics = requiredRecipeArgs(options.recipeId, options.args, recipe.required);
   const operations = diagnostics.length === 0 ? recipe.plan(options.args) : [];
   diagnostics.push(...operations.flatMap((operation, index) => operationDiagnostics(options.recipeId, operation, index)));
-  const metadata = diagnostics.length === 0 ? recipeMetadata(options.recipeId as AuthoringRecipeId, recipe, options.args, operations) : emptyRecipeMetadata();
+  const composition = options.recipeCompositions?.find((candidate) => candidate.recipeId === options.recipeId);
+  if (recipe.requiresComposition === true && composition === undefined) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_RECIPE_COMPOSITION_MISSING",
+      message: `Authoring recipe '${options.recipeId}' requires its owning mechanic descriptor composition.`,
+      path: "/recipeCompositions",
+      suggestion: "Invoke the recipe through tn recipe so the registered mechanic descriptors supply composition metadata.",
+      value: options.recipeId,
+    }));
+  }
+  const metadata = diagnostics.length === 0
+    ? composition === undefined
+      ? recipeMetadata(options.recipeId as AuthoringRecipeId, recipe, options.args, operations)
+      : compositionRecipeMetadata(composition)
+    : emptyRecipeMetadata();
 
   return {
     diagnostics,
@@ -289,6 +315,7 @@ interface IRecipePlanner {
   metadata?(args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata;
   plan(args: Record<string, unknown>): IAuthoringRecipeOperation[];
   required: readonly string[];
+  requiresComposition?: boolean;
 }
 
 interface IRecipeMetadata {
@@ -301,6 +328,11 @@ interface IRecipeMetadata {
 }
 
 const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
+  "spatial-grid-objective": {
+    required: [],
+    plan: () => [],
+    requiresComposition: true,
+  },
   "third-person-controller": {
     required: ["sceneId", "entityId", "cameraId"],
     plan: (args) => {
@@ -333,7 +365,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.add_entity", { sceneId, entityId, prefabId }),
         operation("scene.set_transform", { sceneId, entityId, position: optionalVector3Value(args, "position") ?? [0, 1, 0] }),
         operation("scene.set_collider", { sceneId, entityId, kind: "sphere", radius: optionalNumberValue(args, "radius") ?? 0.5, trigger: true }),
-        operation("scene.attach_script", { sceneId, systemId, modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/collectible.ts", exportName: optionalStringValue(args, "exportName") ?? "collectible" }),
+        attachScriptOperation(args, { sceneId, systemId, modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/collectible.ts", exportName: optionalStringValue(args, "exportName") ?? "collectible" }),
         operation("scene.add_resource", { sceneId, resourceId, path: resourcePath, value: false }),
         operation("scene.add_ui_node", { sceneId, uiNodeId }),
         operation("scene.bind_ui", { sceneId, uiNodeId, resourcePath: resourceId }),
@@ -349,7 +381,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.add_entity", { sceneId, entityId }),
         operation("scene.set_transform", { sceneId, entityId, position: optionalVector3Value(args, "position") ?? [0, 0.5, 0], scale: optionalVector3Value(args, "scale") ?? [1, 1, 1] }),
         operation("scene.set_collider", { sceneId, entityId, kind: "box", size: optionalVector3Value(args, "size") ?? [1, 1, 1], trigger: true }),
-        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? `${entityId}.trigger`, modulePath: requiredStringValue(args, "modulePath"), exportName: requiredStringValue(args, "exportName") }),
+        attachScriptOperation(args, { sceneId, systemId: optionalStringValue(args, "systemId") ?? `${entityId}.trigger`, modulePath: requiredStringValue(args, "modulePath"), exportName: requiredStringValue(args, "exportName") }),
       ];
     },
   },
@@ -391,7 +423,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
       const playerId = requiredStringValue(args, "playerId");
       const cameraId = requiredStringValue(args, "cameraId");
       const goalId = optionalStringValue(args, "goalId") ?? "coin.01";
-      const scoreResourceId = optionalStringValue(args, "scoreResourceId") ?? "GameState.scoreText";
+      const scoreResourceId = optionalStringValue(args, "scoreResourceId") ?? "GameState";
       const inputDocId = optionalStringValue(args, "inputDocId") ?? `${sceneId}-input`;
       const systemId = optionalStringValue(args, "systemId") ?? "top-down-collector";
       const modulePath = optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts";
@@ -408,12 +440,13 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.set_camera_component", { sceneId, entityId: cameraId, mode: "third-person-follow", targetId: playerId, fovY: 50 }),
         operation("scene.add_prefab", { sceneId, prefabId: `${goalId}.prefab`, primitive: "sphere", color: optionalStringValue(args, "goalColor") ?? "#ffd166" }),
         operation("scene.add_entity", { sceneId, entityId: goalId, prefabId: `${goalId}.prefab` }),
-        operation("scene.set_transform", { sceneId, entityId: goalId, position: optionalVector3Value(args, "goalPosition") ?? [2, 0.6, -2] }),
+        operation("scene.add_tag", { sceneId, entityId: goalId, tag: "pickup" }),
+        operation("scene.set_transform", { sceneId, entityId: goalId, position: optionalVector3Value(args, "goalPosition") ?? [2, 0.6, 0] }),
         operation("scene.set_collider", { sceneId, entityId: goalId, kind: "sphere", radius: 0.45, trigger: true }),
-        operation("scene.add_resource", { sceneId, resourceId: scoreResourceId, path: "score.text", value: "Score 0" }),
+        operation("scene.add_resource", { sceneId, resourceId: scoreResourceId, path: "scoreText", value: { score: 0, scoreText: "Score 0" } }),
         operation("scene.add_ui_node", { sceneId, uiNodeId: "hud.score" }),
-        operation("scene.bind_ui", { sceneId, uiNodeId: "hud.score", resourcePath: scoreResourceId }),
-        operation("scene.attach_script", { sceneId, systemId, modulePath, exportName }),
+        operation("scene.bind_ui", { sceneId, uiNodeId: "hud.score", resourcePath: `${scoreResourceId}.scoreText` }),
+        attachScriptOperation(args, { sceneId, systemId, modulePath, exportName }),
       ];
     },
   },
@@ -440,7 +473,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.add_entity", { sceneId, entityId: hazardId, prefabId: `${hazardId}.prefab` }),
         operation("scene.set_transform", { sceneId, entityId: hazardId, position: optionalVector3Value(args, "hazardPosition") ?? [1.5, 0.45, -6], scale: [0.8, 0.7, 0.35] }),
         operation("scene.set_collider", { sceneId, entityId: hazardId, kind: "box", size: [0.8, 0.7, 0.35], trigger: true }),
-        operation("scene.attach_script", { sceneId, systemId, modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "laneRunnerSystem" }),
+        attachScriptOperation(args, { sceneId, systemId, modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "laneRunnerSystem" }),
       ];
     },
   },
@@ -470,7 +503,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
           operation("scene.set_collider", { sceneId, entityId: checkpointId, kind: "box", size: [2.2, 2.2, 0.35], trigger: true }),
         ]),
         operation("scene.add_resource", { sceneId, resourceId: "RaceState", value: { checkpointCount: 5, finished: false, progressText: "Checkpoint 0 / 5", nextCheckpoint: 0, statusText: "DRIVE THROUGH THE GATES - R/ENTER: RETRY", time: 0, timeText: "Time 0.0s" } }),
-        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "vehicle-checkpoint", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "vehicleCheckpointSystem" }),
+        attachScriptOperation(args, { sceneId, systemId: optionalStringValue(args, "systemId") ?? "vehicle-checkpoint", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "vehicleCheckpointSystem" }),
       ];
     },
   },
@@ -488,7 +521,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.add_entity", { sceneId, entityId: obstacleId, prefabId: `${obstacleId}.prefab` }),
         operation("scene.set_transform", { sceneId, entityId: obstacleId, position: optionalVector3Value(args, "obstaclePosition") ?? [0, 0.5, -3], scale: optionalVector3Value(args, "obstacleScale") ?? [1, 1, 1] }),
         operation("scene.set_collider", { sceneId, entityId: obstacleId, kind: "box", size: optionalVector3Value(args, "obstacleSize") ?? [1, 1, 1], trigger: true }),
-        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "obstacle-avoider", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "obstacleAvoiderSystem" }),
+        attachScriptOperation(args, { sceneId, systemId: optionalStringValue(args, "systemId") ?? "obstacle-avoider", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "obstacleAvoiderSystem" }),
       ];
     },
   },
@@ -509,7 +542,7 @@ const recipePlanners: Record<AuthoringRecipeId, IRecipePlanner> = {
         operation("scene.set_transform", { sceneId, entityId: projectileId, position: optionalVector3Value(args, "projectilePosition") ?? [0, 1, 2] }),
         operation("scene.set_rigid_body", { sceneId, entityId: projectileId, kind: "dynamic", mass: optionalNumberValue(args, "projectileMass") ?? 0.4 }),
         operation("scene.set_collider", { sceneId, entityId: projectileId, kind: "sphere", radius: optionalNumberValue(args, "projectileRadius") ?? 0.25 }),
-        operation("scene.attach_script", { sceneId, systemId: optionalStringValue(args, "systemId") ?? "physics-target", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "physicsTargetSystem" }),
+        attachScriptOperation(args, { sceneId, systemId: optionalStringValue(args, "systemId") ?? "physics-target", modulePath: optionalStringValue(args, "modulePath") ?? "src/scripts/player.ts", exportName: optionalStringValue(args, "exportName") ?? "physicsTargetSystem" }),
       ];
     },
   },
@@ -543,6 +576,17 @@ for (const [recipeId, planner] of Object.entries(recipePlanners) as Array<[Autho
 
 function recipeMetadata(recipeId: AuthoringRecipeId, planner: IRecipePlanner, args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata {
   return planner.metadata?.(args, operations) ?? defaultRecipeMetadata(recipeId, args, operations);
+}
+
+function compositionRecipeMetadata(composition: IAuthoringRecipeComposition): IRecipeMetadata {
+  return {
+    gameplayBlocks: [...composition.gameplayBlocks],
+    generatedIds: {},
+    proofCommands: [...composition.proofCommands],
+    proofHints: [...composition.proofHints],
+    scriptResponsibilities: [...composition.scriptResponsibilities],
+    sourceOwners: Object.fromEntries(Object.entries(composition.sourceOwners).map(([owner, blocks]) => [owner, [...blocks]])),
+  };
 }
 
 function defaultRecipeMetadata(recipeId: AuthoringRecipeId, args: Record<string, unknown>, operations: readonly IAuthoringRecipeOperation[]): IRecipeMetadata {
@@ -602,7 +646,7 @@ function recipeSourceOwner(operationName: string, defaultOwner: string): string 
 }
 
 function recipeGameplayBlocks(recipeId: AuthoringRecipeId): string[] {
-  const blocks: Record<AuthoringRecipeId, string[]> = {
+  const blocks: Partial<Record<AuthoringRecipeId, string[]>> = {
     collectible: ["objective.collectible", "state.resource-score", "proof.ui-binding"],
     "dressed-environment-kit": ["world.dressed-play-space", "proof.screenshot-scale"],
     "health-bar": ["state.health-resource", "proof.ui-binding"],
@@ -615,7 +659,7 @@ function recipeGameplayBlocks(recipeId: AuthoringRecipeId): string[] {
     "trigger-zone": ["objective.trigger-zone", "proof.trigger-event"],
     "vehicle-checkpoint": ["basis.y-up-z-forward", "controller.vehicle-cardinal", "camera.position-follow", "objective.checkpoint-lap", "spawn.region-sampler", "proof.playtest-motion"],
   };
-  return blocks[recipeId];
+  return blocks[recipeId] ?? [];
 }
 
 function recipeProofHints(recipeId: AuthoringRecipeId): string[] {
@@ -708,6 +752,13 @@ function operationDiagnostics(recipeId: string, operationInput: IAuthoringRecipe
 
 function operation(name: AuthoringOperationName | string, args: Record<string, unknown>): IAuthoringRecipeOperation {
   return { name, args: defined(args) };
+}
+
+function attachScriptOperation(recipeArgs: Record<string, unknown>, args: Record<string, unknown>): IAuthoringRecipeOperation {
+  return operation("scene.attach_script", {
+    ...args,
+    source: optionalStringValue(recipeArgs, "systemSource") === "behavior-metadata" ? "behavior-metadata" : undefined,
+  });
 }
 
 function defined(input: Record<string, unknown>): Record<string, unknown> {

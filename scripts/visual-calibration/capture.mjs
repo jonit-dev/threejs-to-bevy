@@ -1,7 +1,7 @@
 import { promisify } from "node:util";
 import { execFile } from "node:child_process";
 import { createRequire } from "node:module";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
@@ -73,11 +73,11 @@ export async function captureWebScreenshot(options) {
  */
 export async function captureBevyScreenshot(options) {
   const { cargoCaptureEnv, resolveCargoCommand } = await loadCliModules(options.repoRoot);
+  const outputPath = resolve(options.outputPath);
   const viewportArgs = options.viewport === undefined ? [] : ["--viewport", String(options.viewport.width), String(options.viewport.height)];
   const uiStateArgs = options.uiState === undefined ? [] : ["--ui-state", options.uiState.nodeId, options.uiState.state];
-  await execFileAsync(
-    resolveCargoCommand(),
-    [
+  const invocation = {
+    args: [
       "run",
       "--quiet",
       "-p",
@@ -87,16 +87,66 @@ export async function captureBevyScreenshot(options) {
       "--",
       resolve(options.bundlePath),
       options.cameraId ?? "camera.calibration",
-      resolve(options.outputPath),
+      outputPath,
       ...viewportArgs,
       ...uiStateArgs,
     ],
-    {
+    command: resolveCargoCommand(),
+    options: {
       cwd: resolve(options.repoRoot, "runtime-bevy"),
       env: cargoCaptureEnv(),
       timeout: 300_000,
     },
-  );
+  };
+  await runNativeCaptureWithRetry(async () => {
+    await rm(outputPath, { force: true });
+    await execFileAsync(invocation.command, invocation.args, invocation.options);
+  }, { shouldRetry: (error) => nativeCaptureNeedsRetry(error, outputPath) });
+}
+
+/**
+ * Retry only the transient Vulkan swap-chain timeout emitted by Bevy/wgpu.
+ * Deterministic capture failures must remain immediately actionable.
+ *
+ * @param {() => Promise<void>} run
+ * @param {{ delay?: (milliseconds: number) => Promise<void>; maxAttempts?: number; shouldRetry?: (error: unknown) => boolean | Promise<boolean> }} [options]
+ */
+export async function runNativeCaptureWithRetry(run, options = {}) {
+  const delay = options.delay ?? ((milliseconds) => new Promise((resolveDelay) => setTimeout(resolveDelay, milliseconds)));
+  const maxAttempts = options.maxAttempts ?? 8;
+  const shouldRetry = options.shouldRetry ?? isSwapChainAcquireTimeout;
+  let lastError;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await run();
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!(await shouldRetry(error)) || attempt === maxAttempts) throw error;
+      await delay(750 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+/** @param {unknown} error */
+export function isSwapChainAcquireTimeout(error) {
+  if (!(error instanceof Error)) return false;
+  const stderr = typeof error.stderr === "string" ? error.stderr : "";
+  const text = `${error.message}\n${stderr}`;
+  return text.includes("Couldn't get swap chain texture")
+    && text.includes("A timeout was encountered while trying to acquire the next frame");
+}
+
+/** @param {unknown} error @param {string} outputPath */
+export async function nativeCaptureNeedsRetry(error, outputPath) {
+  if (!isSwapChainAcquireTimeout(error)) return false;
+  try {
+    await access(outputPath);
+    return false;
+  } catch {
+    return true;
+  }
 }
 
 /**

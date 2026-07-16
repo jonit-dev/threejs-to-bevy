@@ -2,7 +2,9 @@
 
 Rules for Racing Kit Rally starter projects. Shared workflow detail lives in
 the agent skills under `.claude/skills/` and `.codex/skills/` (identical
-copies); read the matching skill when that kind of work comes up.
+copies). When equivalent operator workflow is already in context, follow it
+directly; otherwise load `threenative-workflow`. Read another skill only when
+the plan or a diagnostic makes that work relevant.
 
 - Keep Kenney Racing Kit assets local to `assets/` and reference them from structured source.
 - Gameplay belongs in `src/scripts/racing.ts`; scene composition belongs in `content/**/*.json`.
@@ -34,12 +36,16 @@ copies); read the matching skill when that kind of work comes up.
   `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`
   call. Project-local `.env` is for local `tn` tooling only. Use local,
   catalog, or procedural audio as the offline fallback.
-- Before changing the racing slice substantially, open `AGENT_GAME_PLAN.md` as
-  the first game-creation action, then run `pnpm run game:plan` and keep
-  `artifacts/game-production/plan.json` with the work. Use
-  `pnpm run game:improve` only for bounded recipe steps from that complete
-  plan.
-- After source, script, gameplay, or visual changes, run `pnpm run iterate` as
+- Before creating or substantially changing the game, run
+  `tn game plan --goal "<game idea>" --project . --json` (package alias:
+  `pnpm run game:plan -- --goal "<game idea>"`) and keep `artifacts/game-production/plan.json` with the
+  work. Open `AGENT_GAME_PLAN.md` only if planning fails or omits a required
+  field. If the plan reports `TN_GAME_PLAN_OFF_RECIPE` or does not cover the
+  core verbs and acceptance criteria, run `nextInspectionCommand` first and
+  custom-author on the starter; otherwise
+  use `pnpm run game:improve` only for reviewed bounded recipe steps.
+- After source, script, gameplay, or visual changes, run
+  `tn iterate --project . --json` (package alias: `pnpm run iterate`) as
   the default repair loop. It writes fast-loop artifacts under
   `artifacts/iterate/latest/`; keep `game:qa` and desktop/native playtests for
   completion evidence.

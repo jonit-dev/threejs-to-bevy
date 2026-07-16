@@ -178,6 +178,7 @@ export interface IPlaytestRunOptions {
   press: string;
   projectPath: string;
   quiet?: boolean;
+  reuseBundle?: boolean;
   scenario: IPlaytestScenario;
 }
 
@@ -224,6 +225,7 @@ export async function playtestCommand(
   const watchMode = normalizedArgv.includes("--watch");
   const effectsMode = readFlag(normalizedArgv, "--effects");
   const auditWrites = normalizedArgv.includes("--audit-writes");
+  const reuseBundle = normalizedArgv.includes("--reuse-bundle");
   const includeEffectsStdout = effectsMode === "stdout" || normalizedArgv.includes("--verbose-effects");
   if (effectsMode !== undefined && !["artifact", "artifacts", "stdout"].includes(effectsMode)) {
     return diagnosticResult(
@@ -392,6 +394,7 @@ export async function playtestCommand(
       press: primary.press ?? "",
       projectPath,
       quiet: json,
+      reuseBundle,
       scenario,
     });
     const richAssertions = evaluateRichPlaytestAssertions({ report, scenario });
@@ -545,7 +548,7 @@ function renderDiscoveryText(discovery: IPlaytestDiscoveryReport): string {
 }
 
 async function runWebPlaytest(options: IPlaytestRunOptions): Promise<IPlaytestReport> {
-  const bundlePath = await ensureProjectBundle(options.projectPath);
+  const bundlePath = await ensureProjectBundle(options.projectPath, options.reuseBundle === true);
   let server: IWebPreviewServer | undefined;
   try {
     server = await startWebPreview({ bundlePath, silent: true });
@@ -556,7 +559,7 @@ async function runWebPlaytest(options: IPlaytestRunOptions): Promise<IPlaytestRe
 }
 
 async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyRuntimeRunner): Promise<IPlaytestReport> {
-  const bundlePath = await ensureProjectBundle(options.projectPath);
+  const bundlePath = await ensureProjectBundle(options.projectPath, options.reuseBundle === true);
   const commandStreamPath = resolve(options.artifactDirectory, "native-proof-harness.json");
   const readinessPath = resolve(options.artifactDirectory, "native-readiness.json");
   const beforeArtifact = resolve(options.artifactDirectory, "before.png");
@@ -1560,10 +1563,10 @@ function previewUrl(url: string, debugColliders: boolean): string {
   return parsed.toString();
 }
 
-async function ensureProjectBundle(projectPath: string): Promise<string> {
+async function ensureProjectBundle(projectPath: string, reuseBundle: boolean): Promise<string> {
   const config = await loadProjectConfig(projectPath);
   const bundlePath = resolve(projectPath, config.outDir);
-  await buildProject(projectPath);
+  if (!reuseBundle) await buildProject(projectPath);
   const report = await validateBundle(bundlePath);
   if (!report.ok) {
     throw new Error(report.diagnostics[0]?.message ?? "Bundle validation failed.");

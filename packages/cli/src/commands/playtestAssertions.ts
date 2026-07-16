@@ -37,6 +37,7 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
       { description: "Minimum signed movement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minAxisDelta", type: "{ axis: string, min: number }" },
       { description: "Minimum signed resolved character.move displacement on a specific axis, for example { axis: '+y', min: 0.2 }.", name: "minResolvedAxisDelta", type: "{ axis: string, min: number }" },
       { description: "Minimum distance moved over the scenario.", name: "minDistance", type: "number" },
+      { description: "Maximum distance allowed; use for blocked-movement proof.", name: "maxDistance", type: "number" },
       { description: "Minimum distance per frame.", name: "minVelocity", type: "number" },
       { description: "Minimum accumulated path length; use with minDistance to catch movement that cancels out.", name: "pathLength", type: "number" },
       { description: "Require any observed rotation delta.", name: "rotationChanged", type: "boolean" },
@@ -287,6 +288,18 @@ export function evaluateRichPlaytestAssertions(input: {
         message: `Entity '${input.report.entity}' velocity ${velocity.toFixed(6)} was below required ${scenarioAssertions.movement.minVelocity}.`,
         severity: "error",
         suggestion: "Check input force/speed tuning and whether the scenario holds input long enough.",
+      });
+    }
+  }
+  if (scenarioAssertions.movement?.maxDistance !== undefined) {
+    const pass = input.report.distance <= scenarioAssertions.movement.maxDistance;
+    assertions.push({ details: { distance: input.report.distance, maximum: scenarioAssertions.movement.maxDistance }, id: "movement.maxDistance", pass });
+    if (!pass) {
+      diagnostics.push({
+        code: "TN_PLAYTEST_MOVEMENT_ASSERTION_FAILED",
+        message: `Entity '${input.report.entity}' moved ${input.report.distance.toFixed(6)}, above allowed ${scenarioAssertions.movement.maxDistance}.`,
+        severity: "error",
+        suggestion: "Check bounds/blocked-cell handling and ensure the scenario drives the intended blocked direction.",
       });
     }
   }

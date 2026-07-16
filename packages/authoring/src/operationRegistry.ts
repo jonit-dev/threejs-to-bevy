@@ -1112,8 +1112,9 @@ const operationEntries = [
     stringArg("systemId"),
     stringArg("modulePath"),
     stringArg("exportName"),
+    stringArg("source", false),
   ]), async ({ args, projectPath }) =>
-    attachScript({ exportName: requiredString(args, "exportName"), modulePath: requiredString(args, "modulePath"), projectPath, sceneId: requiredString(args, "sceneId"), systemId: requiredString(args, "systemId") })),
+    attachScript({ exportName: requiredString(args, "exportName"), modulePath: requiredString(args, "modulePath"), projectPath, sceneId: requiredString(args, "sceneId"), source: optionalBehaviorMetadataSource(args, "source"), systemId: requiredString(args, "systemId") })),
   operation(descriptor("scene.bind_ui", "Bind a scene-owned UI node to a resource path.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("uiNodeId"),
@@ -1884,6 +1885,10 @@ function requiredNumber(args: Record<string, unknown>, key: string): number {
 function optionalString(args: Record<string, unknown>, key: string): string | undefined {
   const value = args[key];
   return typeof value === "string" && value.trim() !== "" ? value : undefined;
+}
+
+function optionalBehaviorMetadataSource(args: Record<string, unknown>, key: string): "behavior-metadata" | undefined {
+  return optionalString(args, key) === "behavior-metadata" ? "behavior-metadata" : undefined;
 }
 
 function optionalStringArray(args: Record<string, unknown>, key: string): string[] | undefined {

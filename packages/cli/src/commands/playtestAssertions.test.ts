@@ -309,6 +309,20 @@ test("movement resolved axis delta assertions should fail without enough resolve
   assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_RESOLVED_AXIS_DELTA_ASSERTION_FAILED");
 });
 
+test("maximum movement distance should prove a blocked input attempt", () => {
+  const scenario: IPlaytestScenario = {
+    assert: { movement: { entity: "player", maxDistance: 0.05 } },
+    name: "blocked-movement",
+    schemaVersion: 1,
+    steps: [{ press: "ArrowRight", release: true }],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+  const result = evaluateRichPlaytestAssertions({ report: { ...reportWithRuntimeDiagnostics("web", {}), distance: 0.01 }, scenario });
+  assert.equal(result.assertions.find((item) => item.id === "movement.maxDistance")?.pass, true);
+});
+
 test("occluded assertion should consume a successful physics raycast effect", () => {
   const report = reportWithRuntimeDiagnostics("web", []);
   report.effectLog = {

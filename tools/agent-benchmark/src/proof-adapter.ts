@@ -1,5 +1,6 @@
 import { readdir, readFile } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import { PNG } from "pngjs";
 
 import { collectCandidatePlaytestSummaries, type ICandidatePlaytestSummary } from "./playtest-diagnostics.js";
 import { getProofContract } from "./proof-contract.js";
@@ -9,6 +10,10 @@ export async function inferBenchmarkProofFromArtifacts(options: {
   candidate: string;
   promptId: string;
 }): Promise<{ diagnostics: IBenchmarkDiagnostic[]; proof?: IBenchmarkProofResult }> {
+  const iterateProof = await proofFromCurrentIterate(options.candidate, options.promptId);
+  if (iterateProof !== undefined) {
+    return { diagnostics: proofDiagnostics(iterateProof, `${options.promptId} current iterate acceptance coverage failed.`, "Rerun the plan-derived current scenarios and visual capture; stale or unrelated summaries are ignored."), proof: iterateProof };
+  }
   const neutralProofs = await collectNeutralProofs(options.candidate, options.promptId);
   const neutralProof = chooseBestProof(neutralProofs.proofs);
   if (neutralProof !== undefined) {
@@ -24,11 +29,41 @@ export async function inferBenchmarkProofFromArtifacts(options: {
         ? inferCheckpointRaceProof(summaries)
       : undefined;
   if (proof === undefined) {
-    return { diagnostics: neutralProofs.diagnostics };
+    return getProofContract(options.promptId) === undefined
+      ? { diagnostics: neutralProofs.diagnostics }
+      : { diagnostics: [...neutralProofs.diagnostics, {
+        code: "TN_BENCH_EQUAL_PROOF_MISSING",
+        message: `${options.promptId} has no current passing equal-proof artifact.`,
+        severity: "error",
+        suggestedFix: "Run the prompt's current plan-derived scenarios and retain their passing iterate report before scoring.",
+      }] };
   }
   const diagnostics = proofDiagnostics(proof, `${options.promptId} equal-proof playtest failed under the round-5 proof contract.`, `Inspect the imported TN_PLAYTEST_* diagnostics and rerun the ${options.promptId} proof scenarios after fixing the owning source.`);
   return { diagnostics: [...neutralProofs.diagnostics, ...diagnostics], proof };
 }
+
+async function proofFromCurrentIterate(candidate: string, promptId: string): Promise<IBenchmarkProofResult | undefined> {
+  const report = await readJsonRecord(resolve(candidate, "artifacts/iterate/latest/report.json"));
+  if (report === undefined || !isRecord(report.acceptanceCoverage)) return undefined;
+  const contract = getProofContract(promptId);
+  if (contract === undefined) return undefined;
+  const observed = new Set(stringArray(report.acceptanceCoverage.observed));
+  const visualPassed = isRecord(report.verdicts) && report.verdicts.visual === "pass";
+  const iteratePassed = report.ok === true && report.promptCoverage === "pass";
+  const assertions = contract.assertions.filter((assertion) => assertion.required).map((assertion) => {
+    const pass = assertion.id === "webgl-canvas"
+      ? iteratePassed && visualPassed && observed.has(assertion.id)
+      : iteratePassed && observed.has(assertion.id);
+    return { details: { evidence: assertion.id === "webgl-canvas" ? "current iterate visual verdict and exact acceptance ID" : `current iterate acceptance '${assertion.id}'` }, id: assertion.id, pass };
+  });
+  return { assertions, classification: contract.classification, ok: assertions.every((assertion) => assertion.pass), promptId, requiredAssertionIds: contract.assertions.filter((assertion) => assertion.required).map((assertion) => assertion.id) };
+}
+
+async function readJsonRecord(path: string): Promise<Record<string, unknown> | undefined> {
+  try { const value = JSON.parse(await readFile(path, "utf8")) as unknown; return isRecord(value) ? value : undefined; } catch { return undefined; }
+}
+
+function stringArray(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
 
 function proofDiagnostics(proof: IBenchmarkProofResult, message: string, suggestedFix: string): IBenchmarkDiagnostic[] {
   return proof.ok ? [] : [{
@@ -246,9 +281,10 @@ async function collectNeutralProofs(candidate: string, promptId: string): Promis
   for (const file of files) {
     try {
       const parsed = JSON.parse(await readFile(file, "utf8")) as unknown;
-      const proof = neutralProof(parsed, promptId);
-      if (proof !== undefined) {
-        proofs.push(proof);
+      const result = await neutralProof(parsed, promptId, candidate);
+      if (result !== undefined) {
+        diagnostics.push(...result.diagnostics);
+        proofs.push(result.proof);
       }
     } catch (error) {
       diagnostics.push({
@@ -278,7 +314,7 @@ async function findJsonFiles(root: string): Promise<string[]> {
   }
 }
 
-function neutralProof(value: unknown, promptId: string): IBenchmarkProofResult | undefined {
+async function neutralProof(value: unknown, promptId: string, candidate: string): Promise<{ diagnostics: IBenchmarkDiagnostic[]; proof: IBenchmarkProofResult } | undefined> {
   if (!isRecord(value) || value.schema !== "threenative.agent-benchmark-proof" || value.promptId !== promptId || !Array.isArray(value.assertions)) {
     return undefined;
   }
@@ -287,23 +323,67 @@ function neutralProof(value: unknown, promptId: string): IBenchmarkProofResult |
     return undefined;
   }
   const required = contract.assertions.filter((item) => item.required).map((item) => item.id);
-  const assertions = value.assertions
-    .filter((assertion): assertion is { details?: Record<string, unknown>; id: string; pass: boolean } => {
-      return isRecord(assertion) && typeof assertion.id === "string" && typeof assertion.pass === "boolean" && (assertion.details === undefined || isRecord(assertion.details));
-    })
-    .map((assertion) => ({
-      details: assertion.details,
-      id: assertion.id,
-      pass: assertion.pass,
-    }));
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  const assertions = [];
+  for (const assertion of value.assertions) {
+    if (!isRecord(assertion) || typeof assertion.id !== "string" || typeof assertion.pass !== "boolean" || (assertion.details !== undefined && !isRecord(assertion.details))) continue;
+    const observationBound = assertion.pass !== true || await hasRetainedObservation(candidate, assertion.observations);
+    if (assertion.pass === true && !observationBound) {
+      diagnostics.push({
+        code: "TN_BENCH_PROOF_OBSERVATION_INVALID",
+        message: `${promptId}/${assertion.id}: passing neutral proof is not bound to a retained current browser screenshot pair or passing playtest observation.`,
+        severity: "error",
+        suggestedFix: "Reference before/after PNG observations under artifacts/proof/observations, or a passing current playtest summary and assertion ID.",
+      });
+    }
+    assertions.push({ details: assertion.details, id: assertion.id, pass: assertion.pass && observationBound });
+  }
   const passed = new Set(assertions.filter((assertion) => assertion.pass).map((assertion) => assertion.id));
-  return {
-    assertions,
-    classification: contract.classification,
-    ok: required.every((id) => passed.has(id)),
-    promptId,
-    requiredAssertionIds: required,
-  };
+  return { diagnostics, proof: { assertions, classification: contract.classification, ok: required.every((id) => passed.has(id)), promptId, requiredAssertionIds: required } };
+}
+
+async function hasRetainedObservation(candidate: string, value: unknown): Promise<boolean> {
+  if (!Array.isArray(value)) return false;
+  const observations = value.filter(isRecord);
+  const before = observations.find((item) => item.kind === "before-screenshot" && typeof item.artifact === "string");
+  const after = observations.find((item) => item.kind === "after-screenshot" && typeof item.artifact === "string");
+  if (before !== undefined && after !== undefined && before.artifact !== after.artifact) {
+    const [beforePixels, afterPixels] = await Promise.all([
+      readRetainedPngPixels(candidate, before.artifact as string),
+      readRetainedPngPixels(candidate, after.artifact as string),
+    ]);
+    return beforePixels !== undefined && afterPixels !== undefined && !beforePixels.equals(afterPixels);
+  }
+  for (const observation of observations) {
+    if (observation.kind !== "playtest-summary" || typeof observation.artifact !== "string" || typeof observation.assertionId !== "string") continue;
+    const path = retainedArtifactPath(candidate, observation.artifact, ["artifacts/iterate/latest/playtest/", "artifacts/playtest/"]);
+    if (path === undefined || !observation.artifact.endsWith("/summary.json") || (observation.artifact.startsWith("artifacts/playtest/") && !observation.artifact.includes("/latest/"))) continue;
+    const summary = await readJsonRecord(path);
+    if (summary?.schema !== "threenative.playtest-summary" || summary.pass !== true || !isRecord(summary.proofMetadata) || summary.proofMetadata.schema !== "threenative.proof-artifact-metadata" || !Array.isArray(summary.assertions)) continue;
+    if (summary.assertions.some((item) => isRecord(item) && item.id === observation.assertionId && item.pass === true)) return true;
+  }
+  return false;
+}
+
+async function readRetainedPngPixels(candidate: string, artifact: string): Promise<Buffer | undefined> {
+  const path = retainedArtifactPath(candidate, artifact, ["artifacts/proof/observations/"]);
+  if (path === undefined || !artifact.endsWith(".png")) return undefined;
+  const bytes = await readFile(path).catch(() => undefined);
+  if (bytes === undefined) return undefined;
+  try {
+    const image = PNG.sync.read(bytes);
+    return image.width > 0 && image.height > 0 ? Buffer.from(image.data) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function retainedArtifactPath(candidate: string, artifact: string, allowedPrefixes: readonly string[]): string | undefined {
+  const normalized = artifact.replaceAll("\\", "/");
+  if (isAbsolute(artifact) || !allowedPrefixes.some((prefix) => normalized.startsWith(prefix))) return undefined;
+  const absolute = resolve(candidate, normalized);
+  const fromCandidate = relative(resolve(candidate), absolute);
+  return fromCandidate === "" || fromCandidate.startsWith("..") || isAbsolute(fromCandidate) ? undefined : absolute;
 }
 
 function hasCollectorResourceAssertions(summary: ICandidatePlaytestSummary): boolean {

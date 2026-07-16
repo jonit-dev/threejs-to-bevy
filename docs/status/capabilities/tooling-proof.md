@@ -156,6 +156,23 @@ Current support:
   `tools/verify/artifacts/agent-benchmark/round-5-collector-guided-2026-07-08/`
   has status/matrix/audit green and proves collector token medians of 20,950
   direct ThreeNative vs 46,192 vanilla (0.454x raw; `withinHalfX: true`).
+- The frozen follow-up prepares 18 prompt-hash-locked slots and rejects
+  DOM-only or dependency-only vanilla impostors unless pinned `three` is
+  imported and active play uses `THREE.WebGLRenderer`. Aggregate and matrix
+  gates enforce raw/cost parity, per-run 300k/25/2 caps, command/retry/churn
+  medians, and rubrics. The July 16 round attempted all 18 slots: 16 emitted
+  authoritative usage, all 16 exceeded 300,000 raw tokens, five ThreeNative
+  reports lacked complete equal-proof results, and two ThreeNative wave-defense
+  attempts hit the 25-command stop without `turn.completed`. Manual review
+  found nonblank prompt-matched WebGL games, but the retained result is a
+  benchmark FAIL with no vanilla ratio:
+  `tools/agent-benchmark/OFF-RECIPE-EFFICIENCY-RERUN.md`.
+- Follow-up runner hardening pins generated projects to `node bin/tn`, exposes
+  the configured Playwright cache inside isolated homes, waits for in-flight
+  commands before token interruption, and rejects missing equal proof. Fresh
+  ThreeNative pilots for grid, wave-defense, and tactics passed exact current
+  iterate proof below 300k; a vanilla wave pilot stayed below the cap but
+  produced no admissible equal-proof artifact, so Phase 12 remains failed.
 - Round-5B preparation generates the lane-runner, checkpoint-race, and
   physics-knockdown matrix only from a green next-steps audit; the addendum is
   `tools/agent-benchmark/ROUND-5B-PROTOCOL-2026-07-08.md`.

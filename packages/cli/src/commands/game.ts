@@ -19,7 +19,10 @@ import { compileTypedGameSpecFile } from "@threenative/compiler";
 import { selectGameArchetype, type GameArchetypeId } from "../archetypes/registry.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { matchGameKitCandidates } from "../game/kits.js";
+import { buildIntentContract, evaluateIntentCoverage } from "../game/intentContract.js";
 import { buildGameTaskGraph } from "../game/taskGraph.js";
+import { mechanicMutationCommand, mechanicRecipeCompositions } from "../mechanicBlocks/descriptors.js";
+import { listMechanicBlocks } from "../mechanicBlocks/registry.js";
 import { gameProvidersCommand } from "./game/providers.js";
 import { ensureReleaseAssetBudgetProof, runGameQaProof, type IGameCommandOptions, type IGameProofRun } from "./gameQaProof.js";
 import { gameScaleCommand } from "./gameScale.js";
@@ -30,6 +33,8 @@ import { loadCookbookEntries } from "./cookbook.js";
 import { buildPlaytestScaffoldScenario, type PlaytestScaffoldMechanic } from "./playtestScaffold.js";
 
 import { type IGameplayBlockDescriptor, type IGamePlan, type IGamePlanStep } from "./gamePlanTypes.js";
+
+const recipeCompositions = mechanicRecipeCompositions();
 export async function gameCommand(argv: readonly string[], options: IGameCommandOptions = {}): Promise<ICommandResult> {
   const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
   const [subcommand] = normalizedArgv;
@@ -200,6 +205,17 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
   const archetype = selectGameArchetype(goal);
   const kitCandidates = matchGameKitCandidates(goal);
   const matchedKit = kitCandidates.find((candidate) => candidate.score >= 1);
+  const intentResult = buildIntentContract(goal);
+  const coverage = evaluateIntentCoverage(intentResult.contract, [
+    ...(matchedKit?.blocks.map((block) => block.id) ?? []),
+    ...listMechanicBlocks().flatMap((block) => block.capabilityIds),
+  ]);
+  const coverageComplete = coverage.uncoveredResponsibilityIds.length === 0
+    && intentResult.ambiguousInterpretationIds.length === 0
+    && intentResult.semanticCoverageComplete;
+  const matchedRecipeId = intentResult.contract.id === "intent.grid-push" && coverageComplete
+    ? "spatial-grid-objective"
+    : matchedKit?.recipeId;
   const gameplayBlocks = buildGameplayBlocks(goal);
   const plan: IGamePlan = {
     acceptanceCriteria: [
@@ -210,7 +226,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       "Proof includes authoring validation, build, playtest motion, screenshot, game score, QA, and release checks.",
     ],
     archetype: archetype.id,
-    authoringMode: matchedKit === undefined && !isPhysicsTargetGoal(goal) ? "custom-on-starter" : "bounded-match",
+    authoringMode: coverageComplete ? "bounded-match" : "custom-on-starter",
     archetypeDetails: {
       controls: archetype.controls,
       lookProfile: archetype.lookProfile,
@@ -221,6 +237,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     archetypeSuggestions: buildActorArchetypeSuggestions(goal, defaults),
     assetPlan: buildAssetPlan(gameCategory),
     code: "TN_GAME_PLAN",
+    coveredResponsibilityIds: coverage.coveredResponsibilityIds,
     design: {
       controls: [...archetype.controls, "retry/pause input path", "touch-control fallback when mobile is in scope"],
       failRetry: "Define a loss, timeout, hazard, or reset condition and a retained UI retry state.",
@@ -231,9 +248,16 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     diagnostics: [
       ...buildPlanDiagnostics(inventory),
-      ...(matchedKit === undefined ? [{
+      ...(intentResult.ambiguousInterpretationIds.length > 0 ? [{
+        code: "TN_GAME_PLAN_AMBIGUOUS",
+        interpretationIds: intentResult.ambiguousInterpretationIds,
+        message: `Goal has tied incompatible interpretations: ${intentResult.ambiguousInterpretationIds.join(", ")}.`,
+        severity: "warning" as const,
+        suggestedFix: "Clarify the intended interaction and objective before applying a mechanic or recipe.",
+      }] : []),
+      ...(!coverageComplete ? [{
         code: "TN_GAME_PLAN_OFF_RECIPE",
-        message: `Goal does not match a promoted game kit; keep the structured-source starter and custom-author the requested loop instead of applying an unrelated recipe. Nearest archetype is '${archetype.id}'.`,
+        message: `Registered mechanics do not cover required responsibilities [${coverage.uncoveredResponsibilityIds.join(", ")}]; keep the structured-source starter and custom-author the requested loop instead of applying an unrelated recipe. Nearest archetype is '${archetype.id}'.`,
         severity: "info" as const,
         suggestedFix: "Inspect the mechanic decomposition against the goal's core verbs and acceptance criteria. Use content/**/*.json and src/scripts/**/*.ts on top of the starter when no bounded match covers them.",
       }] : []),
@@ -251,6 +275,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
       recommendedOperations: inventory.recommendedOperations,
       sourceFamilies: inventory.sourceFamilies.map((family) => ({ count: family.count, files: family.files, kind: family.kind })),
     },
+    intentContract: intentResult.contract,
     gameplayBlocks,
     kitCandidates,
     mechanicDecomposition: buildMechanicDecomposition(goal, gameplayBlocks, inventory, kitCandidates, cookbookEntries),
@@ -258,14 +283,17 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     mutate: false,
     phases: GAME_WORKFLOW_PHASE_IDS.map((id, index) => ({ id, order: index + 1, summary: phaseSummary(id) })),
     polishPlan: buildPolishPlan(),
-    proofCommands: matchedKit === undefined
-      ? ["tn iterate --project . --json", "tn playtest --project . --scenario playtests/<committed-scenario>.playtest.json --json"]
-      : ["tn iterate --project . --json"],
+    proofCommands: [
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+      "tn iterate --project . --json",
+    ],
     recipeIds,
     schema: "threenative.game-plan",
     scriptPlan: buildScriptPlan(inventory),
     sourcePlan: buildSourcePlan(inventory),
-    steps: buildGamePlanSteps(defaults, matchedKit?.recipeId),
+    steps: buildGamePlanSteps(defaults, coverageComplete ? matchedRecipeId : undefined),
+    uncoveredResponsibilityIds: coverage.uncoveredResponsibilityIds,
+    version: 2,
   };
   const planArtifactPath = resolve(projectPath, "artifacts/game-production/plan.json");
   await mkdir(resolve(planArtifactPath, ".."), { recursive: true });
@@ -329,9 +357,9 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
   };
   const playerId = stringValue(recipeArgs.playerId) ?? "scaffold.player";
   const scriptPath = await ensureScaffoldScript(options.projectPath, scaffold, playerId);
-  const planned = planAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeId: scaffold.recipeId });
+  const planned = planAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeCompositions, recipeId: scaffold.recipeId });
   const result = planned.ok
-    ? await applyAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeId: scaffold.recipeId })
+    ? await applyAuthoringRecipe({ args: recipeArgs, projectPath: options.projectPath, recipeCompositions, recipeId: scaffold.recipeId })
     : { ...planned, changed: false, filesWritten: [], ok: false, operationResults: [] };
 
   const diagnostics = result.diagnostics.map((diagnostic) => ({
@@ -400,6 +428,9 @@ async function applyGamePlanScaffold(options: { json: boolean; plan: IGamePlan; 
 }
 
 function selectGameScaffold(plan: IGamePlan): IGameScaffoldDefinition | undefined {
+  if (plan.authoringMode !== "bounded-match" || plan.uncoveredResponsibilityIds.length > 0) {
+    return undefined;
+  }
   const candidate = plan.kitCandidates.find((kit) => kit.score > 0 && (kit.recipeId === "top-down-collector" || kit.recipeId === "lane-runner"));
   if (candidate?.recipeId === "top-down-collector") {
     return {
@@ -1107,36 +1138,51 @@ async function writeScaffoldEvidence(projectPath: string, evidence: { archetype:
 
 function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Record<string, unknown> {
   const matchedKit = plan.kitCandidates.find((candidate) => candidate.score >= 1);
-  const nextAuthoringCommand = isPhysicsTargetGoal(plan.goal)
+  const coverageComplete = plan.uncoveredResponsibilityIds.length === 0 && plan.authoringMode === "bounded-match";
+  const requiredAcceptanceIds = plan.intentContract.acceptanceAssertions.filter((item) => item.required).map((item) => item.id);
+  const nextAuthoringCommand = coverageComplete && plan.intentContract.id === "intent.grid-push"
+    ? "tn recipe apply spatial-grid-objective --project . --json"
+    : coverageComplete && isPhysicsTargetGoal(plan.goal)
     ? plan.mechanicDecomposition.find((row) => row.command?.includes("physics-target"))?.command
-    : matchedKit === undefined
+    : !coverageComplete && plan.intentContract.prototype !== undefined
+      ? "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json"
+    : !coverageComplete || matchedKit === undefined
       ? undefined
       : plan.mechanicDecomposition[0]?.command;
   return {
+    code: plan.code,
+    message: "Full game plan written to artifacts/game-production/plan.json.",
+    nextAuthoringCommand,
+    nextInspectionCommand: nextAuthoringCommand === undefined ? "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json" : undefined,
+    nextIterateCommand: "tn iterate --project . --json",
+    nextProofCommand: "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+    stopAfterCommandWhenScenarioEmitted: nextAuthoringCommand !== undefined,
     archetype: plan.archetype,
     authoringMode: plan.authoringMode,
-    code: plan.code,
+    coveredResponsibilityIds: plan.coveredResponsibilityIds,
     diagnostics: plan.diagnostics,
     fileMap: {
       scripts: plan.scriptPlan.map((script) => ({ exportName: script.exportName, module: script.module, responsibility: script.responsibility })),
       source: plan.sourcePlan.map((source) => ({ document: source.document, path: source.path })),
     },
     goal: plan.goal,
-    archetypeSuggestions: plan.archetypeSuggestions,
-    kitCandidates: plan.kitCandidates.slice(0, 3).map((kit) => ({ kitId: kit.kitId, recipeId: kit.recipeId, toolingOnly: kit.toolingOnly })),
+    intentContract: {
+      acceptanceAssertions: plan.intentContract.acceptanceAssertions.map((item) => ({ id: item.id, kind: item.kind, proof: item.proof })),
+      id: plan.intentContract.id,
+      requiredCapabilities: plan.intentContract.requiredCapabilities,
+      verbs: plan.intentContract.verbs.map(({ action, id, object, subject }) => ({ action, id, object, subject })),
+      version: plan.intentContract.version,
+    },
+    kitCandidates: plan.kitCandidates.slice(0, 1).map((kit) => ({ kitId: kit.kitId, recipeId: kit.recipeId, toolingOnly: kit.toolingOnly })),
     mechanicDecomposition: plan.mechanicDecomposition,
-    message: "Full game plan written to artifacts/game-production/plan.json.",
-    milestones: plan.phases.map((phase) => ({ id: phase.id, order: phase.order, summary: phase.summary })),
     mutate: plan.mutate,
-    nextAuthoringCommand,
-    nextInspectionCommand: matchedKit === undefined ? "tn authoring inspect --project . --json" : undefined,
-    nextProofCommand: "tn iterate --project . --json",
     planArtifactPath,
     proofCommands: plan.proofCommands,
     recipeIds: plan.recipeIds,
+    requiredAcceptanceIds,
     schema: "threenative.game-plan-summary",
-    stopAfterCommandWhenScenarioEmitted: nextAuthoringCommand !== undefined,
-    version: "0.1.0",
+    uncoveredResponsibilityIds: plan.uncoveredResponsibilityIds,
+    version: "0.2.0",
   };
 }
 
@@ -1149,6 +1195,17 @@ function buildMechanicDecomposition(
 ): IGamePlan["mechanicDecomposition"] {
   const sourceOwner = inventory.primaryScene === undefined ? "content/scenes/arena.scene.json" : inventory.primaryScene.file;
   const scriptOwner = inventory.scripts[0]?.module ?? "src/scripts/player.ts";
+  const normalizedGoal = goal.toLowerCase();
+  const spatialGrid = /\b(grid|cell|tile)\b/u.test(normalizedGoal);
+  const spatialPush = /\b(push|pushing|pushes|crate|crates|box|boxes)\b/u.test(normalizedGoal);
+  const spatialOccupancy = /\b(goal|goals|occupancy|pressure plate|pressure plates|switch|switches)\b/u.test(normalizedGoal);
+  if (spatialGrid && spatialOccupancy) {
+    return [
+      mechanicRow({ command: mechanicMutationCommand("grid-step"), cookbookEntries, fallbackCookbookId: "spatial-grid-mechanics", mechanic: "discrete-grid-movement", owner: scriptOwner, summary: "Move by one cell with edge input, bounds, blocked-cell rejection, and retry state." }),
+      ...(spatialPush ? [mechanicRow({ command: mechanicMutationCommand("push-interaction"), cookbookEntries, fallbackCookbookId: "spatial-grid-mechanics", mechanic: "push-interaction", owner: scriptOwner, summary: "Push an adjacent object only into a free cell; pulling and occupied destinations remain rejected." })] : []),
+      mechanicRow({ command: mechanicMutationCommand("occupancy-objective", { "subject-tag": spatialPush ? "pushable" : "player" }), cookbookEntries, fallbackCookbookId: "spatial-grid-objective-recipe", mechanic: "occupancy-objective", owner: sourceOwner, summary: "Count occupied targets, update retained HUD progress, emit win state, and integrate retry." }),
+    ];
+  }
   const blockByKind = new Map<string, IGameplayBlockDescriptor>();
   for (const block of gameplayBlocks) {
     if (!blockByKind.has(block.kind)) {
@@ -1212,9 +1269,7 @@ function buildMechanicDecomposition(
     }),
     mechanicRow({
       block: spawn,
-      command: isPhysicsTargetGoal(goal)
-        ? "tn add physics-target --count 5 --project . --json"
-        : "tn add spawner --project . --json",
+      command: isPhysicsTargetGoal(goal) ? mechanicMutationCommand("physics-target") : mechanicMutationCommand("spawner"),
       cookbookEntries,
       fallbackCookbookId: "kinematic-hazard",
       mechanic: "hazards-or-rewards",
@@ -1279,10 +1334,13 @@ function buildGamePlanSteps(
   defaults: { cameraId: string; playerId: string; sceneId: string },
   primaryRecipeId: string | undefined,
 ): IGamePlanStep[] {
-  const playableRecipe = primaryRecipeId === "top-down-collector" || primaryRecipeId === "lane-runner" || primaryRecipeId === "vehicle-checkpoint"
+  const hasMatchedRecipe = primaryRecipeId !== undefined;
+  const playableRecipe = primaryRecipeId === "top-down-collector" || primaryRecipeId === "lane-runner" || primaryRecipeId === "vehicle-checkpoint" || primaryRecipeId === "spatial-grid-objective"
     ? primaryRecipeId
     : "third-person-controller";
-  const playableRecipeArgs = playableRecipe === "top-down-collector"
+  const playableRecipeArgs = playableRecipe === "spatial-grid-objective"
+    ? {}
+    : playableRecipe === "top-down-collector"
     ? { cameraId: defaults.cameraId, inputDocId: `${defaults.sceneId}-input`, playerId: defaults.playerId, sceneId: defaults.sceneId }
     : playableRecipe === "vehicle-checkpoint"
       ? { cameraId: defaults.cameraId, sceneId: defaults.sceneId, vehicleId: defaults.playerId }
@@ -1291,7 +1349,7 @@ function buildGamePlanSteps(
         : { cameraId: defaults.cameraId, entityId: defaults.playerId, sceneId: defaults.sceneId };
   return [
     recipeStep({
-      apply: true,
+      apply: hasMatchedRecipe,
       id: "playable-loop",
       phase: "gameplay",
       recipe: playableRecipe,
@@ -1299,7 +1357,7 @@ function buildGamePlanSteps(
       summary: "Create or verify a player verb, objective, input path, camera, and feedback loop.",
     }),
     recipeStep({
-      apply: playableRecipe === "third-person-controller",
+      apply: hasMatchedRecipe && playableRecipe === "third-person-controller",
       id: "collectible-or-goal",
       phase: "gameplay",
       recipe: "collectible",
@@ -1425,7 +1483,7 @@ function buildActorArchetypeSuggestions(
 }
 
 function recipeStep(step: IGamePlanStep & { recipe: string; recipeArgs: Record<string, unknown> }): IGamePlanStep {
-  const plan = planAuthoringRecipe({ args: step.recipeArgs, recipeId: step.recipe });
+  const plan = planAuthoringRecipe({ args: step.recipeArgs, recipeCompositions, recipeId: step.recipe });
   assert.equal(plan.ok, true, `Game plan recipe '${step.recipe}' has invalid arguments: ${plan.diagnostics.map((diagnostic) => diagnostic.message).join("; ")}`);
   return {
     ...step,
@@ -1678,6 +1736,7 @@ async function gameImproveCommand(argv: readonly string[]): Promise<ICommandResu
       const result = await applyAuthoringRecipe({
         args: step.recipeArgs as Record<string, unknown>,
         projectPath,
+        recipeCompositions,
         recipeId: step.recipe as string,
       });
       applied.push({

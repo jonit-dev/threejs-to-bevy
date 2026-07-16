@@ -28,6 +28,20 @@ test("should accept complete round-5 matrix with typed-spec requirement", () => 
   assert.deepEqual(result.diagnostics, []);
 });
 
+test("should reject an otherwise complete matrix when efficiency gates fail", () => {
+  const value = report({ threenativeRepeats: 3, typedSpecRepeats: 0, vanillaRepeats: 3 });
+  value.promptSummaries[0]!.promptId = "grid-push-puzzle";
+  value.promptSummaries[0]!.withinCostWeightedTokenBudget = false;
+  value.promptSummaries[0]!.withinPerRunBudget = false;
+  value.promptSummaries[0]!.withinRubricBudget = false;
+  const result = validateRound5Matrix(value);
+
+  assert.equal(result.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_MATRIX_COST_TOKEN_RATIO_FAILED"), true);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_MATRIX_PER_RUN_CAP_FAILED"), true);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_MATRIX_RUBRIC_FAILED"), true);
+});
+
 function report(options: { threenativeRepeats: number; typedSpecRepeats: number; vanillaRepeats: number }): IBenchmarkReport {
   return {
     diagnostics: [],
@@ -46,6 +60,7 @@ function report(options: { threenativeRepeats: number; typedSpecRepeats: number;
       costWeightedTokenRatio: null,
       dialectConfusionFailures: { threenative: 0, vanilla: 0 },
       failedCommandMedian: { threenative: null, vanilla: null },
+      humanRubricMedian: { threenative: { playability: 2, visual: 2 }, vanilla: { playability: 2, visual: 2 } },
       iterationMedian: { threenative: null, vanilla: null },
       promptClassification: "continuity",
       promptId: "collector",
@@ -99,13 +114,17 @@ function report(options: { threenativeRepeats: number; typedSpecRepeats: number;
       vanillaMedianToolOutputBytes: null,
       vanillaMedianToolStepCount: null,
       vanillaMedianUncachedInputTokens: null,
-      withinEqualProofTokenBudget: null,
-      withinFailedCommandBudget: null,
+      withinEqualProofTokenBudget: true,
+      withinCostWeightedTokenBudget: true,
+      withinChurnMedianBudget: true,
+      withinFailedCommandBudget: true,
       withinHalfX: null,
       withinInstructionAdoptionBudget: null,
       withinRepeatBudget: options.threenativeRepeats >= 3 && options.vanillaRepeats >= 3,
-      withinRetryChainBudget: null,
-      withinStepBudget: null,
+      withinPerRunBudget: true,
+      withinRetryChainBudget: true,
+      withinRubricBudget: true,
+      withinStepBudget: true,
     }],
     runCount: options.threenativeRepeats + options.typedSpecRepeats + options.vanillaRepeats,
     schema: "threenative.agent-benchmark-report",

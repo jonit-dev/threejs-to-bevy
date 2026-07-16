@@ -90,6 +90,41 @@ test("should gate beyond-one-shot prompts at equal-proof parity", async () => {
   assert.equal(summary?.withinEqualProofTokenBudget, false);
 });
 
+test("should enforce off-recipe raw and cost-weighted parity", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-off-recipe-ratio-"));
+  const paths = await writeRepeatedRunReports(root, {
+    promptId: "grid-push-puzzle",
+    threenativeSession: { costWeightedTokens: 1200 },
+    threenativeTokens: 900,
+    vanillaSession: { costWeightedTokens: 1000 },
+    vanillaTokens: 1000,
+  });
+  const report = await aggregateRunReports(paths);
+
+  assert.equal(report.verdict.status, "fail");
+  assert.equal(report.promptSummaries[0]?.rawTokenRatio, 0.9);
+  assert.equal(report.promptSummaries[0]?.withinEqualProofTokenBudget, true);
+  assert.equal(report.promptSummaries[0]?.withinCostWeightedTokenBudget, false);
+});
+
+test("should make over-cap off-recipe sessions inadmissible", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-off-recipe-cap-"));
+  const paths = await writeRepeatedRunReports(root, {
+    promptId: "grid-push-puzzle",
+    threenativeSession: { failedCommandCount: 3, toolStepCount: 26 },
+    threenativeTokens: 300_001,
+    vanillaTokens: 1000,
+  });
+  const report = await aggregateRunReports(paths);
+
+  assert.equal(report.verdict.status, "fail");
+  assert.equal(report.promptSummaries[0]?.repeatCount.threenative, 0);
+  assert.equal(report.promptSummaries[0]?.withinPerRunBudget, false);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_RUN_TOKEN_CAP_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_RUN_FAILED_COMMAND_CAP_EXCEEDED"), true);
+  assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_RUN_TOOL_STEP_CAP_EXCEEDED"), true);
+});
+
 test("should include failed command and retry-chain medians", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-aggregate-"));
   const paths = await writeRepeatedRunReports(root, {

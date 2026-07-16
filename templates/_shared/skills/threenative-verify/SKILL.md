@@ -20,7 +20,7 @@ tn playtest report --latest --scenario <name> --json
 tn scene proof <scene-id> --project . --json
 
 # 4. Production gates before calling work done
-pnpm run game:plan
+pnpm run game:plan -- --goal "<game idea>"
 pnpm run game:improve
 pnpm run verify
 pnpm run game:score

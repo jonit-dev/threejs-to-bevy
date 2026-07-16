@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
 import test from "node:test";
 
-import { AUTHORING_BATCH_INPUT_MAX_BYTES, AUTHORING_BATCH_STDOUT_MAX_BYTES, authoringCommand } from "./authoring.js";
+import { AUTHORING_BATCH_INPUT_MAX_BYTES, AUTHORING_BATCH_STDOUT_MAX_BYTES, AUTHORING_INSPECT_STDOUT_MAX_BYTES, authoringCommand } from "./authoring.js";
 
 test("authoring command inspects and validates structured source documents", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-command-"));
@@ -49,6 +49,319 @@ test("authoring command inspects and validates structured source documents", asy
     assert.equal(validatePayload.next, "tn iterate --project . --json");
     assert.match(validatePayload.notice, /Standalone authoring validation is subsumed/);
     assert.equal(validatePayload.ok, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should inspect only source relevant to the supplied plan", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-plan-inspect-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await mkdir(join(root, "content/systems"), { recursive: true });
+    await mkdir(join(root, "content/ui"), { recursive: true });
+    await mkdir(join(root, "content/audio"), { recursive: true });
+    await mkdir(join(root, "content/runtime"), { recursive: true });
+    await mkdir(join(root, "playtests"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      entities: [{ id: "player" }, { id: "crate.01" }],
+      id: "arena",
+      resources: [{ id: "GridState" }],
+      schema: "threenative.scene",
+    })}\n`);
+    await writeFile(join(root, "content/input/game.input.json"), `${JSON.stringify({
+      actions: [{ bindings: ["keyboard.ArrowUp"], id: "move-up" }, { bindings: ["keyboard.KeyR"], id: "retry" }],
+      id: "game-input",
+      schema: "threenative.input",
+    })}\n`);
+    await writeFile(join(root, "content/systems/game.systems.json"), `${JSON.stringify({
+      id: "game-systems",
+      schema: "threenative.systems",
+      systems: [{ id: "grid-loop", script: { export: "updateGrid", module: "src/scripts/grid.ts" } }],
+    })}\n`);
+    await writeFile(join(root, "content/ui/game.ui.json"), `${JSON.stringify({ id: "game-ui", nodes: [{ id: "progress" }], schema: "threenative.ui" })}\n`);
+    await writeFile(join(root, "content/audio/unrelated.audio.json"), `${JSON.stringify({ id: "audio", schema: "threenative.audio" })}\n`);
+    await writeFile(join(root, "content/runtime/physics.runtime.json"), `${JSON.stringify({ id: "physics", schema: "threenative.runtime-config" })}\n`);
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      coveredResponsibilityIds: [],
+      intentContract: {
+        acceptanceAssertions: [
+          { description: "Render the game.", id: "webgl-canvas", kind: "progress", proof: { family: "canvas-render", templateId: "acceptance-webgl-canvas" }, required: true },
+          { description: "Move once.", id: "grid-movement", kind: "movement", proof: { family: "blocked-movement", templateId: "acceptance-grid-movement" }, required: true },
+          { description: "Push only.", id: "crate-push", kind: "interaction", proof: { family: "push-only", templateId: "acceptance-crate-push" }, required: true },
+          { description: "Reach a goal.", id: "goal-progress", kind: "progress", proof: { family: "objective-progress", templateId: "acceptance-goal-progress" }, required: true },
+          { description: "Retry.", id: "retry-path", kind: "retry", proof: { family: "retry", templateId: "acceptance-retry-path" }, required: true },
+        ],
+        id: "intent.grid-push",
+        requiredCapabilities: ["move.grid", "interaction.push", "objective.occupancy", "state.retry"],
+      },
+      schema: "threenative.game-plan",
+      uncoveredResponsibilityIds: ["move.grid", "interaction.push", "objective.occupancy", "state.retry"],
+    })}\n`);
+    await writeFile(join(root, "playtests/existing-grid.playtest.json"), `${JSON.stringify({ acceptanceId: "grid-movement", name: "existing-grid", schemaVersion: 1, steps: [], target: "web", viewport: { height: 720, width: 1280 }, warmupFrames: 1 })}\n`);
+    await writeFile(join(root, "playtests/unrelated.playtest.json"), `${JSON.stringify({ acceptanceId: "unrelated-smoke", name: "unrelated", schemaVersion: 1, steps: [], target: "web", viewport: { height: 720, width: 1280 }, warmupFrames: 1 })}\n`);
+
+    const result = await authoringCommand([
+      "inspect", "--project", root, "--plan", "artifacts/game-production/plan.json", "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as {
+      documents: Array<{ kind: string; path: string }>;
+      intent: { acceptanceIds: string[]; id: string; uncoveredResponsibilityIds: string[] };
+      mechanicCandidates: string[];
+      portableBehavior: { conventionalApis: { discreteInput: string[] }; rules: Array<{ id: string; instruction: string }> };
+      projectMap: { documents: Array<{ ids: Record<string, string[]>; kind: string }> };
+      proofGaps: Array<{ id: string }>;
+      proofEnrollment: { enrolledAcceptanceIds: string[]; missingAcceptanceIds: string[]; unrelatedAcceptanceIds: string[] };
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.intent.id, "intent.grid-push");
+    assert.deepEqual(payload.intent.acceptanceIds, ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"]);
+    assert.equal(payload.documents.some((item) => item.kind === "audio" || item.kind === "runtime"), false);
+    assert.equal(payload.documents.some((item) => item.path.endsWith("arena.scene.json")), true);
+    assert.deepEqual(payload.projectMap.documents.find((item) => item.kind === "input")?.ids.input, ["move-up", "retry"]);
+    assert.deepEqual(payload.portableBehavior.conventionalApis.discreteInput, ["pressed", "released"]);
+    assert.equal(payload.portableBehavior.rules.some((item) => item.id === "self-contained-export" && item.instruction.includes("self-contained")), true);
+    assert.deepEqual(payload.mechanicCandidates, []);
+    assert.deepEqual(payload.proofEnrollment, {
+      enrolledAcceptanceIds: ["grid-movement"],
+      missingAcceptanceIds: ["webgl-canvas", "crate-push", "goal-progress", "retry-path"],
+      unrelatedAcceptanceIds: ["unrelated-smoke"],
+    });
+    assert.deepEqual(payload.proofGaps.map((item) => item.id), ["webgl-canvas", "crate-push", "goal-progress", "retry-path"]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should expose and apply a plan-derived holdout prototype with exact proof enrollment", async () => {
+  for (const fixture of [
+    {
+      acceptanceIds: ["webgl-canvas", "defender-input", "wave-progression", "base-failure", "retry-path"],
+      intentId: "intent.wave-defense",
+      prototypeId: "continuous-arena-pooled-pressure",
+    },
+    {
+      acceptanceIds: ["webgl-canvas", "unit-selection-movement", "enemy-turn", "objective-outcomes", "retry-path"],
+      intentId: "intent.turn-based-tactics",
+      prototypeId: "alternating-grid-single-pursuit",
+    },
+  ]) {
+    const root = await mkdtemp(join(tmpdir(), `tn-authoring-prototype-${fixture.prototypeId}-`));
+    try {
+      await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+      await mkdir(join(root, "playtests"), { recursive: true });
+      await writeFile(join(root, "playtests/smoke-movement.playtest.json"), "{}\n");
+      await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+        authoringMode: "custom-on-starter",
+        coveredResponsibilityIds: [],
+        intentContract: {
+          acceptanceAssertions: fixture.acceptanceIds.map((id) => ({ description: id, id, kind: id === "retry-path" ? "retry" : "progress", required: true })),
+          id: fixture.intentId,
+          prototype: {
+            id: fixture.prototypeId,
+            proofRoles: Object.fromEntries(fixture.acceptanceIds.map((id, index) => [id, id === "webgl-canvas" ? "canvas" : id === "retry-path" ? "retry" : index === 1 ? "primary-input" : index === 2 ? (fixture.prototypeId.startsWith("alternating") ? "opponent-turn" : "progression") : (fixture.prototypeId.startsWith("alternating") ? "objective-outcomes" : "failure")])),
+          },
+          requiredCapabilities: [],
+        },
+        schema: "threenative.game-plan",
+        uncoveredResponsibilityIds: [],
+      }, null, 2)}\n`);
+
+      const inspect = await authoringCommand(["inspect", "--project", root, "--plan", "artifacts/game-production/plan.json", "--json"]);
+      const inspectPayload = JSON.parse(inspect.stdout) as { nextAuthoringCommand?: string };
+      assert.equal(inspectPayload.nextAuthoringCommand, "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json");
+
+      const result = await authoringCommand(["prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--json"]);
+      const payload = JSON.parse(result.stdout) as {
+        code: string;
+        filesWritten: string[];
+        nextProofCommand: string;
+        proofEnrollment: { enrolledAcceptanceIds: string[]; missingAcceptanceIds: string[]; requiredAcceptanceIds: string[] };
+      };
+      assert.equal(result.exitCode, 0, result.stdout);
+      assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_WRITTEN");
+      assert.deepEqual(payload.proofEnrollment, {
+        enrolledAcceptanceIds: fixture.acceptanceIds,
+        missingAcceptanceIds: [],
+        requiredAcceptanceIds: fixture.acceptanceIds,
+      });
+      assert.equal(payload.filesWritten.includes("src/scripts/prototype.ts"), true);
+      assert.equal(payload.filesWritten.filter((path) => path.startsWith("playtests/acceptance-")).length, fixture.acceptanceIds.length);
+      assert.equal(payload.nextProofCommand, "tn iterate --project . --json");
+      await assert.rejects(readFile(join(root, "playtests/smoke-movement.playtest.json")), /ENOENT/u);
+
+      if (fixture.prototypeId === "continuous-arena-pooled-pressure") {
+        const input = JSON.parse(await readFile(join(root, "content/input/prototype.input.json"), "utf8")) as { actions: Array<{ bindings: string[]; id: string }> };
+        const progression = JSON.parse(await readFile(join(root, "playtests/acceptance-wave-progression.playtest.json"), "utf8")) as { assert: { resources: Array<{ path?: string }> } };
+        const script = await readFile(join(root, "src/scripts/prototype.ts"), "utf8");
+        assert.deepEqual(input.actions.filter((action) => action.id.startsWith("attack-")).map((action) => action.bindings[0]), ["keyboard.Space", "pointer.0"]);
+        assert.deepEqual(progression.assert.resources.map((assertion) => assertion.path), ["wave", "difficulty", "targetsRequired"]);
+        assert.match(script, /pointerAttackCount/u);
+        assert.match(script, /difficulty - 1/u);
+      }
+
+      const validate = await authoringCommand(["validate", "--project", root, "--json"]);
+      assert.equal(validate.exitCode, 0, validate.stdout);
+      const check = await authoringCommand(["script", "check", "--module", "src/scripts/prototype.ts", "--project", root, "--json"]);
+      assert.equal(check.exitCode, 0, check.stdout);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  }
+});
+
+test("authoring prototype rejects unsupported or non-custom plans without mutation", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-prototype-reject-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "bounded-match",
+      coveredResponsibilityIds: [],
+      intentContract: { acceptanceAssertions: [], id: "intent.grid-push", requiredCapabilities: [] },
+      schema: "threenative.game-plan",
+      uncoveredResponsibilityIds: [],
+    })}\n`);
+
+    const before = await readdir(root);
+    const result = await authoringCommand(["prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string };
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_UNSUPPORTED");
+    assert.deepEqual(await readdir(root), before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep default inspection output under 16 KiB", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-inspect-budget-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      entities: Array.from({ length: 2_000 }, (_, index) => ({ id: `entity.${index}` })),
+      id: "arena",
+      schema: "threenative.scene",
+    })}\n`);
+
+    const result = await authoringCommand(["inspect", "--project", root, "--json"]);
+
+    const payload = JSON.parse(result.stdout) as { detailsArtifactPath?: string; outputTruncated?: boolean };
+    assert.equal(result.exitCode, 0);
+    assert.equal(Buffer.byteLength(result.stdout, "utf8") <= AUTHORING_INSPECT_STDOUT_MAX_BYTES, true);
+    assert.equal(payload.outputTruncated, true);
+    assert.equal(payload.detailsArtifactPath, "artifacts/authoring/inspection-details.json");
+    await access(join(root, "artifacts/authoring/inspection-details.json"));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("authoring inspect rejects plans outside the project", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-inspect-path-"));
+  try {
+    const result = await authoringCommand(["inspect", "--project", root, "--plan", "../plan.json", "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_AUTHORING_INSPECT_PLAN_PATH_INVALID");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should scaffold a bundler-legal self-contained behavior from project IDs", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-script-scaffold-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      entities: [{ id: "player.actual" }],
+      id: "arena",
+      resources: [{ id: "GameState" }],
+      schema: "threenative.scene",
+    })}\n`);
+    await writeFile(join(root, "content/input/game.input.json"), `${JSON.stringify({
+      actions: [{ bindings: ["keyboard.KeyR"], id: "retry.actual" }],
+      axes: [{ id: "MoveX" }],
+      id: "game-input",
+      schema: "threenative.input",
+    })}\n`);
+
+    const scaffold = await authoringCommand([
+      "script", "scaffold", "--module", "src/scripts/grid.ts", "--export", "updateGrid", "--project", root, "--json",
+    ]);
+    const scaffoldPayload = JSON.parse(scaffold.stdout) as { code: string; ids: { entityId: string; inputId: string; resourceId: string } };
+    const source = await readFile(join(root, "src/scripts/grid.ts"), "utf8");
+    const check = await authoringCommand([
+      "script", "check", "--module", "src/scripts/grid.ts", "--export", "updateGrid", "--project", root, "--json",
+    ]);
+    const checkPayload = JSON.parse(check.stdout) as { code: string; diagnostics: unknown[]; ok: boolean };
+
+    assert.equal(scaffold.exitCode, 0);
+    assert.equal(scaffoldPayload.code, "TN_AUTHORING_SCRIPT_SCAFFOLDED");
+    assert.deepEqual(scaffoldPayload.ids, { entityId: "player.actual", inputId: "retry.actual", resourceId: "GameState" });
+    assert.match(source, /input\.pressed\("retry\.actual"\)/);
+    assert.match(source, /entity\("player\.actual"\)/);
+    assert.match(source, /resourceReads: \["GameState"\]/);
+    assert.equal(check.exitCode, 0, check.stdout);
+    assert.equal(checkPayload.code, "TN_AUTHORING_SCRIPT_CHECK_OK");
+    assert.equal(checkPayload.ok, true);
+    assert.deepEqual(checkPayload.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("authoring script check reports every static failure in one response", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-script-check-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(join(root, "src/scripts/broken.ts"), `let moves = 0;
+const helper = () => moves + 1;
+export function updateBroken(context: import("@threenative/script-stdlib").ScriptContext): void {
+  document.title = "broken";
+  moves = helper();
+  const state = context.resources.get("GameState", { moves: 0 });
+  context.resources.patch("GameState", { moves: state.moves + 1 });
+}
+`);
+
+    const result = await authoringCommand([
+      "script", "check", "--module", "src/scripts/broken.ts", "--export", "updateBroken", "--project", root, "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string; fix?: { snippet?: string } }>; ok: boolean };
+    const codes = payload.diagnostics.map((item) => item.code);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.ok, false);
+    assert.equal(codes.includes("TN_SCRIPT_MODULE_STATE_UNSUPPORTED"), true);
+    assert.equal(codes.includes("TN_SCRIPT_MODULE_LOCAL_REFERENCE_UNSUPPORTED"), true);
+    assert.equal(codes.includes("TN_SCRIPT_DOM_API_UNSUPPORTED"), true);
+    assert.equal(codes.includes("TN_SCRIPT_RESOURCE_READ_UNDECLARED"), true);
+    assert.equal(codes.includes("TN_SCRIPT_RESOURCE_WRITE_UNDECLARED"), true);
+    assert.equal(payload.diagnostics.find((item) => item.code === "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED")?.fix?.snippet, 'resourceWrites: ["GameState"]');
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject generated and traversal script targets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-script-path-"));
+  try {
+    const traversal = await authoringCommand([
+      "script", "check", "--module", "../outside.ts", "--project", root, "--json",
+    ]);
+    const generated = await authoringCommand([
+      "script", "scaffold", "--module", "src/scripts/scripts.bundle.ts", "--project", root, "--json",
+    ]);
+
+    assert.equal(traversal.exitCode, 1);
+    assert.equal(JSON.parse(traversal.stdout).code, "TN_AUTHORING_SCRIPT_TARGET_INVALID");
+    assert.equal(generated.exitCode, 1);
+    assert.equal(JSON.parse(generated.stdout).code, "TN_AUTHORING_SCRIPT_TARGET_INVALID");
   } finally {
     await rm(root, { force: true, recursive: true });
   }

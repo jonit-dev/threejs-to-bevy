@@ -20,6 +20,8 @@ export { compileTypedGameSpecFile, type ICompileTypedGameSpecFileOptions, type I
 export { generateTypedGameSpecIdTypes, type IGenerateTypedGameSpecTypesOptions } from "./gameSpec/typegen.js";
 export { generateProjectContextTypes, generateProjectTypes, type IGenerateProjectTypesOptions, type IGenerateProjectTypesResult } from "./typegen.js";
 export { bundleSystemScripts, type IScriptBundleResult, type ISystemScriptSource, type IScriptsManifest } from "./scripts/bundle.js";
+export { createCompactAuthoringProfile, type ICompactAuthoringProfile, type ICompactAuthoringRule } from "./scripts/authoringProfile.js";
+export { diagnosePortableScriptPreflight, diagnosePortableSystem, type IPortableScriptPreflightSource, type IPortableSystemSource } from "./scripts/diagnostics.js";
 export { probeQuickJsLoadability, type IQuickJsProbeResult } from "./scripts/quickjsProbe.js";
 export { resolveSystemScriptSources, type IResolveSystemScriptSourcesResult } from "./scripts/sourceRefs.js";
 export type {

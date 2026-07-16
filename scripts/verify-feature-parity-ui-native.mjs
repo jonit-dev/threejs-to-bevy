@@ -18,6 +18,7 @@ export async function verifyFeatureParityUiNative(options = {}) {
   const repoRoot = options.root ?? root;
   const fixture = resolve(repoRoot, fixtureRelative);
   const targets = resolveArtifactTargets({ gate: "feature-parity-ui-native", owner: { kind: "aggregate", name: "feature-parity-ui-native" }, root: repoRoot });
+  const linkedInputTargets = resolveArtifactTargets({ gate: "input-ui-polish", owner: { kind: "aggregate", name: "input-ui-polish" }, root: repoRoot });
   const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const reportPath = options.reportPath ?? targets.reportPath;
   const runId = options.runId ?? `${new Date().toISOString()}-${randomUUID()}`;
@@ -29,7 +30,7 @@ export async function verifyFeatureParityUiNative(options = {}) {
     import(resolve(repoRoot, "packages/runtime-web-three/dist/index.js")),
   ]);
   await execFileAsync(process.execPath, [resolve(repoRoot, "scripts/verify-input-ui-polish.mjs")], { cwd: repoRoot, timeout: 180_000 });
-  const linkedInput = JSON.parse(await readFile(resolve(repoRoot, "tools/verify/artifacts/input-ui-polish/verification-report.json"), "utf8"));
+  const linkedInput = JSON.parse(await readFile(linkedInputTargets.reportPath, "utf8"));
   const expectedLinkedCapabilities = promotedUiCapabilitiesForFixture("input-ui-polish");
   if (!linkedInput.ok || JSON.stringify(linkedInput.promotedCapabilities) !== JSON.stringify(expectedLinkedCapabilities)) throw new Error("linked input/UI polish evidence is stale or does not match the UI parity registry");
 

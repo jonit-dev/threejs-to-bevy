@@ -695,6 +695,8 @@ export async function attachScript(options: IAttachScriptOptions): Promise<IAuth
       const existing = findSceneItem(systems, options.systemId);
       const system = existing ?? { id: options.systemId, schedule: "fixedUpdate" };
       system.script = { module: options.modulePath, export: options.exportName };
+      if (options.source === undefined) delete system.source;
+      else system.source = options.source;
       if (existing === undefined) {
         systems.push(system);
       }
@@ -708,6 +710,8 @@ export async function attachScript(options: IAttachScriptOptions): Promise<IAuth
       module: options.modulePath,
       export: options.exportName,
     };
+    if (options.source === undefined) delete system.source;
+    else system.source = options.source;
     if (existing === undefined) {
       systems.push(system);
     }

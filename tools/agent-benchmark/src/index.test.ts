@@ -153,17 +153,23 @@ test("score command should diagnose copied session template metrics", async () =
     version: 2,
   }, null, 2)}\n`, "utf8");
 
-  const { stdout } = await execFileAsync(process.execPath, [
-    join(process.cwd(), "dist/index.js"),
-    "score",
-    "--candidate",
-    root,
-    "--condition",
-    "typed-spec",
-    "--out",
-    outPath,
-    "--json",
-  ]);
+  let stdout = "";
+  try {
+    await execFileAsync(process.execPath, [
+      join(process.cwd(), "dist/index.js"),
+      "score",
+      "--candidate",
+      root,
+      "--condition",
+      "typed-spec",
+      "--out",
+      outPath,
+      "--json",
+    ]);
+    assert.fail("Expected failed score command to exit nonzero.");
+  } catch (error) {
+    stdout = (error as { stderr?: string }).stderr ?? "";
+  }
   const parsed = JSON.parse(stdout) as {
     code?: string;
     report?: { diagnostics?: Array<{ code?: string }>; ok?: boolean };

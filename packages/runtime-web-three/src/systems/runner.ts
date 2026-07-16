@@ -151,6 +151,7 @@ async function runSystem(
     delta: options.delta ?? 0,
     elapsed: options.elapsed ?? 0,
     fixedDelta: options.fixedDelta ?? 1 / 60,
+    frame: options.frame ?? 0,
     input: options.input,
     localData: options.localData,
     mappedObjects: options.mapped?.objectsById,

@@ -27,33 +27,38 @@ everything in context at once.
 
 ## Default Loop
 
+The loop below is the compact default. When equivalent operator workflow is
+already in context, follow it directly; otherwise load `threenative-workflow`.
+Load another skill only when the plan or a diagnostic makes it relevant.
+Follow this order:
+
 1. Before creating or substantially changing the game, run
-   `tn game plan --goal "<game idea>" --project . --json`
-   (add `--apply` for supported scaffolds).
-   The package aliases are `pnpm run game:plan` and `pnpm run game:improve`.
-   Its compact output and plan artifact are the checklist; open
-   `AGENT_GAME_PLAN.md` only when the command fails or omits a required field.
-   Inspect diagnostics and proposed mechanic responsibilities before applying
-   a scaffold, recipe, or `nextAuthoringCommand`. If the plan reports
-   `TN_GAME_PLAN_OFF_RECIPE`, or no proposal covers the goal's core verbs and
-   acceptance criteria, custom-author the missing loop on top of this starter
-   in `content/**/*.json` and `src/scripts/**/*.ts`. Run the emitted
-   `nextInspectionCommand` first to inspect the starter's real source owners.
-2. Use the plan's matching `mechanicDecomposition[].cookbookId` with
-   `tn cookbook show <id> --json`. Search only when no match is emitted; list
-   only when search also has no match. Read `docs/API-CARD.md` only when the
-   cookbook script needs a contract detail.
+   `tn game plan --goal "<game idea>" --project . --json` (package alias:
+   `pnpm run game:plan -- --goal "<game idea>"`). Review its responsibilities before applying a
+   mutation; open `AGENT_GAME_PLAN.md` only when planning fails or omits a
+   required field. Use `pnpm run game:improve` only for a reviewed plan.
+2. If the plan reports `TN_GAME_PLAN_OFF_RECIPE` or does not cover the core
+   verbs and acceptance criteria, run its `nextInspectionCommand` first. Run a
+   capability-selected `nextAuthoringCommand` returned by inspection before
+   opening broad source files; custom-author directly only when no such command
+   covers the prompt. A returned prototype command is self-describing: run it
+   without loading the authoring skill or API card, then immediately run its
+   `nextProofCommand`. Otherwise
+   inspect the matched cookbook entry before running a reviewed
+   `nextAuthoringCommand`.
 3. Author with deterministic CLI edits: `tn actor ... --json`,
    `tn scene ... --json`, `tn ui ... --json`, `tn flow ... --json`, and
    `tn add <mechanic-block> ... --json`. Edit JSON directly only when no
-   command covers the change.
-4. After changes, run `tn iterate --project . --json` (or `pnpm run iterate`)
-   as the default repair loop; fix the owning durable source and rerun.
-   Start with compact stdout; inspect reports or deep logs only when a
-   diagnostic points to them.
+   command covers the change; read `docs/API-CARD.md` when a script contract is
+   unclear.
+4. Run `tn iterate --project . --json` as the default repair loop; fix the
+   owning durable source and rerun. Start with compact stdout; inspect reports
+   or deep logs only when a diagnostic points to them.
    `TN_ITERATE_OK` proves only the committed scenarios that ran. Before a
    completion claim, inspect their assertion coverage and add prompt-specific
    proof for any user acceptance criterion they do not represent.
+   Do not load the verify skill or inspect artifact trees before this first
+   iterate run; use them only to resolve an actionable iterate diagnostic.
 5. For custom sound effects, probe with `tn game providers --project . --json`.
    When ElevenLabs is available, prefer one bounded
    `tn audio generate-sfx <asset-id> --prompt "<description>" --project . --json`

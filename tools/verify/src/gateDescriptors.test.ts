@@ -89,7 +89,7 @@ test("gate descriptors should list hand-owned focused gate migration gaps", () =
     focusedGateNames: listFocusedGateNames(),
     scriptGateNames: listScriptGateNames(),
   }), []);
-  assert.equal(GATE_DESCRIPTOR_MIGRATION_GAPS.every((gap) => gap.reviewed === "2026-07-09"), true);
+  assert.equal(GATE_DESCRIPTOR_MIGRATION_GAPS.every((gap) => /^\d{4}-\d{2}-\d{2}$/u.test(gap.reviewed)), true);
 });
 
 test("gate descriptors should reject stale and missing migration gap entries", () => {

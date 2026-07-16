@@ -198,6 +198,7 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     commands: [
       "tn playtest schema --json",
       "tn playtest scaffold --assert <movement|pickup|win-state|retry> --json",
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --json",
       "tn playtest --project <path> --scenario playtests/<name>.playtest.json --json",
       "tn iterate --project . --json",
     ],

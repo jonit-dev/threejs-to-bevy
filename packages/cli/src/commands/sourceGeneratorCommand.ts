@@ -1,14 +1,23 @@
 import {
+  applyAuthoringBatch,
+  AUTHORING_BATCH_SCHEMA,
+  AUTHORING_BATCH_VERSION,
   authoringDiagnostic,
   normalizeRelativePath,
   readAuthoringJsonDocument,
   recordBlenderGenerator,
   recordGeneratorProvenance,
   writeAuthoringJsonDocument,
+  type AuthoringOperationName,
   type IAuthoringDiagnostic,
   type IAuthoringDocument,
 } from "@threenative/authoring";
-import { openProject, type IAuthoringClientTransactionResult } from "@threenative/authoring-client";
+import {
+  AuthoringClientProject,
+  AuthoringClientTransaction,
+  type IAuthoringClientCommitOptions,
+  type IAuthoringClientTransactionResult,
+} from "@threenative/authoring-client";
 import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -216,7 +225,7 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
 
     const result = await generatorExport({
       generatorId: options.generatorId,
-      project: openProject(options.projectPath),
+      project: openGeneratorProject(options.projectPath, options.generatorId),
       projectPath: options.projectPath,
     });
     if (!isAuthoringClientTransactionResult(result)) {
@@ -241,10 +250,11 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
     const completedAt = new Date().toISOString();
     const diagnostics = [...result.diagnostics, ...outputDiagnostics];
     const ok = result.ok && outputDiagnostics.length === 0;
+    const generatedFilesWritten = result.filesWritten.filter((file) => generatorData.outputs.includes(file));
     const lastRun = {
       completedAt,
       diagnostics,
-      filesWritten: result.filesWritten,
+      filesWritten: generatedFilesWritten,
       inputHash,
       ok,
       operations: result.operations,
@@ -254,7 +264,7 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
     await writeGeneratorRunProvenance(readResult.document, { inputHash, lastRun, outputHash });
     return renderGeneratorRunResult(options.json, {
       diagnostics,
-      filesWritten: result.filesWritten,
+      filesWritten: generatedFilesWritten,
       generatorId: options.generatorId,
       inputHash,
       lastRun,
@@ -267,6 +277,60 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
   } finally {
     await rm(tempDir, { force: true, recursive: true });
   }
+}
+
+class GeneratorAuthoringClientProject extends AuthoringClientProject {
+  constructor(projectPath: string, private readonly generatorId: string) {
+    super(projectPath);
+  }
+
+  override transaction(): AuthoringClientTransaction {
+    return new GeneratorAuthoringClientTransaction(this.projectPath, this.generatorId);
+  }
+}
+
+class GeneratorAuthoringClientTransaction extends AuthoringClientTransaction {
+  constructor(projectPath: string, private readonly generatorId: string) {
+    super(projectPath);
+  }
+
+  override async commit(options: IAuthoringClientCommitOptions = {}): Promise<IAuthoringClientTransactionResult> {
+    const batchResult = await applyAuthoringBatch({
+      batch: {
+        id: "authoring-client-generator-transaction",
+        operations: this.operations.map(({ args, name }) => ({ args, name: name as AuthoringOperationName })),
+        schema: AUTHORING_BATCH_SCHEMA,
+        version: AUTHORING_BATCH_VERSION,
+      },
+      owner: { generatorId: this.generatorId, kind: "generator" },
+      projectPath: this.projectPath,
+      stopOnError: options.stopOnError,
+    });
+    return {
+      changed: batchResult.changed,
+      committed: batchResult.committed,
+      diagnostics: batchResult.diagnostics,
+      filesCreated: batchResult.filesCreated,
+      filesDeleted: batchResult.filesDeleted,
+      filesModified: batchResult.filesModified,
+      filesWritten: batchResult.filesWritten,
+      ok: batchResult.ok,
+      operationResults: batchResult.operationResults.map((entry) => ({
+        result: entry.result,
+        trace: this.operations[entry.index]!,
+      })),
+      operations: this.operations.map((operation) => ({ ...operation, args: structuredClone(operation.args) })),
+      planHash: batchResult.planHash,
+      projectPath: this.projectPath,
+      recovered: batchResult.recovered,
+      ...(batchResult.stoppedAt === undefined ? {} : { stoppedAt: batchResult.stoppedAt }),
+      transactionId: batchResult.transactionId,
+    };
+  }
+}
+
+function openGeneratorProject(projectPath: string, generatorId: string): GeneratorAuthoringClientProject {
+  return new GeneratorAuthoringClientProject(projectPath, generatorId);
 }
 
 function renderBlenderGeneratorRunResult(json: boolean, payload: IBlenderGeneratorRunResult): ICommandResult {

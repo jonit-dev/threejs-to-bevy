@@ -19,7 +19,7 @@ Run these before mutating `content/**/*.json` or `src/scripts/**/*.ts`:
 ```bash
 tn game inspect --project . --json
 tn game plan --goal "<game idea>" --project . --apply --json
-pnpm run game:plan
+pnpm run game:plan -- --goal "<game idea>"
 ```
 
 Use `--apply` only when the goal matches a supported scaffold-first category

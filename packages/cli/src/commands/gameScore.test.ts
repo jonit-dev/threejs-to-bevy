@@ -37,7 +37,11 @@ test("should emit off-recipe diagnostic and generic proof commands for unmatched
     const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ code: string }>; proofCommands: string[] };
     assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE"), true);
     assert.equal(payload.proofCommands.some((command) => command.includes("coin-pickup")), false);
-    assert.equal(payload.proofCommands.some((command) => command.includes("<committed-scenario>")), true);
+    assert.equal(payload.proofCommands.some((command) => command.includes("<committed-scenario>")), false);
+    assert.deepEqual(payload.proofCommands, [
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+      "tn iterate --project . --json",
+    ]);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -133,7 +137,10 @@ test("plans a playable loop without mutating durable source", async () => {
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeGameplayBlocks?.includes("controller.top-down-cardinal") === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeProofHints?.some((hint) => hint.includes("HUD score")) === true), true);
     assert.equal(payload.steps.some((step) => step.recipe === "top-down-collector" && step.recipeScriptResponsibilities?.includes("owns collectible progress") === true), true);
-    assert.deepEqual(payload.proofCommands, ["tn iterate --project . --json"]);
+    assert.deepEqual(payload.proofCommands, [
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+      "tn iterate --project . --json",
+    ]);
     assert.deepEqual(after.filter((entry) => entry !== "artifacts" && !entry.startsWith("artifacts/")), before);
     assert.equal(after.includes("artifacts/game-production/plan.json"), true);
     assert.equal(after.includes("artifacts/game-production/task-graph.json"), true);
@@ -174,8 +181,11 @@ test("should write full game plan artifact and print compact summary by default"
     assert.equal(payload.steps, undefined);
     assert.equal(payload.fileMap.scripts.length > 0, true);
     assert.equal(payload.fileMap.source.length > 0, true);
-    assert.equal(payload.proofCommands[0], "tn iterate --project . --json");
-    assert.deepEqual(payload.proofCommands, ["tn iterate --project . --json"]);
+    assert.equal(payload.proofCommands[0], "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
+    assert.deepEqual(payload.proofCommands, [
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+      "tn iterate --project . --json",
+    ]);
     assert.equal(payload.mechanicDecomposition.every((entry) => !entry.command?.includes("<")), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "movement" && entry.command?.includes("tn recipe apply top-down-collector") === true), true);
     assert.equal(payload.mechanicDecomposition.some((entry) => entry.mechanic === "objective-progression" && typeof entry.cookbookId === "string"), true);
@@ -189,6 +199,45 @@ test("should write full game plan artifact and print compact summary by default"
     assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8192);
   } finally {
     await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep frozen unfamiliar plan handoffs under 8 KiB with exact acceptance ids", async () => {
+  const fixtures = [
+    {
+      acceptanceIds: ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"],
+      goal: "grid puzzle where the player pushes crates onto goals",
+    },
+    {
+      acceptanceIds: ["webgl-canvas", "defender-input", "wave-progression", "base-failure", "retry-path"],
+      goal: "wave defense with enemies attacking a base",
+    },
+    {
+      acceptanceIds: ["webgl-canvas", "unit-selection-movement", "enemy-turn", "objective-outcomes", "retry-path"],
+      goal: "turn-based tactics with unit selection and an enemy turn",
+    },
+  ] as const;
+
+  for (const fixture of fixtures) {
+    const root = await mkdtemp(join(tmpdir(), "tn-game-plan-frozen-budget-"));
+    try {
+      const result = await gameCommand(["plan", "--project", root, "--goal", fixture.goal, "--json"]);
+      const payload = JSON.parse(result.stdout) as {
+        nextAuthoringCommand?: string;
+        nextInspectionCommand?: string;
+        nextProofCommand: string;
+        requiredAcceptanceIds: string[];
+      };
+
+      assert.equal(result.exitCode, 0, fixture.goal);
+      assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8 * 1024, fixture.goal);
+      assert.deepEqual(payload.requiredAcceptanceIds, fixture.acceptanceIds, fixture.goal);
+      assert.equal(typeof payload.nextAuthoringCommand, "string");
+      assert.equal(payload.nextInspectionCommand, undefined);
+      assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
   }
 });
 
@@ -575,17 +624,22 @@ test("should map checkpoint racing goals to vehicle and checkpoint blocks", asyn
   }
 });
 
-test("should map knockdown goals to the registered physics-target mechanic block", async () => {
+test("should retain physics-target for explicit knockdown intent", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-physics-target-"));
   try {
     const result = await gameCommand(["plan", "--project", root, "--goal", "physics knockdown targets", "--json"]);
     const payload = JSON.parse(result.stdout) as {
+      coveredResponsibilityIds: string[];
+      intentContract: { id: string; requiredCapabilities: string[] };
       mechanicDecomposition: Array<{ command: string }>;
       nextAuthoringCommand?: string;
       stopAfterCommandWhenScenarioEmitted?: boolean;
     };
 
     assert.equal(result.exitCode, 0);
+    assert.equal(payload.intentContract.id, "intent.physics-knockdown");
+    assert.deepEqual(payload.intentContract.requiredCapabilities, ["physics-target"]);
+    assert.deepEqual(payload.coveredResponsibilityIds, ["physics-target"]);
     assert.equal(payload.mechanicDecomposition.some((row) => row.command === "tn add physics-target --count 5 --project . --json"), true);
     assert.equal(payload.nextAuthoringCommand, "tn add physics-target --count 5 --project . --json");
     assert.equal(payload.stopAfterCommandWhenScenarioEmitted, true);
@@ -594,26 +648,140 @@ test("should map knockdown goals to the registered physics-target mechanic block
   }
 });
 
-test("should keep unfamiliar grid-push goals on the starter instead of applying an unrelated mechanic", async () => {
+test("should select spatial recipe only for complete semantic coverage", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-plan-grid-push-"));
   try {
-    const result = await gameCommand(["plan", "--project", root, "--goal", "grid puzzle where a player pushes crates onto goals", "--json"]);
-    const payload = JSON.parse(result.stdout) as {
+    const complete = await gameCommand(["plan", "--project", root, "--goal", "grid puzzle where a player pushes crates onto goals", "--json"]);
+    const partial = await gameCommand(["plan", "--project", root, "--goal", "grid puzzle with goals", "--json"]);
+    const physics = await gameCommand(["plan", "--project", root, "--goal", "physics knockdown targets", "--json"]);
+    const payload = JSON.parse(complete.stdout) as {
       authoringMode?: string;
       diagnostics: Array<{ code: string }>;
-      mechanicDecomposition: Array<{ command?: string }>;
+      intentContract: { acceptanceAssertions: Array<{ id: string }>; id: string; requiredCapabilities: string[] };
       nextAuthoringCommand?: string;
       nextInspectionCommand?: string;
-      stopAfterCommandWhenScenarioEmitted?: boolean;
+      nextProofCommand?: string;
+      requiredAcceptanceIds: string[];
+      uncoveredResponsibilityIds: string[];
+    };
+    const partialPayload = JSON.parse(partial.stdout) as { authoringMode: string; mechanicDecomposition: Array<{ command: string }>; nextAuthoringCommand?: string; nextInspectionCommand?: string };
+    const physicsPayload = JSON.parse(physics.stdout) as { nextAuthoringCommand?: string };
+
+    assert.equal(complete.exitCode, 0);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE"), false);
+    assert.equal(payload.authoringMode, "bounded-match");
+    assert.equal(payload.intentContract.id, "intent.grid-push");
+    assert.deepEqual(payload.intentContract.requiredCapabilities, ["move.grid", "interaction.push", "objective.occupancy", "state.retry"]);
+    assert.deepEqual(payload.requiredAcceptanceIds, ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"]);
+    assert.deepEqual(payload.intentContract.acceptanceAssertions.map((assertion) => assertion.id), payload.requiredAcceptanceIds);
+    assert.deepEqual(payload.uncoveredResponsibilityIds, []);
+    assert.equal(payload.nextAuthoringCommand, "tn recipe apply spatial-grid-objective --project . --json");
+    assert.equal(complete.stdout.indexOf('"nextAuthoringCommand"') < 1_024, true);
+    assert.equal(complete.stdout.indexOf('"nextAuthoringCommand"') < complete.stdout.indexOf('"intentContract"'), true);
+    assert.equal(payload.nextInspectionCommand, undefined);
+    assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
+    assert.equal(partialPayload.authoringMode, "custom-on-starter");
+    assert.equal(partialPayload.nextAuthoringCommand, undefined);
+    assert.equal(partialPayload.nextInspectionCommand, "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json");
+    assert.equal(partialPayload.mechanicDecomposition.some((row) => row.command.includes("grid-step")), true);
+    assert.equal(partialPayload.mechanicDecomposition.some((row) => row.command.includes("occupancy-objective")), true);
+    assert.equal(partialPayload.mechanicDecomposition.some((row) => row.command.includes("push-interaction")), false);
+    assert.notEqual(physicsPayload.nextAuthoringCommand, "tn recipe apply spatial-grid-objective --project . --json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should let an explicit trailing goal override a package-script default", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-goal-override-"));
+  try {
+    const result = await gameCommand([
+      "plan",
+      "--goal",
+      "small arena collectible game",
+      "--project",
+      root,
+      "--json",
+      "--goal",
+      "grid puzzle where a player pushes crates onto goals",
+    ]);
+    const payload = JSON.parse(result.stdout) as { goal: string; intentContract: { id: string }; nextAuthoringCommand?: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.goal, "grid puzzle where a player pushes crates onto goals");
+    assert.equal(payload.intentContract.id, "intent.grid-push");
+    assert.equal(payload.nextAuthoringCommand, "tn recipe apply spatial-grid-objective --project . --json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit a plan-derived prototype command while keeping wave defense custom-on-starter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-partial-coverage-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "wave defense runner with enemies attacking a base", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      authoringMode: string;
+      diagnostics: Array<{ code: string }>;
+      intentContract: { id: string };
+      nextAuthoringCommand?: string;
+      planArtifactPath: string;
+      proofCommands: string[];
+      uncoveredResponsibilityIds: string[];
+    };
+    const fullPlan = JSON.parse(await readFile(payload.planArtifactPath, "utf8")) as { steps: Array<{ apply: boolean }> };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.intentContract.id, "intent.wave-defense");
+    assert.equal(payload.authoringMode, "custom-on-starter");
+    assert.equal(payload.nextAuthoringCommand, "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json");
+    assert.deepEqual(payload.proofCommands, [
+      "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
+      "tn iterate --project . --json",
+    ]);
+    assert.equal(fullPlan.steps.some((step) => step.apply), false);
+    assert.equal(payload.uncoveredResponsibilityIds.includes("spawn.wave"), true);
+    assert.equal(payload.diagnostics.some((item) => item.code === "TN_GAME_PLAN_OFF_RECIPE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should emit the same plan-derived prototype command for turn-based tactics", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-tactics-prototype-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "turn-based tactics select unit enemy turn", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      authoringMode: string;
+      intentContract: { id: string };
+      nextAuthoringCommand?: string;
+      nextProofCommand?: string;
     };
 
     assert.equal(result.exitCode, 0);
-    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_PLAN_OFF_RECIPE"), true);
     assert.equal(payload.authoringMode, "custom-on-starter");
+    assert.equal(payload.intentContract.id, "intent.turn-based-tactics");
+    const fullPlan = JSON.parse(await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")) as { intentContract: { prototype?: { id: string } } };
+    assert.equal(fullPlan.intentContract.prototype?.id, "alternating-grid-single-pursuit");
+    assert.equal(payload.nextAuthoringCommand, "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json");
+    assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should diagnose tied incompatible plan interpretations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-plan-ambiguous-"));
+  try {
+    const result = await gameCommand(["plan", "--project", root, "--goal", "push target", "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      diagnostics: Array<{ code: string }>;
+      nextAuthoringCommand?: string;
+    };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.diagnostics.some((item) => item.code === "TN_GAME_PLAN_AMBIGUOUS"), true);
     assert.equal(payload.nextAuthoringCommand, undefined);
-    assert.equal(payload.nextInspectionCommand, "tn authoring inspect --project . --json");
-    assert.equal(payload.stopAfterCommandWhenScenarioEmitted, false);
-    assert.equal(payload.mechanicDecomposition.some((row) => row.command?.includes("physics-target") === true), false);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

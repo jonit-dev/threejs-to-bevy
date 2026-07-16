@@ -13,7 +13,11 @@ const MIN_REPEATS_PER_CONDITION = 3;
 const FAILED_COMMAND_BUDGET = 0;
 const IDENTICAL_ASSERTION_REPEAT_BUDGET = 0;
 const MAX_CONSECUTIVE_SAME_DIAGNOSTIC_BUDGET = 1;
-const THREENATIVE_STEP_BUDGET = 30;
+const THREENATIVE_STEP_BUDGET = 15;
+const MAX_RUN_TOKENS = 300_000;
+const MAX_THREENATIVE_FAILED_COMMANDS = 2;
+const MAX_THREENATIVE_TOOL_STEPS = 25;
+const OFF_RECIPE_GATE_PROMPTS = new Set(["grid-push-puzzle", "wave-defense", "turn-based-tactics"]);
 
 interface IRunWithBehavior {
   behavior?: IBenchmarkBehaviorCounters & {
@@ -89,11 +93,19 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
     };
     const behaviorBudgetRuns = promptRunsWithProofDiagnostics.flatMap(behaviorBudgetRun);
     const churnByCondition = churnConditionSummaries(promptRunsWithProofDiagnostics);
+    const threenativeChurn = churnByCondition.find((entry) => entry.condition === "threenative");
+    const withinChurnMedianBudget = threenativeChurn === undefined
+      ? null
+      : threenativeChurn.median.artifactForensics === 0
+        && threenativeChurn.median.engineSourceSearch === 0
+        && threenativeChurn.median.standaloneVerify === 0;
     const withinInstructionAdoptionBudget = instructionAdoptionBudget(behaviorMedian);
     const rawTokenRatio = ratio(threenativeMedianTokens, vanillaMedianTokens);
     const promptClassification: BenchmarkPromptClass | "unknown" = promptContract?.classification ?? "unknown";
-    const equalProofRatioBudget = promptClassification === "beyond-one-shot" ? EQUAL_PROOF_BEYOND_ONE_SHOT_RATIO : EQUAL_PROOF_CONTINUITY_RATIO;
+    const equalProofRatioBudget = OFF_RECIPE_GATE_PROMPTS.has(promptId) ? 1 : promptClassification === "beyond-one-shot" ? EQUAL_PROOF_BEYOND_ONE_SHOT_RATIO : EQUAL_PROOF_CONTINUITY_RATIO;
     const withinEqualProofTokenBudget = rawTokenRatio === null || promptClassification === "unknown" ? null : rawTokenRatio <= equalProofRatioBudget;
+    const costWeightedTokenRatio = ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens);
+    const withinCostWeightedTokenBudget = costWeightedTokenRatio === null || !OFF_RECIPE_GATE_PROMPTS.has(promptId) ? null : costWeightedTokenRatio <= 1;
     const withinFailedCommandBudget = threenativeMedianFailedCommandCount === null ? null : threenativeMedianFailedCommandCount <= FAILED_COMMAND_BUDGET;
     const withinRetryChainBudget = threenativeMedianIdenticalAssertionRepeats === null && threenativeMedianMaxSameDiagnostic === null
       ? null
@@ -103,7 +115,7 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       behaviorMedian,
       behaviorBudgetRuns,
       churnByCondition,
-      costWeightedTokenRatio: ratio(threenativeMedianCostWeightedTokens, vanillaMedianCostWeightedTokens),
+      costWeightedTokenRatio,
       dialectConfusionFailures: {
         threenative: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "threenative")),
         vanilla: dialectConfusionFailureCount(promptRuns.filter((run) => run.condition === "vanilla")),
@@ -111,6 +123,16 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       failedCommandMedian: {
         threenative: metricMedian(threenativeRuns, (run) => run.session.failedCommandCount),
         vanilla: metricMedian(vanillaRuns, (run) => run.session.failedCommandCount),
+      },
+      humanRubricMedian: {
+        threenative: {
+          playability: metricMedian(threenativeRuns, (run) => run.session.humanRubric.playability),
+          visual: metricMedian(threenativeRuns, (run) => run.session.humanRubric.visual),
+        },
+        vanilla: {
+          playability: metricMedian(vanillaRuns, (run) => run.session.humanRubric.playability),
+          visual: metricMedian(vanillaRuns, (run) => run.session.humanRubric.visual),
+        },
       },
       iterationMedian: {
         threenative: metricMedian(threenativeRuns, (run) => run.session.iterationCount),
@@ -160,10 +182,14 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
       vanillaMedianUncachedInputTokens: metricMedian(vanillaRuns, (run) => run.session.uncachedInputTokens),
       withinHalfX: threenativeMedianTokens === null || vanillaMedianTokens === null ? null : threenativeMedianTokens <= vanillaMedianTokens * 0.5,
       withinEqualProofTokenBudget,
+      withinCostWeightedTokenBudget,
+      withinChurnMedianBudget,
       withinFailedCommandBudget,
       withinInstructionAdoptionBudget,
       withinRepeatBudget: threenativeRuns.length >= MIN_REPEATS_PER_CONDITION && vanillaRuns.length >= MIN_REPEATS_PER_CONDITION,
+      withinPerRunBudget: OFF_RECIPE_GATE_PROMPTS.has(promptId) ? promptRunsWithProofDiagnostics.every((run) => sessionLimitDiagnostics(run.report).length === 0) : null,
       withinRetryChainBudget,
+      withinRubricBudget: OFF_RECIPE_GATE_PROMPTS.has(promptId) ? rubricBudget(threenativeRuns, vanillaRuns) : null,
       withinStepBudget: threenativeMedianToolStepCount === null ? null : threenativeMedianToolStepCount <= THREENATIVE_STEP_BUDGET,
     };
     diagnostics.push(...matrixDiagnostics(summary));
@@ -173,15 +199,20 @@ export async function aggregateRunReports(paths: readonly string[]): Promise<IBe
   const comparable = promptSummaries.filter((summary) => summary.withinEqualProofTokenBudget !== null);
   const failed = comparable.filter((summary) =>
     summary.withinEqualProofTokenBudget === false
+    || summary.withinCostWeightedTokenBudget === false
+    || summary.withinChurnMedianBudget === false
     || summary.withinRepeatBudget === false
     || summary.withinStepBudget === false
     || summary.withinFailedCommandBudget === false
     || summary.withinRetryChainBudget === false
     || summary.withinInstructionAdoptionBudget === false
+    || summary.withinPerRunBudget === false
+    || summary.withinRubricBudget === false
     || summary.behaviorBudgetRuns.some((run) => !run.withinBudget)
   );
   const hasErrorDiagnostics = diagnostics.some((diagnostic) => diagnostic.severity === "error");
-  const status = comparable.length === 0 ? "insufficient-data" : failed.length === 0 && !hasErrorDiagnostics ? "pass" : "fail";
+  const hasRunLimitError = diagnostics.some((diagnostic) => diagnostic.code.startsWith("TN_BENCH_RUN_") && diagnostic.severity === "error");
+  const status = comparable.length === 0 ? hasRunLimitError ? "fail" : "insufficient-data" : failed.length === 0 && !hasErrorDiagnostics ? "pass" : "fail";
   const typedSpecVerdict = typedSpecAggregateVerdict(promptSummaries);
   const summary = status === "insufficient-data"
     ? "No prompt has equal-proof successful run reports for both vanilla and ThreeNative."
@@ -441,7 +472,23 @@ function runAdmissible(run: IBenchmarkRunReport): boolean {
 }
 
 function sessionMetricDiagnostics(run: IBenchmarkRunReport): IBenchmarkDiagnostic[] {
-  return sessionMetricEvidenceDiagnostics(run.session, { context: "aggregate", runId: run.runId });
+  return [...sessionMetricEvidenceDiagnostics(run.session, { context: "aggregate", runId: run.runId }), ...sessionLimitDiagnostics(run)];
+}
+
+function sessionLimitDiagnostics(run: IBenchmarkRunReport): IBenchmarkDiagnostic[] {
+  const diagnostics: IBenchmarkDiagnostic[] = [];
+  if (run.session.tokenCount > MAX_RUN_TOKENS) diagnostics.push({ code: "TN_BENCH_RUN_TOKEN_CAP_EXCEEDED", message: `${run.runId}: ${run.session.tokenCount} raw tokens exceeds the ${MAX_RUN_TOKENS} cap.`, severity: "error" });
+  if (run.condition === "threenative" && typeof run.session.failedCommandCount === "number" && run.session.failedCommandCount > MAX_THREENATIVE_FAILED_COMMANDS) diagnostics.push({ code: "TN_BENCH_RUN_FAILED_COMMAND_CAP_EXCEEDED", message: `${run.runId}: ${run.session.failedCommandCount} failed commands exceeds the ${MAX_THREENATIVE_FAILED_COMMANDS} cap.`, severity: "error" });
+  if (run.condition === "threenative" && typeof run.session.toolStepCount === "number" && run.session.toolStepCount > MAX_THREENATIVE_TOOL_STEPS) diagnostics.push({ code: "TN_BENCH_RUN_TOOL_STEP_CAP_EXCEEDED", message: `${run.runId}: ${run.session.toolStepCount} tool steps exceeds the ${MAX_THREENATIVE_TOOL_STEPS} cap.`, severity: "error" });
+  return diagnostics;
+}
+
+function rubricBudget(threenativeRuns: readonly IRunWithBehavior[], vanillaRuns: readonly IRunWithBehavior[]): boolean {
+  return [threenativeRuns, vanillaRuns].every((conditionRuns) => {
+    const playability = metricMedian(conditionRuns, (run) => run.session.humanRubric.playability);
+    const visual = metricMedian(conditionRuns, (run) => run.session.humanRubric.visual);
+    return playability !== null && playability >= 2 && visual !== null && visual >= 2;
+  });
 }
 
 function dialectConfusionFailureCount(runs: readonly IBenchmarkRunReport[]): number {

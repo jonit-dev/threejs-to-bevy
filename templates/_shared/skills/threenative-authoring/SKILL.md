@@ -33,13 +33,25 @@ description: CLI-first structured source editing for ThreeNative projects. Use w
 
 ## Scripts
 
+- For a custom-on-starter plan, use this bounded sequence before opening broad
+  source or engine files:
+  `tn authoring inspect --project . --plan artifacts/game-production/plan.json --json`,
+  then run its `nextAuthoringCommand` when present. Use
+  `tn authoring script scaffold --project . --json` only when inspection has no
+  executable prototype command, then
+  `tn authoring script check --project . --json`. After the script and source
+  validate, immediately run
+  `tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json`
+  and `tn iterate --project . --json`; inspect broader source or verification
+  guidance only if that first proof reports an actionable failure.
 - Add behavior in `src/scripts/**/*.ts`, then reference module/exports from
   structured source.
 - For new script systems, prefer `defineBehavior(metadata, fn)` from
   `@threenative/script-stdlib` so schedule/access metadata lives next to the
-  behavior. Keep `content/systems/*.systems.json` as script attachments unless
-  plain-function compatibility is required; do not hand-write access lists
-  when `defineBehavior` can own them.
+  behavior. Keep `content/systems/*.systems.json` as script attachments with
+  `{ "module": "src/scripts/player.ts", "export": "updatePlayer", "source": "behavior-metadata" }`
+  unless plain-function compatibility is required; do not hand-write access
+  lists when `defineBehavior` can own them.
 - Use the generated `ProjectContext` type from
   `.threenative/types/project-context.d.ts` for script entrypoints. Regenerate
   it with `tn types generate --project . --json` after adding scenes, input,
@@ -61,3 +73,12 @@ description: CLI-first structured source editing for ThreeNative projects. Use w
   function body. Keep helper logic inside the exported system or use supported
   named imports from `@threenative/script-stdlib`; do not rely on module-level
   local helpers being available in the generated script bundle.
+
+## Direct-source constraints
+
+- Logical IDs are lowercase and use dots, dashes, or underscores. Put
+  placement `transform` on scene entities or prefab instances, not inside a
+  prefab declaration. Supported primitive names are `box`, `capsule`, `cone`,
+  `cylinder`, `plane`, `sphere`, and `torus`; lights use `kind`.
+- Keep systems and UI in their sibling `content/systems` and `content/ui`
+  documents. Do not duplicate the same rows inline in the scene.

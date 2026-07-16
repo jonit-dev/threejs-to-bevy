@@ -43,6 +43,7 @@ export interface IPlaytestMovementAssertion {
   };
   minDistance?: number;
   minVelocity?: number;
+  maxDistance?: number;
   pathLength?: number;
   rotationChanged?: boolean;
 }
@@ -157,6 +158,7 @@ export interface IPlaytestScenarioSetup {
 }
 
 export interface IPlaytestScenario {
+  acceptanceId?: string;
   artifacts?: IPlaytestArtifactRequest;
   assert?: IPlaytestScenarioAssertions;
   name: string;
@@ -295,6 +297,7 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
   }
   const steps = value.steps.map((step, index) => validateStep(step, scenarioPath, index));
   return {
+    ...(typeof value.acceptanceId === "string" ? { acceptanceId: value.acceptanceId } : {}),
     ...(isRecord(value.artifacts) ? { artifacts: value.artifacts as IPlaytestArtifactRequest } : {}),
     ...(isRecord(value.assert) ? { assert: validateAssertions(value.assert) } : {}),
     name,
@@ -507,6 +510,7 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
               ? { minResolvedAxisDelta: { axis: movement.minResolvedAxisDelta.axis, min: movement.minResolvedAxisDelta.min } }
               : {}),
             ...(typeof movement.minDistance === "number" && Number.isFinite(movement.minDistance) ? { minDistance: movement.minDistance } : {}),
+            ...(typeof movement.maxDistance === "number" && Number.isFinite(movement.maxDistance) && movement.maxDistance >= 0 ? { maxDistance: movement.maxDistance } : {}),
             ...(typeof movement.minVelocity === "number" && Number.isFinite(movement.minVelocity) ? { minVelocity: movement.minVelocity } : {}),
             ...(typeof movement.pathLength === "number" && Number.isFinite(movement.pathLength) && movement.pathLength >= 0 ? { pathLength: movement.pathLength } : {}),
             ...(typeof movement.rotationChanged === "boolean" ? { rotationChanged: movement.rotationChanged } : {}),

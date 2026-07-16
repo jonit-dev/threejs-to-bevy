@@ -13,7 +13,7 @@ use bevy::{
     render::view::screenshot::ScreenshotManager,
     transform::TransformSystem,
     ui::IsDefaultUiCamera,
-    window::{PrimaryWindow, RequestRedraw},
+    window::{PresentMode, PrimaryWindow, RequestRedraw},
     winit::{UpdateMode, WinitSettings},
 };
 use image::GenericImageView;
@@ -261,11 +261,11 @@ fn run_capture(options: CaptureArguments) -> ExitCode {
             return ExitCode::from(1);
         }
     };
-    if let Some(viewport) = viewport {
+    {
         let world = app.world_mut();
         let mut query = world.query_filtered::<&mut Window, With<PrimaryWindow>>();
         if let Some(mut window) = query.iter_mut(world).next() {
-            window.resolution.set(viewport.width, viewport.height);
+            configure_capture_window(&mut window, viewport.as_ref());
         }
     }
 
@@ -372,6 +372,13 @@ fn configure_capture_app(
             PostUpdate,
             record_capture_mesh_lod_trace.after(select_native_mesh_lod),
         );
+    }
+}
+
+fn configure_capture_window(window: &mut Window, viewport: Option<&CaptureViewportOptions>) {
+    window.present_mode = PresentMode::AutoNoVsync;
+    if let Some(viewport) = viewport {
+        window.resolution.set(viewport.width, viewport.height);
     }
 }
 
@@ -958,6 +965,22 @@ mod tests {
             take_viewport_options(&mut args).expect("omitted viewport"),
             None
         );
+    }
+
+    #[test]
+    fn capture_window_prefers_non_vsync_presentation() {
+        let mut window = Window::default();
+        configure_capture_window(
+            &mut window,
+            Some(&CaptureViewportOptions {
+                height: 720.0,
+                width: 1_280.0,
+            }),
+        );
+
+        assert_eq!(window.present_mode, PresentMode::AutoNoVsync);
+        assert_eq!(window.resolution.width(), 1_280.0);
+        assert_eq!(window.resolution.height(), 720.0);
     }
 
     #[test]

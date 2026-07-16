@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { PNG } from "pngjs";
 
 import { inferBenchmarkProofFromArtifacts } from "./proof-adapter.js";
 
@@ -78,12 +79,13 @@ test("should combine generated scaffold collector proof across iterate summaries
 test("should infer passing collector proof from neutral browser artifact", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-neutral-proof-"));
   await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  const observations = await writeBrowserObservationPair(root);
   await writeFile(join(root, "artifacts", "proof", "collector-proof.json"), `${JSON.stringify({
     assertions: [
-      assertion("keyboard-movement", true, { evidence: "actual keyboard/browser run" }),
-      assertion("pickup-objective", true, { scoreText: "Score 5 / 5" }),
-      assertion("win-state", true, { statusText: "All pickups collected - press R to retry" }),
-      assertion("retry-path", true, { resetScoreText: "Score 0 / 5" }),
+      observedAssertion("keyboard-movement", true, { evidence: "actual keyboard/browser run" }, observations),
+      observedAssertion("pickup-objective", true, { scoreText: "Score 5 / 5" }, observations),
+      observedAssertion("win-state", true, { statusText: "All pickups collected - press R to retry" }, observations),
+      observedAssertion("retry-path", true, { resetScoreText: "Score 0 / 5" }, observations),
     ],
     promptId: "collector",
     schema: "threenative.agent-benchmark-proof",
@@ -99,12 +101,13 @@ test("should infer passing collector proof from neutral browser artifact", async
 test("should report failing neutral browser artifact proof", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-neutral-proof-fail-"));
   await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  const observations = await writeBrowserObservationPair(root);
   await writeFile(join(root, "artifacts", "proof", "collector-proof.json"), `${JSON.stringify({
     assertions: [
-      assertion("keyboard-movement", true, { evidence: "actual keyboard/browser run" }),
-      assertion("pickup-objective", false, { scoreText: "Score 2 / 5" }),
-      assertion("win-state", false, { statusText: "Collect all pickups" }),
-      assertion("retry-path", false, { resetScoreText: "Score 2 / 5" }),
+      observedAssertion("keyboard-movement", true, { evidence: "actual keyboard/browser run" }, observations),
+      observedAssertion("pickup-objective", false, { scoreText: "Score 2 / 5" }, observations),
+      observedAssertion("win-state", false, { statusText: "Collect all pickups" }, observations),
+      observedAssertion("retry-path", false, { resetScoreText: "Score 2 / 5" }, observations),
     ],
     promptId: "collector",
     schema: "threenative.agent-benchmark-proof",
@@ -119,12 +122,13 @@ test("should report failing neutral browser artifact proof", async () => {
 test("should infer off-recipe proof from a prompt-matched neutral artifact", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-checkpoint-proof-"));
   await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  const observations = await writeBrowserObservationPair(root);
   await writeFile(join(root, "artifacts", "proof", "checkpoint-race-proof.json"), `${JSON.stringify({
     assertions: [
-      assertion("ordered-checkpoints", true, { evidence: "browser route run" }),
-      assertion("timer-or-counter", true, { checkpointCounter: "3 / 3" }),
-      assertion("finish-state", true, { status: "Finished" }),
-      assertion("retry-path", true, { status: "Press R to retry" }),
+      observedAssertion("ordered-checkpoints", true, { evidence: "browser route run" }, observations),
+      observedAssertion("timer-or-counter", true, { checkpointCounter: "3 / 3" }, observations),
+      observedAssertion("finish-state", true, { status: "Finished" }, observations),
+      observedAssertion("retry-path", true, { status: "Press R to retry" }, observations),
     ],
     promptId: "checkpoint-race",
     schema: "threenative.agent-benchmark-proof",
@@ -135,6 +139,49 @@ test("should infer off-recipe proof from a prompt-matched neutral artifact", asy
   assert.equal(result.diagnostics.length, 0);
   assert.equal(result.proof?.ok, true);
   assert.equal(result.proof?.classification, "beyond-one-shot");
+});
+
+test("should reject candidate-authored neutral pass flags without retained observations", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-unbound-neutral-proof-"));
+  await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  await writeFile(join(root, "artifacts", "proof", "collector-proof.json"), `${JSON.stringify({
+    assertions: [
+      assertion("keyboard-movement", true, { evidence: "claimed" }),
+      assertion("pickup-objective", true, { evidence: "claimed" }),
+      assertion("win-state", true, { evidence: "claimed" }),
+      assertion("retry-path", true, { evidence: "claimed" }),
+    ],
+    promptId: "collector",
+    schema: "threenative.agent-benchmark-proof",
+  }, null, 2)}\n`, "utf8");
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "collector" });
+
+  assert.equal(result.proof?.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_PROOF_OBSERVATION_INVALID"), true);
+});
+
+test("should reject an unchanged browser screenshot pair as neutral proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-unchanged-neutral-proof-"));
+  await mkdir(join(root, "artifacts", "proof"), { recursive: true });
+  const observations = await writeBrowserObservationPair(root);
+  const before = join(root, "artifacts/proof/observations/before.png");
+  await writeFile(join(root, "artifacts/proof/observations/after.png"), await readFile(before));
+  await writeFile(join(root, "artifacts", "proof", "collector-proof.json"), `${JSON.stringify({
+    assertions: [
+      observedAssertion("keyboard-movement", true, { evidence: "unchanged" }, observations),
+      observedAssertion("pickup-objective", true, { evidence: "unchanged" }, observations),
+      observedAssertion("win-state", true, { evidence: "unchanged" }, observations),
+      observedAssertion("retry-path", true, { evidence: "unchanged" }, observations),
+    ],
+    promptId: "collector",
+    schema: "threenative.agent-benchmark-proof",
+  }, null, 2)}\n`, "utf8");
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "collector" });
+
+  assert.equal(result.proof?.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_PROOF_OBSERVATION_INVALID"), true);
 });
 
 test("should infer physics knockdown proof only from observed impact and retry summaries", async () => {
@@ -238,14 +285,50 @@ test("should infer failing collector proof from unchanged score and status asser
   assert.equal(result.proof?.assertions.find((item) => item.id === "retry-path")?.pass, false);
 });
 
-test("should leave unsupported prompts without inferred proof", async () => {
+test("should report missing proof for a contracted prompt", async () => {
   const root = await candidateWithSummary([
     assertion("movement", true, { distance: 3.5 }),
   ]);
 
   const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "lane-runner" });
 
-  assert.deepEqual(result, { diagnostics: [] });
+  assert.equal(result.proof, undefined);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_EQUAL_PROOF_MISSING"), true);
+});
+
+test("should match iterate acceptance ids without manual neutral proof", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-iterate-proof-"));
+  await mkdir(join(root, "artifacts/iterate/latest"), { recursive: true });
+  await writeFile(join(root, "artifacts/iterate/latest/report.json"), `${JSON.stringify({
+    acceptanceCoverage: { missing: [], observed: ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"], required: ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"], unrelated: [] },
+    ok: true,
+    promptCoverage: "pass",
+    verdicts: { gameplay: "pass", visual: "pass" },
+  }, null, 2)}\n`);
+  await mkdir(join(root, "artifacts/playtest/stale/latest"), { recursive: true });
+  await writeFile(join(root, "artifacts/playtest/stale/latest/summary.json"), `${JSON.stringify({ assertions: [], diagnostics: [], pass: false, scenario: "stale" })}\n`);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "grid-push-puzzle" });
+
+  assert.equal(result.diagnostics.length, 0);
+  assert.equal(result.proof?.ok, true);
+  assert.deepEqual(result.proof?.assertions.map((assertion) => assertion.id), ["webgl-canvas", "grid-movement", "crate-push", "goal-progress", "retry-path"]);
+});
+
+test("should reject exact acceptance coverage when iterate execution failed", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-agent-benchmark-iterate-failed-proof-"));
+  await mkdir(join(root, "artifacts/iterate/latest"), { recursive: true });
+  await writeFile(join(root, "artifacts/iterate/latest/report.json"), `${JSON.stringify({
+    acceptanceCoverage: { missing: [], observed: ["webgl-canvas", "defender-input", "wave-progression", "base-failure", "retry-path"], required: ["webgl-canvas", "defender-input", "wave-progression", "base-failure", "retry-path"], unrelated: [] },
+    ok: false,
+    promptCoverage: "pass",
+    verdicts: { gameplay: "pass", visual: "pass" },
+  }, null, 2)}\n`);
+
+  const result = await inferBenchmarkProofFromArtifacts({ candidate: root, promptId: "wave-defense" });
+
+  assert.equal(result.proof?.ok, false);
+  assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_BENCH_EQUAL_PROOF_FAILED"), true);
 });
 
 async function candidateWithSummary(assertions: unknown[], diagnostics: unknown[] = []): Promise<string> {
@@ -275,4 +358,23 @@ async function candidateWithNamedSummaries(summaries: Array<{ assertions: unknow
 
 function assertion(id: string, pass: boolean, details: Record<string, unknown>): Record<string, unknown> {
   return { details, id, pass };
+}
+
+function observedAssertion(id: string, pass: boolean, details: Record<string, unknown>, observations: unknown[]): Record<string, unknown> {
+  return { details, id, observations, pass };
+}
+
+async function writeBrowserObservationPair(root: string): Promise<Array<{ artifact: string; kind: string }>> {
+  const directory = join(root, "artifacts", "proof", "observations");
+  await mkdir(directory, { recursive: true });
+  const before = new PNG({ height: 1, width: 1 });
+  before.data = Buffer.from([0, 0, 0, 255]);
+  const after = new PNG({ height: 1, width: 1 });
+  after.data = Buffer.from([255, 255, 255, 255]);
+  await writeFile(join(directory, "before.png"), PNG.sync.write(before));
+  await writeFile(join(directory, "after.png"), PNG.sync.write(after));
+  return [
+    { artifact: "artifacts/proof/observations/before.png", kind: "before-screenshot" },
+    { artifact: "artifacts/proof/observations/after.png", kind: "after-screenshot" },
+  ];
 }

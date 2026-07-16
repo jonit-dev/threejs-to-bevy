@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 import * as THREE from "three";
@@ -7,6 +8,17 @@ import { applyCommands, channelEvent, componentHookObservations, createSystemCon
 import { applySystemEffects } from "./effects.js";
 import { applyMaterialPatchEffects, mapWorld } from "../mapWorld.js";
 import { createMemoryPersistenceStorage, createWebPersistenceService } from "./services/persistence.js";
+import { createInputState } from "../input.js";
+
+const pendingWritesFixture = JSON.parse(readFileSync(new URL("../../../ir/fixtures/contracts/scripting/pending-writes.json", import.meta.url), "utf8")) as {
+  entity: IWorldIr["entities"][number];
+  expected: {
+    componentReads: Array<Record<string, unknown>>;
+    effectOrder: string[];
+    inputTicks: Array<{ action: boolean; pressed: boolean; released: boolean }>;
+    positionReads: number[][];
+  };
+};
 
 test("should apply material patch command to entity material and log effect", () => {
   const world = makeWorld();
@@ -102,6 +114,42 @@ test("should expose fixed input trace", () => {
   assert.equal(context.time.time, 0);
 });
 
+test("should fire pressed once while key remains held", () => {
+  const input = createInputState({
+    actions: [{ bindings: [{ code: "Space", device: "keyboard" }], id: "Jump" }],
+    axes: [],
+    schema: "threenative.input",
+    version: "0.1.0",
+  });
+  const observations: Array<{ action: boolean; pressed: boolean; released: boolean }> = [];
+  const observe = () => observations.push({
+    action: input.action("Jump"),
+    pressed: input.pressed("Jump"),
+    released: input.released("Jump"),
+  });
+
+  input.handleKeyDown({ code: "Space" });
+  input.beginFrame();
+  observe();
+  input.beginFrame();
+  observe();
+  input.handleKeyUp({ code: "Space" });
+  input.beginFrame();
+  observe();
+
+  assert.deepEqual(observations, pendingWritesFixture.expected.inputTicks);
+
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const rawInput = { ...input, pressed: (name: string) => name === "Jump" };
+  const firstTick = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, frame: 7, input: rawInput, runtimeState, tick: 10 }).context;
+  const sameTick = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, frame: 7, input: rawInput, runtimeState, tick: 10 }).context;
+  const accumulatedTick = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016, frame: 7, input: rawInput, runtimeState, tick: 11 }).context;
+  assert.equal(firstTick.input.pressed("Jump"), true);
+  assert.equal(sameTick.input.pressed("Jump"), true);
+  assert.equal(accumulatedTick.input.pressed("Jump"), false);
+});
+
 test("should return one sensor snapshot to every reader in a tick", () => {
   const world: IWorldIr = {
     entities: [
@@ -193,9 +241,9 @@ test("should expose state and transform helper facades through existing effects"
   const transform = player.transform();
   transform.setPose([1, 2, 3], [0, 0.707107, 0, 0.707107]);
 
-  assert.deepEqual(transform.position, [0, 1, 0]);
-  assert.deepEqual(transform.positionOr([9, 9, 9]), [0, 1, 0]);
-  assert.equal(Math.round(transform.yawOr(0) * 1000) / 1000, 0);
+  assert.deepEqual(transform.position, [1, 2, 3]);
+  assert.deepEqual(transform.positionOr([9, 9, 9]), [1, 2, 3]);
+  assert.equal(Math.round(transform.yawOr(0) * 1000) / 1000, 1.571);
   assert.deepEqual(resources, [{ resource: "RallyState", value: { lap: 1, message: "Go", speed: 12 } }]);
   assert.deepEqual(commands, [
     {
@@ -272,6 +320,30 @@ test("should apply property write when transform position is assigned", () => {
       },
     },
   ]);
+});
+
+test("should read pending transform after setting position", () => {
+  const world: IWorldIr = {
+    entities: [structuredClone(pendingWritesFixture.entity)],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  const { commands, context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  const player = context.entity("player");
+  assert.ok(player);
+
+  const positionReads = [player.transform().position];
+  const componentReads = [player.get<Record<string, unknown>>("PlayerState")];
+  player.transform().setPosition([2, 3, 4]);
+  positionReads.push(context.entity("player")!.transform().position);
+  player.patch("PlayerState", { hp: 2 });
+  componentReads.push(player.get<Record<string, unknown>>("PlayerState"));
+  player.patch("PlayerState", { status: "moving" });
+  componentReads.push(player.components.PlayerState as Record<string, unknown>);
+
+  assert.deepEqual(positionReads, pendingWritesFixture.expected.positionReads);
+  assert.deepEqual(componentReads, pendingWritesFixture.expected.componentReads);
+  assert.deepEqual(commands.map((command) => command.component), pendingWritesFixture.expected.effectOrder);
 });
 
 test("should raycast primitive floor", () => {

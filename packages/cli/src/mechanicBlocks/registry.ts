@@ -1,7 +1,10 @@
 import { mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
-export type MechanicBlockId = "follow-camera" | "physics-target" | "projectile" | "score" | "spawner" | "timer" | "trigger-sequence";
+import { MECHANIC_BLOCK_DESCRIPTORS, mechanicBlockDescriptor, type IMechanicBlockDescriptor, type MechanicBlockId } from "./descriptors.js";
+import { writeSpatialMechanicBlock } from "./spatial.js";
+
+export type { MechanicBlockId } from "./descriptors.js";
 
 export interface IMechanicBlockResult {
   block: MechanicBlockId;
@@ -25,21 +28,27 @@ export interface IMechanicBlockOptions {
   projectPath: string;
 }
 
-interface IMechanicBlockDefinition {
-  id: MechanicBlockId;
-  summary: string;
+interface IMechanicBlockDefinition extends IMechanicBlockDescriptor {
   write(options: IMechanicBlockOptions): Promise<IMechanicBlockResult>;
 }
 
-const definitions: readonly IMechanicBlockDefinition[] = [
-  { id: "spawner", summary: "Spawn stable prefab instances in a grid, ring, or lane pattern.", write: addSpawnerBlock },
-  { id: "timer", summary: "Add a deterministic up/down timer resource and proof hook.", write: addTimerBlock },
-  { id: "trigger-sequence", summary: "Add ordered or unordered checkpoint/trigger sequence metadata.", write: addTriggerSequenceBlock },
-  { id: "score", summary: "Add score, win, and retry state tied to named events.", write: addScoreBlock },
-  { id: "projectile", summary: "Add launcher input, projectile prefab, and physics metadata.", write: addProjectileBlock },
-  { id: "physics-target", summary: "Add a visible set of dynamic collider targets for push or knockdown mechanics.", write: addPhysicsTargetBlock },
-  { id: "follow-camera", summary: "Retarget or annotate an existing camera follow relationship.", write: addFollowCameraBlock },
-];
+const definitions: readonly IMechanicBlockDefinition[] = MECHANIC_BLOCK_DESCRIPTORS.map((descriptor) => ({
+  ...descriptor,
+  write: (options) => writeMechanicBlock(descriptor, options),
+}));
+
+function writeMechanicBlock(descriptor: IMechanicBlockDescriptor, options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
+  if (descriptor.writer.kind === "spatial") return writeSpatialMechanicBlock(descriptor.id as "grid-step" | "occupancy-objective" | "push-interaction", options);
+  switch (descriptor.writer.id) {
+    case "follow-camera": return addFollowCameraBlock(options);
+    case "physics-target": return addPhysicsTargetBlock(options);
+    case "projectile": return addProjectileBlock(options);
+    case "score": return addScoreBlock(options);
+    case "spawner": return addSpawnerBlock(options);
+    case "timer": return addTimerBlock(options);
+    case "trigger-sequence": return addTriggerSequenceBlock(options);
+  }
+}
 
 export function getMechanicBlock(id: string | undefined): IMechanicBlockDefinition | undefined {
   return definitions.find((definition) => definition.id === id);
@@ -62,8 +71,12 @@ export async function removeMechanicBlock(projectPath: string, blockId: string):
     return { block: blockId, code: "TN_REMOVE_BLOCK_MISSING", filesRemoved: [], message: `Mechanic block '${blockId}' does not have a registered mechanic document.`, ok: false };
   }
   const block = mechanic.block;
-  if (typeof block !== "string" || getMechanicBlock(block) === undefined) {
+  const definition = typeof block === "string" ? getMechanicBlock(block) : undefined;
+  if (typeof block !== "string" || definition === undefined) {
     return { block: blockId, code: "TN_REMOVE_BLOCK_MISSING", filesRemoved: [], message: `Mechanic block '${blockId}' is not a registered tn add block.`, ok: false };
+  }
+  if (!("owner" in definition.removal)) {
+    return { block, code: "TN_REMOVE_BLOCK_MISSING", filesRemoved: [], message: `Mechanic block '${block}' is not individually removable: ${definition.removal.rationale}`, ok: false };
   }
   const details = isRecord(mechanic.details) ? mechanic.details : {};
   const sourceFiles = Array.isArray(mechanic.sourceFiles) ? mechanic.sourceFiles.filter((file): file is string => typeof file === "string") : [];
@@ -80,7 +93,7 @@ export async function removeMechanicBlock(projectPath: string, blockId: string):
     systems.countdowns = arrayOfRecords(systems.countdowns).filter((countdown) => countdown.id !== countdownId);
     await writeJson(resolve(projectPath, systemsPath), systems);
   }
-  const filesRemoved = [mechanicPath, `playtests/block-${block}.playtest.json`];
+  const filesRemoved = [mechanicPath, `playtests/${definition.proofTemplateId}.playtest.json`];
   for (const file of sourceFiles.filter((file) => file.endsWith("mechanics.ts"))) {
     const removed = await removeMechanicScript(resolve(projectPath, file), block as "projectile" | "score");
     if (removed) filesRemoved.push(file);
@@ -364,13 +377,20 @@ async function addFollowCameraBlock(options: IMechanicBlockOptions): Promise<IMe
 }
 
 async function writeBlockArtifacts(projectPath: string, block: MechanicBlockId, details: Record<string, unknown>, sourceFiles: string[]): Promise<IMechanicBlockResult> {
+  const descriptor = mechanicBlockDescriptor(block)!;
   const mechanicPath = `content/mechanics/${block}.mechanic.json`;
-  const scenarioPath = `playtests/block-${block}.playtest.json`;
+  const scenarioPath = `playtests/${descriptor.proofTemplateId}.playtest.json`;
   await writeJson(resolve(projectPath, mechanicPath), {
     block,
     details,
+    mutationCommand: descriptor.mutationCommand,
+    proofTemplateId: descriptor.proofTemplateId,
+    recipeIds: descriptor.recipeIds,
+    removal: descriptor.removal,
+    responsibilities: descriptor.responsibilities,
     schema: "threenative.mechanic-block",
     sourceFiles,
+    sourceOwners: descriptor.sourceOwners,
     version: "0.1.0",
   });
   const subject = await resolveProofSubject(projectPath, details, sourceFiles);
@@ -399,7 +419,7 @@ async function appendMechanicScript(projectPath: string, block: "projectile" | "
     const body = block === "score"
       ? `export function ${exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
   const score = context.state("GameScore", { score: 0, scoreText: "Score 0 / 5", statusText: "Score ready", winAt: 5, won: false });
-  if (context.input.action("retry")) {
+  if (context.input.pressed("retry")) {
     score.score = 0;
     score.won = false;
     score.scoreText = \`Score 0 / \${score.winAt}\`;
@@ -473,8 +493,11 @@ async function resolveUiPath(projectPath: string): Promise<string> {
 function blockScenario(block: MechanicBlockId, details: Record<string, unknown>, subject: string): Record<string, unknown> {
   const resources: Record<MechanicBlockId, Record<string, unknown>[]> = {
     "follow-camera": [{ equals: details.target, id: "FollowCamera", path: "target" }],
+    "grid-step": [{ gte: 1, id: "SpatialGrid", path: "step" }],
+    "occupancy-objective": [{ gte: 0, id: "SpatialObjective", path: "progress" }],
     "physics-target": [{ gte: 1, id: "PhysicsTargets", path: "count" }],
     projectile: [{ gte: 1, id: "ProjectileLauncher", path: "speed" }],
+    "push-interaction": [{ equals: true, id: "SpatialGrid", path: "pushEnabled" }],
     score: [{ gte: 0, id: typeof details.resource === "string" ? details.resource : "GameScore", path: "score" }],
     spawner: [{ gte: 1, id: "MechanicSpawner", path: "count" }],
     timer: [{ gte: 0, id: typeof details.resource === "string" ? details.resource : "GameTimer", path: "limit" }],
@@ -666,7 +689,7 @@ export const runPhysicsTarget = defineBehavior(
     ] as const;
     const state = context.state("physics-target", { launched: false, knocked: [${knocked}] });
     const score = context.resources.get("GameScore", { score: 0, scoreText: "Score 0 / ${count}", statusText: "SPACE: LAUNCH  •  ENTER/R: RETRY", winAt: ${count}, won: false });
-    if (context.input.action("retry")) {
+    if (context.input.pressed("retry")) {
       state.launched = false;
       state.knocked = [${knocked}];
       ball.transform().position = [0, 0.28, 1.4];
@@ -674,7 +697,7 @@ export const runPhysicsTarget = defineBehavior(
       context.resources.patch("GameScore", { score: 0, scoreText: "Score 0 / ${count}", statusText: "SPACE: LAUNCH  •  ENTER/R: RETRY", won: false });
       return;
     }
-    if (context.input.action("launch") && !state.launched) state.launched = true;
+    if (context.input.pressed("launch") && !state.launched) state.launched = true;
     if (!state.launched) return;
     const ballTransform = ball.transform();
     const ballPosition = ballTransform.position;

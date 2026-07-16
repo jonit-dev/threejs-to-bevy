@@ -28,6 +28,7 @@ interface IIterateStepResult {
 }
 
 interface IIterateCompactSummary {
+  acceptanceCoverage?: IIterateReport["acceptanceCoverage"];
   activeRenderProfile?: string;
   artifacts: {
     directory: string;
@@ -37,8 +38,11 @@ interface IIterateCompactSummary {
   code: IIterateReport["code"];
   diagnostics: IIterateDiagnostic[];
   durationMs: number;
+  nextIterateCommand: string;
+  nextProofCommand?: string;
   ok: boolean;
   projectPath: string;
+  promptCoverage?: IIterateReport["promptCoverage"];
   verdicts: IIterateReport["verdicts"];
   steps: Array<{
     artifactPaths?: string[];
@@ -49,7 +53,7 @@ interface IIterateCompactSummary {
   }>;
 }
 
-type IIterateCompactScenario = IPlaytestIterateSummary | { pass: true; scenario: string };
+type IIterateCompactScenario = IPlaytestIterateSummary | { acceptanceId?: string; pass: true; scenario: string };
 const ITERATE_PLAYTEST_CONCURRENCY = 3;
 
 export async function iterateCommand(
@@ -209,11 +213,18 @@ export async function iterateCommand(
   const reportPath = resolve(latestDir, "report.json");
   const visualFailed = steps.some((step) => step.id !== "playtest" && step.status === "fail");
   const playtestStep = steps.find((step) => step.id === "playtest");
+  const acceptanceCoverage = await currentAcceptanceCoverage(projectPath, playtestStep);
+  const promptCoverage = acceptanceCoverage === undefined ? "skipped" : acceptanceCoverage.missing.length === 0 ? "pass" : "fail";
+  const completionFailed = failed || promptCoverage === "fail";
+  if (promptCoverage === "fail") {
+    diagnostics.push({ code: "TN_ITERATE_PROMPT_COVERAGE_INCOMPLETE", message: `Execution completed, but current scenarios did not observe required acceptance IDs: ${acceptanceCoverage!.missing.join(", ")}.`, severity: "warning", suggestion: "Generate or repair plan-derived scenarios and rerun iterate; passing unrelated scenarios do not satisfy prompt completion." });
+  }
   const verdicts: IIterateReport["verdicts"] = {
     gameplay: visualOnly || skipPlaytest || playtestStep?.status === "skipped" ? "skipped" : playtestStep?.status === "fail" ? "fail" : "pass",
     visual: visualFailed ? "fail" : "pass",
   };
   const report: IIterateReport = {
+    ...(acceptanceCoverage === undefined ? {} : { acceptanceCoverage }),
     ...(activeRenderProfile === undefined ? {} : { activeRenderProfile }),
     artifacts: {
       directory: latestDir,
@@ -221,11 +232,12 @@ export async function iterateCommand(
       report: reportPath,
       ...(steps.find((step) => step.id === "screenshot")?.artifacts?.screenshot === undefined ? {} : { screenshot: String(steps.find((step) => step.id === "screenshot")?.artifacts?.screenshot) }),
     },
-    code: failed ? "TN_ITERATE_FAILED" : "TN_ITERATE_OK",
+    code: completionFailed ? "TN_ITERATE_FAILED" : "TN_ITERATE_OK",
     diagnostics,
     durationMs: Date.now() - started,
-    ok: !failed,
+    ok: !completionFailed,
     projectPath,
+    promptCoverage,
     schema: ITERATE_REPORT_SCHEMA,
     steps,
     verdicts,
@@ -332,6 +344,7 @@ function emptySystemBody(source: string, exportName: string): boolean {
 
 function compactSummary(report: IIterateReport): IIterateCompactSummary {
   return {
+    ...(report.acceptanceCoverage === undefined ? {} : { acceptanceCoverage: report.acceptanceCoverage }),
     ...(report.activeRenderProfile === undefined ? {} : { activeRenderProfile: report.activeRenderProfile }),
     artifacts: {
       directory: report.artifacts.directory,
@@ -341,8 +354,13 @@ function compactSummary(report: IIterateReport): IIterateCompactSummary {
     code: report.code,
     diagnostics: report.diagnostics.filter((diagnostic) => diagnostic.severity === "error").slice(0, 1),
     durationMs: report.durationMs,
+    nextIterateCommand: "tn iterate --project . --json",
+    ...(report.acceptanceCoverage !== undefined && report.acceptanceCoverage.missing.length > 0
+      ? { nextProofCommand: "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json" }
+      : {}),
     ok: report.ok,
     projectPath: report.projectPath,
+    ...(report.promptCoverage === undefined ? {} : { promptCoverage: report.promptCoverage }),
     verdicts: report.verdicts,
     steps: report.steps.map((step) => ({
       ...(step.id === "playtest" ? {} : { artifactPaths: artifactPaths(step.artifacts).slice(0, 2) }),
@@ -357,7 +375,22 @@ function compactSummary(report: IIterateReport): IIterateCompactSummary {
 function compactScenarios(values: readonly unknown[]): IIterateCompactScenario[] {
   return values
     .filter(isPlaytestIterateSummary)
-    .map((scenario) => scenario.pass ? { pass: true, scenario: scenario.scenario } : scenario);
+    .map((scenario) => scenario.pass ? { ...(scenario.acceptanceId === undefined ? {} : { acceptanceId: scenario.acceptanceId }), pass: true, scenario: scenario.scenario } : scenario);
+}
+
+async function currentAcceptanceCoverage(projectPath: string, playtestStep: IIterateStepReport | undefined): Promise<NonNullable<IIterateReport["acceptanceCoverage"]> | undefined> {
+  const plan = parseJsonPayload(await readFile(resolve(projectPath, "artifacts/game-production/plan.json"), "utf8").catch(() => "{}"));
+  const assertions = isRecord(plan) && isRecord(plan.intentContract) && Array.isArray(plan.intentContract.acceptanceAssertions)
+    ? plan.intentContract.acceptanceAssertions.filter(isRecord)
+    : [];
+  const required = assertions.filter((assertion) => assertion.required === true && typeof assertion.id === "string").map((assertion) => String(assertion.id));
+  if (required.length === 0) return undefined;
+  const summaries = isRecord(playtestStep?.output) && Array.isArray(playtestStep.output.scenarios)
+    ? playtestStep.output.scenarios.filter(isPlaytestIterateSummary)
+    : [];
+  const observed = [...new Set(summaries.filter((summary) => summary.pass && summary.acceptanceId !== undefined && required.includes(summary.acceptanceId)).map((summary) => summary.acceptanceId!))].sort();
+  const unrelated = [...new Set(summaries.filter((summary) => summary.pass && (summary.acceptanceId === undefined || !required.includes(summary.acceptanceId))).map((summary) => summary.acceptanceId ?? summary.scenario))].sort();
+  return { missing: required.filter((id) => !observed.includes(id)), observed, required, unrelated };
 }
 
 async function runPlaytestScenarios(options: {
@@ -369,10 +402,11 @@ async function runPlaytestScenarios(options: {
 }): Promise<{ diagnostics: IIterateDiagnostic[]; scenarioSummaries: IPlaytestIterateSummary[] }> {
   const results = await mapWithConcurrency(options.scenarios, ITERATE_PLAYTEST_CONCURRENCY, async (scenario) => {
     const scenarioOut = resolve(options.playtestDir, safeFilePart(scenario.replace(/\.playtest\.json$/, "")));
-    const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, ...(options.auditWrites ? ["--audit-writes"] : []), "--json"], options.projectPath);
+    const result = await options.playtest(["--project", options.projectPath, "--scenario", scenario, "--out", scenarioOut, "--reuse-bundle", ...(options.auditWrites ? ["--audit-writes"] : []), "--json"], options.projectPath);
     const parsed = parseJsonPayload(result.stdout);
     if (isPlaytestSummaryPayload(parsed)) {
       const summary = summarizePlaytestForIterate(parsed);
+      if (summary.acceptanceId === undefined) summary.acceptanceId = await scenarioAcceptanceId(resolve(options.projectPath, scenario));
       const diagnostics = normalizeDiagnostics(readDiagnostics(parsed));
       if (result.exitCode !== 0 && !diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
         diagnostics.push({ code: "TN_ITERATE_PLAYTEST_SCENARIO_FAILED", message: `Playtest scenario '${scenario}' failed.`, scenario, severity: "error" });
@@ -396,6 +430,11 @@ async function runPlaytestScenarios(options: {
     diagnostics: results.flatMap((result) => result.diagnostics),
     scenarioSummaries: results.map((result) => result.summary),
   };
+}
+
+async function scenarioAcceptanceId(path: string): Promise<string | undefined> {
+  const value = parseJsonPayload(await readFile(path, "utf8").catch(() => "{}"));
+  return isRecord(value) && typeof value.acceptanceId === "string" ? value.acceptanceId : undefined;
 }
 
 async function mapWithConcurrency<T, TResult>(values: readonly T[], concurrency: number, map: (value: T) => Promise<TResult>): Promise<TResult[]> {

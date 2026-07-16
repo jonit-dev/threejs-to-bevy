@@ -113,6 +113,48 @@ test("should reject unknown mechanic block", async () => {
   }
 });
 
+test("should preserve existing mechanic block outputs after descriptor migration", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-add-descriptor-"));
+  try {
+    const project = await createStructuredProject(root);
+    const result = await addCommand(["score", "--resource", "RoundScore", "--win-at", "4", "--project", project, "--json"]);
+    const payload = JSON.parse(result.stdout) as { block: string; proofCommand: string };
+    const mechanic = JSON.parse(await readFile(join(project, "content/mechanics/score.mechanic.json"), "utf8")) as { mutationCommand: string; proofTemplateId: string; recipeIds: string[]; removal: { owner: string }; responsibilities: string[]; sourceOwners: string[] };
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.block, "score");
+    assert.match(payload.proofCommand, /block-score\.playtest\.json/);
+    assert.equal(mechanic.mutationCommand, "tn add score --project . --json");
+    assert.equal(mechanic.proofTemplateId, "block-score");
+    assert.deepEqual(mechanic.recipeIds, []);
+    assert.deepEqual(mechanic.removal, { owner: "mechanic-document" });
+    assert.deepEqual(mechanic.responsibilities, ["score-win-retry"]);
+    assert.deepEqual(mechanic.sourceOwners, ["scene", "scripts"]);
+
+    const invalid = await addCommand(["score", "--pattern", "grid", "--project", project, "--json"]);
+    assert.equal(invalid.exitCode, 1);
+    assert.match(invalid.stdout, /TN_ADD_BLOCK_ARGUMENT_INVALID/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should keep spatial block writes atomic when a source owner is missing", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-add-spatial-rollback-"));
+  try {
+    const project = await createStructuredProject(root);
+    const scenePath = join(project, "content/scenes/arena.scene.json");
+    const before = await readFile(scenePath, "utf8");
+    await rm(join(project, "content/ui"), { force: true, recursive: true });
+
+    await assert.rejects(addCommand(["occupancy-objective", "--project", project, "--json"]), /ENOENT|No \.ui\.json document/);
+    assert.equal(await readFile(scenePath, "utf8"), before);
+    await assert.rejects(readFile(join(project, "content/mechanics/occupancy-objective.mechanic.json"), "utf8"), { code: "ENOENT" });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function createStructuredProject(root: string): Promise<string> {
   const result = await createProject(["game", "--template", "structured-source-starter", "--archetype", "top-down", "--json"], { cwd: root });
   const payload = JSON.parse(result.stdout) as { path: string };

@@ -12,6 +12,7 @@ export interface ICaptureBenchmarkSessionOptions {
   notes?: string;
   outPath: string;
   playability?: number;
+  runnerResultPath?: string;
   stopReason?: BenchmarkStopReason;
   templatePath: string;
   visual?: number;
@@ -30,6 +31,7 @@ export async function captureBenchmarkSession(options: ICaptureBenchmarkSessionO
   const outPath = resolve(options.outPath);
   const template = JSON.parse(await readFile(resolve(options.templatePath), "utf8")) as IBenchmarkSession;
   const events = (await readFile(eventsPath, "utf8")).split(/\r?\n/).filter(Boolean).map(parseEvent);
+  const runnerResult = options.runnerResultPath === undefined ? undefined : JSON.parse(await readFile(resolve(options.runnerResultPath), "utf8")) as unknown;
   const usage = events.map(readUsage).filter((value): value is IUsage => value !== undefined);
   if (usage.length === 0) throw new Error("Codex events do not contain a completed turn with token usage.");
   const commands = events.map(readCompletedCommand).filter((value): value is ICompletedCommand => value !== undefined);
@@ -52,11 +54,11 @@ export async function captureBenchmarkSession(options: ICaptureBenchmarkSessionO
     inputTokens,
     iterationCount: options.iterationCount ?? template.iterationCount,
     outputTokens,
-    stopReason: options.stopReason ?? template.stopReason,
+    stopReason: options.stopReason ?? readRunnerStopReason(runnerResult) ?? template.stopReason,
     tokenAccounting: "codex-turn-usage",
     tokenCount: inputTokens + outputTokens,
     toolOutputBytes: sum(commands.map((command) => Buffer.byteLength(command.output, "utf8"))),
-    toolStepCount: commands.length,
+    toolStepCount: countTools(events),
     uncachedInputTokens,
   };
   const validation = validateSession(session);
@@ -84,6 +86,21 @@ function readCompletedCommand(value: unknown): ICompletedCommand | undefined {
   if (!isRecord(value) || value.type !== "item.completed" || !isRecord(value.item) || value.item.type !== "command_execution") return undefined;
   if ((value.item.status !== "completed" && value.item.status !== "failed") || typeof value.item.exit_code !== "number") return undefined;
   return { exitCode: value.item.exit_code, output: typeof value.item.aggregated_output === "string" ? value.item.aggregated_output : "" };
+}
+
+const toolItemTypes = new Set(["command_execution", "dynamic_tool_call", "file_change", "mcp_tool_call", "web_search"]);
+
+function countTools(events: readonly unknown[]): number {
+  const started = events.filter((value) => isRecord(value) && value.type === "item.started" && isRecord(value.item) && toolItemTypes.has(String(value.item.type))).length;
+  return started > 0
+    ? started
+    : events.filter((value) => isRecord(value) && value.type === "item.completed" && isRecord(value.item) && toolItemTypes.has(String(value.item.type))).length;
+}
+
+function readRunnerStopReason(value: unknown): BenchmarkStopReason | undefined {
+  if (!isRecord(value)) return undefined;
+  const cause = value.stopCause;
+  return cause === "turn-completed" || cause === "token-cap" || cause === "tool-cap" || cause === "failed-setup" ? cause : undefined;
 }
 
 function readNonNegativeNumber(value: unknown): number | undefined {

@@ -30,9 +30,14 @@ export async function verifyPrePushGate(options = {}) {
     owner: { kind: "aggregate", name: "gameplay-parity" },
     root,
   });
+  const rustQualityTargets = resolveArtifactTargets({
+    gate: "rust-quality",
+    owner: { kind: "aggregate", name: "rust-quality" },
+    root,
+  });
   const linkedReports = {
     gameplayParityReportPath: gameplayParityTargets.reportPath,
-    rustQualityReportPath: resolve(root, "tools/verify/artifacts/rust-quality/report.json"),
+    rustQualityReportPath: resolve(rustQualityTargets.absoluteDir, "report.json"),
   };
 
   async function runParallel(tasks) {

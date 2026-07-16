@@ -1,4 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { basename, resolve } from "node:path";
 
 import {
@@ -11,8 +12,18 @@ import {
 export interface IBenchmarkPromptProofContract {
   assertions: IBenchmarkProofAssertion[];
   classification: BenchmarkPromptClass;
+  promptSha256: string;
   promptId: string;
+  protocolVersion: string;
 }
+
+export const BENCHMARK_OBSERVATION_PROTOCOL_VERSION = "observation-route-v8";
+
+export const BENCHMARK_OBSERVATION_PROTOCOL = {
+  protocolVersion: BENCHMARK_OBSERVATION_PROTOCOL_VERSION,
+  schema: "threenative.agent-benchmark-observation-protocol",
+  version: 8,
+} as const;
 
 export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[] = [
   {
@@ -23,7 +34,9 @@ export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[]
       assertion("retry-path", "The game exposes a retry path after completion or failure."),
     ],
     classification: "continuity",
+    promptSha256: "ef993ccd5adffe4a5abdc740eb234754b296ff85a40366fb38a0833abb131389",
     promptId: "collector",
+    protocolVersion: "round-5-ef993ccd5adf",
   },
   {
     assertions: [
@@ -33,7 +46,9 @@ export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[]
       assertion("retry-path", "The game exposes a retry path after failure."),
     ],
     classification: "continuity",
+    promptSha256: "07dea2ca362612cfd8538543e4da116899feff9737754594ff3bbe7539cbf3e7",
     promptId: "lane-runner",
+    protocolVersion: "round-5-07dea2ca3626",
   },
   {
     assertions: [
@@ -43,7 +58,9 @@ export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[]
       assertion("retry-path", "The game exposes a retry path after completion or failure."),
     ],
     classification: "beyond-one-shot",
+    promptSha256: "66d6bc5f33912f5a1564346e788c175b8b04154c0309fcffa7f38039755ee9c5",
     promptId: "checkpoint-race",
+    protocolVersion: "round-5-66d6bc5f3391",
   },
   {
     assertions: [
@@ -53,17 +70,48 @@ export const BENCHMARK_PROOF_CONTRACTS: readonly IBenchmarkPromptProofContract[]
       assertion("retry-path", "The game exposes a retry path."),
     ],
     classification: "beyond-one-shot",
+    promptSha256: "3866f0d1a20072f3fcd75159799802b908e6ea6eb376f005da5768c527617d6c",
     promptId: "physics-knockdown",
+    protocolVersion: "round-5-3866f0d1a200",
   },
   {
     assertions: [
-      assertion("grid-movement", "Keyboard input moves the player between visible grid cells while walls block movement."),
-      assertion("crate-push", "The player can push crates but cannot pull them through the grid."),
+      assertion("webgl-canvas", "Active play renders in a nonblank WebGL canvas."),
+      assertion("grid-movement", "Keyboard input moves the player between visible grid cells while readable floor-grid and wall geometry show and enforce the board bounds."),
+      assertion("crate-push", "The player can push at least two visible crates but cannot pull them through the grid."),
       assertion("goal-progress", "Pushing crates onto goal tiles updates visible progress and placing every crate reaches a clear win state."),
       assertion("retry-path", "The game exposes a reset or retry path."),
     ],
     classification: "beyond-one-shot",
+    promptSha256: "18ac207c59d61e6597da22520776cd781f6e993fa70df9361f5e997ac126ab63",
     promptId: "grid-push-puzzle",
+    protocolVersion: "off-recipe-18ac207c59d6",
+  },
+  {
+    assertions: [
+      assertion("webgl-canvas", "Active play renders in a nonblank WebGL canvas."),
+      assertion("defender-input", "Keyboard movement and pointer aim or attack input visibly control the defender."),
+      assertion("wave-progression", "Enemies spawn in successive waves, surviving advances visible progress, and later waves become meaningfully harder."),
+      assertion("base-failure", "Enemy attacks reduce visible base health and can reach a clear failure state."),
+      assertion("retry-path", "Keyboard or pointer input retries from failure and restarts active play."),
+    ],
+    classification: "beyond-one-shot",
+    promptSha256: "2c7714807ea8461ee538331e56426b58ce7b1367b3ec10da9d696a6e7f0b31f5",
+    promptId: "wave-defense",
+    protocolVersion: "off-recipe-2c7714807ea8",
+  },
+  {
+    assertions: [
+      assertion("webgl-canvas", "Active play renders in a nonblank WebGL canvas."),
+      assertion("unit-selection-movement", "Pointer or keyboard input selects a unit and visibly moves it between grid cells."),
+      assertion("enemy-turn", "An enemy takes a distinct turn that changes the board or threatens the player."),
+      assertion("objective-outcomes", "Play advances visible objective or turn progress and can reach clear success and failure states."),
+      assertion("retry-path", "Keyboard or pointer input retries an outcome and resets the encounter."),
+    ],
+    classification: "beyond-one-shot",
+    promptSha256: "5b640eb12cbded36a84b3415ad4ae85b15137783b64b53d4831ccd1924f45f37",
+    promptId: "turn-based-tactics",
+    protocolVersion: "off-recipe-5b640eb12cbd",
   },
 ];
 
@@ -127,6 +175,23 @@ export async function validatePromptProofContracts(options: { promptsDir: string
       continue;
     }
     const text = await readFile(resolve(options.promptsDir, `${promptId}.md`), "utf8");
+    const actualSha256 = createHash("sha256").update(text).digest("hex");
+    if (actualSha256 !== contract.promptSha256) {
+      diagnostics.push({
+        code: "TN_BENCH_PROMPT_CONTENT_DRIFT",
+        message: `${promptId}: prompt SHA-256 ${actualSha256} does not match frozen contract ${contract.promptSha256}.`,
+        severity: "error",
+        suggestedFix: "Review the prompt change, then bump its content-addressed protocolVersion and expected SHA-256 together.",
+      });
+    }
+    if (!contract.protocolVersion.endsWith(contract.promptSha256.slice(0, 12))) {
+      diagnostics.push({
+        code: "TN_BENCH_PROMPT_PROTOCOL_VERSION_STALE",
+        message: `${promptId}: protocol version '${contract.protocolVersion}' does not identify frozen prompt ${contract.promptSha256.slice(0, 12)}.`,
+        severity: "error",
+        suggestedFix: "Bump protocolVersion so its suffix is the first 12 characters of promptSha256.",
+      });
+    }
     const missingWords = promptKeywords(contract).filter((keyword) => !text.toLowerCase().includes(keyword));
     if (missingWords.length > 0) {
       diagnostics.push({
@@ -173,6 +238,12 @@ function promptKeywords(contract: IBenchmarkPromptProofContract): string[] {
   }
   if (contract.promptId === "grid-push-puzzle") {
     return ["grid", "crates", "goal", "reset"];
+  }
+  if (contract.promptId === "wave-defense") {
+    return ["webgl", "canvas", "keyboard", "pointer", "waves", "base health", "failure", "retry"];
+  }
+  if (contract.promptId === "turn-based-tactics") {
+    return ["webgl", "canvas", "pointer", "keyboard", "select", "grid", "enemy", "success", "failure", "retry"];
   }
   return [];
 }

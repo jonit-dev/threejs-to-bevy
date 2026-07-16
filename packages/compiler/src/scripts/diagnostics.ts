@@ -19,6 +19,10 @@ export interface IPortableSystemSource {
   writes?: ReadonlyArray<string>;
 }
 
+export interface IPortableScriptPreflightSource extends IPortableSystemSource {
+  upstreamDiagnostics?: ReadonlyArray<ICompilerDiagnostic>;
+}
+
 const unsupportedPatterns: Array<{
   code: string;
   label: string;
@@ -110,6 +114,19 @@ export function diagnosePortableSystem(source: IPortableSystemSource): ICompiler
   return diagnostics;
 }
 
+export function diagnosePortableScriptPreflight(source: IPortableScriptPreflightSource): ICompilerDiagnostic[] {
+  const diagnostics = [...(source.upstreamDiagnostics ?? []), ...diagnosePortableSystem(source)];
+  const byIdentity = new Map<string, ICompilerDiagnostic>();
+  for (const diagnostic of diagnostics) {
+    const identity = JSON.stringify([diagnostic.code, diagnostic.file, diagnostic.path, diagnostic.target]);
+    if (!byIdentity.has(identity)) byIdentity.set(identity, diagnostic);
+  }
+  return [...byIdentity.values()].sort((left, right) =>
+    (left.file ?? "").localeCompare(right.file ?? "")
+    || (left.path ?? "").localeCompare(right.path ?? "")
+    || left.code.localeCompare(right.code));
+}
+
 function diagnoseLegacyIdioms(source: IPortableSystemSource, codeOnlySource: string): ICompilerDiagnostic[] {
   const diagnostics: ICompilerDiagnostic[] = [];
   if (/\b(?:context|ctx)\.input\.axis1\s*\(/.test(codeOnlySource) || /\.input\.axis1\s*\(/.test(codeOnlySource)) {
@@ -181,6 +198,10 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
       diagnostics.push({
         code: "TN_SCRIPT_WRITE_UNDECLARED",
         file: source.file,
+        fix: {
+          instruction: `Declare component '${component}' in the portable behavior metadata or owning system.`,
+          snippet: `writes: [${JSON.stringify(component)}]`,
+        },
         message: `System '${source.systemName}' writes component '${component}' without declaring it in writes.`,
         path: `systems/${source.systemName}/writes/${component}`,
         severity: "error",
@@ -201,6 +222,10 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
       diagnostics.push({
         code: "TN_SCRIPT_RESOURCE_READ_UNDECLARED",
         file: source.file,
+        fix: {
+          instruction: `Declare literal resource read '${resource}' in the portable behavior metadata or owning system.`,
+          snippet: `resourceReads: [${JSON.stringify(resource)}]`,
+        },
         message: `System '${source.systemName}' reads resource '${resource}' without declaring it in resourceReads.`,
         path: `systems/${source.systemName}/resourceReads/${resource}`,
         severity: "error",
@@ -214,6 +239,10 @@ function diagnoseDeclaredAccess(source: IPortableSystemSource): ICompilerDiagnos
       diagnostics.push({
         code: "TN_SCRIPT_RESOURCE_WRITE_UNDECLARED",
         file: source.file,
+        fix: {
+          instruction: `Declare literal resource write '${resource}' in the portable behavior metadata or owning system.`,
+          snippet: `resourceWrites: [${JSON.stringify(resource)}]`,
+        },
         message: `System '${source.systemName}' writes resource '${resource}' without declaring it in resourceWrites.`,
         path: `systems/${source.systemName}/resourceWrites/${resource}`,
         severity: "error",

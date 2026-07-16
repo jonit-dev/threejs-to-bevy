@@ -1047,54 +1047,82 @@ function __tnInvokeSystem(options) {
       effects.services.push({ service: "ui.setValue", payload: { request: { node: nodeId, value: clone(value) }, result: clone(result) } });
       return clone(result);
     };
+  const pendingComponentsByEntity = new Map();
+  const pendingComponents = (source) => {
+    if (!pendingComponentsByEntity.has(source.id)) pendingComponentsByEntity.set(source.id, clone(source.components));
+    return pendingComponentsByEntity.get(source.id);
+  };
   const transformFacade = (source) => ({
     get position() {
-      return readVec3(source.components.Transform && source.components.Transform.position, [0, 0, 0]);
+      const components = pendingComponents(source);
+      return readVec3(components.Transform && components.Transform.position, [0, 0, 0]);
     },
     set position(position) {
-      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]) } });
+      const value = { position: readVec3(position, [0, 0, 0]) };
+      const components = pendingComponents(source);
+      components.Transform = { ...(components.Transform || {}), ...clone(value) };
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value });
     },
     positionOr(fallback) {
-      return readVec3(source.components.Transform && source.components.Transform.position, fallback);
+      const components = pendingComponents(source);
+      return readVec3(components.Transform && components.Transform.position, fallback);
     },
     yawOr(fallback) {
-      return yawFromQuat(source.components.Transform && source.components.Transform.rotation, fallback);
+      const components = pendingComponents(source);
+      return yawFromQuat(components.Transform && components.Transform.rotation, fallback);
     },
     setPosition(position) {
-      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]) } });
+      this.position = position;
     },
     setRotation(rotation) {
-      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+      const value = { rotation: readQuat(rotation, [0, 0, 0, 1]) };
+      const components = pendingComponents(source);
+      components.Transform = { ...(components.Transform || {}), ...clone(value) };
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value });
     },
     setPose(position, rotation) {
-      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value: { position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) } });
+      const value = { position: readVec3(position, [0, 0, 0]), rotation: readQuat(rotation, [0, 0, 0, 1]) };
+      const components = pendingComponents(source);
+      components.Transform = { ...(components.Transform || {}), ...clone(value) };
+      effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value });
     }
   });
-  const createEntityView = (source) => ({
+  const entityViews = new Map();
+  const createEntityView = (source) => {
+    if (entityViews.has(source.id)) return entityViews.get(source.id);
+    const view = ({
     id: source.id,
-    components: clone(source.components),
+    get components() { return clone(pendingComponents(source)); },
     get(component, defaults) {
-      const value = source.components[normalize(component)];
+      const value = pendingComponents(source)[normalize(component)];
       if (defaults && typeof defaults === "object" && !Array.isArray(defaults)) {
         return { ...clone(defaults), ...(value && typeof value === "object" && !Array.isArray(value) ? clone(value) : {}) };
       }
       return clone(value);
     },
     has(component) {
-      return source.components[normalize(component)] !== undefined;
+      return pendingComponents(source)[normalize(component)] !== undefined;
     },
     patch(component, value) {
       const name = normalize(component);
+      const components = pendingComponents(source);
+      const current = components[name];
+      components[name] = { ...(current && typeof current === "object" && !Array.isArray(current) ? current : {}), ...clone(value) };
       effects.patches.push({ entity: source.id, component: name, operation: "patch", value: clone(value) });
     },
     set(component, value) {
-      effects.patches.push({ entity: source.id, component: normalize(component), operation: "set", value: clone(value) });
+      const name = normalize(component);
+      pendingComponents(source)[name] = clone(value);
+      effects.patches.push({ entity: source.id, component: name, operation: "set", value: clone(value) });
     },
     tags: Array.isArray(source.tags) ? [...source.tags] : [],
     transform() {
       return transformFacade(source);
     }
-  });
+    });
+    entityViews.set(source.id, view);
+    return view;
+  };
   const entities = data.entities.map(createEntityView);
   const tagEntities = (Array.isArray(data.tagEntities) ? data.tagEntities : data.entities).map(createEntityView);
   const context = {

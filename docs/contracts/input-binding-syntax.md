@@ -21,7 +21,7 @@ Bindings are strings, not device descriptor objects. For example:
 ```json
 {
   "actions": [
-    { "id": "Select", "bindings": ["pointer.0", "keyboard.Enter"] }
+    { "id": "select", "bindings": ["pointer.0", "keyboard.Enter"] }
   ],
   "axes": [
     { "id": "MoveX", "negative": ["keyboard.KeyA"], "positive": ["keyboard.KeyD"] }

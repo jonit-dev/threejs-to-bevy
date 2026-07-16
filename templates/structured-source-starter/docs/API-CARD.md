@@ -8,26 +8,39 @@ package source.
 
 ```ts
 interface ScriptContext {
-  commands: {
-  addComponent(entity: string, component: Record<string, unknown>): void;
-  clearParent(child: string): void;
-  despawn(entity: string, policy?: string): void;
-  emitEvent(event: string, payload?: Record<string, unknown>): void;
-  instantiate(prefab: string, prefix: string, overrides?: Record<string, unknown>): void;
-  materialPatch(entity: string, value: { color?: unknown; emissive?: unknown; emissiveIntensity?: number; opacity?: number }): void;
-  removeComponent(entity: string, component: unknown): void;
-  setComponent(entity: string, component: unknown, value: unknown): void;
-  setParent(child: string, parent: string): void;
-  spawn(entity: string, components?: unknown): void;
-  };
+  commands: ScriptCommandsFacade;
+  entities: ScriptEntitiesFacade;
   entity(id: string): ScriptEntity | undefined;
-  entities: {
-  byId<T extends Record<string, string>>(ids: T): { [K in keyof T]: ScriptEntity | undefined };
-  };
-  events: {
-  emit(event: string, payload?: Record<string, unknown>): void;
-  };
-  input: {
+  events: ScriptEventsFacade;
+  input: ScriptInputFacade;
+  query(query?: IScriptSystemQuery): ScriptEntity[];
+  random: ScriptRandomFacade;
+  schedule: ScriptScheduleFacade;
+  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
+  time: ScriptTimeFacade;
+  timers: ScriptTimersFacade;
+  persistence: ScriptPersistenceFacade;
+  resources: ScriptResourcesFacade;
+  settings: ScriptSettingsFacade;
+  animation: ScriptAnimationFacade;
+  assets: ScriptAssetsFacade;
+  audio: ScriptAudioFacade;
+  cameras: ScriptCamerasFacade;
+  effects: ScriptEffectsFacade;
+  particles: ScriptParticlesFacade;
+  picking: ScriptPickingFacade;
+  ui: ScriptUiFacade;
+  channels: ScriptChannelsFacade;
+  character: ScriptCharacterFacade;
+  components: ScriptComponentsFacade;
+  navigation: ScriptNavigationFacade;
+  observers: ScriptObserversFacade;
+  physics: ScriptPhysicsFacade;
+  plugins: ScriptPluginsFacade;
+  scenes: ScriptScenesFacade;
+  sequences: ScriptSequencesFacade;
+  states: ScriptStatesFacade;
+  tasks: ScriptTasksFacade;
   action(name: string): boolean;
   axis(name: string): number;
   axis1(axis: string, buttons?: { negative?: string; positive?: string }): number;
@@ -38,20 +51,10 @@ interface ScriptContext {
   getButtonUp(name: string): boolean;
   pressed(name: string): boolean;
   released(name: string): boolean;
-  };
-  picking: {
-  mesh(options: IPickMeshRequest): IPickMeshResult;
-  pointerRay(options: IPointerRayRequest): IPointerRayResult;
-  };
-  query(query?: { changed?: unknown[]; limit?: number; offset?: number; orderBy?: string; with?: unknown[]; without?: unknown[] }): ScriptEntity[];
-  resources: {
   get<T = unknown>(name: string): T;
   get<T extends Record<string, unknown>>(name: string, defaults: T): T;
   patch(name: string, value: Record<string, unknown>): void;
   set(name: string, value: unknown): void;
-  };
-  state<T extends Record<string, unknown>>(key: string, defaults: T): T;
-  time: {
   delta: number;
   deltaTime: number;
   dt: number;
@@ -61,8 +64,6 @@ interface ScriptContext {
   fixedDt: number;
   paused: boolean;
   time: number;
-  };
-  [surface: string]: unknown;
 }
 ```
 
@@ -72,6 +73,7 @@ interface ScriptContext {
 interface ScriptEntity {
   readonly components?: Record<string, unknown>;
   readonly id: string;
+  readonly tags?: string[];
   get<T = unknown>(component: unknown): T;
   get<T extends Record<string, unknown>>(component: unknown, defaults: T): T;
   has(component: unknown): boolean;

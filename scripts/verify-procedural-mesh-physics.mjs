@@ -3,6 +3,8 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { resolveArtifactTargets } from "./artifact-paths.mjs";
+
 const repoRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const dynamicId = "proof.box-on-bush";
 const characterId = "proof.character-on-arch";
@@ -10,7 +12,8 @@ const characterId = "proof.character-on-arch";
 export async function verifyProceduralMeshPhysics(options = {}) {
   const root = options.repoRoot ?? repoRoot;
   const bundlePath = options.bundlePath ?? resolve(root, "packages/ir/fixtures/conformance/procedural-mesh/game.bundle");
-  const artifactDir = options.artifactDir ?? resolve(root, "tools/verify/artifacts/procedural-mesh");
+  const targets = resolveArtifactTargets({ gate: "procedural-mesh", owner: { kind: "aggregate", name: "procedural-mesh" }, root });
+  const artifactDir = options.artifactDir ?? targets.absoluteDir;
   const runtime = await import(pathToFileURL(resolve(root, "packages/runtime-web-three/dist/index.js")).href);
   const bundle = await runtime.loadBundle(bundlePath);
   const web = {

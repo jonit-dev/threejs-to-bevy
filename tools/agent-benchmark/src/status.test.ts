@@ -1,10 +1,12 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import test from "node:test";
 
 import { prepareRound } from "./prepare.js";
+import { BENCHMARK_PROTOCOL } from "./protocol.js";
 import { inspectPreparedRound } from "./status.js";
 import { type BenchmarkCondition } from "./types.js";
 
@@ -44,7 +46,7 @@ test("should report scored slots when sessions and run reports exist", async () 
   });
   const candidate = requireCandidate(result.candidates[0]);
 
-  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
+  await writeAuthoritativeSession(candidate, session(candidate));
 
   const runReportPath = join(root, "round-5", candidate.runId, "run-report.json");
   await mkdir(dirname(runReportPath), { recursive: true });
@@ -77,12 +79,11 @@ test("should surface behavior budget results for scored slots", async () => {
     root: process.cwd(),
   });
   const candidate = requireCandidate(result.candidates[0]);
-  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
-  await writeFile(join(candidate.path, "codex-events.jsonl"), [
+  await writeAuthoritativeSession(candidate, session(candidate), [
     event("rg \"playtest\" packages/cli/src"),
     event("tn iterate --project . --json"),
     event("tn game plan --goal collector --json"),
-  ].join("\n"), "utf8");
+  ].join("\n"));
   const runReportPath = join(root, "round-5", candidate.runId, "run-report.json");
   await mkdir(dirname(runReportPath), { recursive: true });
   await writeFile(runReportPath, `${JSON.stringify(runReport(candidate, { proofOk: true }), null, 2)}\n`, "utf8");
@@ -110,7 +111,7 @@ test("should report run-report missing after session is filled", async () => {
   });
   const candidate = requireCandidate(result.candidates[0]);
 
-  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
+  await writeAuthoritativeSession(candidate, session(candidate));
 
   const status = await inspectPreparedRound(result.manifestPath);
 
@@ -226,7 +227,7 @@ test("should report proof-failed slots when scored report does not pass proof", 
     root: process.cwd(),
   });
   const candidate = requireCandidate(result.candidates[0]);
-  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
+  await writeAuthoritativeSession(candidate, session(candidate));
   const runReportPath = join(root, "round-5", candidate.runId, "run-report.json");
   await mkdir(dirname(runReportPath), { recursive: true });
   await writeFile(runReportPath, `${JSON.stringify(runReport(candidate, { proofOk: false }), null, 2)}\n`, "utf8");
@@ -256,7 +257,7 @@ test("should report invalid slots when run report does not match prepared slot",
     root: process.cwd(),
   });
   const candidate = requireCandidate(result.candidates[0]);
-  await writeFile(join(candidate.path, "session.json"), `${JSON.stringify(session(candidate), null, 2)}\n`, "utf8");
+  await writeAuthoritativeSession(candidate, session(candidate));
   const runReportPath = join(root, "round-5", candidate.runId, "run-report.json");
   await mkdir(dirname(runReportPath), { recursive: true });
   await writeFile(runReportPath, `${JSON.stringify(runReport({ ...candidate, condition: "typed-spec" }, { proofOk: true }), null, 2)}\n`, "utf8");
@@ -283,6 +284,31 @@ function requireCandidate(candidate: { condition: BenchmarkCondition; path: stri
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+async function writeAuthoritativeSession(candidate: { path: string }, value: unknown, eventText?: string): Promise<void> {
+  const parsed = value as { cachedInputTokens?: number; inputTokens?: number; outputTokens?: number; stopReason: string; tokenCount: number; toolStepCount: number };
+  const events = `${eventText ?? event("tn iterate --project . --json")}\n`;
+  await Promise.all([
+    writeFile(join(candidate.path, "session.json"), `${JSON.stringify(value, null, 2)}\n`, "utf8"),
+    writeFile(join(candidate.path, "codex-events.jsonl"), events, "utf8"),
+    writeFile(join(candidate.path, "codex-app-events.jsonl"), "{}\n", "utf8"),
+    writeFile(join(candidate.path, "runner-result.json"), `${JSON.stringify({
+      codexVersion: "test",
+      eventsSha256: createHash("sha256").update(events).digest("hex"),
+      protocol: BENCHMARK_PROTOCOL,
+      schema: "threenative.agent-benchmark-runner-result",
+      stopCause: parsed.stopReason,
+      tokenUsage: {
+        cachedInputTokens: parsed.cachedInputTokens,
+        inputTokens: parsed.inputTokens,
+        outputTokens: parsed.outputTokens,
+        totalTokens: parsed.tokenCount,
+      },
+      toolStepCount: parsed.toolStepCount,
+      version: 1,
+    }, null, 2)}\n`, "utf8"),
+  ]);
 }
 
 function session(candidate: { condition: BenchmarkCondition; runId: string }): unknown {

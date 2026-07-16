@@ -135,6 +135,29 @@ test("should expose gameplay block metadata for maintained recipes", () => {
   }
 });
 
+test("should compose spatial recipe atomically from descriptor owners", () => {
+  const plan = planAuthoringRecipe({
+    args: {},
+    recipeCompositions: [{
+      gameplayBlocks: ["grid-step", "push-interaction", "occupancy-objective"],
+      proofCommands: ["tn playtest --scenario playtests/block-occupancy-objective.playtest.json", "tn recipe remove spatial-grid-objective --project . --json"],
+      proofHints: ["descriptor-owned proof"],
+      recipeId: "spatial-grid-objective",
+      scriptResponsibilities: ["move.grid", "interaction.push", "objective.occupancy", "state.retry"],
+      sourceOwners: { systems: ["grid-step", "push-interaction", "occupancy-objective"] },
+    }],
+    recipeId: "spatial-grid-objective",
+  });
+
+  assert.equal(plan.ok, true);
+  assert.deepEqual(plan.operations, []);
+  assert.deepEqual(plan.gameplayBlocks, ["grid-step", "push-interaction", "occupancy-objective"]);
+  assert.deepEqual(plan.scriptResponsibilities, ["move.grid", "interaction.push", "objective.occupancy", "state.retry"]);
+  assert.equal(plan.proofCommands.some((command) => command.includes("block-occupancy-objective")), true);
+  assert.equal(plan.proofCommands.includes("tn recipe remove spatial-grid-objective --project . --json"), true);
+  assert.deepEqual(plan.sourceOwners.systems, ["grid-step", "push-interaction", "occupancy-objective"]);
+});
+
 test("recipe remains atomic and adoption-aware through batch engine", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-recipe-batch-"));
   try {

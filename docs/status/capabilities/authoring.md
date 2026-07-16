@@ -110,6 +110,27 @@ Current support:
   proof.
 - Rigid body kind diagnostics include the exact `fixed` to `static` repair for
   immovable authored bodies.
+- Off-recipe plans now expose stable acceptance IDs and semantic coverage;
+  project inspection names derived scene/system/UI/resource owners, while
+  portable behavior scaffold/check commands preflight context access.
+- Descriptor-owned grid-step, push-interaction, and occupancy-objective blocks
+  compose atomically behind the experimental `spatial-grid-objective` recipe.
+  Plan-derived scenarios bind live project IDs, and `tn iterate` separates
+  successful execution from complete current-run prompt coverage.
+- Capability-selected interaction prototypes now give unsupported continuous
+  pressure and alternating grid-pursuit plans one atomic custom-on-starter
+  command. The intent contract owns the profile and exact proof roles; applying
+  it replaces incompatible starter scenarios and can run the first iterate
+  proof in the same bounded command without promoting a prompt-specific recipe.
+- The fresh three-prompt unfamiliar-game rerun attempted all 18 frozen slots.
+  Sixteen emitted authoritative usage and all exceeded the 300,000-token cap;
+  two hard-capped attempts lacked a final usage event, and five ThreeNative
+  reports missed complete equal-proof scoring. Screenshots show recognizable
+  nonblank WebGL games, but no authoring-efficiency promotion is claimed.
+  July 16 follow-up pilots brought ThreeNative grid, wave-defense, and tactics
+  individually under the cap with exact iterate proof; the equal-proof vanilla
+  control still failed to retain required proof, so no replacement 18-run
+  promotion matrix is claimed.
 
 Verification:
 
@@ -145,6 +166,7 @@ Verification:
 - `pnpm --filter @threenative/compiler test`
 - `pnpm --filter @threenative/cli test`
 - `pnpm verify:template-production`
+- `tools/agent-benchmark/OFF-RECIPE-EFFICIENCY-RERUN.md`
 - `pnpm verify:emitted-commands` executes every plan-emitted mutation, actor
   suggestion, proof command, and cookbook reference across both maintained
   starters and five goal archetypes, and reports emitted-command failure rate.

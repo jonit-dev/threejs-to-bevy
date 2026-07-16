@@ -20,7 +20,7 @@ Useful commands:
 pnpm run validate:authoring
 pnpm run build
 pnpm run iterate
-pnpm run game:plan
+pnpm run game:plan -- --goal "racing kit rally checkpoint game"
 pnpm run game:improve
 tn asset inspect assets --recursive --json
 tn scene generate-modular-track racing-kit-rally --asset-dir assets --shape oval --size medium --prefix road.modular --json

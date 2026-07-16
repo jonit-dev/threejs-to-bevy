@@ -1,8 +1,12 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { UI_PARITY_ROWS, promotedUiCapabilitiesForFixture, validateUiParityRegistry } from "./uiParityRegistry.js";
+
+const repoRoot = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 
 test("should accept the complete UI parity evidence registry", () => {
   assert.deepEqual(validateUiParityRegistry(), []);
@@ -33,7 +37,7 @@ test("should reject artifact-less promoted evidence", () => {
 });
 
 test("should derive input UI fixture promotion enrollment from the registry", () => {
-  const catalog = JSON.parse(readFileSync("packages/ir/fixtures/conformance/fixture-catalog.json", "utf8")) as { fixtures: Array<{ canonicalId: string; promotedCapabilities: string[] }> };
+  const catalog = JSON.parse(readFileSync(resolve(repoRoot, "packages/ir/fixtures/conformance/fixture-catalog.json"), "utf8")) as { fixtures: Array<{ canonicalId: string; promotedCapabilities: string[] }> };
   const fixture = catalog.fixtures.find((entry) => entry.canonicalId === "input-ui-polish");
   assert.deepEqual(fixture?.promotedCapabilities.filter((entry) => entry.startsWith("ui:")).sort(), promotedUiCapabilitiesForFixture("input-ui-polish"));
 });
