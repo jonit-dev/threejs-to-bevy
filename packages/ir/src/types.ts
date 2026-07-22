@@ -590,6 +590,77 @@ export interface IPhysicsSurfaceComponent {
   rollingResistance: number;
 }
 
+export interface IAerodynamicCurvePoint {
+  angle: number;
+  coefficient: number;
+}
+
+export interface IAerodynamicSurfaceComponent {
+  area: number;
+  aspectRatio: number;
+  centerOfPressure: Vec3;
+  control?: {
+    binding?: string;
+    input?: number;
+    maxDeflection: number;
+    response: number;
+  };
+  dragCurve: readonly IAerodynamicCurvePoint[];
+  id: string;
+  liftCurve: readonly IAerodynamicCurvePoint[];
+  recoveryAngle: number;
+  stallAngle: number;
+}
+
+export interface IThrusterComponent {
+  binding?: string;
+  direction: Vec3;
+  fuelHook?: string;
+  id: string;
+  maxForce: number;
+  point: Vec3;
+  response: number;
+  throttle?: number;
+}
+
+export interface IAerodynamicBodyComponent {
+  /** Local-axis quadratic drag areas in square metres. */
+  dragArea: Vec3;
+  maxForce: number;
+  surfaces: readonly IAerodynamicSurfaceComponent[];
+  thrusters?: readonly IThrusterComponent[];
+}
+
+export interface IWindVolumeComponent {
+  airDensity?: number;
+  gust?: { amplitude: Vec3; frequency: number; seed: number };
+  radius?: number;
+  shape: "box" | "sphere";
+  size?: Vec3;
+  velocity: Vec3;
+}
+
+export interface IAerodynamicSurfaceObservation {
+  angleOfAttack: number;
+  controlDeflection: number;
+  drag: Vec3;
+  forcePoint: Vec3;
+  id: string;
+  lift: Vec3;
+  stalled: boolean;
+}
+
+export interface IAerodynamicObservation {
+  airDensity: number;
+  diagnostics: readonly { code: "TN_PHYSICS_AERODYNAMIC_FORCE_INVALID" | "TN_PHYSICS_AERODYNAMIC_FORCE_OVER_BUDGET"; path: string }[];
+  entity: string;
+  relativeAirVelocity: Vec3;
+  sideslip: number;
+  surfaces: readonly IAerodynamicSurfaceObservation[];
+  thrusters: readonly { force: Vec3; fuelHook?: string; id: string; point: Vec3; throttle: number }[];
+  windVelocity: Vec3;
+}
+
 export interface IWheelSuspensionComponent {
   damperRate: number;
   springRate: number;
@@ -774,6 +845,7 @@ export interface IWorldTextComponent {
 
 export interface IWorldEntity {
   components: Record<string, unknown> & {
+    AerodynamicBody?: IAerodynamicBodyComponent;
     Camera?: ICameraComponent;
     CharacterController?: ICharacterControllerComponent;
     ContactShadows?: IContactShadowsIr;
@@ -795,6 +867,7 @@ export interface IWorldEntity {
     Visibility?: IVisibilityComponent;
     WorldText?: IWorldTextComponent;
     WheelAssembly?: IWheelAssemblyComponent;
+    WindVolume?: IWindVolumeComponent;
   };
   id: string;
   tags?: string[];

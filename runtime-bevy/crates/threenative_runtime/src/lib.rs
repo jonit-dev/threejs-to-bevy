@@ -52,6 +52,7 @@ pub mod persistence;
 pub mod persistence_reload;
 pub mod persistence_storage;
 pub mod physics;
+pub mod physics_aerodynamics;
 pub mod physics_sensors;
 pub mod physics_vehicle;
 pub mod picking;

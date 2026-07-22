@@ -644,6 +644,29 @@ test("should reject invalid and out-of-order vehicle gear ratios at the exact tr
   }
 });
 
+test("should validate bounded aerodynamic bodies and wind volumes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-aerodynamics-"));
+  try {
+    await writeTestBundle(root, { world: physicsWorld([
+      { Collider: { kind: "box", size: [2, 1, 4] }, RigidBody: { kind: "dynamic" }, AerodynamicBody: { dragArea: [1, 1, 2], maxForce: 100_000, surfaces: [{ area: 4, aspectRatio: 6, centerOfPressure: [0, 0, -1], dragCurve: [{ angle: -1, coefficient: 0.5 }, { angle: 1, coefficient: 0.5 }], id: "wing", liftCurve: [{ angle: -1, coefficient: -1 }, { angle: 1, coefficient: 1 }], recoveryAngle: 0.25, stallAngle: 0.35 }] } },
+      { WindVolume: { shape: "sphere", radius: 10, velocity: [2, 0, 0], gust: { amplitude: [1, 0, 0], frequency: 0.5, seed: 7 } } },
+    ]) as never });
+    assert.equal((await validateBundle(root)).ok, true);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("should reject invalid aerodynamic stall hysteresis and non-dynamic ownership", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-aerodynamics-invalid-"));
+  try {
+    await writeTestBundle(root, { world: physicsWorld([{ Collider: { kind: "box", size: [2, 1, 4] }, RigidBody: { kind: "static" }, AerodynamicBody: { dragArea: [1, 1, 2], maxForce: 100_000, surfaces: [{ area: 4, aspectRatio: 6, centerOfPressure: [0, 0, -1], dragCurve: [{ angle: 0, coefficient: 0.5 }, { angle: 0, coefficient: 0.6 }], id: "wing", liftCurve: [{ angle: -1, coefficient: -1 }, { angle: 1, coefficient: 1 }], recoveryAngle: 0.4, stallAngle: 0.35 }] } }]) as never });
+    const result = await validateBundle(root);
+    assert.equal(result.ok, false);
+    assert.ok(result.diagnostics.some((item) => item.code === "TN_IR_PHYSICS_AERODYNAMIC_BODY_DYNAMIC_REQUIRED"));
+    assert.ok(result.diagnostics.some((item) => item.code === "TN_IR_PHYSICS_AERODYNAMIC_STALL_INVALID"));
+    assert.ok(result.diagnostics.some((item) => item.code === "TN_IR_PHYSICS_AERODYNAMIC_CURVE_NON_MONOTONIC"));
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
 function physicsWorld(components: Array<Record<string, unknown>>): unknown {
   return {
     schema: "threenative.world",

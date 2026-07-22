@@ -887,6 +887,7 @@ pub fn dispose_native_physics_runtime(script_posed_entities: &BTreeSet<String>) 
         caches.borrow_mut().remove(&runtime_id);
     });
     crate::physics_vehicle::clear_physics_vehicle_runtime(runtime_id);
+    crate::physics_aerodynamics::dispose_physics_aerodynamics(runtime_id);
 }
 
 pub fn native_physics_runtime_id(script_posed_entities: &BTreeSet<String>) -> usize {
@@ -900,6 +901,7 @@ struct PersistentRapierWorld {
     previous_pairs: BTreeMap<String, DetectedPair>,
     signature: u64,
     world: PhysicsWorld,
+    aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState,
     vehicle_state: crate::physics_vehicle::VehicleRuntimeState,
 }
 
@@ -1342,6 +1344,7 @@ impl PersistentRapierWorld {
             previous_pairs: BTreeMap::new(),
             signature,
             world,
+            aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState::default(),
             vehicle_state: crate::physics_vehicle::VehicleRuntimeState::default(),
         }
     }
@@ -1440,6 +1443,14 @@ impl PersistentRapierWorld {
         }
 
         let initial_query_broad_phase = self.initial_query_broad_phase.take();
+        crate::physics_aerodynamics::step_physics_aerodynamics(
+            runtime_id,
+            bundle,
+            &mut self.world,
+            &self.handles,
+            &mut self.aerodynamic_state,
+            fixed_delta,
+        );
         crate::physics_vehicle::step_physics_vehicles(
             runtime_id,
             bundle,

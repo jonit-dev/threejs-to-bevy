@@ -29,6 +29,7 @@ const COLLIDER_FIELDS = new Set(["center", "contact", "friction", "height", "kin
 const RIGID_BODY_FIELDS = new Set(["angularVelocity", "ccd", "damping", "enabledRotations", "enabledTranslations", "gravityScale", "inverseMass", "kind", "mass", "sleepThreshold", "solverIterations", "velocity"]);
 
 export function validatePhysicsComponents(entity: IWorldIr["entities"][number], path: string, entityIds: Set<string>, rigidBodyEntityIds: Set<string>, tireModelEntityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+  const aerodynamicBody = entity.components.AerodynamicBody as unknown;
   const collider = entity.components.Collider as unknown;
   const compoundCollider = entity.components.CompoundCollider as unknown;
   const body = entity.components.RigidBody as unknown;
@@ -37,7 +38,8 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const tireModel = entity.components.TireModel as unknown;
   const wheelAssembly = entity.components.WheelAssembly as unknown;
   const vehicleController = entity.components.VehicleController as unknown;
-  if (collider === undefined && compoundCollider === undefined && body === undefined && joint === undefined && physicsSurface === undefined && tireModel === undefined && wheelAssembly === undefined && vehicleController === undefined) {
+  const windVolume = entity.components.WindVolume as unknown;
+  if (aerodynamicBody === undefined && collider === undefined && compoundCollider === undefined && body === undefined && joint === undefined && physicsSurface === undefined && tireModel === undefined && wheelAssembly === undefined && vehicleController === undefined && windVolume === undefined) {
     return;
   }
   if (collider !== undefined && !isRecord(collider)) {
@@ -68,10 +70,13 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const bodyRecord = isRecord(body) ? body : undefined;
   const jointRecord = isRecord(joint) ? joint : undefined;
 
+  validateNamedPhysicsComponent(aerodynamicBody, "AerodynamicBody", path, diagnostics, validateAerodynamicBody);
   validateNamedPhysicsComponent(physicsSurface, "PhysicsSurface", path, diagnostics, validatePhysicsSurface);
   validateNamedPhysicsComponent(tireModel, "TireModel", path, diagnostics, validateTireModel);
   validateNamedPhysicsComponent(wheelAssembly, "WheelAssembly", path, diagnostics, (value, componentPath, output) => validateWheelAssembly(value, componentPath, entityIds, tireModelEntityIds, output));
   validateNamedPhysicsComponent(vehicleController, "VehicleController", path, diagnostics, (value, componentPath, output) => validateVehicleController(value, componentPath, isRecord(wheelAssembly) ? wheelAssembly : undefined, output));
+  validateNamedPhysicsComponent(windVolume, "WindVolume", path, diagnostics, validateWindVolume);
+  if (aerodynamicBody !== undefined && bodyRecord?.kind !== "dynamic") diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_BODY_DYNAMIC_REQUIRED", message: "AerodynamicBody must be co-located with a dynamic RigidBody.", path: `${path}/components/AerodynamicBody`, severity: "error", suggestion: "Add RigidBody.kind=dynamic to the craft entity." });
 
   if (compoundCollider !== undefined && compoundColliderRecord === undefined) {
     diagnostics.push({
@@ -260,7 +265,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
 
 function validateNamedPhysicsComponent(
   value: unknown,
-  component: "PhysicsSurface" | "TireModel" | "VehicleController" | "WheelAssembly",
+  component: "AerodynamicBody" | "PhysicsSurface" | "TireModel" | "VehicleController" | "WheelAssembly" | "WindVolume",
   entityPath: string,
   diagnostics: IIrDiagnostic[],
   validate: (value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]) => void,
@@ -272,6 +277,95 @@ function validateNamedPhysicsComponent(
     return;
   }
   validate(value, path, diagnostics);
+}
+
+function validateAerodynamicBody(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  validateObjectFields(value, new Set(["dragArea", "maxForce", "surfaces", "thrusters"]), path, "TN_IR_PHYSICS_AERODYNAMIC_BODY_FIELD_UNSUPPORTED", diagnostics);
+  validateFiniteVec3Range(value.dragArea, 0, 10_000, `${path}/dragArea`, "TN_IR_PHYSICS_AERODYNAMIC_DRAG_INVALID", diagnostics);
+  validateFiniteRange(value.maxForce, Number.MIN_VALUE, PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, `${path}/maxForce`, "TN_IR_PHYSICS_AERODYNAMIC_FORCE_INVALID", diagnostics);
+  if (!Array.isArray(value.surfaces) || value.surfaces.length === 0 || value.surfaces.length > PHYSICS_CAPABILITY_LIMITS.aerodynamicSurfacesPerBody) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_SURFACES_INVALID", message: `AerodynamicBody.surfaces must contain 1-${PHYSICS_CAPABILITY_LIMITS.aerodynamicSurfacesPerBody} entries.`, path: `${path}/surfaces`, severity: "error" });
+  else validateAerodynamicSurfaces(value.surfaces, `${path}/surfaces`, diagnostics);
+  if (value.thrusters !== undefined) {
+    if (!Array.isArray(value.thrusters) || value.thrusters.length > PHYSICS_CAPABILITY_LIMITS.aerodynamicThrustersPerBody) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_THRUSTERS_INVALID", message: `AerodynamicBody.thrusters must contain at most ${PHYSICS_CAPABILITY_LIMITS.aerodynamicThrustersPerBody} entries.`, path: `${path}/thrusters`, severity: "error" });
+    else validateThrusters(value.thrusters, `${path}/thrusters`, diagnostics);
+  }
+}
+
+function validateAerodynamicSurfaces(values: unknown[], path: string, diagnostics: IIrDiagnostic[]): void {
+  const ids = new Set<string>();
+  values.forEach((item, index) => {
+    const itemPath = `${path}/${index}`;
+    if (!isRecord(item)) { diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_SURFACE_INVALID", message: "Aerodynamic surfaces must be objects.", path: itemPath, severity: "error" }); return; }
+    validateObjectFields(item, new Set(["area", "aspectRatio", "centerOfPressure", "control", "dragCurve", "id", "liftCurve", "recoveryAngle", "stallAngle"]), itemPath, "TN_IR_PHYSICS_AERODYNAMIC_SURFACE_FIELD_UNSUPPORTED", diagnostics);
+    validatePhysicsId(item.id, `${itemPath}/id`, ids, "surface", diagnostics);
+    validateFiniteRange(item.area, Number.MIN_VALUE, 10_000, `${itemPath}/area`, "TN_IR_PHYSICS_AERODYNAMIC_AREA_INVALID", diagnostics);
+    validateFiniteRange(item.aspectRatio, Number.MIN_VALUE, 100, `${itemPath}/aspectRatio`, "TN_IR_PHYSICS_AERODYNAMIC_ASPECT_INVALID", diagnostics);
+    validateFiniteVec3(item.centerOfPressure, `${itemPath}/centerOfPressure`, "TN_IR_PHYSICS_AERODYNAMIC_POINT_INVALID", diagnostics);
+    validateFiniteRange(item.stallAngle, Number.MIN_VALUE, Math.PI / 2, `${itemPath}/stallAngle`, "TN_IR_PHYSICS_AERODYNAMIC_STALL_INVALID", diagnostics);
+    validateFiniteRange(item.recoveryAngle, 0, Math.PI / 2, `${itemPath}/recoveryAngle`, "TN_IR_PHYSICS_AERODYNAMIC_STALL_INVALID", diagnostics);
+    if (typeof item.recoveryAngle === "number" && typeof item.stallAngle === "number" && item.recoveryAngle >= item.stallAngle) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_STALL_INVALID", message: "recoveryAngle must be below stallAngle for deterministic hysteresis.", path: `${itemPath}/recoveryAngle`, severity: "error" });
+    validateAerodynamicCurve(item.liftCurve, `${itemPath}/liftCurve`, diagnostics);
+    validateAerodynamicCurve(item.dragCurve, `${itemPath}/dragCurve`, diagnostics);
+    if (item.control !== undefined) validateAerodynamicControl(item.control, `${itemPath}/control`, diagnostics);
+  });
+}
+
+function validateAerodynamicCurve(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!Array.isArray(value) || value.length < 2 || value.length > PHYSICS_CAPABILITY_LIMITS.aerodynamicCurvePoints) { diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_CURVE_INVALID", message: `Aerodynamic curves must contain 2-${PHYSICS_CAPABILITY_LIMITS.aerodynamicCurvePoints} points.`, path, severity: "error" }); return; }
+  let previous = -Infinity;
+  value.forEach((point, index) => {
+    if (!isRecord(point)) { diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_CURVE_INVALID", message: "Curve points require angle and coefficient.", path: `${path}/${index}`, severity: "error" }); return; }
+    validateObjectFields(point, new Set(["angle", "coefficient"]), `${path}/${index}`, "TN_IR_PHYSICS_AERODYNAMIC_CURVE_FIELD_UNSUPPORTED", diagnostics);
+    validateFiniteRange(point.angle, -Math.PI, Math.PI, `${path}/${index}/angle`, "TN_IR_PHYSICS_AERODYNAMIC_CURVE_INVALID", diagnostics);
+    validateFiniteRange(point.coefficient, -10, 10, `${path}/${index}/coefficient`, "TN_IR_PHYSICS_AERODYNAMIC_CURVE_INVALID", diagnostics);
+    if (typeof point.angle === "number" && point.angle <= previous) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_CURVE_NON_MONOTONIC", message: "Aerodynamic curve angles must strictly increase.", path: `${path}/${index}/angle`, severity: "error" });
+    if (typeof point.angle === "number") previous = point.angle;
+  });
+}
+
+function validateAerodynamicControl(value: unknown, path: string, diagnostics: IIrDiagnostic[]): void {
+  if (!isRecord(value)) { diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_INVALID", message: "Surface control must be an object.", path, severity: "error" }); return; }
+  validateObjectFields(value, new Set(["binding", "input", "maxDeflection", "response"]), path, "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_FIELD_UNSUPPORTED", diagnostics);
+  if (value.binding !== undefined && (typeof value.binding !== "string" || value.binding.length === 0)) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_INVALID", message: "control.binding must be a non-empty input id.", path: `${path}/binding`, severity: "error" });
+  if (value.input !== undefined) validateFiniteRange(value.input, -1, 1, `${path}/input`, "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_INVALID", diagnostics);
+  validateFiniteRange(value.maxDeflection, 0, Math.PI / 2, `${path}/maxDeflection`, "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_INVALID", diagnostics);
+  validateFiniteRange(value.response, Number.MIN_VALUE, 100, `${path}/response`, "TN_IR_PHYSICS_AERODYNAMIC_CONTROL_INVALID", diagnostics);
+}
+
+function validateThrusters(values: unknown[], path: string, diagnostics: IIrDiagnostic[]): void {
+  const ids = new Set<string>();
+  values.forEach((item, index) => {
+    const itemPath = `${path}/${index}`;
+    if (!isRecord(item)) { diagnostics.push({ code: "TN_IR_PHYSICS_THRUSTER_INVALID", message: "Thrusters must be objects.", path: itemPath, severity: "error" }); return; }
+    validateObjectFields(item, new Set(["binding", "direction", "fuelHook", "id", "maxForce", "point", "response", "throttle"]), itemPath, "TN_IR_PHYSICS_THRUSTER_FIELD_UNSUPPORTED", diagnostics);
+    validatePhysicsId(item.id, `${itemPath}/id`, ids, "thruster", diagnostics);
+    validateFiniteVec3(item.direction, `${itemPath}/direction`, "TN_IR_PHYSICS_THRUSTER_DIRECTION_INVALID", diagnostics);
+    if (Array.isArray(item.direction) && item.direction.every((coordinate) => typeof coordinate === "number") && Math.hypot(...item.direction as number[]) < 0.000001) diagnostics.push({ code: "TN_IR_PHYSICS_THRUSTER_DIRECTION_INVALID", message: "Thruster.direction must be non-zero.", path: `${itemPath}/direction`, severity: "error" });
+    validateFiniteVec3(item.point, `${itemPath}/point`, "TN_IR_PHYSICS_THRUSTER_POINT_INVALID", diagnostics);
+    validateFiniteRange(item.maxForce, Number.MIN_VALUE, PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, `${itemPath}/maxForce`, "TN_IR_PHYSICS_THRUSTER_FORCE_INVALID", diagnostics);
+    validateFiniteRange(item.response, Number.MIN_VALUE, 100, `${itemPath}/response`, "TN_IR_PHYSICS_THRUSTER_RESPONSE_INVALID", diagnostics);
+    if (item.throttle !== undefined) validateFiniteRange(item.throttle, 0, 1, `${itemPath}/throttle`, "TN_IR_PHYSICS_THRUSTER_THROTTLE_INVALID", diagnostics);
+    for (const field of ["binding", "fuelHook"] as const) if (item[field] !== undefined && (typeof item[field] !== "string" || item[field].length === 0)) diagnostics.push({ code: "TN_IR_PHYSICS_THRUSTER_METADATA_INVALID", message: `Thruster.${field} must be a non-empty string.`, path: `${itemPath}/${field}`, severity: "error" });
+  });
+}
+
+function validateWindVolume(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  validateObjectFields(value, new Set(["airDensity", "gust", "radius", "shape", "size", "velocity"]), path, "TN_IR_PHYSICS_WIND_FIELD_UNSUPPORTED", diagnostics);
+  if (!["box", "sphere"].includes(value.shape as string)) diagnostics.push({ code: "TN_IR_PHYSICS_WIND_SHAPE_INVALID", message: "WindVolume.shape must be box or sphere.", path: `${path}/shape`, severity: "error" });
+  validateFiniteVec3(value.velocity, `${path}/velocity`, "TN_IR_PHYSICS_WIND_VELOCITY_INVALID", diagnostics);
+  if (value.airDensity !== undefined) validateFiniteRange(value.airDensity, 0, 100, `${path}/airDensity`, "TN_IR_PHYSICS_WIND_DENSITY_INVALID", diagnostics);
+  if (value.shape === "box") validatePositiveVec3(value.size, `${path}/size`, "TN_IR_PHYSICS_WIND_SIZE_INVALID", diagnostics);
+  if (value.shape === "sphere") validatePositiveFinite(value.radius, `${path}/radius`, "TN_IR_PHYSICS_WIND_RADIUS_INVALID", diagnostics);
+  if (value.gust !== undefined) {
+    if (!isRecord(value.gust)) diagnostics.push({ code: "TN_IR_PHYSICS_WIND_GUST_INVALID", message: "WindVolume.gust must be an object.", path: `${path}/gust`, severity: "error" });
+    else { validateFiniteVec3(value.gust.amplitude, `${path}/gust/amplitude`, "TN_IR_PHYSICS_WIND_GUST_INVALID", diagnostics); validateFiniteRange(value.gust.frequency, 0, 100, `${path}/gust/frequency`, "TN_IR_PHYSICS_WIND_GUST_INVALID", diagnostics); validateIntegerRange(value.gust.seed, 0, 2_147_483_647, `${path}/gust/seed`, "TN_IR_PHYSICS_WIND_GUST_INVALID", diagnostics); }
+  }
+}
+
+function validatePhysicsId(value: unknown, path: string, ids: Set<string>, kind: string, diagnostics: IIrDiagnostic[]): void {
+  if (typeof value !== "string" || !PORTABLE_FILTER_NAME.test(value)) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_ID_INVALID", message: `${kind} id must be a stable portable identifier.`, path, severity: "error" });
+  else if (ids.has(value)) diagnostics.push({ code: "TN_IR_PHYSICS_AERODYNAMIC_ID_DUPLICATE", message: `${kind} id '${value}' is duplicated.`, path, severity: "error" });
+  else ids.add(value);
 }
 
 function validatePhysicsSurface(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {

@@ -7,7 +7,7 @@ import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { SSRPass } from "three/examples/jsm/postprocessing/SSRPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IVehicleControllerObservation, IWheelAssemblyObservation, IWorldIr, RenderLookProfileName } from "@threenative/ir";
+import type { IAerodynamicObservation, IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IVehicleControllerObservation, IWheelAssemblyObservation, IWorldIr, RenderLookProfileName } from "@threenative/ir";
 import { serializeRuntimeWriteAudit } from "@threenative/ir/runtimeDiagnostics";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
@@ -48,6 +48,7 @@ import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary
 import { colorToThree } from "./worldMapping/colors.js";
 import { forgetMeshLodGeometries, meshLodGeometries, traceWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
 import { observePhysicsVehicleControllers, observePhysicsVehicles } from "./physicsVehicle.js";
+import { observePhysicsAerodynamics, setPhysicsAerodynamicInputs, type IAerodynamicInputs } from "./physicsAerodynamics.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
@@ -69,8 +70,10 @@ export interface IRenderResult {
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
   setPaused(paused: boolean): void;
+  aerodynamicSnapshot(id?: string): IAerodynamicObservation[];
   stepFixedTicks(ticks: number): Promise<{ endTick: number; startTick: number; ticks: number }>;
   setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
+  setAerodynamicInputs(id: string, inputs: IAerodynamicInputs): boolean;
   setVehicleControllerInputs(id: string, inputs?: IVehicleControllerInput): boolean;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
@@ -748,6 +751,12 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       if (inputs === undefined) vehicleControllerInputs.delete(id);
       else vehicleControllerInputs.set(id, structuredClone(inputs));
       return true;
+    },
+    aerodynamicSnapshot(id?: string) {
+      return observePhysicsAerodynamics(bundle.world).filter((observation) => id === undefined || observation.entity === id);
+    },
+    setAerodynamicInputs(id: string, inputs: IAerodynamicInputs) {
+      return setPhysicsAerodynamicInputs(bundle.world, id, inputs);
     },
     ...(ui === undefined ? {} : { ui }),
     uiNodeSnapshot(id: string) {

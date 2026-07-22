@@ -3,7 +3,7 @@ import test from "node:test";
 
 import * as sdk from "./index.js";
 import { SdkError } from "./errors.js";
-import { boxCollider, capsuleCollider, meshCollider, physicsSurface, rigidBody, sphereCollider, tireModel, wheelAssembly, wheelControlInput, type PhysicsColliderKind } from "./physics.js";
+import { aerodynamicBody, aerodynamicSurface, boxCollider, capsuleCollider, meshCollider, physicsSurface, rigidBody, sphereCollider, thruster, tireModel, wheelAssembly, wheelControlInput, windVolume, type PhysicsColliderKind } from "./physics.js";
 
 type AssertNever<T extends never> = T;
 type UnsupportedPublicColliderKind = AssertNever<Exclude<PhysicsColliderKind, "box" | "capsule" | "mesh" | "sphere">>;
@@ -129,6 +129,21 @@ test("physics should reject invalid primitive solver metadata", () => {
   assertSdkCode(() => boxCollider([1, 1, 1], { friction: -1 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_FRICTION");
   assertSdkCode(() => boxCollider([1, 1, 1], { restitution: 1.5 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_RESTITUTION");
   assertSdkCode(() => capsuleCollider(0.6, 1), "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT");
+});
+
+test("physics should create bounded aerodynamic declarations", () => {
+  const wing = aerodynamicSurface({ area: 4, aspectRatio: 6, centerOfPressure: [0, 0, -1], control: { input: 0, maxDeflection: 0.4, response: 5 }, dragCurve: [{ angle: -1, coefficient: 0.5 }, { angle: 1, coefficient: 0.5 }], id: "wing.main", liftCurve: [{ angle: -1, coefficient: -1 }, { angle: 1, coefficient: 1 }], recoveryAngle: 0.25, stallAngle: 0.35 });
+  const engine = thruster({ direction: [0, 0, -1], fuelHook: "fuel.main", id: "engine.main", maxForce: 5000, point: [0, 0, 1], response: 3, throttle: 0.5 });
+  assert.deepEqual(aerodynamicBody({ dragArea: [1, 2, 3], maxForce: 100_000, surfaces: [wing], thrusters: [engine] }).surfaces.map((surface) => surface.id), ["wing.main"]);
+  assert.deepEqual(windVolume({ gust: { amplitude: [1, 0, 0], frequency: 0.5, seed: 7 }, shape: "box", size: [10, 10, 10], velocity: [2, 0, 0] }).velocity, [2, 0, 0]);
+});
+
+test("physics should reject invalid aerodynamic bounds", () => {
+  const wing = { area: 4, aspectRatio: 6, centerOfPressure: [0, 0, -1] as const, dragCurve: [{ angle: -1, coefficient: 0.5 }, { angle: 1, coefficient: 0.5 }], id: "wing.main", liftCurve: [{ angle: -1, coefficient: -1 }, { angle: 1, coefficient: 1 }], recoveryAngle: 0.25, stallAngle: 0.35 };
+  assertSdkCode(() => aerodynamicSurface({ ...wing, recoveryAngle: 0.4 }), "TN_SDK_PHYSICS_AERO_STALL_INVALID");
+  assertSdkCode(() => aerodynamicBody({ dragArea: [1, 1, 1], maxForce: 1, surfaces: [wing, wing] }), "TN_SDK_PHYSICS_AERO_ID_DUPLICATE");
+  assertSdkCode(() => thruster({ direction: [0, 0, 0], id: "engine", maxForce: 1, point: [0, 0, 0], response: 1 }), "TN_SDK_PHYSICS_THRUSTER_DIRECTION_INVALID");
+  assertSdkCode(() => windVolume({ shape: "sphere", velocity: [0, 0, 0] }), "TN_SDK_PHYSICS_WIND_SHAPE_INVALID");
 });
 
 function assertSdkCode(fn: () => unknown, code: string): void {

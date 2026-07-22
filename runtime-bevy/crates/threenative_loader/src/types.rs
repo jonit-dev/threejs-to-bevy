@@ -432,6 +432,7 @@ pub struct WorldEntity {
 #[derive(Clone, Debug, Default, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct EntityComponents {
+    pub aerodynamic_body: Option<AerodynamicBodyComponent>,
     pub camera: Option<CameraComponent>,
     pub collider: Option<ColliderComponent>,
     pub compound_collider: Option<CompoundColliderComponent>,
@@ -452,6 +453,7 @@ pub struct EntityComponents {
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
     pub wheel_assembly: Option<WheelAssemblyComponent>,
+    pub wind_volume: Option<WindVolumeComponent>,
     pub world_text: Option<WorldTextComponent>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -459,6 +461,7 @@ pub struct EntityComponents {
 
 macro_rules! for_each_typed_component {
     ($callback:ident, $components:expr $(, $argument:expr)*) => {
+        $callback!($components, aerodynamic_body, "AerodynamicBody" $(, $argument)*);
         $callback!($components, camera, "Camera" $(, $argument)*);
         $callback!($components, collider, "Collider" $(, $argument)*);
         $callback!($components, compound_collider, "CompoundCollider" $(, $argument)*);
@@ -479,6 +482,7 @@ macro_rules! for_each_typed_component {
         $callback!($components, transform, "Transform" $(, $argument)*);
         $callback!($components, visibility, "Visibility" $(, $argument)*);
         $callback!($components, wheel_assembly, "WheelAssembly" $(, $argument)*);
+        $callback!($components, wind_volume, "WindVolume" $(, $argument)*);
         $callback!($components, world_text, "WorldText" $(, $argument)*);
     };
 }
@@ -1044,6 +1048,77 @@ pub struct PhysicsSurfaceComponent {
 pub struct PhysicsSlipCurvePoint {
     pub grip: f32,
     pub slip: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerodynamicCurvePoint {
+    pub angle: f32,
+    pub coefficient: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerodynamicControlComponent {
+    pub binding: Option<String>,
+    pub input: Option<f32>,
+    pub max_deflection: f32,
+    pub response: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerodynamicSurfaceComponent {
+    pub area: f32,
+    pub aspect_ratio: f32,
+    pub center_of_pressure: [f32; 3],
+    pub control: Option<AerodynamicControlComponent>,
+    pub drag_curve: Vec<AerodynamicCurvePoint>,
+    pub id: String,
+    pub lift_curve: Vec<AerodynamicCurvePoint>,
+    pub recovery_angle: f32,
+    pub stall_angle: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ThrusterComponent {
+    pub binding: Option<String>,
+    pub direction: [f32; 3],
+    pub fuel_hook: Option<String>,
+    pub id: String,
+    pub max_force: f32,
+    pub point: [f32; 3],
+    pub response: f32,
+    pub throttle: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerodynamicBodyComponent {
+    pub drag_area: [f32; 3],
+    pub max_force: f32,
+    pub surfaces: Vec<AerodynamicSurfaceComponent>,
+    pub thrusters: Option<Vec<ThrusterComponent>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindGustComponent {
+    pub amplitude: [f32; 3],
+    pub frequency: f32,
+    pub seed: u32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WindVolumeComponent {
+    pub air_density: Option<f32>,
+    pub gust: Option<WindGustComponent>,
+    pub radius: Option<f32>,
+    pub shape: String,
+    pub size: Option<[f32; 3]>,
+    pub velocity: [f32; 3],
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

@@ -167,6 +167,7 @@ export interface IVehicleAssistDeclaration { enabled: boolean; response: number;
 export interface IVehicleControllerInputs { brake: number; clutch: number; gear?: number; handbrake: number; steer: number; throttle: number }
 
 export interface IPhysicsDeclaration {
+  aerodynamicBody?: IAerodynamicBodyDeclaration;
   body?: IRigidBodyDeclaration;
   collider?: IColliderDeclaration;
   joint?: IPhysicsJointDeclaration;
@@ -174,6 +175,79 @@ export interface IPhysicsDeclaration {
   tireModel?: ITireModelDeclaration;
   wheelAssembly?: IWheelAssemblyDeclaration;
   vehicleController?: IVehicleControllerDeclaration;
+  windVolume?: IWindVolumeDeclaration;
+}
+
+export interface IAerodynamicCurvePointDeclaration { angle: number; coefficient: number }
+export interface IAerodynamicSurfaceDeclaration { area: number; aspectRatio: number; centerOfPressure: Vector3Tuple; control?: { binding?: string; input?: number; maxDeflection: number; response: number }; dragCurve: ReadonlyArray<IAerodynamicCurvePointDeclaration>; id: string; liftCurve: ReadonlyArray<IAerodynamicCurvePointDeclaration>; recoveryAngle: number; stallAngle: number }
+export interface IThrusterDeclaration { binding?: string; direction: Vector3Tuple; fuelHook?: string; id: string; maxForce: number; point: Vector3Tuple; response: number; throttle?: number }
+export interface IAerodynamicBodyDeclaration { dragArea: Vector3Tuple; maxForce: number; surfaces: ReadonlyArray<IAerodynamicSurfaceDeclaration>; thrusters?: ReadonlyArray<IThrusterDeclaration> }
+export interface IWindVolumeDeclaration { airDensity?: number; gust?: { amplitude: Vector3Tuple; frequency: number; seed: number }; radius?: number; shape: "box" | "sphere"; size?: Vector3Tuple; velocity: Vector3Tuple }
+
+export function aerodynamicSurface(options: IAerodynamicSurfaceDeclaration): IAerodynamicSurfaceDeclaration {
+  validatePortableId(options.id, "AerodynamicSurface.id");
+  assertPositiveNumber(options.area, "TN_SDK_PHYSICS_AERO_AREA_INVALID", "AerodynamicSurface.area");
+  assertPositiveNumber(options.aspectRatio, "TN_SDK_PHYSICS_AERO_ASPECT_INVALID", "AerodynamicSurface.aspectRatio");
+  assertPositiveNumber(options.stallAngle, "TN_SDK_PHYSICS_AERO_STALL_INVALID", "AerodynamicSurface.stallAngle");
+  assertNonNegativeNumber(options.recoveryAngle, "TN_SDK_PHYSICS_AERO_STALL_INVALID", "AerodynamicSurface.recoveryAngle");
+  if (options.recoveryAngle >= options.stallAngle) throw new SdkError("TN_SDK_PHYSICS_AERO_STALL_INVALID", "AerodynamicSurface.recoveryAngle must be below stallAngle.");
+  validatePhysicsVector(options.centerOfPressure, "AerodynamicSurface.centerOfPressure");
+  validateAeroCurve(options.liftCurve, "liftCurve");
+  validateAeroCurve(options.dragCurve, "dragCurve");
+  if (options.control !== undefined) {
+    assertNonNegativeNumber(options.control.maxDeflection, "TN_SDK_PHYSICS_AERO_CONTROL_INVALID", "AerodynamicSurface.control.maxDeflection");
+    assertPositiveNumber(options.control.response, "TN_SDK_PHYSICS_AERO_CONTROL_INVALID", "AerodynamicSurface.control.response");
+    if (options.control.input !== undefined) assertNormalizedNumber(options.control.input, "TN_SDK_PHYSICS_AERO_CONTROL_INVALID", "AerodynamicSurface.control.input");
+  }
+  return { ...options, centerOfPressure: [...options.centerOfPressure], dragCurve: options.dragCurve.map((point) => ({ ...point })), liftCurve: options.liftCurve.map((point) => ({ ...point })) };
+}
+
+export function thruster(options: IThrusterDeclaration): IThrusterDeclaration {
+  validatePortableId(options.id, "Thruster.id");
+  validatePhysicsVector(options.direction, "Thruster.direction");
+  if (Math.hypot(...options.direction) < 0.000001) throw new SdkError("TN_SDK_PHYSICS_THRUSTER_DIRECTION_INVALID", "Thruster.direction must be non-zero.");
+  validatePhysicsVector(options.point, "Thruster.point");
+  assertPositiveNumber(options.maxForce, "TN_SDK_PHYSICS_THRUSTER_FORCE_INVALID", "Thruster.maxForce");
+  assertPositiveNumber(options.response, "TN_SDK_PHYSICS_THRUSTER_RESPONSE_INVALID", "Thruster.response");
+  if (options.throttle !== undefined) assertNormalizedNumber(options.throttle, "TN_SDK_PHYSICS_THRUSTER_THROTTLE_INVALID", "Thruster.throttle");
+  return { ...options, direction: [...options.direction], point: [...options.point] };
+}
+
+export function aerodynamicBody(options: IAerodynamicBodyDeclaration): IAerodynamicBodyDeclaration {
+  options.dragArea.forEach((value, index) => assertNonNegativeNumber(value, "TN_SDK_PHYSICS_AERO_DRAG_INVALID", `AerodynamicBody.dragArea[${index}]`));
+  assertPositiveNumber(options.maxForce, "TN_SDK_PHYSICS_AERO_FORCE_INVALID", "AerodynamicBody.maxForce");
+  if (options.surfaces.length === 0 || options.surfaces.length > 16) throw new SdkError("TN_SDK_PHYSICS_AERO_SURFACES_INVALID", "AerodynamicBody.surfaces must contain 1-16 surfaces.");
+  if ((options.thrusters?.length ?? 0) > 16) throw new SdkError("TN_SDK_PHYSICS_AERO_THRUSTERS_INVALID", "AerodynamicBody.thrusters must contain at most 16 thrusters.");
+  const surfaces = options.surfaces.map(aerodynamicSurface);
+  const thrusters = options.thrusters?.map(thruster);
+  if (new Set(surfaces.map((surface) => surface.id)).size !== surfaces.length || (thrusters !== undefined && new Set(thrusters.map((item) => item.id)).size !== thrusters.length)) throw new SdkError("TN_SDK_PHYSICS_AERO_ID_DUPLICATE", "Aerodynamic surface and thruster ids must be unique within their lists.");
+  return { dragArea: [...options.dragArea], maxForce: options.maxForce, surfaces, ...(thrusters === undefined ? {} : { thrusters }) };
+}
+
+export function windVolume(options: IWindVolumeDeclaration): IWindVolumeDeclaration {
+  validatePhysicsVector(options.velocity, "WindVolume.velocity");
+  if (options.airDensity !== undefined) assertNonNegativeNumber(options.airDensity, "TN_SDK_PHYSICS_WIND_DENSITY_INVALID", "WindVolume.airDensity");
+  if (options.shape === "box") {
+    if (options.size === undefined) throw new SdkError("TN_SDK_PHYSICS_WIND_SHAPE_INVALID", "Box WindVolume requires size.");
+    options.size.forEach((value, index) => assertPositiveNumber(value, "TN_SDK_PHYSICS_WIND_SHAPE_INVALID", `WindVolume.size[${index}]`));
+  } else if (options.shape === "sphere") {
+    if (options.radius === undefined) throw new SdkError("TN_SDK_PHYSICS_WIND_SHAPE_INVALID", "Sphere WindVolume requires radius.");
+    assertPositiveNumber(options.radius, "TN_SDK_PHYSICS_WIND_SHAPE_INVALID", "WindVolume.radius");
+  } else throw new SdkError("TN_SDK_PHYSICS_WIND_SHAPE_INVALID", "WindVolume.shape must be box or sphere.");
+  if (options.gust !== undefined) {
+    validatePhysicsVector(options.gust.amplitude, "WindVolume.gust.amplitude");
+    assertNonNegativeNumber(options.gust.frequency, "TN_SDK_PHYSICS_WIND_GUST_INVALID", "WindVolume.gust.frequency");
+    if (!Number.isInteger(options.gust.seed) || options.gust.seed < 0) throw new SdkError("TN_SDK_PHYSICS_WIND_GUST_INVALID", "WindVolume.gust.seed must be a non-negative integer.");
+  }
+  return { ...options, velocity: [...options.velocity] };
+}
+
+function validatePhysicsVector(value: Vector3Tuple, field: string): void { value.forEach((item, index) => assertFiniteNumber(item, "TN_SDK_PHYSICS_VECTOR_INVALID", `${field}[${index}]`)); }
+function validatePortableId(value: string, field: string): void { if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(value)) throw new SdkError("TN_SDK_PHYSICS_ID_INVALID", `${field} must be a stable portable identifier.`); }
+function validateAeroCurve(curve: ReadonlyArray<IAerodynamicCurvePointDeclaration>, field: string): void {
+  if (curve.length < 2 || curve.length > 16) throw new SdkError("TN_SDK_PHYSICS_AERO_CURVE_INVALID", `AerodynamicSurface.${field} must contain 2-16 points.`);
+  let previous = -Infinity;
+  for (const point of curve) { assertFiniteNumber(point.angle, "TN_SDK_PHYSICS_AERO_CURVE_INVALID", `${field}.angle`); assertFiniteNumber(point.coefficient, "TN_SDK_PHYSICS_AERO_CURVE_INVALID", `${field}.coefficient`); if (point.angle <= previous) throw new SdkError("TN_SDK_PHYSICS_AERO_CURVE_INVALID", `AerodynamicSurface.${field} angles must strictly increase.`); previous = point.angle; }
 }
 
 type ColliderCenterOptions = {

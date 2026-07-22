@@ -2,7 +2,8 @@ import { stableSystemEffectLog, type ISystemEffectLog } from "../systems/log.js"
 import { loadBundleUrl } from "../loadBundleUrl.js";
 import { renderLoadedBundle } from "../render.js";
 import { renderDebugOverlay } from "../debugOverlay.js";
-import type { IVehicleControllerInput, IVehicleControllerObservation } from "@threenative/ir";
+import type { IAerodynamicObservation, IVehicleControllerInput, IVehicleControllerObservation } from "@threenative/ir";
+import type { IAerodynamicInputs } from "../physicsAerodynamics.js";
 
 declare global {
   interface Window {
@@ -17,6 +18,7 @@ declare global {
     __THREENATIVE_DEBUG_OVERLAY__?: unknown;
     __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
     __THREENATIVE_RUNTIME__?: {
+      aerodynamicSnapshot?(id?: string): IAerodynamicObservation[];
       debugColliderCount?: number;
       contactShadowsSnapshot?(): unknown;
       entityWorldPosition(id: string): [number, number, number] | undefined;
@@ -31,6 +33,7 @@ declare global {
       stepFixedTicks?(ticks: number): Promise<{ endTick: number; startTick: number; ticks: number }>;
       writeAuditSnapshot?(): unknown;
       setEntityTransform?(id: string, transform: { position?: [number, number, number]; rotation?: [number, number, number, number]; scale?: [number, number, number] }): boolean;
+      setAerodynamicInputs?(id: string, inputs: IAerodynamicInputs): boolean;
       setVehicleControllerInputs?(id: string, inputs?: IVehicleControllerInput): boolean;
       uiNodeSnapshot?(id: string): unknown;
       vehicleControllerSnapshot?(id?: string): IVehicleControllerObservation[];
@@ -69,6 +72,7 @@ const result = await renderLoadedBundle(loadedBundle, container, {
   targetProfile,
 });
 window.__THREENATIVE_RUNTIME__ = {
+  aerodynamicSnapshot: result.aerodynamicSnapshot,
   contactShadowsSnapshot: result.contactShadowsSnapshot,
   debugColliderCount: result.debugColliderCount,
   entityWorldPosition: result.entityWorldPosition,
@@ -83,6 +87,7 @@ window.__THREENATIVE_RUNTIME__ = {
   stepFixedTicks: result.stepFixedTicks,
   writeAuditSnapshot: result.writeAuditSnapshot,
   setEntityTransform: result.setEntityTransform,
+  setAerodynamicInputs: result.setAerodynamicInputs,
   setVehicleControllerInputs: result.setVehicleControllerInputs,
   uiNodeSnapshot: result.uiNodeSnapshot,
   vehicleControllerSnapshot: result.vehicleControllerSnapshot,

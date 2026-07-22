@@ -5,6 +5,10 @@ export const PHYSICS_PHASE3_VEHICLE_TOLERANCES = Object.freeze(physicsInvariantR
 export const PHYSICS_PHASE3_OUTCOME_TOLERANCES = Object.freeze(physicsInvariantRegistry.phase3VehicleComparison.outcome);
 
 export const PHYSICS_CAPABILITY_LIMITS = Object.freeze({
+  aerodynamicCurvePoints: 16,
+  aerodynamicForce: 10_000_000,
+  aerodynamicSurfacesPerBody: 16,
+  aerodynamicThrustersPerBody: 16,
   compoundColliderChildren: 32,
   convexHullVertices: 64,
   slipCurvePoints: 16,
@@ -58,6 +62,30 @@ export const PHYSICS_OBSERVATION_TOLERANCES = Object.freeze({
 } as const);
 
 export const PHYSICS_CAPABILITY_DESCRIPTORS = [
+  {
+    adapters: ["bevy", "web"] as const,
+    authoringOperation: "scene.component.set",
+    compilerComponent: "AerodynamicBody",
+    component: "AerodynamicBody",
+    fixture: "advanced-physics-aerodynamics",
+    gate: "advanced-physics-aerodynamics",
+    limits: { curvePoints: PHYSICS_CAPABILITY_LIMITS.aerodynamicCurvePoints, force: PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, surfaces: PHYSICS_CAPABILITY_LIMITS.aerodynamicSurfacesPerBody, thrusters: PHYSICS_CAPABILITY_LIMITS.aerodynamicThrustersPerBody },
+    observationFields: ["relativeAirVelocity", "sideslip", "surfaces", "thrusters", "windVelocity", "airDensity", "diagnostics"] as const,
+    sdkHelpers: ["aerodynamicBody", "aerodynamicSurface", "thruster"] as const,
+    stage: "contract" as const,
+    unit: "SI",
+  },
+  {
+    adapters: ["bevy", "web"] as const,
+    authoringOperation: "scene.component.set",
+    compilerComponent: "WindVolume",
+    component: "WindVolume",
+    fixture: "advanced-physics-aerodynamics",
+    gate: "advanced-physics-aerodynamics",
+    sdkHelpers: ["windVolume"] as const,
+    stage: "contract" as const,
+    unit: "meters-per-second",
+  },
   {
     adapters: ["bevy", "web"] as const,
     authoringOperation: "scene.component.set",
