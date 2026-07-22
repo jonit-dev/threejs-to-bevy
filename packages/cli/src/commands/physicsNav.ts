@@ -1,5 +1,7 @@
 import { type ICommandResult } from "../diagnostics.js";
+import { dispatchAuthoringOperation, listAuthoringOperationDescriptors, renderAuthoringOperationCliUsage } from "@threenative/authoring";
 import { sceneCommand } from "./scene.js";
+import { parseJsonObjectFlag, renderSceneResult, resolveProjectPath } from "./sceneShared.js";
 
 interface IPhysicsNavCommandOptions {
   cwd?: string;
@@ -11,6 +13,24 @@ export async function physicsCommand(argv: readonly string[], options: IPhysicsN
   const json = normalizedArgv.includes("--json");
   const sceneId = readPositional(normalizedArgv, 1);
   const entityId = readPositional(normalizedArgv, 2);
+
+  if (subcommand === "vehicle") {
+    const action = readPositional(normalizedArgv, 1);
+    const vehicleSceneId = readPositional(normalizedArgv, 2);
+    const vehicleEntityId = readPositional(normalizedArgv, 3);
+    const operationName = vehicleOperationName(action);
+    const controller = parseJsonObjectFlag(normalizedArgv, "--controller", "TN_PHYSICS_VEHICLE_CONTROLLER_INVALID");
+    if (controller.diagnostic !== undefined) return renderUsage(json, controller.diagnostic, "--controller must be a JSON object.");
+    if (operationName === undefined || vehicleSceneId === undefined || vehicleEntityId === undefined || (action === "add" && controller.value === undefined)) {
+      return renderUsage(json, "TN_PHYSICS_VEHICLE_ARGS_MISSING", physicsUsage());
+    }
+    const result = await dispatchAuthoringOperation({
+      args: { sceneId: vehicleSceneId, entityId: vehicleEntityId, ...(controller.value === undefined ? {} : { controller: controller.value }) },
+      name: operationName,
+      projectPath: resolveProjectPath(normalizedArgv, options.cwd),
+    });
+    return renderSceneResult(result, json, result.ok ? `VehicleController '${vehicleEntityId}' ${action} completed.` : `VehicleController '${vehicleEntityId}' ${action} failed.`);
+  }
 
   if (subcommand === "add-rigid-body") {
     if (sceneId === undefined || entityId === undefined) {
@@ -78,8 +98,12 @@ function renderUsage(json: boolean, code: string, usage: string): ICommandResult
 }
 
 function physicsUsage(): string {
-  return "Usage: tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--enabled-rotations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n       tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]";
+  const legacy = "Usage: tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--enabled-rotations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n       tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]";
+  return [legacy, ...vehicleOperationNames().map((name) => renderAuthoringOperationCliUsage(name)).filter((value): value is string => value !== undefined)].join("\n       ");
 }
+
+function vehicleOperationNames(): string[] { return listAuthoringOperationDescriptors().filter((descriptor) => descriptor.adapters?.cli?.path[0] === "physics" && descriptor.adapters.cli.path[1] === "vehicle").map((descriptor) => descriptor.name); }
+function vehicleOperationName(action: string | undefined): string | undefined { return listAuthoringOperationDescriptors().find((descriptor) => descriptor.adapters?.cli?.path.join(" ") === `physics vehicle ${action ?? ""}`)?.name; }
 
 function navUsage(): string {
   return "Usage: tn nav add-agent <scene-id> <entity-id> [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--slope-limit <n>] [--step-offset <n>] [--grounding <mode>] [--blocking <true|false>] [--project <path>] [--json]";
@@ -91,6 +115,7 @@ const flagsWithValues = new Set([
   "--ccd",
   "--ccd-mode",
   "--center",
+  "--controller",
   "--damping",
   "--enabled-rotations",
   "--enabled-translations",

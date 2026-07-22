@@ -40,25 +40,61 @@ Current support:
   body services for force, torque, linear/angular impulse, and linear/angular
   velocity. Authored mutations wake native sleeping bodies and affect the
   current solver tick.
+- Phase 1 advanced-physics foundation is promoted on both adapters:
+  `CompoundCollider` supports stable child IDs, local poses, child
+  material/filter metadata, and bounded box, sphere, capsule, and convex-hull
+  children; `physics.addForceAtPoint` and `physics.applyImpulseAtPoint` enter
+  the retained solver in the declaring fixed tick; and normalized body/query
+  traces identify the exact compound child hit. The paired fixture includes an
+  omitted-command causal control plus checked source/bundle provenance.
+- Phase 2 promotes bounded raycast-wheel assemblies, named tire curves, and
+  deterministic physics surfaces on both adapters. The catalog-owned split
+  asphalt/ice fixture proves exact authored wheel order, grounded and surface
+  semantics, exact contact presence and IDs, and registry-toleranced full
+  chassis pose/velocity plus wheel/contact observations. Paired outcomes prove
+  lower ice acceleration, steering yaw/lateral path, and service-brake speed
+  reduction with non-driven, non-steering, and non-braked causal controls. Its
+  authored chassis-child wheel targets are consumed by both presentation
+  adapters with paired suspension position, steering, bounded spin, and
+  shortest-arc interpolation observations. Its aggregate report also
+  hash-binds the paired traces, debug telemetry, and a reviewed continuous
+  asphalt-to-ice browser crossing.
+- Phase 3 implements the bounded pre-release vehicle-controller contract on both adapters: engine and
+  gearbox curves, clutch and automatic/manual shifting, open/locked/limited-slip
+  differential torque paths, steering, service/hand brakes, engine braking,
+  ABS/TCS, declarative bindings, and `physics.vehicle.setInputs`. Normalized
+  observations publish speed, RPM, gear, clutch/shift state, authored-order
+  wheel torque, and assist state. Speed and speed-sensitive steering use Y-up
+  ground-plane chassis velocity, excluding vertical suspension and landing
+  velocity. Paired traces, browser review, and real web/graphical-desktop
+  playtests pass; release enrollment remains deferred to the final PRD phase.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
-  Query geometry remains a conservative snapshot implementation rather than a
-  retained Rapier query-pipeline claim; proof-solver differential depth is also
-  a current hardening boundary.
+  Phase 1 script raycast, shape-cast, and overlap observations now come from
+  retained Rapier; broader rotated-shape coverage and contact-manifold detail
+  remain hardening boundaries.
 - `pnpm verify:focused verify:feature-parity-physics-native` aggregates the
   existing physics self-verification and animation/physics residual gates. It
   requires matching web/native material, stack, character-contact, query, and
   bounded mesh traces with compact stable-order sidecars, plus sloped grounding,
-  bounded rebake, off-mesh-link, and small-crowd evidence. Constraints beyond
-  the promoted hinge/slider/suspension slice, vehicles, tire/drivetrain models,
-  soft bodies, ragdolls, arbitrary triangle narrow phase, compound colliders,
-  and public backend handles remain explicit boundaries.
+  bounded rebake, off-mesh-link, and small-crowd evidence. The Phase 1
+  `advanced-physics-foundation` row additionally proves at-point causality,
+  exact compound-child query identity, stable script-host order, and provenance.
+  Constraints beyond the promoted hinge/slider/suspension slice, release-enrolled
+  drivetrain/controller support, soft bodies, ragdolls, dynamic triangle compound
+  children, arbitrary triangle narrow phase, and public backend handles remain
+  explicit boundaries.
 
 Verification:
 
 - `pnpm verify:conformance`
 - `pnpm verify:physics-self-verification`
+- `pnpm verify:focused verify:advanced-physics-wheels`
+- `pnpm verify:focused verify:advanced-physics-drivetrain`
 - `pnpm verify:focused verify:feature-parity-physics-native`
+- `packages/ir/fixtures/conformance/advanced-physics-foundation/`
+- `packages/ir/fixtures/conformance/advanced-physics-wheels/`
+- `packages/ir/fixtures/conformance/advanced-physics-drivetrain/`
 - `tn playtest --target desktop ...`
 
 Full prior evidence is preserved in

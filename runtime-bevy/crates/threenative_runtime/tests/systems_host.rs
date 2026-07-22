@@ -693,8 +693,15 @@ fn systems_host_should_translate_humanoid_course_player_from_keyboard_forward() 
 fn systems_host_should_expose_physics_raycast_service() {
     let root = write_physics_raycast_service_bundle("physics-raycast-context");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
 
-    let run = run_native_systems_once(&mut bundle, time()).expect("system should run");
+    let run = run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0 / 60.0, 1.0 / 60.0, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("system should synchronously query retained Rapier");
 
     assert_eq!(
         bundle.world.resources.get("RaycastReport"),
@@ -725,6 +732,57 @@ fn systems_host_should_expose_physics_raycast_service() {
             .as_ref()
             .and_then(|payload| payload.get("request")),
         Some(&expected_request)
+    );
+}
+
+#[test]
+fn systems_host_physics_queries_should_use_retained_rapier_compound_children() {
+    let root = write_live_compound_query_bundle("live-compound-query-context");
+    let mut bundle = load_bundle(&root).expect("scripted compound bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(1.0 / 60.0, 1.0 / 60.0, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("all physics services should synchronously query retained Rapier");
+
+    let report = bundle
+        .world
+        .resources
+        .get("LiveQueryReport")
+        .expect("query report should be written");
+    assert_eq!(report["ray"]["entity"], "wall");
+    assert_eq!(report["ray"]["child"], "left");
+    assert_eq!(report["ray"]["hit"], true);
+    assert_eq!(report["gap"], serde_json::json!({ "hit": false }));
+    assert_eq!(
+        report["wrongQueryLayer"],
+        serde_json::json!({ "hit": false })
+    );
+    assert_eq!(report["shape"]["entity"], "wall");
+    assert_eq!(report["shape"]["child"], "left");
+    assert_eq!(
+        report["overlap"],
+        serde_json::json!({ "entities": ["wall"] })
+    );
+}
+
+#[test]
+fn systems_host_physics_queries_should_reject_hosts_without_a_retained_world() {
+    let root = write_physics_raycast_service_bundle("physics-query-without-live-world");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let error = run_native_systems_once(&mut bundle, time())
+        .expect_err("snapshot-only host must not fabricate a conservative physics hit");
+
+    assert_eq!(error.code, "TN_BEVY_SYSTEM_SCRIPT_EXECUTION_FAILED");
+    assert!(
+        error
+            .message
+            .contains("TN_BEVY_PHYSICS_QUERY_WORLD_UNAVAILABLE")
     );
 }
 
@@ -1254,6 +1312,40 @@ fn systems_host_should_consume_fixed_update_impulses_in_the_same_physics_tick() 
 }
 
 #[test]
+fn systems_host_should_apply_point_force_and_impulse_in_the_same_fixed_tick() {
+    let root = write_fixed_physics_at_point_bundle("loop-fixed-physics-at-point");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+    let mut state = NativeGameLoopState::default();
+
+    run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        loop_options(0.25, 0.25, false),
+        step_bundle_physics_with_script_poses,
+    )
+    .expect("fixed point-force frame should run");
+
+    let body = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.rigid_body.as_ref())
+        .expect("dynamic body should remain");
+    assert!(body.velocity.expect("linear velocity")[0] > 1.2);
+    assert!(body.angular_velocity.expect("angular velocity")[2] < -1.0);
+    assert_eq!(
+        bundle.world.resources.get("PointCommandReport"),
+        Some(&serde_json::json!({
+            "force": { "accepted": true, "entity": "box", "status": "applied" },
+            "impulse": { "accepted": true, "entity": "box", "status": "applied" },
+            "missingPoint": { "accepted": false, "entity": "box", "status": "invalid-vector" }
+        }))
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn systems_host_should_clamp_fixed_update_catchup_steps() {
     let root = write_loop_state_bundle("loop-fixed-clamp");
     let mut bundle = load_bundle(&root).expect("scripted bundle should load");
@@ -1701,6 +1793,65 @@ fn write_fixed_physics_impulse_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_impulse": "impulse" });
 export const systems = Object.freeze({ "system_impulse": system_impulse });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_fixed_physics_at_point_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [{
+    "id": "box",
+    "components": {
+      "Collider": { "kind": "box", "size": [1, 1, 1] },
+      "RigidBody": { "gravityScale": 0, "kind": "dynamic", "mass": 2, "velocity": [0, 0, 0] },
+      "Transform": { "position": [0, 0, 0] }
+    }
+  }],
+  "resources": { "PointCommandReport": {} }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [{
+    "name": "pointCommands",
+    "schedule": "fixedUpdate",
+    "reads": [],
+    "writes": [],
+    "queries": [],
+    "commands": [],
+    "eventReads": [],
+    "eventWrites": [],
+    "resourceReads": ["PointCommandReport"],
+    "resourceWrites": ["PointCommandReport"],
+    "services": ["physics.addForceAtPoint", "physics.applyImpulseAtPoint"],
+    "script": { "bundle": "scripts.bundle.js", "exportName": "system_pointCommands" }
+  }]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_pointCommands = (ctx) => {
+  ctx.resources.set("PointCommandReport", {
+    force: ctx.physics.addForceAtPoint("box", [2, 0, 0], [0, 1, 0]),
+    impulse: ctx.physics.applyImpulseAtPoint("box", [2, 0, 0], [0, 1, 0]),
+    missingPoint: ctx.physics.applyImpulseAtPoint("box", [2, 0, 0])
+  });
+};
+export const systemIds = Object.freeze({ "system_pointCommands": "pointCommands" });
+export const systems = Object.freeze({ "system_pointCommands": system_pointCommands });
 "#,
     )
     .expect("script bundle should be written");
@@ -2518,6 +2669,77 @@ fn write_physics_raycast_service_bundle(name: &str) -> PathBuf {
 };
 export const systemIds = Object.freeze({ "system_raycastPhysics": "raycastPhysics" });
 export const systems = Object.freeze({ "system_raycastPhysics": system_raycastPhysics });
+"#,
+    )
+    .expect("script bundle should be written");
+    root
+}
+
+fn write_live_compound_query_bundle(name: &str) -> PathBuf {
+    let root = root(name);
+    write_base_bundle(&root, true);
+    write_json(
+        &root,
+        "world.ir.json",
+        r#"{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "wall",
+      "components": {
+        "Transform": { "position": [0, 1, -4], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] },
+        "CompoundCollider": {
+          "children": [
+            { "id": "left", "filter": { "layer": "world", "mask": ["player"] }, "localPose": { "position": [-0.75, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.25 } },
+            { "id": "right", "filter": { "layer": "secret", "mask": ["npc"] }, "localPose": { "position": [0.75, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.25 } }
+          ]
+        },
+        "RigidBody": { "kind": "static" }
+      }
+    }
+  ],
+  "resources": { "LiveQueryReport": {} }
+}"#,
+    );
+    write_json(
+        &root,
+        "systems.ir.json",
+        r#"{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "queryLiveCompound",
+      "schedule": "update",
+      "reads": ["CompoundCollider", "Transform"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["LiveQueryReport"],
+      "resourceWrites": ["LiveQueryReport"],
+      "services": ["physics.overlap", "physics.raycast", "physics.shapeCast"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_queryLiveCompound" }
+    }
+  ]
+}"#,
+    );
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_queryLiveCompound = (ctx) => {
+  const filter = { mask: ["world"] };
+  ctx.resources.set("LiveQueryReport", {
+    gap: ctx.physics.raycast({ ...filter, direction: [0, 0, -1], maxDistance: 10, origin: [0, 1, 0] }),
+    overlap: ctx.physics.overlap({ ...filter, position: [-0.75, 1, -4], shape: { kind: "sphere", radius: 0.3 } }),
+    ray: ctx.physics.raycast({ ...filter, direction: [0, 0, -1], maxDistance: 10, origin: [-0.75, 1, 0] }),
+    shape: ctx.physics.shapeCast({ ...filter, direction: [0, 0, -1], maxDistance: 10, origin: [-0.75, 1, 0], shape: { kind: "sphere", radius: 0.25 } }),
+    wrongQueryLayer: ctx.physics.raycast({ direction: [0, 0, -1], layer: "npc", mask: ["world"], maxDistance: 10, origin: [-0.75, 1, 0] })
+  });
+};
+export const systemIds = Object.freeze({ "system_queryLiveCompound": "queryLiveCompound" });
+export const systems = Object.freeze({ "system_queryLiveCompound": system_queryLiveCompound });
 "#,
     )
     .expect("script bundle should be written");

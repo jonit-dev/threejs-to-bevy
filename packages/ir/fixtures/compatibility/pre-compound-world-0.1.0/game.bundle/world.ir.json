@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "legacy.box",
+      "components": {
+        "Transform": { "position": [0, 1, 0] },
+        "RigidBody": { "kind": "dynamic", "mass": 1 },
+        "Collider": { "kind": "box", "size": [1, 1, 1] }
+      }
+    }
+  ],
+  "resources": {},
+  "events": {},
+  "prefabs": []
+}

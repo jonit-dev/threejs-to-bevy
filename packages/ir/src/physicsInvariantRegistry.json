@@ -1,0 +1,31 @@
+{
+  "schema": "threenative.physics-invariant-registry",
+  "version": "0.1.0",
+  "staticLoad": {
+    "settleSteps": 480,
+    "sampleWindowSteps": 120,
+    "minTotalNormalLoadWeightRatio": 0.5,
+    "maxTotalNormalLoadWeightRatio": 1.5,
+    "maxRideHeightSpan": 0.08
+  },
+  "braking": {
+    "ticks": 60,
+    "fixedDelta": 0.008333333333333333,
+    "initialSpeed": 5,
+    "maxFinalSpeedRatio": 0.8
+  },
+  "phase3VehicleComparison": {
+    "vehicle": {
+      "clutch": { "absolute": 0.05, "relative": 0.05 },
+      "driveTorque": { "absolute": 80, "relative": 0.05 },
+      "engineRpm": { "absolute": 160, "relative": 0.05 },
+      "speed": { "absolute": 0.8, "relative": 0.05 },
+      "torquePath": { "absolute": 60, "relative": 0.05 }
+    },
+    "outcome": {
+      "lateralProgressRatio": { "absolute": 0.05, "relative": 0.15 },
+      "longitudinalProgress": { "absolute": 0.8, "relative": 0.08 },
+      "yaw": { "absolute": 0.08, "relative": 0.12 }
+    }
+  }
+}

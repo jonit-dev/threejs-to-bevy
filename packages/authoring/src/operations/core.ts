@@ -10,3 +10,4 @@ export * from "./material.js";
 export * from "./input.js";
 export * from "./assets.js";
 export * from "./systems.js";
+export * from "./physics.js";

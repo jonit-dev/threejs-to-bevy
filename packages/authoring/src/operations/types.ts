@@ -317,7 +317,7 @@ export interface ISetComponentOptions extends IAuthoringOperationContext {
   sceneId: string;
   entityId: string;
   componentKind: string;
-  value: Record<string, unknown>;
+  value: object;
 }
 
 export interface ISetSceneLifecycleOptions extends IAuthoringOperationContext {

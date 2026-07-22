@@ -36,6 +36,7 @@ import type {
   IScriptPhysicsSensorResult,
   IScriptPhysicsShapeCastRequest,
   IScriptPhysicsShapeCastResult,
+  IScriptVehicleSetInputsResult,
   IScriptPluginDeclarationView,
   IScriptPluginGroupView,
   IScriptSceneServiceResult,
@@ -56,6 +57,7 @@ import type {
   IScriptWorldTextCommandOptions,
   IScriptWorldTextCommandResult,
   ScriptSettingValue,
+  IVehicleControllerInput,
 } from "@threenative/ir";
 import type { IComponentReflectionRegistry, IComponentReflectionType } from "@threenative/ir/reflection";
 
@@ -196,15 +198,22 @@ export interface ScriptPersistenceFacade {
 
 export interface ScriptPhysicsFacade {
   addForce(entity: string, force: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
+  addForceAtPoint(entity: string, force: readonly [number, number, number], point: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   addTorque(entity: string, torque: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   applyImpulse(entity: string, impulse: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
+  applyImpulseAtPoint(entity: string, impulse: readonly [number, number, number], point: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   overlap(options: IScriptPhysicsOverlapRequest): IScriptPhysicsOverlapResult;
   raycast(options: IScriptPhysicsRaycastRequest): IScriptPhysicsRaycastResult;
   sensor(options?: IScriptPhysicsSensorRequest): IScriptPhysicsSensorResult;
   setAngularVelocity(entity: string, velocity: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   setLinearVelocity(entity: string, velocity: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   shapeCast(options: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult;
+  vehicle: ScriptPhysicsVehicleFacade;
+}
+
+export interface ScriptPhysicsVehicleFacade {
+  setInputs(entity: string | ScriptEntity, inputs: IVehicleControllerInput): IScriptVehicleSetInputsResult;
 }
 
 export interface ScriptPickingFacade {

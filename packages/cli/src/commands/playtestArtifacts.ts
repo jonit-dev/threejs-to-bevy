@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 
@@ -144,6 +145,12 @@ export async function writePlaytestArtifactBundle(options: {
   const assertions = buildAssertions(options.report);
   options.report.diagnostics.push(...repeatedAssertionDiagnostics(await readPreviousSummary(artifacts.summary), assertions));
   const { artifacts: summaryArtifacts, missingArtifacts } = await existingArtifacts(artifacts, Date.now() - options.durationMs - 1_000);
+  const proofMetadata = options.proofMetadata === undefined ? undefined : {
+    ...options.proofMetadata,
+    artifactHashes: await artifactHashes(options.projectPath, summaryArtifacts),
+    completedAt: new Date().toISOString(),
+    startedAt: new Date(Date.now() - options.durationMs).toISOString(),
+  };
   const summary: IPlaytestSummary = {
     ...(options.scenario.acceptanceId === undefined ? {} : { acceptanceId: options.scenario.acceptanceId }),
     ...(options.report.after === undefined ? {} : { after: options.report.after }),
@@ -173,7 +180,7 @@ export async function writePlaytestArtifactBundle(options: {
     next: nextCommand(options.scenario, summaryReportCommand(options.scenario.name)),
     pass: options.report.pass,
     ...(options.report.performance === undefined ? {} : { performance: options.report.performance }),
-    ...(options.proofMetadata === undefined ? {} : { proofMetadata: options.proofMetadata }),
+    ...(proofMetadata === undefined ? {} : { proofMetadata }),
     reproduceCommand: reproduceCommand(options.projectPath, options.scenario, options.runDirectory),
     runtime: options.report.runtime,
     schema: "threenative.playtest-summary",
@@ -539,18 +546,29 @@ function reproduceCommand(projectPath: string, scenario: IPlaytestScenario, runD
     : `tn playtest --project . --scenario ${scenarioArg} --out ${outArg} --json`;
 }
 
-async function artifactEntries(projectPath: string, artifacts: IPlaytestArtifactBundle): Promise<Record<string, { byteSize: number; path: string }>> {
+async function artifactEntries(projectPath: string, artifacts: IPlaytestArtifactBundle): Promise<Record<string, { byteSize: number; path: string; sha256?: string }>> {
   const entries = Object.entries(artifacts).filter(([key]) => key !== "directory");
-  const result: Record<string, { byteSize: number; path: string }> = {};
+  const result: Record<string, { byteSize: number; path: string; sha256?: string }> = {};
   for (const [key, artifactPath] of entries) {
     try {
       const artifactStat = await stat(artifactPath);
-      result[key] = { byteSize: artifactStat.size, path: relative(projectPath, artifactPath) };
+      result[key] = { byteSize: artifactStat.size, path: relative(projectPath, artifactPath), sha256: `sha256-${createHash("sha256").update(await readFile(artifactPath)).digest("hex")}` };
     } catch {
       result[key] = { byteSize: 0, path: relative(projectPath, artifactPath) };
     }
   }
   return result;
+}
+
+async function artifactHashes(projectPath: string, artifacts: IPlaytestArtifactBundle): Promise<Record<string, string>> {
+  const hashes: Record<string, string> = {};
+  for (const [key, artifactPath] of Object.entries(artifacts)) {
+    if (key === "directory" || key === "manifest" || key === "summary") continue;
+    try {
+      hashes[relative(projectPath, artifactPath).split("\\").join("/")] = `sha256-${createHash("sha256").update(await readFile(artifactPath)).digest("hex")}`;
+    } catch {}
+  }
+  return hashes;
 }
 
 async function writeJson(path: string, value: unknown): Promise<void> {

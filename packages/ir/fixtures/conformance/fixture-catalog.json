@@ -3,6 +3,98 @@
   "version": "0.1.0",
   "fixtures": [
     {
+      "canonicalId": "advanced-physics-foundation",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:physics-self-verification",
+      "canonicalArtifactGate": "physics-self-verification",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:physics-self-verification",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-foundation/game.bundle",
+      "promotedCapabilities": [
+        "physics:collider.compound",
+        "physics:force-at-point",
+        "physics:impulse-at-point",
+        "physics:query.retained"
+      ],
+      "reportArtifacts": [
+        "examples/advanced-physics-foundation/artifacts/physics-self-verification/scene-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-1-foundation/verification-report.json"
+      ]
+    },
+    {
+      "canonicalId": "advanced-physics-wheels",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:focused verify:advanced-physics-wheels",
+      "canonicalArtifactGate": "advanced-physics-wheels",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:advanced-physics-wheels",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-wheels/game.bundle",
+      "promotedCapabilities": [
+        "physics:surface",
+        "physics:tire-model",
+        "physics:wheel-assembly"
+      ],
+      "reportArtifacts": [
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/verification-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/debug-overlay.json",
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/manual-web-debug.json",
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/manual-web-debug.png",
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/web-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-2-wheels/native-trace.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/advancedPhysicsWheels.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Paired web/native wheel suspension, tire, and surface evidence gate.",
+        "owner": "packages/ir advanced-physics-wheels fixture and tools/verify wheel evidence gate",
+        "profile": "focused",
+        "protects": "Authored wheel order, exact grounded and surface semantics, registry-toleranced wheel observations, asphalt/ice response, and the non-driven causal control.",
+        "reason": "A catalog-owned paired runtime trace prevents wheel contracts from advancing on package-local solver tests or single-adapter evidence.",
+        "release": {
+          "enrolled": false,
+          "name": "verify advanced physics wheels",
+          "timingCategory": "focused-gate"
+        }
+      }
+    },
+    {
+      "canonicalId": "advanced-physics-drivetrain",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:focused verify:advanced-physics-drivetrain",
+      "canonicalArtifactGate": "advanced-physics-drivetrain",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:advanced-physics-drivetrain",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-drivetrain/game.bundle",
+      "promotedCapabilities": [],
+      "reportArtifacts": [
+        "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/verification-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/web-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/native-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/manual-web-debug.json",
+        "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/manual-web-debug.png"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/advancedPhysicsDrivetrain.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Paired web/native deterministic vehicle controller and drivetrain evidence gate.",
+        "owner": "packages/ir advanced-physics-drivetrain fixture and tools/verify drivetrain evidence gate",
+        "profile": "focused",
+        "protects": "Recorded normalized inputs, gear and clutch states, authored-order torque paths, steering/braking/reverse outcomes, assist transitions, differential allocation, and fresh-world retry determinism.",
+        "reason": "A catalog-owned paired trace prevents drivetrain promotion on package-local tests or a single adapter.",
+        "release": { "enrolled": false, "name": "verify advanced physics drivetrain", "timingCategory": "focused-gate" }
+      }
+    },
+    {
       "canonicalId": "procedural-mesh",
       "owner": "ir-contract",
       "sourceExample": "procedural-mesh",

@@ -272,7 +272,7 @@ export interface IScriptPhysicsShapeCastRequest extends IScriptPhysicsFilterRequ
 
 export type IScriptPhysicsRaycastResult =
   | { hit: false }
-  | { distance: number; entity: string; hit: true; normal: [number, number, number]; point: [number, number, number] };
+  | { child?: string; distance: number; entity: string; hit: true; normal: [number, number, number]; point: [number, number, number] };
 
 export type IScriptPhysicsShapeCastResult = IScriptPhysicsRaycastResult;
 
@@ -280,6 +280,12 @@ export interface IScriptPhysicsBodyCommandResult {
   accepted: boolean;
   entity: string;
   status: "applied" | "invalid-body" | "invalid-vector" | "missing";
+}
+
+export interface IScriptVehicleSetInputsResult {
+  accepted: boolean;
+  entity: string;
+  status: "applied" | "invalid-controller" | "invalid-input" | "missing";
 }
 
 export interface IScriptPhysicsSensorRequest {

@@ -552,6 +552,150 @@ export interface IColliderComponent {
   trigger?: boolean;
 }
 
+export type ICompoundColliderShape =
+  | { kind: "box"; size: Vec3 }
+  | { kind: "capsule"; height: number; radius: number }
+  | { kind: "convexHull"; points: readonly Vec3[] }
+  | { kind: "sphere"; radius: number };
+
+export interface ICompoundColliderComponent {
+  children: readonly {
+    filter?: { layer?: string; mask?: readonly string[] };
+    id: string;
+    localPose: { position: Vec3; rotation?: Quat };
+    material?: { friction?: number; restitution?: number };
+    shape: ICompoundColliderShape;
+  }[];
+}
+
+export interface IPhysicsSlipCurvePoint {
+  /** Normalized slip ratio or slip angle in radians, depending on the curve. */
+  slip: number;
+  /** Non-negative grip coefficient at this slip value. */
+  grip: number;
+}
+
+export interface ITireModelComponent {
+  lateralSlipCurve: readonly IPhysicsSlipCurvePoint[];
+  loadSensitivity: number;
+  longitudinalSlipCurve: readonly IPhysicsSlipCurvePoint[];
+  rollingResistance: number;
+}
+
+export type PhysicsSurfaceCombineRule = "average" | "maximum" | "minimum" | "multiply";
+
+export interface IPhysicsSurfaceComponent {
+  combineRule: PhysicsSurfaceCombineRule;
+  grip: number;
+  rollingResistance: number;
+}
+
+export interface IWheelSuspensionComponent {
+  damperRate: number;
+  springRate: number;
+  travel: number;
+}
+
+export interface IWheelAssemblyComponent {
+  /** Physical steering angle used for normalized steering input, in radians. */
+  maxSteeringAngle: number;
+  maxSuspensionForce: number;
+  maxTireForce: number;
+  wheels: readonly {
+    attachment: Vec3;
+    braked: boolean;
+    driven: boolean;
+    id: string;
+    radius: number;
+    steering: boolean;
+    suspension: IWheelSuspensionComponent;
+    tire: string;
+    visual?: string;
+    width: number;
+  }[];
+}
+
+export interface IWheelControlInput {
+  /** Normalized service-brake request in [0, 1]. */
+  brake: number;
+  /** Normalized signed drive request in [-1, 1]. */
+  drive: number;
+  /** Normalized signed steering request in [-1, 1]. */
+  steering: number;
+}
+
+export interface IVehicleControllerComponent {
+  assists?: { abs?: IVehicleAssistConfig; tcs?: IVehicleAssistConfig };
+  bindings?: { brake?: string; clutch?: string; gearDown?: string; gearUp?: string; handbrake?: string; steer?: string; throttle?: string };
+  brakes: { frontBias: number; handbrakeWheelIds: readonly string[] };
+  differential: { kind: "limited-slip" | "locked" | "open"; limitedSlipRatio?: number };
+  engine: { engineBraking: number; idleRpm: number; redlineRpm: number; torqueCurve: readonly { rpm: number; torque: number }[] };
+  steering: { speedCurve: readonly { scale: number; speed: number }[] };
+  transmission: { clutchResponse: number; downshiftRpm?: number; finalDrive: number; forwardRatios: readonly number[]; reverseRatio: number; shiftPolicy: "automatic" | "manual"; upshiftRpm?: number };
+}
+
+export interface IVehicleAssistConfig { enabled: boolean; response: number; slipThreshold: number }
+
+export interface IVehicleControllerInput {
+  brake: number;
+  clutch: number;
+  gear?: number;
+  handbrake: number;
+  steer: number;
+  throttle: number;
+}
+
+export interface IVehicleControllerObservation {
+  absActive: boolean;
+  clutch: number;
+  driveTorque: number;
+  engineRpm: number;
+  entity: string;
+  gear: number;
+  inputs: IVehicleControllerInput;
+  shiftState: "engaged" | "shifting";
+  speed: number;
+  tcsActive: boolean;
+  torquePath: { clutch: number; engine: number; finalDrive: number; gearbox: number; wheels: readonly { torque: number; wheelId: string }[] };
+}
+
+export interface IWheelObservation {
+  angularSpeed: number;
+  compression: number;
+  contact?: IPhysicsQueryHitObservation;
+  grounded: boolean;
+  lateralSlip: number;
+  longitudinalSlip: number;
+  normalLoad: number;
+  surface?: string;
+  wheelId: string;
+}
+
+export interface IWheelAssemblyObservation {
+  entity: string;
+  step: number;
+  /** Observations use the authored WheelAssembly.wheels order. */
+  wheels: readonly IWheelObservation[];
+}
+
+export interface IPhysicsBodyObservation {
+  angularVelocity: Vec3;
+  entity: string;
+  position: Vec3;
+  rotation: Quat;
+  sleeping: boolean;
+  step: number;
+  velocity: Vec3;
+}
+
+export interface IPhysicsQueryHitObservation {
+  child?: string;
+  distance: number;
+  entity: string;
+  normal: Vec3;
+  point: Vec3;
+}
+
 export interface IPhysicsJointComponent {
   anchor?: Vec3;
   axis?: Vec3;
@@ -638,14 +782,19 @@ export interface IWorldEntity {
     Patrol?: IPatrolComponent;
     StateMachine?: IStateMachineComponent;
     Collider?: IColliderComponent;
+    CompoundCollider?: ICompoundColliderComponent;
+    PhysicsSurface?: IPhysicsSurfaceComponent;
     RenderLayers?: IRenderLayersComponent;
     KinematicMover?: IKinematicMoverComponent;
     Spawner?: ISpawnerComponent;
     PhysicsJoint?: IPhysicsJointComponent;
     RigidBody?: IRigidBodyComponent;
+    TireModel?: ITireModelComponent;
     Transform?: ITransformComponent;
+    VehicleController?: IVehicleControllerComponent;
     Visibility?: IVisibilityComponent;
     WorldText?: IWorldTextComponent;
+    WheelAssembly?: IWheelAssemblyComponent;
   };
   id: string;
   tags?: string[];

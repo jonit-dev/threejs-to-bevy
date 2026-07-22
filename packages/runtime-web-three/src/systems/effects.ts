@@ -1,4 +1,4 @@
-import type { IIrSystemDeclaration, IPrefabsIr, IRuntimeDiagnostic, IWorldIr } from "@threenative/ir";
+import type { IIrSystemDeclaration, IPrefabsIr, IRuntimeDiagnostic, IVehicleControllerInput, IWorldIr } from "@threenative/ir";
 
 import {
   applyCommands,
@@ -10,7 +10,8 @@ import {
   type IQueuedServiceCall,
 } from "./context.js";
 import type { ISystemEffectLogEntry } from "./log.js";
-import { markScriptAuthoredTransform } from "../physics.js";
+import { applyLivePhysicsAtPoint, markScriptAuthoredTransform } from "../physics.js";
+import { setPhysicsVehicleControllerInputs } from "../physicsVehicle.js";
 import type { IRuntimeWriteLedger } from "./writeAudit.js";
 import type { RuntimeWriteWriter } from "@threenative/ir";
 
@@ -50,7 +51,13 @@ function applyPhysicsBodyServices(world: IWorldIr, services: ReadonlyArray<IQueu
     }
     const request = service.payload.request;
     const entityId = typeof request.entity === "string" ? request.entity : undefined;
+    const vehicleInputs = physicsVehicleInputs(request.inputs);
+    if (service.service === "physics.vehicle.setInputs" && entityId !== undefined && vehicleInputs !== undefined) {
+      setPhysicsVehicleControllerInputs(world, entityId, vehicleInputs);
+      continue;
+    }
     const value = physicsVector(request.value);
+    const point = physicsVector(request.point);
     const entity = entityId === undefined ? undefined : world.entities.find((candidate) => candidate.id === entityId);
     const body = entity?.components.RigidBody;
     if (entity === undefined || body?.kind !== "dynamic" || value === undefined) {
@@ -60,8 +67,12 @@ function applyPhysicsBodyServices(world: IWorldIr, services: ReadonlyArray<IQueu
     const fixedDelta = typeof request.fixedDelta === "number" && Number.isFinite(request.fixedDelta) && request.fixedDelta > 0 ? request.fixedDelta : 1 / 60;
     if (service.service === "physics.setLinearVelocity") {
       body.velocity = value;
+    } else if (service.service === "physics.applyImpulseAtPoint" && point !== undefined) {
+      applyLivePhysicsAtPoint(world, entity.id, value, point, "impulse");
     } else if (service.service === "physics.applyImpulse") {
       body.velocity = addPhysicsVector(body.velocity, value, 1 / mass);
+    } else if (service.service === "physics.addForceAtPoint" && point !== undefined) {
+      applyLivePhysicsAtPoint(world, entity.id, value, point, "force");
     } else if (service.service === "physics.addForce") {
       body.velocity = addPhysicsVector(body.velocity, value, fixedDelta / mass);
     } else if (service.service === "physics.setAngularVelocity") {
@@ -83,6 +94,14 @@ function physicsVector(value: unknown): [number, number, number] | undefined {
   return Array.isArray(value) && value.length === 3 && value.every((part) => typeof part === "number" && Number.isFinite(part))
     ? [value[0] as number, value[1] as number, value[2] as number]
     : undefined;
+}
+
+function physicsVehicleInputs(value: unknown): IVehicleControllerInput | undefined {
+  if (!isRecord(value)) return undefined;
+  const { brake, clutch, gear, handbrake, steer, throttle } = value;
+  if (typeof brake !== "number" || typeof clutch !== "number" || typeof handbrake !== "number" || typeof steer !== "number" || typeof throttle !== "number") return undefined;
+  if (gear !== undefined && typeof gear !== "number") return undefined;
+  return { brake, clutch, ...(gear === undefined ? {} : { gear }), handbrake, steer, throttle };
 }
 
 function addPhysicsVector(current: readonly [number, number, number] | undefined, value: readonly [number, number, number], scale: number): [number, number, number] {

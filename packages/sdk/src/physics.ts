@@ -108,10 +108,72 @@ export interface IPhysicsJointDeclaration {
   travel?: number;
 }
 
+export interface IPhysicsSlipCurvePointDeclaration {
+  grip: number;
+  slip: number;
+}
+
+export interface ITireModelDeclaration {
+  lateralSlipCurve: ReadonlyArray<IPhysicsSlipCurvePointDeclaration>;
+  loadSensitivity: number;
+  longitudinalSlipCurve: ReadonlyArray<IPhysicsSlipCurvePointDeclaration>;
+  rollingResistance: number;
+}
+
+export type PhysicsSurfaceCombineRule = "average" | "maximum" | "minimum" | "multiply";
+
+export interface IPhysicsSurfaceDeclaration {
+  combineRule: PhysicsSurfaceCombineRule;
+  grip: number;
+  rollingResistance: number;
+}
+
+export interface IWheelDeclaration {
+  attachment: Vector3Tuple;
+  braked: boolean;
+  driven: boolean;
+  id: string;
+  radius: number;
+  steering: boolean;
+  suspension: { damperRate: number; springRate: number; travel: number };
+  tire: string;
+  visual?: string;
+  width: number;
+}
+
+export interface IWheelAssemblyDeclaration {
+  maxSteeringAngle: number;
+  maxSuspensionForce: number;
+  maxTireForce: number;
+  wheels: ReadonlyArray<IWheelDeclaration>;
+}
+
+export interface IWheelControlInput {
+  brake: number;
+  drive: number;
+  steering: number;
+}
+
+export interface IVehicleControllerDeclaration {
+  assists?: { abs?: IVehicleAssistDeclaration; tcs?: IVehicleAssistDeclaration };
+  bindings?: { brake?: string; clutch?: string; gearDown?: string; gearUp?: string; handbrake?: string; steer?: string; throttle?: string };
+  brakes: { frontBias: number; handbrakeWheelIds: ReadonlyArray<string> };
+  differential: { kind: "limited-slip" | "locked" | "open"; limitedSlipRatio?: number };
+  engine: { engineBraking: number; idleRpm: number; redlineRpm: number; torqueCurve: ReadonlyArray<{ rpm: number; torque: number }> };
+  steering: { speedCurve: ReadonlyArray<{ scale: number; speed: number }> };
+  transmission: { clutchResponse: number; downshiftRpm?: number; finalDrive: number; forwardRatios: ReadonlyArray<number>; reverseRatio: number; shiftPolicy: "automatic" | "manual"; upshiftRpm?: number };
+}
+export interface IVehicleAssistDeclaration { enabled: boolean; response: number; slipThreshold: number }
+export interface IVehicleControllerInputs { brake: number; clutch: number; gear?: number; handbrake: number; steer: number; throttle: number }
+
 export interface IPhysicsDeclaration {
   body?: IRigidBodyDeclaration;
   collider?: IColliderDeclaration;
   joint?: IPhysicsJointDeclaration;
+  surface?: IPhysicsSurfaceDeclaration;
+  tireModel?: ITireModelDeclaration;
+  wheelAssembly?: IWheelAssemblyDeclaration;
+  vehicleController?: IVehicleControllerDeclaration;
 }
 
 type ColliderCenterOptions = {
@@ -225,6 +287,108 @@ export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger
 
 export function physics(options: IPhysicsDeclaration): IPhysicsDeclaration {
   return options;
+}
+
+export function physicsSurface(options: IPhysicsSurfaceDeclaration): IPhysicsSurfaceDeclaration {
+  if (!["average", "maximum", "minimum", "multiply"].includes(options.combineRule)) {
+    throw new SdkError("TN_SDK_PHYSICS_SURFACE_INVALID", "PhysicsSurface.combineRule must be average, minimum, multiply, or maximum.");
+  }
+  assertBounded(options.grip, 0, 4, "TN_SDK_PHYSICS_SURFACE_INVALID", "PhysicsSurface.grip");
+  assertBounded(options.rollingResistance, 0, 1, "TN_SDK_PHYSICS_SURFACE_INVALID", "PhysicsSurface.rollingResistance");
+  return { combineRule: options.combineRule, grip: options.grip, rollingResistance: options.rollingResistance };
+}
+
+export function tireModel(options: ITireModelDeclaration): ITireModelDeclaration {
+  const longitudinalSlipCurve = normalizeSlipCurve(options.longitudinalSlipCurve, "TireModel.longitudinalSlipCurve");
+  const lateralSlipCurve = normalizeSlipCurve(options.lateralSlipCurve, "TireModel.lateralSlipCurve");
+  assertBounded(options.loadSensitivity, 0, 4, "TN_SDK_PHYSICS_TIRE_INVALID", "TireModel.loadSensitivity");
+  assertBounded(options.rollingResistance, 0, 1, "TN_SDK_PHYSICS_TIRE_INVALID", "TireModel.rollingResistance");
+  return { lateralSlipCurve, loadSensitivity: options.loadSensitivity, longitudinalSlipCurve, rollingResistance: options.rollingResistance };
+}
+
+export function wheelAssembly(wheels: ReadonlyArray<IWheelDeclaration>, limits: { maxSteeringAngle: number; maxSuspensionForce: number; maxTireForce: number }): IWheelAssemblyDeclaration {
+  if (wheels.length === 0 || wheels.length > 16) {
+    throw new SdkError("TN_SDK_PHYSICS_WHEEL_ASSEMBLY_INVALID", "WheelAssembly must contain 1-16 wheels.");
+  }
+  const ids = new Set<string>();
+  assertBounded(limits.maxSteeringAngle, Number.MIN_VALUE, Math.PI / 2, "TN_SDK_PHYSICS_WHEEL_STEERING_LIMIT_INVALID", "WheelAssembly.maxSteeringAngle");
+  assertBounded(limits.maxSuspensionForce, Number.MIN_VALUE, 1_000_000, "TN_SDK_PHYSICS_WHEEL_FORCE_LIMIT_INVALID", "WheelAssembly.maxSuspensionForce");
+  assertBounded(limits.maxTireForce, Number.MIN_VALUE, 1_000_000, "TN_SDK_PHYSICS_WHEEL_FORCE_LIMIT_INVALID", "WheelAssembly.maxTireForce");
+  return { maxSteeringAngle: limits.maxSteeringAngle, maxSuspensionForce: limits.maxSuspensionForce, maxTireForce: limits.maxTireForce, wheels: wheels.map((wheel, index) => {
+    if (!/^[A-Za-z][A-Za-z0-9_.:-]{0,63}$/.test(wheel.id) || ids.has(wheel.id)) {
+      throw new SdkError("TN_SDK_PHYSICS_WHEEL_ID_INVALID", `WheelAssembly.wheels[${index}].id must be a unique portable identifier.`);
+    }
+    ids.add(wheel.id);
+    wheel.attachment.forEach((value, axis) => assertFiniteNumber(value, "TN_SDK_PHYSICS_WHEEL_ATTACHMENT_INVALID", `WheelAssembly.wheels[${index}].attachment[${axis}]`));
+    assertBounded(wheel.radius, 0.05, 5, "TN_SDK_PHYSICS_WHEEL_GEOMETRY_INVALID", `WheelAssembly.wheels[${index}].radius`);
+    assertBounded(wheel.width, 0.02, 2, "TN_SDK_PHYSICS_WHEEL_GEOMETRY_INVALID", `WheelAssembly.wheels[${index}].width`);
+    assertBounded(wheel.suspension.travel, 0, 2, "TN_SDK_PHYSICS_WHEEL_SUSPENSION_INVALID", `WheelAssembly.wheels[${index}].suspension.travel`);
+    assertBounded(wheel.suspension.springRate, 0, 1_000_000, "TN_SDK_PHYSICS_WHEEL_SUSPENSION_INVALID", `WheelAssembly.wheels[${index}].suspension.springRate`);
+    assertBounded(wheel.suspension.damperRate, 0, 1_000_000, "TN_SDK_PHYSICS_WHEEL_SUSPENSION_INVALID", `WheelAssembly.wheels[${index}].suspension.damperRate`);
+    if (wheel.tire.trim() === "" || wheel.visual?.trim() === "") {
+      throw new SdkError("TN_SDK_PHYSICS_WHEEL_REFERENCE_INVALID", `WheelAssembly.wheels[${index}] references must be non-empty entity ids.`);
+    }
+    return { ...wheel, attachment: [...wheel.attachment] as Vector3Tuple, suspension: { ...wheel.suspension } };
+  }) };
+}
+
+export function wheelControlInput(input: IWheelControlInput): IWheelControlInput {
+  assertBounded(input.brake, 0, 1, "TN_SDK_PHYSICS_WHEEL_CONTROL_INVALID", "WheelControlInput.brake");
+  assertBounded(input.drive, -1, 1, "TN_SDK_PHYSICS_WHEEL_CONTROL_INVALID", "WheelControlInput.drive");
+  assertBounded(input.steering, -1, 1, "TN_SDK_PHYSICS_WHEEL_CONTROL_INVALID", "WheelControlInput.steering");
+  return { brake: input.brake, drive: input.drive, steering: input.steering };
+}
+
+export function vehicleController(options: IVehicleControllerDeclaration): IVehicleControllerDeclaration {
+  if (options.engine.torqueCurve.length < 2 || options.engine.torqueCurve.length > 16) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_CURVE_INVALID", "VehicleController.engine.torqueCurve must contain 2-16 points.");
+  let previousRpm = -1;
+  for (const [index, point] of options.engine.torqueCurve.entries()) {
+    assertNonNegativeNumber(point.rpm, "TN_SDK_PHYSICS_VEHICLE_CURVE_INVALID", `VehicleController.engine.torqueCurve[${index}].rpm`);
+    assertNonNegativeNumber(point.torque, "TN_SDK_PHYSICS_VEHICLE_CURVE_INVALID", `VehicleController.engine.torqueCurve[${index}].torque`);
+    if (point.rpm <= previousRpm) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_CURVE_INVALID", "VehicleController torque curve RPM values must be strictly increasing.");
+    previousRpm = point.rpm;
+  }
+  assertPositiveNumber(options.engine.idleRpm, "TN_SDK_PHYSICS_VEHICLE_RPM_INVALID", "VehicleController.engine.idleRpm");
+  assertPositiveNumber(options.engine.redlineRpm, "TN_SDK_PHYSICS_VEHICLE_RPM_INVALID", "VehicleController.engine.redlineRpm");
+  if (options.engine.idleRpm >= options.engine.redlineRpm) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_RPM_INVALID", "VehicleController idle RPM must be below redline RPM.");
+  assertNonNegativeNumber(options.engine.engineBraking, "TN_SDK_PHYSICS_VEHICLE_ENGINE_BRAKING_INVALID", "VehicleController.engine.engineBraking");
+  if (options.transmission.forwardRatios.length < 1 || options.transmission.forwardRatios.length > 12) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_GEAR_RATIOS_INVALID", "VehicleController requires 1-12 forward ratios.");
+  options.transmission.forwardRatios.forEach((ratio, index) => assertPositiveNumber(ratio, "TN_SDK_PHYSICS_VEHICLE_GEAR_RATIOS_INVALID", `VehicleController.transmission.forwardRatios[${index}]`));
+  assertPositiveNumber(options.transmission.reverseRatio, "TN_SDK_PHYSICS_VEHICLE_GEAR_RATIOS_INVALID", "VehicleController.transmission.reverseRatio");
+  assertPositiveNumber(options.transmission.finalDrive, "TN_SDK_PHYSICS_VEHICLE_GEAR_RATIOS_INVALID", "VehicleController.transmission.finalDrive");
+  assertPositiveNumber(options.transmission.clutchResponse, "TN_SDK_PHYSICS_VEHICLE_CLUTCH_RESPONSE_INVALID", "VehicleController.transmission.clutchResponse");
+  if (!['automatic', 'manual'].includes(options.transmission.shiftPolicy)) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_SHIFT_POLICY_INVALID", "VehicleController shiftPolicy must be automatic or manual.");
+  assertNormalizedNumber(options.brakes.frontBias, "TN_SDK_PHYSICS_VEHICLE_BRAKE_BIAS_INVALID", "VehicleController.brakes.frontBias");
+  if (options.differential.kind === "limited-slip") assertBounded(options.differential.limitedSlipRatio ?? Number.NaN, 1, 10, "TN_SDK_PHYSICS_VEHICLE_DIFFERENTIAL_INVALID", "VehicleController.differential.limitedSlipRatio");
+  for (const assist of [options.assists?.abs, options.assists?.tcs]) if (assist !== undefined) {
+    assertPositiveNumber(assist.response, "TN_SDK_PHYSICS_VEHICLE_ASSIST_RESPONSE_INVALID", "VehicleController assist response");
+    assertBounded(assist.slipThreshold, 0, 4, "TN_SDK_PHYSICS_VEHICLE_ASSIST_THRESHOLD_INVALID", "VehicleController assist slipThreshold");
+  }
+  return structuredClone(options);
+}
+
+export function vehicleControllerInputs(input: IVehicleControllerInputs): IVehicleControllerInputs {
+  for (const field of ["throttle", "brake", "handbrake", "clutch"] as const) assertNormalizedNumber(input[field], "TN_SDK_PHYSICS_VEHICLE_INPUT_INVALID", `VehicleControllerInputs.${field}`);
+  assertBounded(input.steer, -1, 1, "TN_SDK_PHYSICS_VEHICLE_INPUT_INVALID", "VehicleControllerInputs.steer");
+  if (input.gear !== undefined && (!Number.isInteger(input.gear) || input.gear < -1 || input.gear > 12)) throw new SdkError("TN_SDK_PHYSICS_VEHICLE_INPUT_INVALID", "VehicleControllerInputs.gear must be -1, 0, or 1-12.");
+  return { ...input };
+}
+
+function normalizeSlipCurve(points: ReadonlyArray<IPhysicsSlipCurvePointDeclaration>, label: string): IPhysicsSlipCurvePointDeclaration[] {
+  if (points.length < 2 || points.length > 16) throw new SdkError("TN_SDK_PHYSICS_TIRE_SLIP_CURVE_INVALID", `${label} must contain 2-16 points.`);
+  let previous = Number.NEGATIVE_INFINITY;
+  return points.map((point, index) => {
+    assertBounded(point.slip, -4, 4, "TN_SDK_PHYSICS_TIRE_SLIP_CURVE_INVALID", `${label}[${index}].slip`);
+    assertBounded(point.grip, 0, 4, "TN_SDK_PHYSICS_TIRE_SLIP_CURVE_INVALID", `${label}[${index}].grip`);
+    if (point.slip <= previous) throw new SdkError("TN_SDK_PHYSICS_TIRE_SLIP_CURVE_NON_MONOTONIC", `${label}[${index}].slip must be strictly greater than the previous slip coordinate.`);
+    previous = point.slip;
+    return { grip: point.grip, slip: point.slip };
+  });
+}
+
+function assertBounded(value: number, min: number, max: number, code: string, label: string): void {
+  assertFiniteNumber(value, code, label);
+  if (value < min || value > max) throw new SdkError(code, `${label} must be between ${min} and ${max}.`);
 }
 
 export function physicsJoint(kind: IPhysicsJointDeclaration["kind"], connectedEntity: string, options: Omit<IPhysicsJointDeclaration, "connectedEntity" | "kind"> = {}): IPhysicsJointDeclaration {

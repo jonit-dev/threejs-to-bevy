@@ -9,7 +9,54 @@ import { tmpdir } from "node:os";
 
 import { NativeHeadlessUnsupportedError } from "../native/bevy.js";
 
-import { evaluateMovementDiagnostics, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+
+test("web playtest exact stepping delegates N ticks without unpausing", async () => {
+  const pauses: boolean[] = [];
+  let advanced = 0;
+  const previousRuntime = globalThis.__THREENATIVE_RUNTIME__;
+  globalThis.__THREENATIVE_RUNTIME__ = {
+    setPaused: (paused) => pauses.push(paused),
+    stepFixedTicks: async (ticks) => {
+      advanced += ticks;
+      return { endTick: advanced, startTick: advanced - ticks, ticks };
+    },
+  };
+  const page = {
+    evaluate: async <T, A>(fn: (arg: A) => T | Promise<T>, arg: A): Promise<T> => fn(arg),
+    waitForFunction: async () => { throw new Error("exact stepping must not poll rendered frames"); },
+    waitForTimeout: async () => { throw new Error("exact stepping must not wait for rendered frames"); },
+  };
+  try {
+    assert.equal(await advanceWebFixedTicks(page as never, 7), "exact-fixed-ticks");
+    assert.equal(advanced, 7);
+    assert.deepEqual(pauses, []);
+  } finally {
+    globalThis.__THREENATIVE_RUNTIME__ = previousRuntime;
+  }
+});
+
+test("web playtest exact stepping retains the older-runtime frame fallback", async () => {
+  const pauses: boolean[] = [];
+  let samples = 0;
+  const previousRuntime = globalThis.__THREENATIVE_RUNTIME__;
+  globalThis.__THREENATIVE_RUNTIME__ = {
+    performanceSnapshot: () => ({ summary: { sampleCount: samples } }),
+    setPaused: (paused) => pauses.push(paused),
+  };
+  const page = {
+    evaluate: async <T, A>(fn: (arg: A) => T | Promise<T>, arg: A): Promise<T> => fn(arg),
+    waitForFunction: async (_fn: unknown, expected: number) => { samples = expected; },
+    waitForTimeout: async () => {},
+  };
+  try {
+    assert.equal(await advanceWebFixedTicks(page as never, 2), "rendered-frame-fallback");
+    assert.deepEqual(pauses, [false, true]);
+    assert.equal(samples, 2);
+  } finally {
+    globalThis.__THREENATIVE_RUNTIME__ = previousRuntime;
+  }
+});
 
 test("native playtest should route occlusion assertions through rendered scene queries", () => {
   const scenario = {
@@ -88,6 +135,39 @@ test("native playtest should capture resized and restored window states", () => 
     { operation: "restore", tick: 11, type: "window" },
     { path: "/proof/restored.png", tick: 15, type: "screenshot" },
     { tick: 17, type: "exit" },
+  ]);
+});
+
+test("native playtest should fast-forward exact holdTicks and waitTicks in command order", () => {
+  const scenario = {
+    name: "exact-native-ticks",
+    schemaVersion: 1 as const,
+    steps: [
+      { holdTicks: 125, press: "KeyW", release: true },
+      { kind: "wait" as const, release: true, screenshot: "settled", waitTicks: 64 },
+    ],
+    target: "desktop" as const,
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+  const stream = nativeHarnessCommandStream(scenario, {
+    afterArtifact: "/proof/after.png",
+    beforeArtifact: "/proof/before.png",
+    stepScreenshots: { settled: "/proof/settled.png" },
+  }) as { commands: Array<Record<string, unknown>> };
+
+  assert.deepEqual(stream.commands, [
+    { path: "/proof/before.png", tick: 5, type: "screenshot" },
+    { code: "KeyW", pressed: true, tick: 6, type: "key" },
+    { frames: 60, tick: 6, type: "advance" },
+    { frames: 60, tick: 66, type: "advance" },
+    { frames: 5, tick: 126, type: "advance" },
+    { code: "KeyW", pressed: false, tick: 131, type: "key" },
+    { frames: 60, tick: 131, type: "advance" },
+    { frames: 4, tick: 191, type: "advance" },
+    { path: "/proof/settled.png", tick: 195, type: "screenshot" },
+    { path: "/proof/after.png", tick: 196, type: "screenshot" },
+    { tick: 197, type: "exit" },
   ]);
 });
 

@@ -4,10 +4,12 @@ use std::collections::BTreeSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
+use rapier3d::parry::query::ShapeCastOptions;
 use rapier3d::prelude::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use threenative_loader::{
-    AssetIr, ColliderComponent, LoadedBundle, PhysicsJointComponent, WorldEntity,
+    AssetIr, ColliderComponent, CompoundColliderComponent, CompoundColliderShape, LoadedBundle,
+    PhysicsJointComponent, WorldEntity,
 };
 
 thread_local! {
@@ -18,6 +20,10 @@ thread_local! {
 pub struct PhysicsEvent {
     pub a: String,
     pub b: String,
+    #[serde(rename = "childA", skip_serializing_if = "Option::is_none")]
+    pub child_a: Option<String>,
+    #[serde(rename = "childB", skip_serializing_if = "Option::is_none")]
+    pub child_b: Option<String>,
     pub event: String,
     pub phase: String,
 }
@@ -49,6 +55,23 @@ pub struct PhysicsJointObservation {
     pub connected_entity: String,
     pub entity: String,
     pub kind: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsQueryHitObservation {
+    pub child: Option<String>,
+    pub distance: f32,
+    pub entity: String,
+    pub normal: [f32; 3],
+    pub point: [f32; 3],
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PhysicsMassPropertiesObservation {
+    pub center_of_mass: [f32; 3],
+    pub mass: f32,
+    pub principal_inertia: [f32; 3],
 }
 
 struct Bounds<'a> {
@@ -187,6 +210,31 @@ pub fn inspect_physics_body_mass(bundle: &LoadedBundle, entity_id: &str) -> Opti
         .map(|body| body.mass())
 }
 
+pub fn inspect_physics_body_mass_properties(
+    bundle: &LoadedBundle,
+    entity_id: &str,
+) -> Option<PhysicsMassPropertiesObservation> {
+    let entities = simulated_rapier_entities(bundle);
+    let runtime = PersistentRapierWorld::new(
+        &entities,
+        [0.0, -9.81, 0.0],
+        rapier_world_signature(&entities, [0.0, -9.81, 0.0]),
+    );
+    let body = runtime
+        .handles
+        .get(entity_id)
+        .and_then(|handle| runtime.world.bodies.get(*handle))?;
+    let mass_properties = &body.mass_properties().local_mprops;
+    Some(PhysicsMassPropertiesObservation {
+        center_of_mass: body.local_center_of_mass().into(),
+        mass: body.mass(),
+        principal_inertia: mass_properties
+            .inv_principal_inertia
+            .map(|inverse| if inverse > 0.0 { 1.0 / inverse } else { 0.0 })
+            .into(),
+    })
+}
+
 pub fn inspect_cached_physics_body_sleeping(
     script_posed_entities: &BTreeSet<String>,
     entity_id: &str,
@@ -216,11 +264,97 @@ pub fn inspect_cached_physics_ccd_substeps(
     })
 }
 
+pub fn inspect_cached_physics_raycast(
+    script_posed_entities: &BTreeSet<String>,
+    origin: [f32; 3],
+    direction: [f32; 3],
+    max_distance: f32,
+) -> Option<PhysicsQueryHitObservation> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        let caches = caches.borrow();
+        let runtime = caches.get(&runtime_id)?;
+        let direction = RapierVec3::from_array(direction).try_normalize()?;
+        let ray = Ray::new(RapierVec3::from_array(origin), direction);
+        let (handle, hit) = runtime.world.cast_ray_and_get_normal(
+            &ray,
+            max_distance,
+            true,
+            QueryFilter::default(),
+        )?;
+        let owner = runtime
+            .collider_owners
+            .iter()
+            .find_map(|(candidate, owner)| (*candidate == handle).then_some(owner))?;
+        Some(PhysicsQueryHitObservation {
+            child: owner.child.clone(),
+            distance: round(hit.time_of_impact),
+            entity: owner.entity.clone(),
+            normal: round_vec3(hit.normal.into()),
+            point: round_vec3(
+                (RapierVec3::from_array(origin) + direction * hit.time_of_impact).into(),
+            ),
+        })
+    })
+}
+
+pub(crate) fn query_cached_physics_json(
+    runtime_id: usize,
+    service: &str,
+    request_json: &str,
+) -> Result<String, String> {
+    let request = serde_json::from_str(request_json).map_err(|source| {
+        format!("TN_BEVY_PHYSICS_QUERY_INVALID: Invalid {service} request: {source}")
+    })?;
+    let result = RAPIER_CACHES.with(|caches| {
+        let caches = caches.borrow();
+        let runtime = caches.get(&runtime_id).ok_or_else(|| {
+            "TN_BEVY_PHYSICS_QUERY_WORLD_UNAVAILABLE: The retained native Rapier world is not initialized for this system tick; run live physics before querying it.".to_owned()
+        })?;
+        runtime.query(service, request)
+    })?;
+    serde_json::to_string(&result)
+        .map_err(|source| format!("TN_BEVY_PHYSICS_QUERY_SERIALIZE_FAILED: {source}"))
+}
+
+pub fn ensure_native_physics_runtime(
+    bundle: &LoadedBundle,
+    script_posed_entities: &BTreeSet<String>,
+) {
+    let entities = simulated_rapier_entities(bundle);
+    let gravity = bundle
+        .runtime_config
+        .as_ref()
+        .and_then(|config| config.physics.as_ref())
+        .map(|physics| physics.gravity)
+        .unwrap_or([0.0, -9.81, 0.0]);
+    let signature = rapier_world_signature(&entities, gravity);
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        let mut caches = caches.borrow_mut();
+        if caches
+            .get(&runtime_id)
+            .is_none_or(|cache| cache.signature != signature)
+        {
+            caches.insert(
+                runtime_id,
+                PersistentRapierWorld::new(&entities, gravity, signature),
+            );
+        }
+    });
+}
+
 pub fn step_bundle_physics_with_script_poses(
     bundle: &mut LoadedBundle,
     fixed_delta: f32,
     script_posed_entities: &BTreeSet<String>,
 ) {
+    let at_point_commands = bundle
+        .world
+        .resources
+        .remove("__threenativePhysicsAtPointCommands")
+        .and_then(|value| serde_json::from_value::<Vec<PhysicsAtPointCommand>>(value).ok())
+        .unwrap_or_default();
     let mut entities = simulated_rapier_entities(bundle);
     let gravity = bundle
         .runtime_config
@@ -228,7 +362,14 @@ pub fn step_bundle_physics_with_script_poses(
         .and_then(|config| config.physics.as_ref())
         .map(|physics| physics.gravity)
         .unwrap_or([0.0, -9.81, 0.0]);
-    let events = step_rapier_bodies(&mut entities, fixed_delta, gravity, script_posed_entities);
+    let events = step_rapier_bodies(
+        bundle,
+        &mut entities,
+        fixed_delta,
+        gravity,
+        script_posed_entities,
+        &at_point_commands,
+    );
     let entity_indexes = bundle
         .world
         .entities
@@ -253,17 +394,32 @@ pub fn step_bundle_physics_with_script_poses(
     write_live_event_queues(bundle, &events);
 }
 
+#[derive(Clone, Debug, Deserialize)]
+struct PhysicsAtPointCommand {
+    entity: String,
+    kind: String,
+    point: [f32; 3],
+    value: [f32; 3],
+}
+
 fn write_live_event_queues(bundle: &mut LoadedBundle, events: &[PhysicsEvent]) {
     for event_name in ["CollisionEvent", "TriggerEvent"] {
         let payloads = events
             .iter()
             .filter(|event| event.event == event_name)
             .map(|event| {
-                serde_json::json!({
+                let mut payload = serde_json::json!({
                     "a": event.a,
                     "b": event.b,
                     "phase": event.phase,
-                })
+                });
+                if let Some(child) = event.child_a.as_ref() {
+                    payload["childA"] = serde_json::Value::String(child.clone());
+                }
+                if let Some(child) = event.child_b.as_ref() {
+                    payload["childB"] = serde_json::Value::String(child.clone());
+                }
+                payload
             })
             .collect::<Vec<_>>();
         bundle
@@ -298,7 +454,9 @@ fn physics_events_for_pair_delta(
         left.event
             .cmp(&right.event)
             .then(left.a.cmp(&right.a))
+            .then(left.child_a.cmp(&right.child_a))
             .then(left.b.cmp(&right.b))
+            .then(left.child_b.cmp(&right.child_b))
             .then(left.phase.cmp(&right.phase))
     });
     events
@@ -517,6 +675,7 @@ struct SimulatedEntity {
     ccd: bool,
     ccd_max_substeps: Option<u32>,
     ccd_mode: Option<String>,
+    compound_collider: Option<CompoundColliderComponent>,
     center: [f32; 3],
     collider_center: [f32; 3],
     collider_kind: String,
@@ -589,6 +748,7 @@ fn simulated_heightfield_terrain(bundle: &LoadedBundle) -> Option<SimulatedEntit
         ccd: false,
         ccd_max_substeps: None,
         ccd_mode: None,
+        compound_collider: None,
         center,
         collider_center: [0.0, 0.0, 0.0],
         collider_kind: "heightfield".to_owned(),
@@ -687,10 +847,12 @@ fn heightfield_column_major_heights(
 }
 
 fn step_rapier_bodies(
+    bundle: &LoadedBundle,
     entities: &mut [SimulatedEntity],
     fixed_delta: f32,
     gravity: [f32; 3],
     script_posed_entities: &BTreeSet<String>,
+    at_point_commands: &[PhysicsAtPointCommand],
 ) -> Vec<PhysicsEvent> {
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
@@ -708,26 +870,230 @@ fn step_rapier_bodies(
         caches
             .get_mut(&runtime_id)
             .expect("rapier cache should be initialized")
-            .step(entities, fixed_delta, script_posed_entities)
+            .step(
+                runtime_id,
+                bundle,
+                entities,
+                fixed_delta,
+                script_posed_entities,
+                at_point_commands,
+            )
     })
 }
 
-pub(crate) fn dispose_native_physics_runtime(script_posed_entities: &BTreeSet<String>) {
+pub fn dispose_native_physics_runtime(script_posed_entities: &BTreeSet<String>) {
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
         caches.borrow_mut().remove(&runtime_id);
     });
+    crate::physics_vehicle::clear_physics_vehicle_runtime(runtime_id);
+}
+
+pub fn native_physics_runtime_id(script_posed_entities: &BTreeSet<String>) -> usize {
+    script_posed_entities as *const BTreeSet<String> as usize
 }
 
 struct PersistentRapierWorld {
-    collider_handles: BTreeMap<String, ColliderHandle>,
+    collider_owners: Vec<(ColliderHandle, ColliderOwner)>,
     handles: BTreeMap<String, RigidBodyHandle>,
+    initial_query_broad_phase: Option<BroadPhaseBvh>,
     previous_pairs: BTreeMap<String, DetectedPair>,
     signature: u64,
     world: PhysicsWorld,
+    vehicle_state: crate::physics_vehicle::VehicleRuntimeState,
+}
+
+pub(crate) struct ColliderOwner {
+    pub(crate) child: Option<String>,
+    pub(crate) entity: String,
+    pub(crate) layer: Option<String>,
+    pub(crate) mask: Vec<String>,
 }
 
 impl PersistentRapierWorld {
+    fn query(
+        &self,
+        service: &str,
+        request: serde_json::Value,
+    ) -> Result<serde_json::Value, String> {
+        match service {
+            "physics.raycast" => {
+                self.raycast(serde_json::from_value(request).map_err(|source| {
+                    format!(
+                        "TN_BEVY_PHYSICS_QUERY_INVALID: Invalid physics.raycast request: {source}"
+                    )
+                })?)
+            }
+            "physics.shapeCast" => {
+                self.shape_cast(serde_json::from_value(request).map_err(|source| {
+                    format!(
+                        "TN_BEVY_PHYSICS_QUERY_INVALID: Invalid physics.shapeCast request: {source}"
+                    )
+                })?)
+            }
+            "physics.overlap" => {
+                self.overlap(serde_json::from_value(request).map_err(|source| {
+                    format!(
+                        "TN_BEVY_PHYSICS_QUERY_INVALID: Invalid physics.overlap request: {source}"
+                    )
+                })?)
+            }
+            _ => Err(format!(
+                "TN_BEVY_PHYSICS_QUERY_UNSUPPORTED: Native retained physics does not implement service '{service}'."
+            )),
+        }
+    }
+
+    fn raycast(
+        &self,
+        request: crate::systems_services::NativeRaycastRequest,
+    ) -> Result<serde_json::Value, String> {
+        let Some(direction) = query_direction(request.direction) else {
+            return Ok(serde_json::json!({ "hit": false }));
+        };
+        let predicate = |handle, _collider: &Collider| {
+            self.query_matches(
+                handle,
+                &request.ignore,
+                &request.layer,
+                &request.layers,
+                &request.mask,
+            )
+        };
+        let ray = Ray::new(to_rapier_vec3(request.origin), direction);
+        let Some((handle, hit)) = self.world.cast_ray_and_get_normal(
+            &ray,
+            request.max_distance.max(0.0) as f32,
+            true,
+            QueryFilter::default().predicate(&predicate),
+        ) else {
+            return Ok(serde_json::json!({ "hit": false }));
+        };
+        let owner = self.owner_for_collider(handle).ok_or_else(|| {
+            "TN_BEVY_PHYSICS_QUERY_OWNER_MISSING: Retained Rapier ray hit has no portable collider owner.".to_owned()
+        })?;
+        Ok(query_hit_value(
+            owner,
+            hit.time_of_impact,
+            hit.normal,
+            to_rapier_vec3(request.origin) + direction * hit.time_of_impact,
+        ))
+    }
+
+    fn shape_cast(
+        &self,
+        request: crate::systems_services::NativeShapeCastRequest,
+    ) -> Result<serde_json::Value, String> {
+        let Some(direction) = query_direction(request.direction) else {
+            return Ok(serde_json::json!({ "hit": false }));
+        };
+        let shape = query_shape(&request.shape)?;
+        let predicate = |handle, _collider: &Collider| {
+            self.query_matches(
+                handle,
+                &request.ignore,
+                &request.layer,
+                &request.layers,
+                &request.mask,
+            )
+        };
+        let origin = to_rapier_vec3(request.origin);
+        let options = ShapeCastOptions {
+            max_time_of_impact: request.max_distance.max(0.0) as f32,
+            compute_impact_geometry_on_penetration: true,
+            ..ShapeCastOptions::default()
+        };
+        let Some((handle, hit)) = self.world.cast_shape(
+            &Pose::translation(origin.x, origin.y, origin.z),
+            direction,
+            shape.as_ref(),
+            options,
+            QueryFilter::default().predicate(&predicate),
+        ) else {
+            return Ok(serde_json::json!({ "hit": false }));
+        };
+        let owner = self.owner_for_collider(handle).ok_or_else(|| {
+            "TN_BEVY_PHYSICS_QUERY_OWNER_MISSING: Retained Rapier shape cast hit has no portable collider owner.".to_owned()
+        })?;
+        Ok(query_hit_value(
+            owner,
+            hit.time_of_impact,
+            hit.normal1,
+            hit.witness1,
+        ))
+    }
+
+    fn overlap(
+        &self,
+        request: crate::systems_services::NativeOverlapRequest,
+    ) -> Result<serde_json::Value, String> {
+        let shape = query_shape(&request.shape)?;
+        let predicate = |handle, _collider: &Collider| {
+            self.query_matches(
+                handle,
+                &request.ignore,
+                &request.layer,
+                &request.layers,
+                &request.mask,
+            )
+        };
+        let position = to_rapier_vec3(request.position);
+        let mut entities = self
+            .world
+            .intersect_shape(
+                Pose::translation(position.x, position.y, position.z),
+                shape.as_ref(),
+                QueryFilter::default().predicate(&predicate),
+            )
+            .filter_map(|(handle, _)| {
+                self.owner_for_collider(handle)
+                    .map(|owner| owner.entity.clone())
+            })
+            .collect::<Vec<_>>();
+        entities.sort();
+        entities.dedup();
+        Ok(serde_json::json!({ "entities": entities }))
+    }
+
+    fn query_matches(
+        &self,
+        handle: ColliderHandle,
+        ignore: &[String],
+        layer: &Option<String>,
+        layers: &[String],
+        mask: &[String],
+    ) -> bool {
+        let Some(owner) = self.owner_for_collider(handle) else {
+            return false;
+        };
+        if ignore.iter().any(|ignored| ignored == &owner.entity) {
+            return false;
+        }
+        let requested_layers = if !layers.is_empty() {
+            Some(layers)
+        } else if !mask.is_empty() {
+            Some(mask)
+        } else {
+            layer.as_ref().map(std::slice::from_ref)
+        };
+        let target_matches = requested_layers.is_none_or(|requested| {
+            owner
+                .layer
+                .as_ref()
+                .is_some_and(|candidate| requested.contains(candidate))
+        });
+        let query_layer_matches = layer
+            .as_ref()
+            .is_none_or(|query_layer| owner.mask.is_empty() || owner.mask.contains(query_layer));
+        target_matches && query_layer_matches
+    }
+
+    fn owner_for_collider(&self, handle: ColliderHandle) -> Option<&ColliderOwner> {
+        self.collider_owners
+            .iter()
+            .find_map(|(candidate, owner)| (*candidate == handle).then_some(owner))
+    }
+
     fn new(entities: &[SimulatedEntity], gravity: [f32; 3], signature: u64) -> Self {
         let mut world = PhysicsWorld::new();
         world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
@@ -739,7 +1105,7 @@ impl PersistentRapierWorld {
             .max()
             .unwrap_or(1) as usize;
         let mut handles = BTreeMap::new();
-        let mut collider_handles = BTreeMap::new();
+        let mut collider_owners = Vec::new();
         let layer_bits = layer_bits_for_entities(entities);
         for entity in entities {
             let Some(body_kind) = entity.body_kind.as_deref() else {
@@ -786,7 +1152,7 @@ impl PersistentRapierWorld {
                 body = body.additional_solver_iterations(iterations.saturating_sub(1) as usize);
             }
             let groups = rapier_collision_groups(entity, &layer_bits);
-            let mut collider = rapier_collider(entity)
+            let base_collider = rapier_collider(entity)
                 .translation(
                     vector![
                         entity.collider_center[0],
@@ -801,12 +1167,85 @@ impl PersistentRapierWorld {
                 .active_collision_types(ActiveCollisionTypes::all())
                 .collision_groups(groups)
                 .solver_groups(groups);
-            if body_kind == "dynamic"
-                && let Some(mass) = entity.mass
-            {
-                collider = collider.mass(mass);
-            }
-            let (body_handle, collider_handle) = world.insert(body, collider);
+            let (body_handle, inserted_colliders) =
+                if let Some(compound) = entity.compound_collider.as_ref() {
+                    let body_handle = world.insert_body(body);
+                    let handles = compound
+                        .children
+                        .iter()
+                        .filter_map(|child| {
+                            let child_groups = interaction_groups_for_filter(
+                                child
+                                    .filter
+                                    .as_ref()
+                                    .and_then(|filter| filter.layer.as_ref()),
+                                child
+                                    .filter
+                                    .as_ref()
+                                    .and_then(|filter| filter.mask.as_deref())
+                                    .unwrap_or_default(),
+                                &layer_bits,
+                            );
+                            let mut collider = rapier_compound_collider(&child.shape)?
+                                .translation(
+                                    vector![
+                                        child.local_pose.position[0],
+                                        child.local_pose.position[1],
+                                        child.local_pose.position[2]
+                                    ]
+                                    .into(),
+                                )
+                                .friction(
+                                    child
+                                        .material
+                                        .as_ref()
+                                        .and_then(|material| material.friction)
+                                        .unwrap_or(0.0),
+                                )
+                                .restitution(
+                                    child
+                                        .material
+                                        .as_ref()
+                                        .and_then(|material| material.restitution)
+                                        .unwrap_or(0.0),
+                                )
+                                .collision_groups(child_groups)
+                                .solver_groups(child_groups);
+                            if body_kind == "dynamic"
+                                && let Some(mass) = entity.mass
+                            {
+                                collider = collider.mass(mass / compound.children.len() as f32);
+                            }
+                            if let Some(rotation) = child.local_pose.rotation {
+                                collider = collider.rotation(
+                                    RapierQuat::from_xyzw(
+                                        rotation[0],
+                                        rotation[1],
+                                        rotation[2],
+                                        rotation[3],
+                                    )
+                                    .normalize()
+                                    .to_scaled_axis(),
+                                );
+                            }
+                            Some((
+                                world.insert_collider(collider, Some(body_handle)),
+                                Some(child.id.clone()),
+                            ))
+                        })
+                        .collect::<Vec<_>>();
+                    (body_handle, handles)
+                } else {
+                    let collider = if body_kind == "dynamic"
+                        && let Some(mass) = entity.mass
+                    {
+                        base_collider.mass(mass)
+                    } else {
+                        base_collider
+                    };
+                    let (body_handle, collider_handle) = world.insert(body, collider);
+                    (body_handle, vec![(collider_handle, None)])
+                };
             if let Some(threshold) = entity.sleep_threshold.filter(|threshold| *threshold > 0.0)
                 && let Some(body) = world.bodies.get_mut(body_handle)
             {
@@ -814,7 +1253,47 @@ impl PersistentRapierWorld {
                 body.activation_mut().angular_threshold = threshold;
             }
             handles.insert(entity.id.clone(), body_handle);
-            collider_handles.insert(entity.id.clone(), collider_handle);
+            for (collider_handle, child) in inserted_colliders {
+                let layer = child
+                    .as_ref()
+                    .and_then(|child_id| {
+                        entity
+                            .compound_collider
+                            .as_ref()?
+                            .children
+                            .iter()
+                            .find(|candidate| &candidate.id == child_id)?
+                            .filter
+                            .as_ref()?
+                            .layer
+                            .clone()
+                    })
+                    .or_else(|| entity.layer.clone());
+                let mask = child
+                    .as_ref()
+                    .and_then(|child_id| {
+                        entity
+                            .compound_collider
+                            .as_ref()?
+                            .children
+                            .iter()
+                            .find(|candidate| &candidate.id == child_id)?
+                            .filter
+                            .as_ref()?
+                            .mask
+                            .clone()
+                    })
+                    .unwrap_or_else(|| entity.mask.clone());
+                collider_owners.push((
+                    collider_handle,
+                    ColliderOwner {
+                        child,
+                        entity: entity.id.clone(),
+                        layer,
+                        mask,
+                    },
+                ));
+            }
         }
 
         for entity in entities {
@@ -838,20 +1317,43 @@ impl PersistentRapierWorld {
             }
         }
 
+        // Seed a query-only broad-phase before the first fixed step so
+        // retained-world queries (including wheel suspension casts) observe
+        // authored colliders on tick zero without consuming the simulation
+        // broad-phase's initial pair events.
+        let mut initial_query_broad_phase = BroadPhaseBvh::new();
+        let inserted_colliders = world
+            .colliders
+            .iter()
+            .map(|(handle, _)| handle)
+            .collect::<Vec<_>>();
+        initial_query_broad_phase.update(
+            &world.integration_parameters,
+            &world.colliders,
+            &world.bodies,
+            &inserted_colliders,
+            &[],
+            &mut Vec::new(),
+        );
         Self {
-            collider_handles,
+            collider_owners,
             handles,
+            initial_query_broad_phase: Some(initial_query_broad_phase),
             previous_pairs: BTreeMap::new(),
             signature,
             world,
+            vehicle_state: crate::physics_vehicle::VehicleRuntimeState::default(),
         }
     }
 
     fn step(
         &mut self,
+        runtime_id: usize,
+        bundle: &LoadedBundle,
         entities: &mut [SimulatedEntity],
         fixed_delta: f32,
         script_posed_entities: &BTreeSet<String>,
+        at_point_commands: &[PhysicsAtPointCommand],
     ) -> Vec<PhysicsEvent> {
         let substeps = physics_substeps(fixed_delta);
         self.world.integration_parameters.dt = fixed_delta / substeps as f32;
@@ -921,6 +1423,33 @@ impl PersistentRapierWorld {
             );
         }
 
+        for command in at_point_commands {
+            let Some(handle) = self.handles.get(&command.entity).copied() else {
+                continue;
+            };
+            let Some(body) = self.world.bodies.get_mut(handle) else {
+                continue;
+            };
+            let value = vector![command.value[0], command.value[1], command.value[2]].into();
+            let point = vector![command.point[0], command.point[1], command.point[2]].into();
+            if command.kind == "physics.addForceAtPoint" {
+                body.add_force_at_point(value, point, true);
+            } else if command.kind == "physics.applyImpulseAtPoint" {
+                body.apply_impulse_at_point(value, point, true);
+            }
+        }
+
+        let initial_query_broad_phase = self.initial_query_broad_phase.take();
+        crate::physics_vehicle::step_physics_vehicles(
+            runtime_id,
+            bundle,
+            &mut self.world,
+            &self.handles,
+            &self.collider_owners,
+            &mut self.vehicle_state,
+            fixed_delta,
+            initial_query_broad_phase.as_ref(),
+        );
         for _ in 0..substeps {
             self.world.step();
         }
@@ -978,29 +1507,90 @@ impl PersistentRapierWorld {
         right: ColliderHandle,
         event: &str,
     ) {
-        let left_id = self.entity_for_collider(left);
-        let right_id = self.entity_for_collider(right);
-        let (Some(left_id), Some(right_id)) = (left_id, right_id) else {
+        let left_owner = self.owner_for_collider(left);
+        let right_owner = self.owner_for_collider(right);
+        let (Some(left_owner), Some(right_owner)) = (left_owner, right_owner) else {
             return;
         };
-        let (a, b) = ordered_pair(left_id, right_id);
-        let key = format!("{event}:{a}:{b}");
+        if left_owner.entity == right_owner.entity {
+            return;
+        }
+        let (a, b) = if left_owner.entity <= right_owner.entity {
+            (left_owner, right_owner)
+        } else {
+            (right_owner, left_owner)
+        };
+        let key = format!(
+            "{event}:{}:{}:{}:{}",
+            a.entity,
+            a.child.as_deref().unwrap_or_default(),
+            b.entity,
+            b.child.as_deref().unwrap_or_default()
+        );
         pairs.insert(
             key.clone(),
             DetectedPair {
-                a: a.to_owned(),
-                b: b.to_owned(),
+                a: a.entity.clone(),
+                b: b.entity.clone(),
+                child_a: a.child.clone(),
+                child_b: b.child.clone(),
                 event: event.to_owned(),
                 key,
             },
         );
     }
+}
 
-    fn entity_for_collider(&self, handle: ColliderHandle) -> Option<&str> {
-        self.collider_handles
-            .iter()
-            .find_map(|(entity, candidate)| (*candidate == handle).then_some(entity.as_str()))
+fn query_direction(direction: [f64; 3]) -> Option<RapierVec3> {
+    to_rapier_vec3(direction).try_normalize()
+}
+
+fn to_rapier_vec3(value: [f64; 3]) -> RapierVec3 {
+    RapierVec3::new(value[0] as f32, value[1] as f32, value[2] as f32)
+}
+
+fn query_shape(shape: &crate::systems_services::NativeQueryShape) -> Result<SharedShape, String> {
+    match shape {
+        crate::systems_services::NativeQueryShape::Box { half_extents }
+            if half_extents
+                .iter()
+                .all(|value| value.is_finite() && *value > 0.0) =>
+        {
+            Ok(SharedShape::cuboid(
+                half_extents[0] as f32,
+                half_extents[1] as f32,
+                half_extents[2] as f32,
+            ))
+        }
+        crate::systems_services::NativeQueryShape::Sphere { radius }
+            if radius.is_finite() && *radius > 0.0 =>
+        {
+            Ok(SharedShape::ball(*radius as f32))
+        }
+        _ => Err(
+            "TN_BEVY_PHYSICS_QUERY_INVALID: Query shapes require finite positive dimensions."
+                .to_owned(),
+        ),
     }
+}
+
+fn query_hit_value(
+    owner: &ColliderOwner,
+    distance: f32,
+    normal: RapierVec3,
+    point: RapierVec3,
+) -> serde_json::Value {
+    let mut result = serde_json::json!({
+        "distance": round(distance),
+        "entity": owner.entity,
+        "hit": true,
+        "normal": round_vec3(normal.into()),
+        "point": round_vec3(point.into()),
+    });
+    if let Some(child) = &owner.child {
+        result["child"] = serde_json::Value::String(child.clone());
+    }
+    result
 }
 
 fn constrained_angular_velocity(entity: &SimulatedEntity) -> Option<[f32; 3]> {
@@ -1027,6 +1617,11 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u6
         entity.ccd.hash(&mut signature);
         entity.ccd_max_substeps.hash(&mut signature);
         entity.ccd_mode.hash(&mut signature);
+        if let Some(compound) = entity.compound_collider.as_ref() {
+            serde_json::to_string(compound)
+                .unwrap_or_default()
+                .hash(&mut signature);
+        }
         entity.collider_kind.hash(&mut signature);
         entity
             .collider_center
@@ -1153,6 +1748,28 @@ fn layer_bits_for_entities(entities: &[SimulatedEntity]) -> BTreeMap<String, u32
         for layer in &entity.mask {
             names.insert(layer.clone());
         }
+        for child in entity
+            .compound_collider
+            .iter()
+            .flat_map(|compound| compound.children.iter())
+        {
+            if let Some(layer) = child
+                .filter
+                .as_ref()
+                .and_then(|filter| filter.layer.as_ref())
+            {
+                names.insert(layer.clone());
+            }
+            for layer in child
+                .filter
+                .as_ref()
+                .and_then(|filter| filter.mask.as_ref())
+                .into_iter()
+                .flatten()
+            {
+                names.insert(layer.clone());
+            }
+        }
     }
     names
         .into_iter()
@@ -1166,16 +1783,22 @@ fn rapier_collision_groups(
     entity: &SimulatedEntity,
     layer_bits: &BTreeMap<String, u32>,
 ) -> InteractionGroups {
-    let membership = match entity.layer.as_ref() {
+    interaction_groups_for_filter(entity.layer.as_ref(), &entity.mask, layer_bits)
+}
+
+fn interaction_groups_for_filter(
+    layer: Option<&String>,
+    mask: &[String],
+    layer_bits: &BTreeMap<String, u32>,
+) -> InteractionGroups {
+    let membership = match layer {
         Some(layer) => layer_bits.get(layer).copied().unwrap_or(0),
         None => Group::ALL.bits(),
     };
-    let filter = if entity.mask.is_empty() {
+    let filter = if mask.is_empty() {
         Group::ALL.bits()
     } else {
-        entity
-            .mask
-            .iter()
+        mask.iter()
             .filter_map(|layer| layer_bits.get(layer).copied())
             .fold(0_u32, |bits, bit| bits | bit)
     };
@@ -1229,8 +1852,33 @@ fn rapier_collider(entity: &SimulatedEntity) -> ColliderBuilder {
     }
 }
 
+fn rapier_compound_collider(shape: &CompoundColliderShape) -> Option<ColliderBuilder> {
+    match shape {
+        CompoundColliderShape::Box { size } => Some(ColliderBuilder::cuboid(
+            size[0] / 2.0,
+            size[1] / 2.0,
+            size[2] / 2.0,
+        )),
+        CompoundColliderShape::Capsule { height, radius } => Some(ColliderBuilder::capsule_y(
+            (height / 2.0 - radius).max(0.0),
+            *radius,
+        )),
+        CompoundColliderShape::ConvexHull { points } => ColliderBuilder::convex_hull(
+            &points
+                .iter()
+                .map(|point| vector![point[0], point[1], point[2]].into())
+                .collect::<Vec<_>>(),
+        ),
+        CompoundColliderShape::Sphere { radius } => Some(ColliderBuilder::ball(*radius)),
+    }
+}
+
 fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
-    let collider = entity.components.collider.as_ref()?;
+    let collider = entity.components.collider.as_ref();
+    let compound_collider = entity.components.compound_collider.clone();
+    if collider.is_none() && compound_collider.is_none() {
+        return None;
+    }
     let body = entity.components.rigid_body.as_ref();
     Some(SimulatedEntity {
         angular_velocity: body.and_then(|body| body.angular_velocity),
@@ -1244,25 +1892,32 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             .unwrap_or(false),
         ccd_max_substeps: body.and_then(|body| body.ccd.as_ref()?.max_substeps),
         ccd_mode: body.and_then(|body| body.ccd.as_ref().map(|ccd| ccd.mode.clone())),
+        compound_collider,
         center: entity
             .components
             .transform
             .as_ref()
             .and_then(|transform| transform.position)
             .unwrap_or([0.0, 0.0, 0.0]),
-        collider_center: collider_local_center(collider),
-        collider_kind: collider.kind.clone(),
+        collider_center: collider.map(collider_local_center).unwrap_or([0.0; 3]),
+        collider_kind: collider
+            .map(|collider| collider.kind.clone())
+            .unwrap_or_else(|| "compound".to_owned()),
         damping: body.and_then(|body| body.damping).unwrap_or(0.0),
         enabled_rotations: body.and_then(|body| body.enabled_rotations),
         enabled_translations: body.and_then(|body| body.enabled_translations),
-        friction: collider.friction.unwrap_or(0.0),
+        friction: collider
+            .and_then(|collider| collider.friction)
+            .unwrap_or(0.0),
         gravity_scale: body.and_then(|body| body.gravity_scale).unwrap_or(1.0),
-        height: collider.height,
+        height: collider.and_then(|collider| collider.height),
         heightfield: None,
-        half_extents: half_extents(collider),
+        half_extents: collider.map(half_extents).unwrap_or([0.5; 3]),
         id: entity.id.clone(),
-        layer: collider.layer.clone(),
-        mask: collider.mask.clone().unwrap_or_default(),
+        layer: collider.and_then(|collider| collider.layer.clone()),
+        mask: collider
+            .and_then(|collider| collider.mask.clone())
+            .unwrap_or_default(),
         mass: body.and_then(|body| {
             body.mass.or_else(|| {
                 body.inverse_mass
@@ -1271,8 +1926,10 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             })
         }),
         joint: entity.components.physics_joint.clone(),
-        radius: collider.radius,
-        restitution: collider.restitution.unwrap_or(0.0),
+        radius: collider.and_then(|collider| collider.radius),
+        restitution: collider
+            .and_then(|collider| collider.restitution)
+            .unwrap_or(0.0),
         rotation: entity
             .components
             .transform
@@ -1281,7 +1938,8 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
             .unwrap_or([0.0, 0.0, 0.0, 1.0]),
         solver_iterations: body.and_then(|body| body.solver_iterations),
         sleep_threshold: body.and_then(|body| body.sleep_threshold),
-        trigger: collider.trigger.unwrap_or(false) || collider.sensor.is_some(),
+        trigger: collider
+            .is_some_and(|collider| collider.trigger.unwrap_or(false) || collider.sensor.is_some()),
         velocity: body.and_then(|body| body.velocity),
     })
 }
@@ -1305,6 +1963,8 @@ fn simulated_entity_bounds(entity: &SimulatedEntity) -> Bounds<'_> {
 struct DetectedPair {
     a: String,
     b: String,
+    child_a: Option<String>,
+    child_b: Option<String>,
     event: String,
     key: String,
 }
@@ -1314,6 +1974,8 @@ impl DetectedPair {
         PhysicsEvent {
             a: self.a.clone(),
             b: self.b.clone(),
+            child_a: self.child_a.clone(),
+            child_b: self.child_b.clone(),
             event: self.event.clone(),
             phase: phase.to_owned(),
         }
@@ -1339,6 +2001,8 @@ fn detect_pairs(bounds: Vec<Bounds<'_>>) -> BTreeMap<String, DetectedPair> {
                     DetectedPair {
                         a: a.to_owned(),
                         b: b.to_owned(),
+                        child_a: None,
+                        child_b: None,
                         event: event.to_owned(),
                         key,
                     },

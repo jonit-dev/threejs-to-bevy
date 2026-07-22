@@ -1,4 +1,5 @@
 import type { IrSystemService } from "./systems.js";
+import { PHYSICS_SCRIPT_SERVICE_DESCRIPTORS } from "./physicsCapabilities.js";
 
 export type ScriptHostSupport = "implemented" | "unsupported";
 
@@ -34,16 +35,7 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", contract: "shared", context: "ctx.persistence.listSlots", domain: "persistence", service: "persistence.listSlots", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.persistence.load", domain: "persistence", service: "persistence.load", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.persistence.save", domain: "persistence", service: "persistence.save", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.addForce", domain: "physics", service: "physics.addForce", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.addTorque", domain: "physics", service: "physics.addTorque", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.applyAngularImpulse", domain: "physics", service: "physics.applyAngularImpulse", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.applyImpulse", domain: "physics", service: "physics.applyImpulse", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.overlap", domain: "physics", service: "physics.overlap", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.raycast", domain: "physics", service: "physics.raycast", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.sensor", domain: "physics", service: "physics.sensor", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.setAngularVelocity", domain: "physics", service: "physics.setAngularVelocity", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.setLinearVelocity", domain: "physics", service: "physics.setLinearVelocity", web: "implemented" },
-  { bevy: "implemented", contract: "shared", context: "ctx.physics.shapeCast", domain: "physics", service: "physics.shapeCast", web: "implemented" },
+  ...PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.map(({ context, service }) => ({ bevy: "implemented" as const, contract: "shared" as const, context, domain: "physics" as const, service, web: "implemented" as const })),
   { bevy: "implemented", contract: "shared", context: "ctx.picking.mesh", domain: "picking", service: "picking.mesh", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.picking.pointerRay", domain: "picking", service: "picking.pointerRay", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.scenes.change", domain: "scene", service: "scene.change", web: "implemented" },

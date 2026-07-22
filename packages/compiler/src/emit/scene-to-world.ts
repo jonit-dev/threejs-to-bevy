@@ -2,6 +2,7 @@ import { type IWorldIr } from "@threenative/ir";
 import { CustomMeshGeometry, SdkError, type IAssetReference, type ICustomMeshColliderHint, type ICustomMeshLodLevel, type IPhysicsDeclaration } from "@threenative/sdk";
 
 import { CompilerError } from "../errors.js";
+import { emitPhysics } from "./physics.js";
 
 interface IObjectLike {
   activeCamera?: IObjectLike;
@@ -451,22 +452,6 @@ function emitCameraComponent(child: IObjectLike, kind: "orthographic" | "perspec
     ...(child.viewModel === undefined ? {} : { viewModel: child.viewModel }),
   };
   return camera;
-}
-
-function emitPhysics(physics: IPhysicsDeclaration | undefined, components: Record<string, unknown>): void {
-  if (physics?.body !== undefined) {
-    components.RigidBody = definedFields(physics.body);
-  }
-  if (physics?.collider !== undefined) {
-    components.Collider = definedFields(physics.collider);
-  }
-  if (physics?.joint !== undefined) {
-    components.PhysicsJoint = definedFields(physics.joint);
-  }
-}
-
-function definedFields<T extends object>(value: T): Partial<T> {
-  return Object.fromEntries(Object.entries(value).filter(([, item]) => item !== undefined)) as Partial<T>;
 }
 
 function geometrySize(geometry: NonNullable<IObjectLike["geometry"]>): readonly number[] | undefined {

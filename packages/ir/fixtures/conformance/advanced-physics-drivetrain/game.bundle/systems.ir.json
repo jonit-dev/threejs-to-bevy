@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "advancedPhysicsDrivetrainPlaytest",
+      "schedule": "fixedUpdate",
+      "reads": ["VehicleController", "WheelAssembly"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": ["physics.vehicle.setInputs"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_advancedPhysicsDrivetrainPlaytest" }
+    }
+  ]
+}

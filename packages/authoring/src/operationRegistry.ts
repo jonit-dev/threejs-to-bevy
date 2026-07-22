@@ -99,6 +99,9 @@ import {
   setRuntimeWindow,
   setSchemaEntry,
   setRigidBodyComponent,
+  addVehicleController,
+  inspectVehicleController,
+  validateVehicleControllerSource,
   setSceneLifecycle,
   setSpawnerComponent,
   setSystemMetadata,
@@ -133,7 +136,7 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
 };
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
-export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
+export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "physics" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
 export type AuthoringOperationResultShape = "authoring-operation-result";
 export type AuthoringOperationMutationPolicy = "read-only" | "source-mutation";
 
@@ -1076,6 +1079,31 @@ const operationEntries = [
     numberArg("gravityScale", false),
   ]), async ({ args, projectPath }) =>
     setRigidBodyComponent({ damping: optionalNumber(args, "damping"), entityId: requiredString(args, "entityId"), gravityScale: optionalNumber(args, "gravityScale"), kind: optionalString(args, "kind"), mass: optionalNumber(args, "mass"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withEditor(withCli(descriptor("physics.vehicle.add", "Add or replace the descriptor-owned VehicleController on a wheel assembly.", "physics", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+    objectArg("controller"),
+  ]), {
+    path: ["physics", "vehicle", "add"],
+    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }, { argument: "controller", flag: "--controller" }],
+  }), { surface: "api" }), async ({ args, projectPath }) =>
+    addVehicleController({ controller: requiredObject(args, "controller"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withEditor(withCli(descriptor("physics.vehicle.inspect", "Inspect the authored VehicleController without mutating source.", "physics", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+  ]), {
+    path: ["physics", "vehicle", "inspect"],
+    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }],
+  }), { surface: "api" }), async ({ args, projectPath }) =>
+    inspectVehicleController({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  operation(withEditor(withCli(descriptor("physics.vehicle.validate", "Validate the authored VehicleController contract without mutating source.", "physics", "source-document", [
+    stringArg("sceneId"),
+    stringArg("entityId"),
+  ]), {
+    path: ["physics", "vehicle", "validate"],
+    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }],
+  }), { surface: "api" }), async ({ args, projectPath }) =>
+    validateVehicleControllerSource({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
   operation(descriptor("scene.set_spawner", "Set a typed Spawner component for deterministic prefab spawning.", "scene", "source-document", [
     stringArg("sceneId"),
     stringArg("entityId"),
@@ -1743,6 +1771,7 @@ function targetDocumentKind(sourceFamily: AuthoringOperationSourceFamily): Autho
   if (sourceFamily === "system") return "systems";
   if (sourceFamily === "target") return "target";
   if (sourceFamily === "archetype") return "scene";
+  if (sourceFamily === "physics") return "scene";
   return sourceFamily === "asset" || sourceFamily === "audio" || sourceFamily === "distribution"
     || sourceFamily === "environment" || sourceFamily === "flow" || sourceFamily === "generator"
     || sourceFamily === "input" || sourceFamily === "material" || sourceFamily === "mesh"
@@ -1758,6 +1787,7 @@ function targetDocumentId(sourceFamily: AuthoringOperationSourceFamily, args: Re
     archetype: ["sceneId"],
     audio: ["audioDocId"],
     input: ["inputDocId"],
+    physics: ["sceneId"],
     resources: ["resourcesDocId"],
     scene: ["sceneId"],
     schema: ["schemaDocId"],

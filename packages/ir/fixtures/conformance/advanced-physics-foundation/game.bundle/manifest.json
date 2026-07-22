@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-advanced-physics-foundation",
+  "requiredCapabilities": {
+    "physics": [
+      "collider.compound",
+      "force-at-point",
+      "impulse-at-point",
+      "query.retained",
+      "rigid-body.dynamic"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json",
+    "systems": "systems.ir.json",
+    "scripts": "scripts.bundle.js"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "resourceSchemas": "schemas/resources.schema.json",
+    "scripts": "scripts.bundle.js",
+    "targetProfile": "target.profile.json"
+  }
+}

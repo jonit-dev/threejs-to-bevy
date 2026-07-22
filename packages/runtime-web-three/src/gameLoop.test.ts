@@ -3,12 +3,13 @@ import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
-import type { ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
+import type { IEnvironmentSceneIr, ISystemsIr, IUiIr, IWorldIr } from "@threenative/ir";
 import * as THREE from "three";
 
-import { createGameLoopState, runGameFrame } from "./gameLoop.js";
+import { createGameLoopState, runExactFixedTicks, runGameFrame } from "./gameLoop.js";
 import { createInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
+import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { createMemoryPersistenceStorage, createWebPersistenceService } from "./systems/services/persistence.js";
 import { renderUi } from "./ui/renderUi.js";
 
@@ -123,6 +124,107 @@ test("gameLoop should run fixed update at configured timestep", async () => {
   assert.ok(Math.abs(state.accumulator) < 1e-10);
 });
 
+test("gameLoop exact stepping advances exactly the requested paused fixed ticks", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.1, paused: true },
+    window: { height: 720, width: 1280 },
+  });
+  state.accumulator = 0.49;
+  const world = makeWorld();
+  let ticks = 0;
+  const options = {
+    delta: 0.1,
+    mapped: makeMapped(),
+    module: { systems: { tick: () => ticks++ } },
+    runtimeConfig: {
+      schema: "threenative.runtime-config" as const,
+      version: "0.1.0" as const,
+      time: { fixedDelta: 0.1, paused: true },
+      window: { height: 720, width: 1280 },
+    },
+    state,
+    systems: makeSystems(),
+    world,
+  };
+
+  const result = await runExactFixedTicks(options, 3);
+
+  assert.deepEqual(result, { endTick: 3, startTick: 0, ticks: 3 });
+  assert.equal(ticks, 3);
+  assert.equal(state.tick, 3);
+  assert.equal(state.paused, true);
+  assert.equal(state.accumulator, 0);
+});
+
+test("gameLoop exact stepping rejects an unpaused lifecycle without advancing", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.1, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  let ticks = 0;
+  const options = {
+    delta: 0.1,
+    mapped: makeMapped(),
+    module: { systems: { tick: () => ticks++ } },
+    state,
+    systems: makeSystems(),
+    world: makeWorld(),
+  };
+
+  await assert.rejects(runExactFixedTicks(options, 3), /paused/);
+  assert.equal(ticks, 0);
+  assert.equal(state.tick, 0);
+});
+
+test("gameLoop exact stepping ignores concurrent rendered-frame catch-up", async () => {
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.1, paused: true },
+    window: { height: 720, width: 1280 },
+  });
+  let releaseFirstTick!: () => void;
+  let reportFirstTick!: () => void;
+  const firstTickStarted = new Promise<void>((resolve) => { reportFirstTick = resolve; });
+  const firstTickRelease = new Promise<void>((resolve) => { releaseFirstTick = resolve; });
+  let ticks = 0;
+  const options = {
+    delta: 0.1,
+    mapped: makeMapped(),
+    module: { systems: { tick: async () => {
+      ticks += 1;
+      if (ticks === 1) {
+        reportFirstTick();
+        await firstTickRelease;
+      }
+    } } },
+    runtimeConfig: {
+      schema: "threenative.runtime-config" as const,
+      version: "0.1.0" as const,
+      time: { fixedDelta: 0.1, paused: true },
+      window: { height: 720, width: 1280 },
+    },
+    state,
+    systems: makeSystems(),
+    world: makeWorld(),
+  };
+
+  const exact = runExactFixedTicks(options, 2);
+  await firstTickStarted;
+  await runGameFrame({ ...options, delta: 0.5 });
+  releaseFirstTick();
+  await exact;
+
+  assert.equal(ticks, 2);
+  assert.equal(state.tick, 2);
+  assert.equal(state.frame, 2);
+  assert.equal(state.elapsed, 0.2);
+});
+
 test("gameLoop should consume fixed-update rigid-body writes in the same physics tick", async () => {
   const state = createGameLoopState({
     schema: "threenative.runtime-config",
@@ -203,6 +305,58 @@ test("gameLoop should consume fixed-update impulses in the same physics tick", a
   });
 
   assert.ok((world.entities[0]?.components.Transform?.position?.[0] ?? 0) > 0.24);
+});
+
+test("gameLoop should apply an off-center impulse through ctx.physics at the retained fixed step", async () => {
+  await initializePhysicsRuntime();
+  const state = createGameLoopState({
+    schema: "threenative.runtime-config",
+    version: "0.1.0",
+    time: { fixedDelta: 0.25, paused: false },
+    window: { height: 720, width: 1280 },
+  });
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "box",
+      components: {
+        Collider: { kind: "box", size: [2, 1, 1] },
+        RigidBody: { gravityScale: 1, kind: "dynamic", mass: 2 },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+  const impulseSystem = system("impulseAtPoint", "fixedUpdate");
+  impulseSystem.services = ["physics.raycast", "physics.applyImpulseAtPoint"];
+  let terrainHit: unknown;
+
+  await runGameFrame({
+    delta: 0.25,
+    environmentScene: makePhysicsEnvironment(),
+    fixedDelta: 0.25,
+    mapped: makeMapped(),
+    module: { systems: { impulseAtPoint: (context: any) => {
+      terrainHit = context.physics.raycast({ direction: [0, -1, 0], ignore: ["box"], maxDistance: 10, origin: [0, 4, 0] });
+      context.physics.applyImpulseAtPoint("box", [0, 0, 4], [0, 1, 0]);
+    } } },
+    runtimeConfig: {
+      schema: "threenative.runtime-config",
+      version: "0.1.0",
+      physics: { gravity: [4, 0, 0] },
+      time: { fixedDelta: 0.25, paused: false },
+      window: { height: 720, width: 1280 },
+    },
+    state,
+    systems: makeSystems([impulseSystem]),
+    world,
+  });
+
+  assert.ok((world.entities[0]?.components.RigidBody?.velocity?.[0] ?? 0) > 0.9, "custom gravity must affect the same retained step");
+  assert.ok((world.entities[0]?.components.RigidBody?.velocity?.[2] ?? 0) > 1.9, "the queued impulse must affect the same retained step");
+  assert.ok(Math.abs(world.entities[0]?.components.RigidBody?.angularVelocity?.[0] ?? 0) > 1, "the off-center impulse must rotate the body");
+  assert.deepEqual(terrainHit, { distance: 3.95, entity: "terrain.fixed-step.heightfield", hit: true, normal: [0, 1, 0], point: [0, 0.05, 0] });
+  disposePhysicsRuntime(world);
 });
 
 test("gameLoop should skip gameplay schedules while paused", async () => {
@@ -693,6 +847,24 @@ function makeWorld(entities: Array<{ id: string; position: [number, number, numb
       id: entity.id,
       components: { Transform: { position: entity.position } },
     })),
+  };
+}
+
+function makePhysicsEnvironment(): IEnvironmentSceneIr {
+  return {
+    schema: "threenative.environment-scene",
+    version: "0.1.0",
+    sourceAssets: [],
+    terrain: {
+      bounds: { max: [2, 0.05, 2], min: [-2, -0.05, -2] },
+      chunks: [{ bounds: { max: [2, 0.05, 2], min: [-2, -0.05, -2] }, heightRange: { max: 0, min: 0 }, id: "terrain.fixed-step.chunk", mesh: "mesh.terrain.fixed-step", sampleRange: { x: [0, 2], z: [0, 2] } }],
+      collider: { asset: "heightmap.fixed-step", cellSize: 1, heightRange: { max: 0, min: 0 }, heightScale: 1, kind: "heightfield", mesh: "mesh.terrain.fixed-step", origin: [-2, 0, -2], sampleCount: [3, 3] },
+      heightmap: { asset: "heightmap.fixed-step", cellSize: 1, heightScale: 1, origin: [-2, 0, -2] },
+      heightMode: "heightmap",
+      id: "terrain.fixed-step",
+    },
+    instances: [],
+    path: { id: "path", points: [[0, 0, 0], [1, 0, 1]], width: 1 },
   };
 }
 

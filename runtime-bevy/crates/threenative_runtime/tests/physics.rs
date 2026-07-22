@@ -8,9 +8,310 @@ use std::{
 use threenative_loader::load_bundle;
 use threenative_runtime::physics::{
     detect_physics_event_trace, detect_physics_events, inspect_cached_physics_body_sleeping,
-    inspect_cached_physics_ccd_substeps, inspect_physics_body_mass,
-    step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
+    inspect_cached_physics_ccd_substeps, inspect_cached_physics_raycast, inspect_physics_body_mass,
+    inspect_physics_body_mass_properties, step_bundle_physics_with_script_poses,
+    trace_physics_joints, trace_rigid_body_primitives,
 };
+
+#[test]
+fn compound_authored_mass_should_use_equal_child_mass_for_com_and_inertia() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let body_entity = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .expect("box should exist");
+    body_entity.components.collider = None;
+    body_entity.components.compound_collider = Some(
+        serde_json::from_value(serde_json::json!({
+            "children": [
+                { "id": "small", "localPose": { "position": [-2, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.25 } },
+                { "id": "large", "localPose": { "position": [2, 0, 0] }, "shape": { "kind": "sphere", "radius": 1.0 } }
+            ]
+        }))
+        .expect("compound collider should deserialize"),
+    );
+    let rigid_body = body_entity
+        .components
+        .rigid_body
+        .as_mut()
+        .expect("body should exist");
+    rigid_body.mass = None;
+    rigid_body.inverse_mass = Some(0.125);
+
+    let properties = inspect_physics_body_mass_properties(&bundle, "box")
+        .expect("compound mass properties should exist");
+
+    assert!((properties.mass - 8.0).abs() < 0.001);
+    assert!(
+        properties
+            .center_of_mass
+            .iter()
+            .all(|value| value.abs() < 0.001)
+    );
+    assert!((properties.principal_inertia[0] - 1.7).abs() < 0.001);
+    assert!((properties.principal_inertia[1] - 33.7).abs() < 0.001);
+    assert!((properties.principal_inertia[2] - 33.7).abs() < 0.001);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn compound_children_should_honor_their_own_symmetric_collision_and_solver_filters() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let floor = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "floor")
+        .expect("floor should exist");
+    floor.components.collider = None;
+    floor.components.compound_collider = Some(
+        serde_json::from_value(serde_json::json!({
+            "children": [
+                {
+                    "filter": { "layer": "world", "mask": ["player"] },
+                    "id": "accepts-player",
+                    "localPose": { "position": [-1, 0, 0] },
+                    "shape": { "kind": "box", "size": [1.5, 0.1, 1.5] }
+                },
+                {
+                    "filter": { "layer": "world", "mask": ["enemy"] },
+                    "id": "rejects-player",
+                    "localPose": { "position": [1, 0, 0] },
+                    "shape": { "kind": "box", "size": [1.5, 0.1, 1.5] }
+                }
+            ]
+        }))
+        .expect("compound collider should deserialize"),
+    );
+    let box_index = bundle
+        .world
+        .entities
+        .iter()
+        .position(|entity| entity.id == "box")
+        .expect("box should exist");
+    let mut rejected_box = bundle.world.entities[box_index].clone();
+    rejected_box.id = "rejected-box".to_owned();
+    for (entity, x) in [
+        (&mut bundle.world.entities[box_index], -1.0),
+        (&mut rejected_box, 1.0),
+    ] {
+        let collider = entity.components.collider.as_mut().expect("box collider");
+        collider.layer = Some("player".to_owned());
+        collider.mask = Some(vec!["world".to_owned()]);
+        entity
+            .components
+            .transform
+            .as_mut()
+            .expect("box transform")
+            .position = Some([x, 2.0, 0.0]);
+    }
+    bundle.world.entities.push(rejected_box);
+    let runtime_id = BTreeSet::new();
+
+    for _ in 0..120 {
+        step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+    }
+
+    let accepted_y = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.transform.as_ref()?.position)
+        .expect("accepted box position")[1];
+    let rejected_y = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "rejected-box")
+        .and_then(|entity| entity.components.transform.as_ref()?.position)
+        .expect("rejected box position")[1];
+    assert!(accepted_y > 0.4, "matching child should solve contact");
+    assert!(rejected_y < -5.0, "child mask must reject the player body");
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn retained_compound_contacts_should_preserve_child_identity_and_stable_ordering() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let compound = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .expect("box should exist");
+    compound.id = "compound".to_owned();
+    compound.components.collider = None;
+    compound.components.compound_collider = Some(
+        serde_json::from_value(serde_json::json!({
+            "children": [
+                { "id": "zeta", "localPose": { "position": [1, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.4 } },
+                { "id": "alpha", "localPose": { "position": [-1, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.4 } }
+            ]
+        }))
+        .expect("compound collider should deserialize"),
+    );
+    let compound_body = compound
+        .components
+        .rigid_body
+        .as_mut()
+        .expect("body should exist");
+    compound_body.kind = "static".to_owned();
+    compound_body.gravity_scale = Some(0.0);
+    compound
+        .components
+        .transform
+        .as_mut()
+        .expect("compound transform")
+        .position = Some([0.0, 0.0, 0.0]);
+
+    let probe = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "floor")
+        .expect("floor should exist");
+    probe.id = "probe".to_owned();
+    let probe_collider = probe.components.collider.as_mut().expect("probe collider");
+    probe_collider.kind = "sphere".to_owned();
+    probe_collider.radius = Some(0.8);
+    probe_collider.size = None;
+    probe.components.rigid_body = Some(
+        serde_json::from_value(serde_json::json!({
+            "gravityScale": 0,
+            "kind": "dynamic",
+            "velocity": [0, 0, 0]
+        }))
+        .expect("probe body should deserialize"),
+    );
+    probe
+        .components
+        .transform
+        .as_mut()
+        .expect("probe transform")
+        .position = Some([0.0, 0.0, 0.0]);
+    let runtime_id = BTreeSet::new();
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+
+    let enter = bundle
+        .world
+        .events
+        .get("CollisionEvent")
+        .expect("collision queue should exist");
+    assert_eq!(
+        enter,
+        &serde_json::json!([
+            { "a": "compound", "b": "probe", "childA": "alpha", "phase": "enter" },
+            { "a": "compound", "b": "probe", "childA": "zeta", "phase": "enter" }
+        ])
+    );
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+    let stay = bundle
+        .world
+        .events
+        .get("CollisionEvent")
+        .expect("collision queue should exist");
+    assert_eq!(stay[0]["childA"], "alpha");
+    assert_eq!(stay[1]["childA"], "zeta");
+    assert!(
+        stay.as_array()
+            .expect("event array")
+            .iter()
+            .all(|event| { event["phase"] == "stay" && event.get("childB").is_none() })
+    );
+
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "probe")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("probe transform")
+        .position = Some([0.0, 5.0, 0.0]);
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+    let exit = bundle
+        .world
+        .events
+        .get("CollisionEvent")
+        .expect("collision queue should exist");
+    assert_eq!(exit[0]["childA"], "alpha");
+    assert_eq!(exit[1]["childA"], "zeta");
+    assert!(
+        exit.as_array()
+            .expect("event array")
+            .iter()
+            .all(|event| { event["phase"] == "exit" && event.get("childB").is_none() })
+    );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn should_rotate_a_compound_body_when_impulse_is_applied_off_center_and_report_live_child_hit() {
+    let root = write_falling_box_bundle();
+    let mut bundle = load_bundle(&root).expect("physics bundle should load");
+    let body_entity = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .expect("box should exist");
+    body_entity.components.collider = None;
+    body_entity.components.compound_collider = Some(serde_json::from_value(serde_json::json!({
+        "children": [
+            { "id": "left", "localPose": { "position": [-0.75, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.25 } },
+            { "id": "right", "localPose": { "position": [0.75, 0, 0] }, "shape": { "kind": "sphere", "radius": 0.25 } }
+        ]
+    })).expect("compound collider should deserialize"));
+    let rigid_body = body_entity
+        .components
+        .rigid_body
+        .as_mut()
+        .expect("body should exist");
+    rigid_body.gravity_scale = Some(0.0);
+    rigid_body.mass = Some(2.0);
+    let runtime_id = BTreeSet::new();
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+
+    assert!(
+        inspect_cached_physics_raycast(&runtime_id, [-0.75, 2.0, -5.0], [0.0, 0.0, 1.0], 10.0)
+            .is_some_and(|hit| hit.entity == "box"
+                && hit.child.as_deref() == Some("left")
+                && (hit.distance - 4.75).abs() < 0.001)
+    );
+    assert_eq!(
+        inspect_cached_physics_raycast(&runtime_id, [0.0, 2.0, -5.0], [0.0, 0.0, 1.0], 10.0),
+        None,
+        "retained Rapier should not report the conservative compound bounds gap"
+    );
+
+    bundle.world.resources.insert("__threenativePhysicsAtPointCommands".to_owned(), serde_json::json!([{
+        "entity": "box", "kind": "physics.applyImpulseAtPoint", "point": [0, 3, 0], "value": [0, 0, 4]
+    }]));
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime_id);
+
+    let rigid_body = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.rigid_body.as_ref())
+        .expect("body should remain");
+    assert!(rigid_body.velocity.expect("velocity")[2] > 1.9);
+    assert!(rigid_body.angular_velocity.expect("angular velocity")[0].abs() > 1.0);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
 
 #[test]
 fn physics_should_detect_collision_fixture() {

@@ -33,6 +33,8 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     "verify:desktop-distribution",
     "verify:img2threejs",
     "verify:emitted-commands",
+    "verify:advanced-physics-wheels",
+    "verify:advanced-physics-drivetrain",
     "verify:portable-feedback",
   ]);
 });
@@ -45,6 +47,24 @@ test("fixture catalog should own the shadow cascade focused gate descriptor", ()
   assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/shadow-cascade-stability/verification-report.json");
   assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/shadowCascadeStability.js"]);
   assert.equal(descriptor.release.enrolled, true);
+});
+
+test("fixture catalog should own the advanced physics wheel focused gate descriptor", () => {
+  const descriptor = fixtureCatalogGateDescriptors().find((entry) => entry.name === "verify:advanced-physics-wheels");
+
+  assert.ok(descriptor);
+  assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/advanced-physics/phase-2-wheels/verification-report.json");
+  assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/advancedPhysicsWheels.js"]);
+  assert.equal(descriptor.release.enrolled, false);
+});
+
+test("fixture catalog should own the advanced physics drivetrain focused gate descriptor", () => {
+  const descriptor = fixtureCatalogGateDescriptors().find((entry) => entry.name === "verify:advanced-physics-drivetrain");
+
+  assert.ok(descriptor);
+  assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/advanced-physics/phase-3-drivetrain/verification-report.json");
+  assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/advancedPhysicsDrivetrain.js"]);
+  assert.equal(descriptor.release.enrolled, false);
 });
 
 test("gate descriptors should derive focused gates and release artifacts", () => {

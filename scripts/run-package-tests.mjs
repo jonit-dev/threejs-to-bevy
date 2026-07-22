@@ -10,7 +10,10 @@ if (buildFlagIndex !== -1) {
 }
 
 const runIndex = forwardedArgs.indexOf("--run");
-const nodeArgs = ["--test"];
+// Browser-backed tests share CPU and renderer resources. Bounding concurrency
+// keeps their production timeouts meaningful instead of measuring test-runner
+// contention on high-core hosts.
+const nodeArgs = ["--test", "--test-concurrency", "2"];
 
 if (runIndex !== -1) {
   const pattern = forwardedArgs[runIndex + 1];

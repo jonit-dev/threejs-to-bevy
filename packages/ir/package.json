@@ -28,6 +28,10 @@
       "types": "./dist/overlays.d.ts",
       "default": "./dist/overlays.js"
     },
+    "./physicsCapabilities": {
+      "types": "./dist/physicsCapabilities.d.ts",
+      "default": "./dist/physicsCapabilities.js"
+    },
     "./runtimeConfig": {
       "types": "./dist/runtimeConfig.d.ts",
       "default": "./dist/runtimeConfig.js"

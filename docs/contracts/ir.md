@@ -72,6 +72,45 @@ Rules:
 - Runtimes must reject unsupported major versions.
 - Runtimes may accept older minor versions through declared migrations.
 
+### Additive world-component policy
+
+`world.entities[].components` is a named extension map rather than a closed
+record of fields. A new built-in component may therefore be added within the
+current World IR version only when all of these conditions hold:
+
+- the component is optional and its absence means exactly "no behavior";
+- existing component payloads and their defaults are unchanged;
+- bundles using the component declare its required capability, so an older
+  runtime rejects the requirement instead of silently ignoring behavior;
+- current target adapters validate and consume the component, with positive
+  and negative compatibility tests; and
+- a pre-addition bundle fixture still validates and loads unchanged.
+
+This is an identity migration for older World IR documents: loaders must not
+inject the new component or rewrite an existing entity. Adding a required
+component, changing an existing component's meaning/default, or adding a field
+without a declared default still requires a version bump and a migration.
+Unknown document fields remain errors, and unknown custom component payloads
+still require their declared component schema.
+
+### Vehicle grounded-coupling continuity
+
+`VehicleController` drivetrain coupling may retain the last grounded driven-
+wheel coupling for at most one consecutive fixed tick in which all driven
+wheels miss contact. This descriptor-owned grace covers a transient raycast or
+solver-contact gap without producing an engine-RPM spike or an early shift.
+The second consecutive all-airborne tick must use the ordinary airborne wheel
+fallback. The grace applies only to engine/wheel coupling; grounded flags,
+contacts, tire forces, differential eligibility, and ABS/TCS activation must
+continue to report and consume the current tick's actual contact state.
+
+### Vehicle ground-plane speed
+
+`VehicleController` observation `speed` is the Y-up ground-plane magnitude
+`sqrt(velocity.x^2 + velocity.z^2)`. The controller uses that same value when
+sampling its steering speed curve. Vertical suspension, gravity, and landing
+velocity do not contribute to either the published speed or steering scale.
+
 ## Manifest
 
 `manifest.json` is the bundle entry point.

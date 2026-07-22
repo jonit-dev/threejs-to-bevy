@@ -40,8 +40,9 @@ Follow this order:
 2. If the plan reports `TN_GAME_PLAN_OFF_RECIPE` or does not cover the core
    verbs and acceptance criteria, run its `nextInspectionCommand` first. Run a
    capability-selected `nextAuthoringCommand` returned by inspection before
-   opening broad source files; custom-author directly only when no such command
-   covers the prompt. A returned prototype command is self-describing: run it
+   opening broad source files; custom-author directly on the starter only when
+   no such command covers the prompt. A returned prototype command is
+   self-describing: run it
    without loading the authoring skill or API card, then immediately run its
    `nextProofCommand`. Otherwise
    inspect the matched cookbook entry before running a reviewed

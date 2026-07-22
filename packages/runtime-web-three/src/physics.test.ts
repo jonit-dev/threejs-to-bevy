@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IEnvironmentSceneIr, IWorldIr } from "@threenative/ir";
 
-import { disposePhysicsRuntime, initializePhysicsRuntime, markScriptAuthoredTransform, physicsBodyMass, physicsBodySleeping, physicsRuntimeCcdSubsteps, physicsRuntimeStats, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
+import { applyLivePhysicsAtPoint, disposePhysicsRuntime, initializePhysicsRuntime, markScriptAuthoredTransform, overlapLive, physicsBodyMass, physicsBodySleeping, physicsRuntimeCcdSubsteps, physicsRuntimeStats, queryHitObservation, raycastLive, shapeCastLive, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -222,6 +222,169 @@ test("physics should solve hinge slider and suspension joints in Rapier", async 
   disposePhysicsRuntime(hinge);
   disposePhysicsRuntime(slider);
   disposePhysicsRuntime(suspension);
+});
+
+test("should rotate a body when force is applied off center", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "body",
+      components: {
+        CompoundCollider: { children: [{ id: "core", localPose: { position: [0, 0, 0] }, shape: { kind: "box", size: [2, 1, 1] } }] },
+        RigidBody: { gravityScale: 0, kind: "dynamic", mass: 2 },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+
+  assert.equal(applyLivePhysicsAtPoint(world, "body", [0, 0, 4], [0, 1, 0], "impulse"), true);
+  stepPhysics(world, 1 / 60);
+
+  const body = world.entities[0]?.components.RigidBody;
+  assert.ok((body?.velocity?.[2] ?? 0) > 1.9, `expected linear velocity, got ${String(body?.velocity)}`);
+  assert.ok(Math.abs(body?.angularVelocity?.[0] ?? 0) > 1, `expected off-center angular velocity, got ${String(body?.angularVelocity)}`);
+  disposePhysicsRuntime(world);
+});
+
+test("should report the live collider hit rather than conservative bounds", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "compound",
+      components: {
+        CompoundCollider: { children: [
+          { id: "left", localPose: { position: [-2, 0, 0] }, shape: { kind: "sphere", radius: 0.25 } },
+          { id: "right", localPose: { position: [2, 0, 0] }, shape: { kind: "sphere", radius: 0.25 } },
+        ] },
+        RigidBody: { kind: "static" },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+
+  const result = raycastLive(world, { direction: [0, 0, 1], maxDistance: 10, origin: [0, 0, -5] });
+  assert.deepEqual(result, { hit: false }, "a conservative compound AABB would incorrectly report a center hit");
+  const childResult = raycastLive(world, { direction: [0, 0, 1], maxDistance: 10, origin: [-2, 0, -5] });
+  assert.equal(childResult.hit, true);
+  if (childResult.hit) {
+    assert.equal(queryHitObservation(childResult, world)?.child, "left");
+    assert.ok(Math.abs(childResult.distance - 4.75) < 0.0001);
+  }
+  disposePhysicsRuntime(world);
+});
+
+test("live queries should preserve bilateral filters and union mask with layers", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "target",
+      components: {
+        Collider: { kind: "sphere", layer: "friend", mask: ["player"], radius: 0.5 },
+        RigidBody: { kind: "static" },
+        Transform: { position: [0, 0, 0] },
+      },
+    }],
+  };
+
+  assert.deepEqual(overlapLive(world, { layer: "enemy", layers: ["friend"], mask: ["hostile"], position: [0, 0, 0], shape: { kind: "sphere", radius: 1 } }), { entities: [] });
+  assert.deepEqual(overlapLive(world, { layer: "player", layers: ["friend"], mask: ["hostile"], position: [0, 0, 0], shape: { kind: "sphere", radius: 1 } }), { entities: ["target"] });
+  disposePhysicsRuntime(world);
+});
+
+test("live shape casts should report world-space contact points", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [{
+      id: "wall",
+      components: {
+        Collider: { kind: "box", size: [1, 2, 2] },
+        RigidBody: { kind: "static" },
+        Transform: { position: [3, 1, 0] },
+      },
+    }],
+  };
+
+  assert.deepEqual(shapeCastLive(world, {
+    direction: [1, 0, 0],
+    maxDistance: 5,
+    origin: [0, 1, 0],
+    shape: { halfExtents: [0.25, 0.25, 0.25], kind: "box" },
+  }), {
+    distance: 2.25,
+    entity: "wall",
+    hit: true,
+    normal: [-1, 0, 0],
+    point: [2.5, 1, 0],
+  });
+  disposePhysicsRuntime(world);
+});
+
+test("live queries should retain custom gravity and environment terrain without rebuilding", async () => {
+  await initializePhysicsRuntime();
+  const world = makeFallingBoxWorld();
+  world.entities = world.entities.filter((entity) => entity.id !== "floor");
+  const environment = makeHeightfieldEnvironment();
+
+  stepPhysics(world, 0.1, environment, { gravity: [4, 0, 0] });
+  assert.equal(physicsRuntimeStats(world).rebuilds, 1);
+  const terrain = raycastLive(world, { direction: [0, -1, 0], ignore: ["box"], maxDistance: 10, origin: [0, 4, 0] });
+  assert.equal(terrain.hit && terrain.entity, "terrain.reference.heightfield");
+  assert.equal(physicsRuntimeStats(world).rebuilds, 1);
+  stepPhysics(world, 0.1, environment, { gravity: [4, 0, 0] });
+  assert.equal(physicsRuntimeStats(world).rebuilds, 1);
+  assert.ok((world.entities[0]?.components.RigidBody?.velocity?.[0] ?? 0) > 0.79);
+  assert.equal(world.entities.some((entity) => entity.id === "terrain.reference.heightfield"), false);
+  disposePhysicsRuntime(world);
+});
+
+test("retained Rapier events should identify the contacting compound child", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "compound",
+        components: {
+          CompoundCollider: { children: [
+            { id: "left", localPose: { position: [-2, 0, 0] }, shape: { kind: "sphere", radius: 0.4 } },
+            { id: "right", localPose: { position: [2, 0, 0] }, shape: { kind: "sphere", radius: 0.4 } },
+          ] },
+          RigidBody: { kind: "static" },
+          Transform: { position: [0, 0, 0] },
+        },
+      },
+      {
+        id: "probe",
+        components: {
+          Collider: { kind: "sphere", radius: 0.4 },
+          RigidBody: { gravityScale: 0, kind: "dynamic" },
+          Transform: { position: [2.5, 0, 0] },
+        },
+      },
+    ],
+  };
+
+  assert.deepEqual(stepPhysics(world), [{ a: "compound", b: "probe", childA: "right", phase: "enter" }]);
+  assert.deepEqual(world.events?.CollisionEvent, [{ a: "compound", b: "probe", childA: "right", phase: "enter" }]);
+  disposePhysicsRuntime(world);
+});
+
+test("retained Rapier events should preserve non-dynamic trigger pairs", async () => {
+  await initializePhysicsRuntime();
+  const world = makePhysicsWorld();
+
+  assert.deepEqual(stepPhysics(world), [{ a: "pickup", b: "player", phase: "enter" }]);
+  assert.deepEqual(world.events?.TriggerEvent, [{ a: "pickup", b: "player", phase: "enter" }]);
+  disposePhysicsRuntime(world);
 });
 
 test("physics should reuse the Rapier world while topology is unchanged", async () => {

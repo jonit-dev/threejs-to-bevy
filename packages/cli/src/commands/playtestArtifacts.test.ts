@@ -67,12 +67,13 @@ test("playtest artifacts should expose runtime observation sidecar paths when pr
       source: string;
     };
     const manifest = JSON.parse(await readFile(bundle.artifacts.manifest, "utf8")) as {
-      artifacts: Record<string, { path: string }>;
+      artifacts: Record<string, { path: string; sha256?: string }>;
     };
 
     assert.deepEqual(sidecar.observations.textures["tex.grid.floor"]?.repeat, [8, 12]);
     assert.equal(sidecar.source, "runtime-observation");
     assert.equal(manifest.artifacts.runtimeObservations?.path.endsWith("runtime-observations.json"), true);
+    assert.match(manifest.artifacts.runtimeObservations?.sha256 ?? "", /^sha256-[a-f0-9]{64}$/);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -3,8 +3,13 @@ use std::{env, fs, path::PathBuf, process::ExitCode};
 use serde::Serialize;
 use threenative_loader::load_bundle;
 use threenative_runtime::{
-    systems_context::NativeSystemTimeSnapshot, systems_effects::NativeSystemEffectLogEntry,
-    systems_host::run_native_systems_once,
+    physics::step_bundle_physics_with_script_poses,
+    systems_context::NativeSystemTimeSnapshot,
+    systems_effects::NativeSystemEffectLogEntry,
+    systems_host::{
+        NativeGameLoopRunOptions, NativeGameLoopState, run_native_systems_frame_with_input,
+        run_native_systems_once,
+    },
 };
 
 #[derive(Serialize)]
@@ -16,8 +21,8 @@ struct MergedEffectLog {
 
 fn main() -> ExitCode {
     let args = env::args().collect::<Vec<_>>();
-    if args.len() != 3 {
-        eprintln!("Usage: threenative_systems_log <bundle-path> <output-json>");
+    if args.len() < 3 || args.len() > 4 || args.get(3).is_some_and(|arg| arg != "--live-physics") {
+        eprintln!("Usage: threenative_systems_log <bundle-path> <output-json> [--live-physics]");
         return ExitCode::from(2);
     }
 
@@ -31,7 +36,26 @@ fn main() -> ExitCode {
         }
     };
 
-    let run = match run_native_systems_once(&mut bundle, fixed_time()) {
+    let run = if args.get(3).is_some_and(|arg| arg == "--live-physics") {
+        let mut state = NativeGameLoopState::default();
+        state.elapsed = 1.0 - 1.0 / 60.0;
+        state.frame = 1;
+        state.tick = 1;
+        run_native_systems_frame_with_input(
+            &mut bundle,
+            &mut state,
+            NativeGameLoopRunOptions {
+                delta: 1.0 / 60.0,
+                fixed_delta: 1.0 / 60.0,
+                input: None,
+                paused: false,
+            },
+            step_bundle_physics_with_script_poses,
+        )
+    } else {
+        run_native_systems_once(&mut bundle, fixed_time())
+    };
+    let run = match run {
         Ok(run) => run,
         Err(error) => {
             eprintln!("{error}");

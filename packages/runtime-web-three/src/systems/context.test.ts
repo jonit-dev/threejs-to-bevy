@@ -9,6 +9,7 @@ import { applySystemEffects } from "./effects.js";
 import { applyMaterialPatchEffects, mapWorld } from "../mapWorld.js";
 import { createMemoryPersistenceStorage, createWebPersistenceService } from "./services/persistence.js";
 import { createInputState } from "../input.js";
+import { initializePhysicsRuntime } from "../physics.js";
 
 const pendingWritesFixture = JSON.parse(readFileSync(new URL("../../../ir/fixtures/contracts/scripting/pending-writes.json", import.meta.url), "utf8")) as {
   entity: IWorldIr["entities"][number];
@@ -346,7 +347,8 @@ test("should read pending transform after setting position", () => {
   assert.deepEqual(commands.map((command) => command.component), pendingWritesFixture.expected.effectOrder);
 });
 
-test("should raycast primitive floor", () => {
+test("should raycast primitive floor", async () => {
+  await initializePhysicsRuntime();
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
   const result = context.physics.raycast({
@@ -371,7 +373,8 @@ test("should raycast primitive floor", () => {
   });
 });
 
-test("should log v7 physics query service calls", () => {
+test("should log v7 physics query service calls", async () => {
+  await initializePhysicsRuntime();
   const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
 
   const overlap = context.physics.overlap({
@@ -394,6 +397,18 @@ test("should log v7 physics query service calls", () => {
     request: { layer: "player", mask: ["world"], position: [0, 0.5, 0], shape: { kind: "sphere", radius: 0.75 } },
     result: overlap,
   });
+});
+
+test("should reject missing and invalid force-at-point coordinates", () => {
+  const { context, services } = createSystemContext(makeWorld(), { delta: 0.016, fixedDelta: 0.016 });
+  const physics = context.physics as unknown as {
+    addForceAtPoint(entity: string, force: [number, number, number], point?: [number, number, number]): unknown;
+    applyImpulseAtPoint(entity: string, impulse: [number, number, number], point?: [number, number, number]): unknown;
+  };
+
+  assert.deepEqual(physics.addForceAtPoint("player", [1, 0, 0]), { accepted: false, entity: "player", status: "invalid-vector" });
+  assert.deepEqual(physics.applyImpulseAtPoint("player", [1, 0, 0], [Number.NaN, 0, 0]), { accepted: false, entity: "player", status: "invalid-vector" });
+  assert.equal(services.length, 2);
 });
 
 test("should validate and queue physics body commands", () => {

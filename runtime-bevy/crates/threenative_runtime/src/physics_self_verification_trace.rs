@@ -1,16 +1,27 @@
-use std::{env, fs, path::PathBuf, process};
+use std::{collections::BTreeSet, env, fs, path::PathBuf, process};
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{SystemIr, SystemQueryIr, load_bundle};
 use threenative_runtime::{
     character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
     physics::{
-        PhysicsJointObservation, RigidBodyTraceObservation, trace_physics_joints,
-        trace_rigid_body_primitives,
+        PhysicsJointObservation, RigidBodyTraceObservation, dispose_native_physics_runtime,
+        ensure_native_physics_runtime, native_physics_runtime_id,
+        step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
     },
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
+    physics_vehicle::{
+        VehicleControlInput, VehicleControllerObservation, WheelAssemblyObservation,
+        WheelControlInput, WheelDebugTelemetry, WheelVisualObservation,
+        inspect_physics_vehicle_debug_telemetry, observe_physics_vehicle_controllers,
+        observe_physics_vehicle_visuals, observe_physics_vehicles,
+        set_physics_vehicle_control_input, set_physics_vehicle_controller_inputs,
+    },
     systems_context::{NativeSystemTimeSnapshot, build_system_context_snapshot},
+    systems_host::{
+        NativeGameLoopRunOptions, NativeGameLoopState, run_native_systems_frame_with_input,
+    },
     systems_services::{
         NativeOverlapRequest, NativeOverlapResult, NativeQueryShape, NativeRaycastRequest,
         NativeRaycastResult, NativeShapeCastRequest, NativeShapeCastResult, overlap_primitive,
@@ -21,10 +32,127 @@ use threenative_runtime::{
 #[derive(Serialize)]
 #[serde(untagged)]
 enum PhysicsSelfVerificationTrace {
+    Advanced(AdvancedTraceReport),
     Character(CharacterTraceReport),
     Joint(JointTraceReport),
     Query(QueryTraceReport),
     Rigid(RigidTraceReport),
+    Wheels(WheelTraceReport),
+    Drivetrain(DrivetrainTraceReport),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DrivetrainTraceReport {
+    bundle_hash: String,
+    fixed_dt: f32,
+    fixture: &'static str,
+    runtime: &'static str,
+    scenarios: Vec<DrivetrainTraceScenario>,
+    schema: &'static str,
+    source_hash: String,
+    version: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DrivetrainTraceScenario {
+    checkpoints: Vec<usize>,
+    id: String,
+    inputs: Vec<DrivetrainTraceInput>,
+    observations: Vec<DrivetrainTraceObservation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    outcome_bounds: Option<DrivetrainOutcomeBounds>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    setup: Option<Value>,
+}
+
+#[derive(Serialize)]
+struct DrivetrainTraceInput {
+    tick: usize,
+    input: VehicleControlInput,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DrivetrainTraceObservation {
+    chassis_angular_velocity: [f32; 3],
+    chassis_position: [f32; 3],
+    chassis_rotation: [f32; 4],
+    chassis_velocity: [f32; 3],
+    observation: VehicleControllerObservation,
+    input: VehicleControlInput,
+    label: String,
+    tick: usize,
+    wheels: Vec<DrivetrainWheelObservation>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DrivetrainWheelObservation {
+    grounded: bool,
+    longitudinal_slip: f32,
+    wheel_id: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedTraceReport {
+    body: AdvancedBodyObservation,
+    causal_negative: AdvancedBodyObservation,
+    command_order: Vec<String>,
+    events: Vec<String>,
+    fixed_delta: f32,
+    query: Value,
+    runtime: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedBodyObservation {
+    angular_velocity: [f32; 3],
+    position: [f32; 3],
+    rotation: [f32; 4],
+    velocity: [f32; 3],
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WheelTraceReport {
+    authored_wheel_ids: Vec<String>,
+    fixed_delta: f32,
+    runtime: &'static str,
+    scenarios: WheelTraceScenarios,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WheelTraceScenarios {
+    asphalt: WheelScenario,
+    braking: WheelScenario,
+    braking_causal_negative: WheelScenario,
+    drive_causal_negative: WheelScenario,
+    ice: WheelScenario,
+    static_load: WheelScenario,
+    steering: WheelScenario,
+    steering_causal_negative: WheelScenario,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct WheelScenario {
+    chassis_angular_velocity: [f32; 3],
+    chassis_position: [f32; 3],
+    chassis_rotation: [f32; 4],
+    chassis_velocity: [f32; 3],
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    debug_telemetry: Vec<WheelDebugTelemetry>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    initial_speed: Option<f32>,
+    speed: f32,
+    steps: usize,
+    visuals: Vec<WheelVisualObservation>,
+    wheels: Vec<threenative_runtime::physics_vehicle::WheelObservation>,
 }
 
 #[derive(Serialize)]
@@ -73,8 +201,23 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let bundle_path = args.next().ok_or("missing bundle path")?;
     let scene_id = args.next().ok_or("missing scene id")?;
     let output_path = PathBuf::from(args.next().ok_or("missing output path")?);
+    let source_hash = args.next();
+    let bundle_hash = args.next();
     let bundle = load_bundle(bundle_path)?;
     let trace = match scene_id.as_str() {
+        "advanced-physics-foundation" => {
+            PhysicsSelfVerificationTrace::Advanced(trace_advanced_physics_foundation(bundle)?)
+        }
+        "advanced-physics-wheels" => {
+            PhysicsSelfVerificationTrace::Wheels(trace_advanced_physics_wheels(bundle)?)
+        }
+        "advanced-physics-drivetrain" => {
+            PhysicsSelfVerificationTrace::Drivetrain(trace_advanced_physics_drivetrain(
+                bundle,
+                source_hash.ok_or("missing drivetrain source hash")?,
+                bundle_hash.ok_or("missing drivetrain bundle hash")?,
+            )?)
+        }
         "physics-character-obstacles" => {
             PhysicsSelfVerificationTrace::Character(CharacterTraceReport {
                 character: trace_character_controllers(
@@ -170,6 +313,736 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn trace_advanced_physics_wheels(
+    bundle: threenative_loader::LoadedBundle,
+) -> Result<WheelTraceReport, Box<dyn std::error::Error>> {
+    const FIXED_DELTA: f32 = 1.0 / 120.0;
+    let bundle_path = bundle.bundle_path.clone();
+    let authored_wheel_ids = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "chassis")
+        .and_then(|entity| entity.components.wheel_assembly.as_ref())
+        .ok_or("advanced wheel fixture chassis assembly is missing")?
+        .wheels
+        .iter()
+        .map(|wheel| wheel.id.clone())
+        .collect::<Vec<_>>();
+    let static_runtime = BTreeSet::new();
+    let asphalt_runtime = BTreeSet::new();
+    let ice_runtime = BTreeSet::new();
+    let drive_negative_runtime = BTreeSet::new();
+    let steering_runtime = BTreeSet::new();
+    let steering_negative_runtime = BTreeSet::new();
+    let braking_runtime = BTreeSet::new();
+    let braking_negative_runtime = BTreeSet::new();
+
+    let mut static_bundle = bundle;
+    for _ in 0..1200 {
+        step_bundle_physics_with_script_poses(&mut static_bundle, FIXED_DELTA, &static_runtime);
+    }
+    let static_load = wheel_scenario(&static_bundle, &static_runtime, 1200, None, true)?;
+
+    let command = WheelControlInput {
+        brake: 0.0,
+        drive: 1.0,
+        steering: 0.0,
+    };
+    let mut asphalt_bundle = load_bundle(&bundle_path)?;
+    step_wheel_scenario(
+        &mut asphalt_bundle,
+        &asphalt_runtime,
+        command,
+        180,
+        FIXED_DELTA,
+    )?;
+    let asphalt = wheel_scenario(&asphalt_bundle, &asphalt_runtime, 180, None, false)?;
+
+    let mut ice_bundle = load_bundle(&bundle_path)?;
+    move_chassis_to_surface(&mut ice_bundle, "ground-ice")?;
+    step_wheel_scenario(&mut ice_bundle, &ice_runtime, command, 180, FIXED_DELTA)?;
+    let ice = wheel_scenario(&ice_bundle, &ice_runtime, 180, None, false)?;
+
+    let mut negative_bundle = load_bundle(&bundle_path)?;
+    set_wheel_flag(&mut negative_bundle, WheelFlag::Driven, false)?;
+    step_wheel_scenario(
+        &mut negative_bundle,
+        &drive_negative_runtime,
+        command,
+        180,
+        FIXED_DELTA,
+    )?;
+    let drive_causal_negative =
+        wheel_scenario(&negative_bundle, &drive_negative_runtime, 180, None, false)?;
+
+    let steering_command = WheelControlInput {
+        brake: 0.0,
+        drive: 1.0,
+        steering: 0.5,
+    };
+    let mut steering_bundle = load_bundle(&bundle_path)?;
+    step_wheel_scenario(
+        &mut steering_bundle,
+        &steering_runtime,
+        steering_command,
+        90,
+        FIXED_DELTA,
+    )?;
+    let steering = wheel_scenario(&steering_bundle, &steering_runtime, 90, None, false)?;
+
+    let mut steering_negative_bundle = load_bundle(&bundle_path)?;
+    set_wheel_flag(&mut steering_negative_bundle, WheelFlag::Steering, false)?;
+    step_wheel_scenario(
+        &mut steering_negative_bundle,
+        &steering_negative_runtime,
+        steering_command,
+        90,
+        FIXED_DELTA,
+    )?;
+    let steering_causal_negative = wheel_scenario(
+        &steering_negative_bundle,
+        &steering_negative_runtime,
+        90,
+        None,
+        false,
+    )?;
+
+    let mut braking_bundle = load_bundle(&bundle_path)?;
+    step_wheel_scenario(
+        &mut braking_bundle,
+        &braking_runtime,
+        command,
+        120,
+        FIXED_DELTA,
+    )?;
+    let initial_speed = chassis_pose(&braking_bundle)?.3[2].abs();
+    let braking_command = WheelControlInput {
+        brake: 1.0,
+        drive: 0.0,
+        steering: 0.0,
+    };
+    step_wheel_scenario(
+        &mut braking_bundle,
+        &braking_runtime,
+        braking_command,
+        60,
+        FIXED_DELTA,
+    )?;
+    let braking = wheel_scenario(
+        &braking_bundle,
+        &braking_runtime,
+        180,
+        Some(initial_speed),
+        false,
+    )?;
+
+    let mut braking_negative_bundle = load_bundle(&bundle_path)?;
+    set_wheel_flag(&mut braking_negative_bundle, WheelFlag::Braked, false)?;
+    step_wheel_scenario(
+        &mut braking_negative_bundle,
+        &braking_negative_runtime,
+        command,
+        120,
+        FIXED_DELTA,
+    )?;
+    let initial_negative_speed = chassis_pose(&braking_negative_bundle)?.3[2].abs();
+    step_wheel_scenario(
+        &mut braking_negative_bundle,
+        &braking_negative_runtime,
+        braking_command,
+        60,
+        FIXED_DELTA,
+    )?;
+    let braking_causal_negative = wheel_scenario(
+        &braking_negative_bundle,
+        &braking_negative_runtime,
+        180,
+        Some(initial_negative_speed),
+        false,
+    )?;
+
+    Ok(WheelTraceReport {
+        authored_wheel_ids,
+        fixed_delta: FIXED_DELTA,
+        runtime: "bevy",
+        scenarios: WheelTraceScenarios {
+            asphalt,
+            braking,
+            braking_causal_negative,
+            drive_causal_negative,
+            ice,
+            static_load,
+            steering,
+            steering_causal_negative,
+        },
+    })
+}
+
+fn trace_advanced_physics_drivetrain(
+    bundle: threenative_loader::LoadedBundle,
+    source_hash: String,
+    bundle_hash: String,
+) -> Result<DrivetrainTraceReport, Box<dyn std::error::Error>> {
+    let bundle_path = bundle.bundle_path.clone();
+    drop(bundle);
+    let manifest_path = bundle_path.join("drivetrain.scenarios.json");
+    let manifest: DrivetrainScenarioManifest = serde_json::from_slice(&fs::read(&manifest_path)?)?;
+    if manifest.schema != "threenative.advanced-physics-drivetrain-scenarios"
+        || manifest.version != "0.1.0"
+        || manifest.entity.is_empty()
+        || manifest.fixed_dt <= 0.0
+    {
+        return Err("invalid advanced physics drivetrain scenario manifest".into());
+    }
+    let scenarios = manifest
+        .scenarios
+        .iter()
+        .map(|scenario| {
+            trace_drivetrain_scenario(&bundle_path, &manifest.entity, manifest.fixed_dt, scenario)
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(DrivetrainTraceReport {
+        bundle_hash,
+        fixed_dt: manifest.fixed_dt,
+        fixture: "advanced-physics-drivetrain",
+        runtime: "bevy",
+        scenarios,
+        schema: "threenative.advanced-physics-drivetrain-trace",
+        source_hash,
+        version: "0.1.0",
+    })
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainScenarioManifest {
+    entity: String,
+    fixed_dt: f32,
+    scenarios: Vec<DrivetrainScenarioDefinition>,
+    schema: String,
+    version: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainScenarioDefinition {
+    checkpoints: Vec<usize>,
+    #[serde(default)]
+    controller_override: Option<DrivetrainControllerOverride>,
+    id: String,
+    #[serde(default)]
+    initial_pose: Option<DrivetrainInitialPose>,
+    #[serde(default)]
+    outcome_bounds: Option<DrivetrainOutcomeBounds>,
+    segments: Vec<DrivetrainScenarioSegment>,
+    #[serde(rename = "travelCorridor")]
+    _travel_corridor: DrivetrainTravelCorridor,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainInitialPose {
+    position: [f32; 3],
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainTravelCorridor {
+    #[allow(dead_code)]
+    endpoint: [f32; 2],
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainOutcomeBounds {
+    straight_stability: DrivetrainStraightStabilityBounds,
+}
+
+#[derive(Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainStraightStabilityBounds {
+    start_tick: usize,
+    through_tick: usize,
+    max_lateral_displacement: f32,
+    max_abs_yaw: f32,
+    max_abs_yaw_rate: f32,
+    minimum_grounded_wheel_coverage: f32,
+    max_consecutive_zero_contact_ticks: usize,
+    require_terminal_all_wheels_grounded: bool,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainScenarioSegment {
+    input: VehicleControlInput,
+    label: String,
+    steps: usize,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainControllerOverride {
+    #[serde(default)]
+    assists: Option<DrivetrainAssistsOverride>,
+    #[serde(default)]
+    differential: Option<DrivetrainDifferentialOverride>,
+    #[serde(default)]
+    engine: Option<DrivetrainEngineOverride>,
+    #[serde(default)]
+    transmission: Option<DrivetrainTransmissionOverride>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainEngineOverride {
+    engine_braking: f32,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DrivetrainAssistsOverride {
+    #[serde(default)]
+    abs: Option<DrivetrainAssistOverride>,
+    #[serde(default)]
+    tcs: Option<DrivetrainAssistOverride>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct DrivetrainAssistOverride {
+    enabled: bool,
+    #[serde(default)]
+    #[serde(rename = "slipThreshold")]
+    slip_threshold: Option<f32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainDifferentialOverride {
+    kind: String,
+    #[serde(default)]
+    limited_slip_ratio: Option<f32>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase", deny_unknown_fields)]
+struct DrivetrainTransmissionOverride {
+    #[serde(default)]
+    downshift_rpm: Option<f32>,
+    shift_policy: String,
+    #[serde(default)]
+    upshift_rpm: Option<f32>,
+}
+
+fn trace_drivetrain_scenario(
+    bundle_path: &std::path::Path,
+    entity_id: &str,
+    fixed_dt: f32,
+    definition: &DrivetrainScenarioDefinition,
+) -> Result<DrivetrainTraceScenario, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    apply_drivetrain_scenario_definition(&mut bundle, entity_id, definition)?;
+    let runtime = BTreeSet::new();
+    let runtime_id = native_physics_runtime_id(&runtime);
+    ensure_native_physics_runtime(&bundle, &runtime);
+    let mut tick = 0;
+    let inputs = definition
+        .segments
+        .iter()
+        .map(|segment| {
+            let input = DrivetrainTraceInput {
+                tick,
+                input: segment.input,
+            };
+            tick += segment.steps;
+            input
+        })
+        .collect::<Vec<_>>();
+    let steps = tick;
+    let mut observations = Vec::new();
+    let mut segment_start = 0;
+    for segment in &definition.segments {
+        if segment.steps == 0 {
+            return Err(
+                format!("drivetrain scenario {} has an empty segment", definition.id).into(),
+            );
+        }
+        if !set_physics_vehicle_controller_inputs(runtime_id, entity_id, segment.input) {
+            return Err(format!(
+                "drivetrain input rejected for scenario {} at tick {segment_start}",
+                definition.id
+            )
+            .into());
+        }
+        for segment_tick in 0..segment.steps {
+            let tick = segment_start + segment_tick;
+            step_bundle_physics_with_script_poses(&mut bundle, fixed_dt, &runtime);
+            let observation = observe_physics_vehicle_controllers(runtime_id)
+                .into_iter()
+                .find(|observation| observation.entity == entity_id)
+                .ok_or("drivetrain controller observation is missing")?;
+            let wheel_observation = observe_physics_vehicles(runtime_id)
+                .into_iter()
+                .find(|observation| observation.entity == entity_id)
+                .ok_or("drivetrain wheel observation is missing")?;
+            let (chassis_position, chassis_rotation, chassis_angular_velocity, chassis_velocity) =
+                entity_pose(&bundle, entity_id)?;
+            observations.push(DrivetrainTraceObservation {
+                chassis_angular_velocity,
+                chassis_position,
+                chassis_rotation,
+                chassis_velocity,
+                observation,
+                input: segment.input,
+                label: segment.label.clone(),
+                tick,
+                wheels: wheel_observation
+                    .wheels
+                    .into_iter()
+                    .map(|wheel| DrivetrainWheelObservation {
+                        grounded: wheel.grounded,
+                        longitudinal_slip: wheel.longitudinal_slip,
+                        wheel_id: wheel.wheel_id,
+                    })
+                    .collect(),
+            });
+        }
+        segment_start += segment.steps;
+    }
+    if observations.len() != steps {
+        return Err(format!("drivetrain scenario {} sample count drifted", definition.id).into());
+    }
+    if definition
+        .checkpoints
+        .iter()
+        .any(|checkpoint| *checkpoint >= steps)
+    {
+        return Err(format!(
+            "drivetrain scenario {} has an out-of-range checkpoint",
+            definition.id
+        )
+        .into());
+    }
+    let setup = definition
+        .controller_override
+        .as_ref()
+        .and_then(|controller| controller.differential.as_ref())
+        .and_then(|differential| {
+            definition.initial_pose.as_ref().map(|pose| {
+                let mut setup = serde_json::json!({
+                    "chassisPosition": pose.position,
+                    "differential": differential.kind,
+                    "surfaceRegion": "split-grip"
+                });
+                if let Some(ratio) = differential.limited_slip_ratio {
+                    setup["limitedSlipRatio"] = serde_json::json!(ratio);
+                }
+                setup
+            })
+        });
+    dispose_native_physics_runtime(&runtime);
+    Ok(DrivetrainTraceScenario {
+        checkpoints: definition.checkpoints.clone(),
+        id: definition.id.clone(),
+        inputs,
+        observations,
+        outcome_bounds: definition.outcome_bounds.clone(),
+        setup,
+    })
+}
+
+fn apply_drivetrain_scenario_definition(
+    bundle: &mut threenative_loader::LoadedBundle,
+    entity_id: &str,
+    definition: &DrivetrainScenarioDefinition,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let entity = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == entity_id)
+        .ok_or("drivetrain scenario entity is missing")?;
+    if let Some(pose) = &definition.initial_pose {
+        entity
+            .components
+            .transform
+            .as_mut()
+            .ok_or("drivetrain chassis transform is missing")?
+            .position = Some(pose.position);
+    }
+    if let Some(overrides) = &definition.controller_override {
+        let controller = entity
+            .components
+            .vehicle_controller
+            .as_mut()
+            .ok_or("drivetrain controller is missing")?;
+        if let Some(assists) = &overrides.assists {
+            let controller_assists = controller
+                .assists
+                .as_mut()
+                .ok_or("drivetrain controller assists are missing")?;
+            if let Some(abs) = &assists.abs {
+                let controller_abs = controller_assists
+                    .abs
+                    .as_mut()
+                    .ok_or("drivetrain ABS configuration is missing")?;
+                controller_abs.enabled = abs.enabled;
+                if let Some(threshold) = abs.slip_threshold {
+                    controller_abs.slip_threshold = threshold;
+                }
+            }
+            if let Some(tcs) = &assists.tcs {
+                controller_assists
+                    .tcs
+                    .as_mut()
+                    .ok_or("drivetrain TCS configuration is missing")?
+                    .enabled = tcs.enabled;
+            }
+        }
+        if let Some(differential) = &overrides.differential {
+            controller.differential.kind.clone_from(&differential.kind);
+            if let Some(ratio) = differential.limited_slip_ratio {
+                controller.differential.limited_slip_ratio = Some(ratio);
+            }
+        }
+        if let Some(engine) = &overrides.engine {
+            controller.engine.engine_braking = engine.engine_braking;
+        }
+        if let Some(transmission) = &overrides.transmission {
+            controller
+                .transmission
+                .shift_policy
+                .clone_from(&transmission.shift_policy);
+            if let Some(rpm) = transmission.downshift_rpm {
+                controller.transmission.downshift_rpm = Some(rpm);
+            }
+            if let Some(rpm) = transmission.upshift_rpm {
+                controller.transmission.upshift_rpm = Some(rpm);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn step_wheel_scenario(
+    bundle: &mut threenative_loader::LoadedBundle,
+    runtime: &BTreeSet<String>,
+    command: WheelControlInput,
+    steps: usize,
+    fixed_delta: f32,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let runtime_id = native_physics_runtime_id(runtime);
+    if !set_physics_vehicle_control_input(runtime_id, "chassis", command) {
+        return Err("advanced wheel control input was rejected".into());
+    }
+    for _ in 0..steps {
+        step_bundle_physics_with_script_poses(bundle, fixed_delta, runtime);
+    }
+    Ok(())
+}
+
+fn wheel_scenario(
+    bundle: &threenative_loader::LoadedBundle,
+    runtime: &BTreeSet<String>,
+    steps: usize,
+    initial_speed: Option<f32>,
+    include_debug_telemetry: bool,
+) -> Result<WheelScenario, Box<dyn std::error::Error>> {
+    let (chassis_position, chassis_rotation, chassis_angular_velocity, chassis_velocity) =
+        chassis_pose(bundle)?;
+    Ok(WheelScenario {
+        chassis_angular_velocity,
+        chassis_position,
+        chassis_rotation,
+        chassis_velocity,
+        debug_telemetry: if include_debug_telemetry {
+            inspect_physics_vehicle_debug_telemetry(native_physics_runtime_id(runtime))
+        } else {
+            Vec::new()
+        },
+        initial_speed,
+        speed: chassis_velocity[2].abs(),
+        steps,
+        visuals: observe_physics_vehicle_visuals(native_physics_runtime_id(runtime), 0.5),
+        wheels: wheel_assembly_observation(runtime)?.wheels,
+    })
+}
+
+fn wheel_assembly_observation(
+    runtime: &BTreeSet<String>,
+) -> Result<WheelAssemblyObservation, Box<dyn std::error::Error>> {
+    observe_physics_vehicles(native_physics_runtime_id(runtime))
+        .into_iter()
+        .find(|observation| observation.entity == "chassis")
+        .ok_or_else(|| "advanced wheel observation is missing".into())
+}
+
+fn chassis_pose(
+    bundle: &threenative_loader::LoadedBundle,
+) -> Result<([f32; 3], [f32; 4], [f32; 3], [f32; 3]), Box<dyn std::error::Error>> {
+    entity_pose(bundle, "chassis")
+}
+
+fn entity_pose(
+    bundle: &threenative_loader::LoadedBundle,
+    entity_id: &str,
+) -> Result<([f32; 3], [f32; 4], [f32; 3], [f32; 3]), Box<dyn std::error::Error>> {
+    let chassis = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_id)
+        .ok_or("physics trace entity is missing")?;
+    let transform = chassis
+        .components
+        .transform
+        .as_ref()
+        .ok_or("advanced wheel chassis transform is missing")?;
+    let rigid_body = chassis
+        .components
+        .rigid_body
+        .as_ref()
+        .ok_or("advanced wheel chassis rigid body is missing")?;
+    Ok((
+        transform
+            .position
+            .ok_or("advanced wheel chassis position is missing")?,
+        transform.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+        rigid_body.angular_velocity.unwrap_or([0.0, 0.0, 0.0]),
+        rigid_body.velocity.unwrap_or([0.0, 0.0, 0.0]),
+    ))
+}
+
+fn move_chassis_to_surface(
+    bundle: &mut threenative_loader::LoadedBundle,
+    surface_id: &str,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let surface_position = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == surface_id)
+        .and_then(|entity| entity.components.transform.as_ref()?.position)
+        .ok_or("advanced wheel fixture target ground is missing")?;
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "chassis")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .ok_or("advanced wheel fixture chassis transform is missing")?
+        .position = Some([surface_position[0], 1.02, surface_position[2]]);
+    Ok(())
+}
+
+#[derive(Clone, Copy)]
+enum WheelFlag {
+    Braked,
+    Driven,
+    Steering,
+}
+
+fn set_wheel_flag(
+    bundle: &mut threenative_loader::LoadedBundle,
+    flag: WheelFlag,
+    value: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let wheels = &mut bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "chassis")
+        .and_then(|entity| entity.components.wheel_assembly.as_mut())
+        .ok_or("advanced wheel fixture chassis assembly is missing")?
+        .wheels;
+    for wheel in wheels {
+        match flag {
+            WheelFlag::Braked => wheel.braked = value,
+            WheelFlag::Driven => wheel.driven = value,
+            WheelFlag::Steering => wheel.steering = value,
+        }
+    }
+    Ok(())
+}
+
+fn trace_advanced_physics_foundation(
+    mut bundle: threenative_loader::LoadedBundle,
+) -> Result<AdvancedTraceReport, Box<dyn std::error::Error>> {
+    let fixed_delta = 0.1;
+    let bundle_path = bundle.bundle_path.clone();
+    let mut causal_negative_bundle = load_bundle(bundle_path)?;
+    step_bundle_physics_with_script_poses(
+        &mut causal_negative_bundle,
+        fixed_delta,
+        &BTreeSet::new(),
+    );
+    let causal_negative = advanced_body_observation(&causal_negative_bundle)?;
+
+    let mut state = NativeGameLoopState::default();
+    let run = run_native_systems_frame_with_input(
+        &mut bundle,
+        &mut state,
+        NativeGameLoopRunOptions {
+            delta: fixed_delta,
+            fixed_delta,
+            input: None,
+            paused: false,
+        },
+        step_bundle_physics_with_script_poses,
+    )?;
+    let command_order = run
+        .logs
+        .iter()
+        .flat_map(|log| log.entries.iter())
+        .filter_map(|entry| entry.service.clone())
+        .filter(|service| service.starts_with("physics."))
+        .collect::<Vec<_>>();
+    let query = bundle
+        .world
+        .resources
+        .get("AdvancedPhysicsReport")
+        .and_then(|report| report.get("query"))
+        .cloned()
+        .ok_or("advanced physics script did not publish its live query observation")?;
+    Ok(AdvancedTraceReport {
+        body: advanced_body_observation(&bundle)?,
+        causal_negative,
+        events: command_order.clone(),
+        command_order,
+        fixed_delta,
+        query,
+        runtime: "bevy",
+    })
+}
+
+fn advanced_body_observation(
+    bundle: &threenative_loader::LoadedBundle,
+) -> Result<AdvancedBodyObservation, Box<dyn std::error::Error>> {
+    let entity = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "compound.body")
+        .ok_or("advanced physics body is missing")?;
+    let transform = entity
+        .components
+        .transform
+        .as_ref()
+        .ok_or("advanced physics body transform is missing")?;
+    let rigid_body = entity
+        .components
+        .rigid_body
+        .as_ref()
+        .ok_or("advanced physics rigid body is missing")?;
+    Ok(AdvancedBodyObservation {
+        angular_velocity: rigid_body.angular_velocity.unwrap_or([0.0, 0.0, 0.0]),
+        position: transform.position.unwrap_or([0.0, 0.0, 0.0]),
+        rotation: transform.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+        velocity: rigid_body.velocity.unwrap_or([0.0, 0.0, 0.0]),
+    })
+}
+
 fn query_system() -> SystemIr {
     SystemIr {
         after: vec![],
@@ -209,5 +1082,30 @@ fn fixed_time() -> NativeSystemTimeSnapshot {
         fixed_delta: 1.0 / 60.0,
         fixed_dt: 1.0 / 60.0,
         paused: false,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::DrivetrainOutcomeBounds;
+
+    const TRANSIENT_CONTACT_BOUNDS: &str = r#"{"straightStability":{"startTick":10,"throughTick":59,"maxLateralDisplacement":0.5,"maxAbsYaw":0.06,"maxAbsYawRate":0.25,"minimumGroundedWheelCoverage":0.975,"maxConsecutiveZeroContactTicks":1,"requireTerminalAllWheelsGrounded":true}}"#;
+
+    #[test]
+    fn drivetrain_outcome_bounds_should_parse_and_echo_transient_contact_contract() {
+        let bounds: DrivetrainOutcomeBounds = serde_json::from_str(TRANSIENT_CONTACT_BOUNDS)
+            .expect("transient contact bounds should parse");
+
+        assert_eq!(
+            serde_json::to_string(&bounds).expect("transient contact bounds should serialize"),
+            TRANSIENT_CONTACT_BOUNDS
+        );
+    }
+
+    #[test]
+    fn drivetrain_outcome_bounds_should_reject_retired_all_grounded_boolean() {
+        let retired = r#"{"straightStability":{"throughTick":59,"maxLateralDisplacement":0.5,"maxAbsYaw":0.06,"maxAbsYawRate":0.25,"requireAllWheelsGrounded":true}}"#;
+
+        assert!(serde_json::from_str::<DrivetrainOutcomeBounds>(retired).is_err());
     }
 }

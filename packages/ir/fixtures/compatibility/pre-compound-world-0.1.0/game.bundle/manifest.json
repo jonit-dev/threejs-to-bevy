@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "compatibility-pre-compound-world-0.1.0",
+  "requiredCapabilities": {},
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

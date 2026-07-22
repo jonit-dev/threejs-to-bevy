@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced-physics-drivetrain-automatic-launch",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "chassis",
+  "parity": {
+    "targets": ["web", "desktop"],
+    "compare": { "movementDistance": { "maxDelta": 4 } }
+  },
+  "setup": {
+    "entities": [
+      { "entity": "chassis", "position": [0, 1.02, 40] }
+    ]
+  },
+  "warmupFrames": 0,
+  "steps": [
+    { "label": "settle", "waitTicks": 60, "release": false },
+    { "label": "launch", "press": "KeyW", "holdTicks": 120, "release": true }
+  ],
+  "assert": {
+    "movement": { "entity": "chassis", "axis": "-z", "minDistance": 0.5, "maxDistance": 30 },
+    "diagnostics": { "runtimeReady": true, "noConsoleErrors": true, "noNetworkErrors": true, "noRuntimeDiagnostics": true }
+  },
+  "artifacts": { "screenshots": "before-after", "console": true, "network": true, "runtimeTrace": true, "effectLog": "focused" }
+}

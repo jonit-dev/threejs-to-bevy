@@ -1,11 +1,13 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
-import type { IColliderComponent, IEnvironmentSceneIr, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import type { IColliderComponent, ICompoundColliderComponent, ICompoundColliderShape, IEnvironmentSceneIr, IPhysicsBodyObservation, IPhysicsQueryHitObservation, IScriptPhysicsOverlapRequest, IScriptPhysicsOverlapResult, IScriptPhysicsRaycastRequest, IScriptPhysicsRaycastResult, IScriptPhysicsShapeCastRequest, IScriptPhysicsShapeCastResult, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
 import type { IRuntimeWriteLedger } from "./systems/writeAudit.js";
 
 export interface IPhysicsEventPayload {
   a: string;
   b: string;
+  childA?: string;
+  childB?: string;
   phase: "enter" | "exit" | "stay";
 }
 
@@ -62,6 +64,7 @@ const previousPairsByWorld = new WeakMap<IWorldIr, Map<string, IDetectedPair>>()
 const scriptAuthoredTransformsByWorld = new WeakMap<IWorldIr, Set<string>>();
 const rapierWorlds = new WeakMap<IWorldIr, IRapierRuntime>();
 const rapierRebuilds = new WeakMap<IWorldIr, number>();
+const pendingPointCommands = new WeakMap<IWorldIr, IPointPhysicsCommand[]>();
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -73,6 +76,20 @@ export async function initializePhysicsRuntime(): Promise<void> {
     rapierInitialized = true;
   });
   await rapierInitialization;
+}
+
+export function preparePhysicsRuntime(world: IWorldIr, environmentScene?: IEnvironmentSceneIr, gravity: Vec3 = [0, -9.81, 0]): void {
+  if (!rapierInitialized) return;
+  prepareRetainedPhysicsRuntime(world, worldWithEnvironmentTerrain(world, environmentScene), gravity);
+}
+
+function prepareRetainedPhysicsRuntime(cacheKey: IWorldIr, physicsWorld: IWorldIr, gravity: Vec3): void {
+  const signature = rapierTopologySignature(physicsWorld, gravity);
+  const runtime = rapierWorlds.get(cacheKey);
+  if (runtime?.signature === signature) return;
+  runtime?.world.free();
+  rapierWorlds.set(cacheKey, createRapierRuntime(physicsWorld, gravity, signature));
+  rapierRebuilds.set(cacheKey, (rapierRebuilds.get(cacheKey) ?? 0) + 1);
 }
 
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr, options: { gravity?: Vec3; tick?: number; writeLedger?: IRuntimeWriteLedger } = {}): IPhysicsEventPayload[] {
@@ -90,7 +107,10 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
     recordPhysicsTransformWrites(world, beforeTransforms, options);
   }
 
-  const currentPairs = detectPairs(physicsWorld.entities.flatMap((entity) => colliderBounds(entity)));
+  const retainedRuntime = rapierWorlds.get(world);
+  const currentPairs = retainedRuntime === undefined
+    ? detectPairs(physicsWorld.entities.flatMap((entity) => colliderBounds(entity)))
+    : detectRapierPairs(retainedRuntime);
   const previousPairs = previousPairsByWorld.get(world) ?? new Map();
   const collisions = eventPayloads("CollisionEvent", currentPairs, previousPairs);
   const triggers = eventPayloads("TriggerEvent", currentPairs, previousPairs);
@@ -158,8 +178,17 @@ export function markScriptAuthoredTransform(world: IWorldIr, entity: string): vo
 
 interface IRapierRuntime {
   bodies: Map<string, RAPIER.RigidBody>;
+  colliders: Map<number, { child?: string; entity: string }>;
+  physicsWorld: IWorldIr;
   signature: string;
   world: RAPIER.World;
+}
+
+interface IPointPhysicsCommand {
+  entity: string;
+  kind: "force" | "impulse";
+  point: readonly [number, number, number];
+  value: readonly [number, number, number];
 }
 
 export function disposePhysicsRuntime(world: IWorldIr): void {
@@ -168,6 +197,7 @@ export function disposePhysicsRuntime(world: IWorldIr): void {
   rapierRebuilds.delete(world);
   previousPairsByWorld.delete(world);
   scriptAuthoredTransformsByWorld.delete(world);
+  pendingPointCommands.delete(world);
 }
 
 export function physicsRuntimeStats(world: IWorldIr): { rebuilds: number } {
@@ -187,14 +217,9 @@ export function physicsRuntimeCcdSubsteps(world: IWorldIr): number | undefined {
 }
 
 function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): void {
-  const signature = rapierTopologySignature(world, gravity);
-  let runtime = rapierWorlds.get(cacheKey);
-  if (runtime === undefined || runtime.signature !== signature) {
-    runtime?.world.free();
-    runtime = createRapierRuntime(world, gravity, signature);
-    rapierWorlds.set(cacheKey, runtime);
-    rapierRebuilds.set(cacheKey, (rapierRebuilds.get(cacheKey) ?? 0) + 1);
-  }
+  prepareRetainedPhysicsRuntime(cacheKey, world, gravity);
+  const runtime = rapierWorlds.get(cacheKey);
+  if (runtime === undefined) return;
   const rapierWorld = runtime.world;
   const substeps = physicsSubsteps(fixedDelta);
   rapierWorld.integrationParameters.dt = fixedDelta / substeps;
@@ -229,7 +254,10 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
     body.setAngvel({ x: angularVelocity[0], y: angularVelocity[1], z: angularVelocity[2] }, false);
   }
 
+  const pointCommands = pendingPointCommands.get(cacheKey) ?? [];
+  pendingPointCommands.delete(cacheKey);
   for (let step = 0; step < substeps; step += 1) {
+    applyPointPhysicsCommands(runtime, pointCommands, step === 0, fixedDelta);
     rapierWorld.step();
   }
 
@@ -262,13 +290,15 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
   const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
   rapierWorld.maxCcdSubsteps = Math.max(1, ...world.entities.map((entity) => entity.components.RigidBody?.ccd?.enabled === true ? (entity.components.RigidBody.ccd.maxSubsteps ?? 1) : 1));
   const bodies = new Map<string, RAPIER.RigidBody>();
+  const colliders = new Map<number, { child?: string; entity: string }>();
   const layerBits = layerBitsForWorld(world);
 
   for (const entity of world.entities) {
     const transform = entity.components.Transform;
     const authoredBody = entity.components.RigidBody;
     const collider = entity.components.Collider;
-    if (transform?.position === undefined || collider === undefined) {
+    const compound = entity.components.CompoundCollider;
+    if (transform?.position === undefined || (collider === undefined && compound === undefined)) {
       continue;
     }
     const body = authoredBody ?? { kind: "static" as const };
@@ -297,24 +327,32 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
     }
 
     const rapierBody = rapierWorld.createRigidBody(desc);
-    const colliderDesc = colliderDescFor(collider);
-    if (colliderDesc !== undefined) {
-      const groups = rapierCollisionGroups(collider, layerBits);
-      const center = colliderLocalCenter(collider);
+    const descriptors: Array<{ child?: string; desc: RAPIER.ColliderDesc | undefined; filter: IColliderComponent; friction?: number; localPosition: Vec3; localRotation?: readonly [number, number, number, number]; restitution?: number }> = collider === undefined
+      ? compoundColliderDescs(compound)
+      : [{ desc: colliderDescFor(collider), filter: collider, localPosition: colliderLocalCenter(collider) }];
+    for (const descriptor of descriptors) {
+      const colliderDesc = descriptor.desc;
+      if (colliderDesc === undefined) continue;
+      const filter = descriptor.filter;
+      const groups = rapierCollisionGroups(filter, layerBits);
+      const center = descriptor.localPosition;
       colliderDesc
         .setTranslation(center[0], center[1], center[2])
-        .setFriction(collider.friction ?? 0)
-        .setRestitution(collider.restitution ?? 0)
-        .setSensor(collider.trigger === true || collider.sensor !== undefined)
+        .setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL)
+        .setFriction(descriptor.friction ?? (collider?.friction ?? 0))
+        .setRestitution(descriptor.restitution ?? (collider?.restitution ?? 0))
+        .setSensor(collider?.trigger === true || collider?.sensor !== undefined)
         .setCollisionGroups(groups)
         .setSolverGroups(groups);
+      if (descriptor.localRotation !== undefined) colliderDesc.setRotation({ x: descriptor.localRotation[0], y: descriptor.localRotation[1], z: descriptor.localRotation[2], w: descriptor.localRotation[3] });
       const mass = authoredPhysicsMass(body);
       if (body.kind === "dynamic" && mass !== undefined) {
-        colliderDesc.setMass(mass);
+        colliderDesc.setMass(mass / descriptors.length);
       }
-      rapierWorld.createCollider(colliderDesc, rapierBody);
-      bodies.set(entity.id, rapierBody);
+      const liveCollider = rapierWorld.createCollider(colliderDesc, rapierBody);
+      colliders.set(liveCollider.handle, { ...(descriptor.child === undefined ? {} : { child: descriptor.child }), entity: entity.id });
     }
+    bodies.set(entity.id, rapierBody);
   }
 
   for (const entity of [...world.entities].sort((left, right) => left.id.localeCompare(right.id))) {
@@ -351,7 +389,17 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
     }
   }
 
-  return { bodies, signature, world: rapierWorld };
+  return { bodies, colliders, physicsWorld: world, signature, world: rapierWorld };
+}
+
+function applyPointPhysicsCommands(runtime: IRapierRuntime, commands: readonly IPointPhysicsCommand[], includeImpulses: boolean, forceDelta: number): void {
+  for (const command of commands) {
+    const body = runtime.bodies.get(command.entity);
+    if (body === undefined || !body.isDynamic()) continue;
+    if (!includeImpulses) continue;
+    const value = command.kind === "force" ? scaleVec3(command.value, forceDelta) : command.value;
+    body.applyImpulseAtPoint(rapierVector(value), rapierVector(command.point), true);
+  }
 }
 
 function rapierTopologySignature(world: IWorldIr, gravity: Vec3): string {
@@ -359,6 +407,7 @@ function rapierTopologySignature(world: IWorldIr, gravity: Vec3): string {
     gravity,
     entities: world.entities.map((entity) => ({
       Collider: entity.components.Collider,
+      CompoundCollider: entity.components.CompoundCollider,
       PhysicsJoint: entity.components.PhysicsJoint,
       RigidBody: entity.components.RigidBody === undefined ? undefined : {
         ...entity.components.RigidBody,
@@ -370,8 +419,170 @@ function rapierTopologySignature(world: IWorldIr, gravity: Vec3): string {
   });
 }
 
+function compoundColliderDescs(compound: ICompoundColliderComponent | undefined): Array<{ child: string; desc: RAPIER.ColliderDesc | undefined; filter: IColliderComponent; friction?: number; localPosition: Vec3; localRotation?: readonly [number, number, number, number]; restitution?: number }> {
+  return (compound?.children ?? []).map((child) => {
+    const filter: IColliderComponent = { kind: "box", size: [1, 1, 1], ...(child.filter?.layer === undefined ? {} : { layer: child.filter.layer }), ...(child.filter?.mask === undefined ? {} : { mask: child.filter.mask }) };
+    return {
+      child: child.id,
+      desc: compoundShapeDesc(child.shape),
+      filter,
+      ...(child.material?.friction === undefined ? {} : { friction: child.material.friction }),
+      localPosition: child.localPose.position,
+      ...(child.localPose.rotation === undefined ? {} : { localRotation: child.localPose.rotation }),
+      ...(child.material?.restitution === undefined ? {} : { restitution: child.material.restitution }),
+    };
+  });
+}
+
+function compoundShapeDesc(shape: ICompoundColliderShape): RAPIER.ColliderDesc | undefined {
+  if (shape.kind === "box") return RAPIER.ColliderDesc.cuboid(shape.size[0] / 2, shape.size[1] / 2, shape.size[2] / 2);
+  if (shape.kind === "sphere") return RAPIER.ColliderDesc.ball(shape.radius);
+  if (shape.kind === "capsule") return RAPIER.ColliderDesc.capsule(Math.max(0, shape.height / 2 - shape.radius), shape.radius);
+  return RAPIER.ColliderDesc.convexHull(new Float32Array(shape.points.flatMap((point) => [...point]))) ?? undefined;
+}
+
+function liveRuntime(world: IWorldIr): IRapierRuntime | undefined {
+  if (!rapierInitialized) return undefined;
+  let runtime = rapierWorlds.get(world);
+  if (runtime === undefined) {
+    const gravity: Vec3 = [0, -9.81, 0];
+    runtime = createRapierRuntime(world, gravity, rapierTopologySignature(world, gravity));
+    rapierWorlds.set(world, runtime);
+    rapierRebuilds.set(world, (rapierRebuilds.get(world) ?? 0) + 1);
+  }
+  return runtime;
+}
+
+export function observeLivePhysicsBodies(world: IWorldIr, step: number): IPhysicsBodyObservation[] {
+  const runtime = liveRuntime(world);
+  if (runtime === undefined) return [];
+  return [...runtime.bodies.entries()].map(([entity, body]) => {
+    const position = body.translation();
+    const rotation = body.rotation();
+    const velocity = body.linvel();
+    const angularVelocity = body.angvel();
+    const normalizedRotation: readonly [number, number, number, number] = [roundNumber(rotation.x), roundNumber(rotation.y), roundNumber(rotation.z), roundNumber(rotation.w)];
+    return {
+      angularVelocity: roundVec3([angularVelocity.x, angularVelocity.y, angularVelocity.z]),
+      entity,
+      position: roundVec3([position.x, position.y, position.z]),
+      rotation: normalizedRotation,
+      sleeping: body.isSleeping(),
+      step,
+      velocity: roundVec3([velocity.x, velocity.y, velocity.z]),
+    };
+  }).sort((left, right) => left.entity.localeCompare(right.entity));
+}
+
+export function raycastLive(world: IWorldIr, request: IScriptPhysicsRaycastRequest): IScriptPhysicsRaycastResult {
+  const runtime = liveRuntime(world);
+  if (runtime === undefined) return { hit: false };
+  const direction = normalizeVec3(request.direction);
+  const ray = new RAPIER.Ray(rapierVector(request.origin), rapierVector(direction));
+  let best: { collider: RAPIER.Collider; normal: RAPIER.Vector; toi: number } | undefined;
+  runtime.world.forEachCollider((collider: RAPIER.Collider) => {
+    if (!queryColliderMatches(world, runtime, collider.handle, request)) return;
+    const hit = collider.castRayAndGetNormal(ray, request.maxDistance, true);
+    if (hit !== null && (best === undefined || hit.timeOfImpact < best.toi)) best = { collider, normal: hit.normal, toi: hit.timeOfImpact };
+  });
+  if (best === undefined) return { hit: false };
+  const owner = runtime.colliders.get(best.collider.handle);
+  if (owner === undefined) return { hit: false };
+  return { ...(owner.child === undefined ? {} : { child: owner.child }), distance: roundNumber(best.toi), entity: owner.entity, hit: true, normal: mutableRoundedVec3([best.normal.x, best.normal.y, best.normal.z]), point: mutableRoundedVec3(addVec3(request.origin, [direction[0] * best.toi, direction[1] * best.toi, direction[2] * best.toi])) };
+}
+
+export function shapeCastLive(world: IWorldIr, request: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult {
+  const runtime = liveRuntime(world);
+  if (runtime === undefined) return { hit: false };
+  const direction = normalizeVec3(request.direction);
+  const shape = request.shape.kind === "sphere" ? new RAPIER.Ball(request.shape.radius) : new RAPIER.Cuboid(...request.shape.halfExtents);
+  let best: { collider: RAPIER.Collider; hit: RAPIER.ShapeCastHit } | undefined;
+  runtime.world.forEachCollider((collider: RAPIER.Collider) => {
+    if (!queryColliderMatches(world, runtime, collider.handle, request)) return;
+    const hit = collider.castShape({ x: 0, y: 0, z: 0 }, shape, rapierVector(request.origin), { x: 0, y: 0, z: 0, w: 1 }, rapierVector(direction), 0, request.maxDistance, true);
+    if (hit !== null && (best === undefined || hit.time_of_impact < best.hit.time_of_impact)) best = { collider, hit };
+  });
+  if (best === undefined) return { hit: false };
+  const owner = runtime.colliders.get(best.collider.handle);
+  if (owner === undefined) return { hit: false };
+  return { ...(owner.child === undefined ? {} : { child: owner.child }), distance: roundNumber(best.hit.time_of_impact), entity: owner.entity, hit: true, normal: mutableRoundedVec3([best.hit.normal1.x, best.hit.normal1.y, best.hit.normal1.z]), point: mutableRoundedVec3(colliderLocalPointToWorld(best.collider, best.hit.witness1)) };
+}
+
+function colliderLocalPointToWorld(collider: RAPIER.Collider, point: RAPIER.Vector): Vec3 {
+  const translation = collider.translation();
+  const rotation = collider.rotation();
+  const [x, y, z] = rotateVectorByQuaternion(
+    [point.x, point.y, point.z],
+    [rotation.x, rotation.y, rotation.z, rotation.w],
+  );
+  return [x + translation.x, y + translation.y, z + translation.z];
+}
+
+function rotateVectorByQuaternion(
+  [x, y, z]: Vec3,
+  [qx, qy, qz, qw]: readonly [number, number, number, number],
+): Vec3 {
+  const ix = qw * x + qy * z - qz * y;
+  const iy = qw * y + qz * x - qx * z;
+  const iz = qw * z + qx * y - qy * x;
+  const iw = -qx * x - qy * y - qz * z;
+  return [
+    ix * qw + iw * -qx + iy * -qz - iz * -qy,
+    iy * qw + iw * -qy + iz * -qx - ix * -qz,
+    iz * qw + iw * -qz + ix * -qy - iy * -qx,
+  ];
+}
+
+export function applyLivePhysicsAtPoint(world: IWorldIr, entityId: string, value: readonly [number, number, number], point: readonly [number, number, number], kind: "force" | "impulse"): boolean {
+  const entity = world.entities.find((candidate) => candidate.id === entityId);
+  if (entity?.components.RigidBody?.kind !== "dynamic" || !validPhysicsVector(value) || !validPhysicsVector(point)) return false;
+  const pending = pendingPointCommands.get(world) ?? [];
+  pending.push({ entity: entityId, kind, point: [...point], value: [...value] });
+  pendingPointCommands.set(world, pending);
+  return true;
+}
+
+export function overlapLive(world: IWorldIr, request: IScriptPhysicsOverlapRequest): IScriptPhysicsOverlapResult {
+  const runtime = liveRuntime(world);
+  if (runtime === undefined) return { entities: [] };
+  const shape = request.shape.kind === "sphere" ? new RAPIER.Ball(request.shape.radius) : new RAPIER.Cuboid(...request.shape.halfExtents);
+  const entities = new Set<string>();
+  runtime.world.forEachCollider((collider: RAPIER.Collider) => {
+    const owner = runtime.colliders.get(collider.handle);
+    if (owner !== undefined && queryColliderMatches(world, runtime, collider.handle, request) && collider.intersectsShape(shape, rapierVector(request.position), { x: 0, y: 0, z: 0, w: 1 })) entities.add(owner.entity);
+  });
+  return { entities: [...entities].sort() };
+}
+
+export function queryHitObservation(result: IScriptPhysicsRaycastResult | IScriptPhysicsShapeCastResult, world: IWorldIr): IPhysicsQueryHitObservation | undefined {
+  if (!result.hit) return undefined;
+  return { ...(result.child === undefined ? {} : { child: result.child }), distance: result.distance, entity: result.entity, normal: result.normal, point: result.point };
+}
+
+function queryColliderMatches(world: IWorldIr, runtime: IRapierRuntime, handle: number, request: { ignore?: string[]; layer?: string; layers?: string[]; mask?: string[] }): boolean {
+  const owner = runtime.colliders.get(handle);
+  if (owner === undefined || request.ignore?.includes(owner.entity) === true) return false;
+  const entity = runtime.physicsWorld.entities.find((candidate) => candidate.id === owner.entity);
+  const collider = entity?.components.Collider;
+  const child = entity?.components.CompoundCollider?.children.find((candidate) => candidate.id === owner.child);
+  const layer = collider?.layer ?? child?.filter?.layer;
+  const mask = collider?.mask ?? child?.filter?.mask;
+  const requestedMask = new Set([...(request.mask ?? []), ...(request.layers ?? [])]);
+  if (requestedMask.size > 0 && (layer === undefined || !requestedMask.has(layer))) return false;
+  if (request.layer !== undefined && mask !== undefined && !mask.includes(request.layer)) return false;
+  return true;
+}
+
+function validPhysicsVector(value: readonly number[]): boolean {
+  return value.length === 3 && value.every(Number.isFinite);
+}
+
 function addVec3(left: readonly number[], right: readonly number[]): Vec3 {
   return [left[0]! + right[0]!, left[1]! + right[1]!, left[2]! + right[2]!];
+}
+
+function scaleVec3(value: readonly number[], scale: number): Vec3 {
+  return [value[0]! * scale, value[1]! * scale, value[2]! * scale];
 }
 
 function rapierVector(value: readonly number[]): RAPIER.Vector3 {
@@ -418,6 +629,14 @@ function layerBitsForWorld(world: IWorldIr): Map<string, number> {
     }
     for (const name of collider?.mask ?? []) {
       names.add(name);
+    }
+    for (const child of entity.components.CompoundCollider?.children ?? []) {
+      if (child.filter?.layer !== undefined) {
+        names.add(child.filter.layer);
+      }
+      for (const name of child.filter?.mask ?? []) {
+        names.add(name);
+      }
     }
   }
   return new Map([...names].sort().slice(0, 16).map((name, index) => [name, 1 << index]));
@@ -553,9 +772,49 @@ export function tracePhysicsJoints(world: IWorldIr): IPhysicsJointObservation[] 
 }
 
 export function detectPhysicsEvents(world: IWorldIr): IPhysicsEventObservation[] {
-  return [...detectPairs(world.entities.flatMap((entity) => colliderBounds(entity))).values()]
+  const retainedRuntime = rapierWorlds.get(world);
+  const pairs = retainedRuntime === undefined
+    ? detectPairs(world.entities.flatMap((entity) => colliderBounds(entity)))
+    : detectRapierPairs(retainedRuntime);
+  return [...pairs.values()]
     .map((pair) => ({ event: pair.event, ...pair.payload, phase: "enter" as const }))
     .sort((left, right) => left.event.localeCompare(right.event) || comparePhysicsEvents(left, right));
+}
+
+function detectRapierPairs(runtime: IRapierRuntime): Map<string, IDetectedPair> {
+  const pairs = new Map<string, IDetectedPair>();
+  const colliders: RAPIER.Collider[] = [];
+  runtime.world.forEachCollider((collider: RAPIER.Collider) => colliders.push(collider));
+  colliders.sort((left, right) => left.handle - right.handle);
+  for (let leftIndex = 0; leftIndex < colliders.length; leftIndex += 1) {
+    for (let rightIndex = leftIndex + 1; rightIndex < colliders.length; rightIndex += 1) {
+      const left = colliders[leftIndex];
+      const right = colliders[rightIndex];
+      if (left === undefined || right === undefined) continue;
+      const leftOwner = runtime.colliders.get(left.handle);
+      const rightOwner = runtime.colliders.get(right.handle);
+      if (leftOwner === undefined || rightOwner === undefined || leftOwner.entity === rightOwner.entity) continue;
+      const trigger = left.isSensor() || right.isSensor();
+      let touching = trigger ? runtime.world.intersectionPair(left, right) : false;
+      if (!trigger) runtime.world.contactPair(left, right, () => { touching = true; });
+      if (!touching) continue;
+      const ordered = orderedContactPayload(leftOwner, rightOwner);
+      const event: PhysicsEventName = trigger ? "TriggerEvent" : "CollisionEvent";
+      const key = pairKey(event, ordered);
+      pairs.set(key, { event, key, payload: ordered });
+    }
+  }
+  return pairs;
+}
+
+function orderedContactPayload(left: { child?: string; entity: string }, right: { child?: string; entity: string }): Omit<IPhysicsEventPayload, "phase"> {
+  const [a, b] = left.entity.localeCompare(right.entity) <= 0 ? [left, right] : [right, left];
+  return {
+    a: a.entity,
+    b: b.entity,
+    ...(a.child === undefined ? {} : { childA: a.child }),
+    ...(b.child === undefined ? {} : { childB: b.child }),
+  };
 }
 
 function detectPairs(bounds: IBounds[]): Map<string, IDetectedPair> {
@@ -792,11 +1051,15 @@ function orderedPayload(left: string, right: string): Omit<IPhysicsEventPayload,
 }
 
 function pairKey(event: PhysicsEventName, payload: Omit<IPhysicsEventPayload, "phase">): string {
-  return `${event}:${payload.a}:${payload.b}`;
+  return `${event}:${payload.a}:${payload.childA ?? ""}:${payload.b}:${payload.childB ?? ""}`;
 }
 
 function comparePhysicsEvents(left: IPhysicsEventPayload, right: IPhysicsEventPayload): number {
-  return left.a.localeCompare(right.a) || left.b.localeCompare(right.b) || left.phase.localeCompare(right.phase);
+  return left.a.localeCompare(right.a)
+    || (left.childA ?? "").localeCompare(right.childA ?? "")
+    || left.b.localeCompare(right.b)
+    || (left.childB ?? "").localeCompare(right.childB ?? "")
+    || left.phase.localeCompare(right.phase);
 }
 
 function writeEventQueue(world: IWorldIr, event: "CollisionEvent" | "TriggerEvent", payloads: IPhysicsEventPayload[]): void {
@@ -807,6 +1070,10 @@ function writeEventQueue(world: IWorldIr, event: "CollisionEvent" | "TriggerEven
 }
 
 function roundVec3(value: Vec3): Vec3 {
+  return [roundNumber(value[0]), roundNumber(value[1]), roundNumber(value[2])];
+}
+
+function mutableRoundedVec3(value: Vec3): [number, number, number] {
   return [roundNumber(value[0]), roundNumber(value[1]), roundNumber(value[2])];
 }
 

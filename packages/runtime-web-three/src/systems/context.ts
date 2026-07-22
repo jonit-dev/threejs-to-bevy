@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import { feedbackPresetById } from "@threenative/ir/feedback";
-import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptSystemQuery, ISystemsIr, IUiIr, IUiNodeIr, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptSystemQuery, IScriptVehicleSetInputsResult, ISystemsIr, IUiIr, IUiNodeIr, IVehicleControllerInput, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -13,9 +13,6 @@ import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./service
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
-  overlapPrimitive,
-  raycastPrimitive,
-  shapeCastPrimitive,
   type IOverlapRequest,
   type IOverlapResult,
   type IRaycastRequest,
@@ -23,11 +20,13 @@ import {
   type IShapeCastRequest,
   type IShapeCastResult,
 } from "./services/physics.js";
+import { overlapLive, raycastLive, shapeCastLive } from "../physics.js";
 import type { IComponentDiffCache } from "./componentDiff.js";
 import { createScriptUiState } from "./contextUi.js";
 import { createRuntimeWriteLedger } from "./writeAudit.js";
 import { createCountdownRuntimeState } from "../countdowns.js";
 import { createPresentationRuntimeState } from "../presentation.js";
+import { isValidPhysicsVehicleControllerInput } from "../physicsVehicle.js";
 import type {
   IAssetLoadResult,
   ICharacterMoveRequest,
@@ -343,12 +342,14 @@ export function createSystemContext(
     return view;
   };
   const queuePhysicsBodyCommand = (
-    service: "physics.addForce" | "physics.addTorque" | "physics.applyAngularImpulse" | "physics.applyImpulse" | "physics.setAngularVelocity" | "physics.setLinearVelocity",
+    service: "physics.addForce" | "physics.addForceAtPoint" | "physics.addTorque" | "physics.applyAngularImpulse" | "physics.applyImpulse" | "physics.applyImpulseAtPoint" | "physics.setAngularVelocity" | "physics.setLinearVelocity",
     entity: string,
     value: readonly [number, number, number],
+    point?: readonly [number, number, number],
   ): IPhysicsBodyCommandResult => {
     const target = world.entities.find((candidate) => candidate.id === entity);
-    const validVector = value.length === 3 && value.every(Number.isFinite);
+    const requiresPoint = service === "physics.addForceAtPoint" || service === "physics.applyImpulseAtPoint";
+    const validVector = value.length === 3 && value.every(Number.isFinite) && (!requiresPoint || (point !== undefined && point.length === 3 && point.every(Number.isFinite)));
     const result: IPhysicsBodyCommandResult = target === undefined
       ? { accepted: false, entity, status: "missing" }
       : !validVector
@@ -358,12 +359,24 @@ export function createSystemContext(
           : { accepted: true, entity, status: "applied" };
     services.push({
       payload: {
-        request: { entity, fixedDelta: options.fixedDelta, value: cloneValue(value) },
+        request: { entity, fixedDelta: options.fixedDelta, ...(point === undefined ? {} : { point: cloneValue(point) }), value: cloneValue(value) },
         result,
       },
       service,
     });
     return cloneValue(result) as IPhysicsBodyCommandResult;
+  };
+  const queueVehicleInputs = (entity: string, inputs: IVehicleControllerInput): IScriptVehicleSetInputsResult => {
+    const target = world.entities.find((candidate) => candidate.id === entity);
+    const result: IScriptVehicleSetInputsResult = target === undefined
+      ? { accepted: false, entity, status: "missing" }
+      : target.components.VehicleController === undefined || target.components.WheelAssembly === undefined || target.components.RigidBody?.kind !== "dynamic"
+        ? { accepted: false, entity, status: "invalid-controller" }
+        : !isValidPhysicsVehicleControllerInput(inputs, target.components.VehicleController.transmission.forwardRatios.length)
+          ? { accepted: false, entity, status: "invalid-input" }
+          : { accepted: true, entity, status: "applied" };
+    services.push({ payload: { request: { entity, inputs: cloneValue(inputs) }, result }, service: "physics.vehicle.setInputs" });
+    return cloneValue(result) as IScriptVehicleSetInputsResult;
   };
   return {
     commands,
@@ -929,6 +942,9 @@ export function createSystemContext(
         addForce(entity, force) {
           return queuePhysicsBodyCommand("physics.addForce", entity, force);
         },
+        addForceAtPoint(entity, force, point) {
+          return queuePhysicsBodyCommand("physics.addForceAtPoint", entity, force, point);
+        },
         addTorque(entity, torque) {
           return queuePhysicsBodyCommand("physics.addTorque", entity, torque);
         },
@@ -938,15 +954,18 @@ export function createSystemContext(
         applyImpulse(entity, impulse) {
           return queuePhysicsBodyCommand("physics.applyImpulse", entity, impulse);
         },
+        applyImpulseAtPoint(entity, impulse, point) {
+          return queuePhysicsBodyCommand("physics.applyImpulseAtPoint", entity, impulse, point);
+        },
         overlap(serviceOptions) {
           const request = cloneValue(serviceOptions);
-          const result = overlapPrimitive(world, request);
+          const result = overlapLive(world, request);
           services.push({ payload: { request, result }, service: "physics.overlap" });
           return result;
         },
         raycast(serviceOptions) {
           const request = cloneValue(serviceOptions);
-          const result = raycastPrimitive(world, request);
+          const result = raycastLive(world, request);
           services.push({ payload: { request, result }, service: "physics.raycast" });
           return result;
         },
@@ -962,7 +981,7 @@ export function createSystemContext(
         },
         shapeCast(serviceOptions) {
           const request = cloneValue(serviceOptions);
-          const result = shapeCastPrimitive(world, request);
+          const result = shapeCastLive(world, request);
           services.push({ payload: { request, result }, service: "physics.shapeCast" });
           return result;
         },
@@ -971,6 +990,11 @@ export function createSystemContext(
         },
         setLinearVelocity(entity, velocity) {
           return queuePhysicsBodyCommand("physics.setLinearVelocity", entity, velocity);
+        },
+        vehicle: {
+          setInputs(entity, inputs) {
+            return queueVehicleInputs(normalizeEntityRef(entity), inputs);
+          },
         },
       },
       navigation: {

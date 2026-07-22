@@ -323,61 +323,9 @@ function __tnInvokeSystem(options) {
       ]
     };
   };
-  const raycast = (request) => {
-    const ignored = new Set(request.ignore || []);
-    let best = { hit: false };
-    for (const entity of data.entities) {
-      if (ignored.has(entity.id)) continue;
-        const transform = entity.components.Transform;
-        const collider = entity.components.Collider;
-        if (!transform || !collider) continue;
-        if (!passesFilter(collider, request)) continue;
-        const bounds = colliderBounds(entity);
-        const hit = intersectAabb(request, bounds.center, bounds.halfExtents.map((value) => value * 2));
-        if (hit.hit && (!best.hit || hit.distance < best.distance)) {
-          best = { ...hit, entity: entity.id };
-        }
-      }
-      return best;
-    };
-    const overlap = (request) => {
-      const ignored = new Set(request.ignore || []);
-      const queryBounds = { center: readVec3(request.position, [0, 0, 0]), halfExtents: queryHalfExtents(request.shape) };
-      return {
-        entities: data.entities
-          .filter((entity) => !ignored.has(entity.id))
-          .filter((entity) => {
-            const transform = entity.components.Transform;
-            const collider = entity.components.Collider;
-            if (!transform || !collider || !passesFilter(collider, request)) return false;
-            return boundsOverlap(queryBounds, colliderBounds(entity));
-          })
-          .map((entity) => entity.id)
-          .sort()
-      };
-    };
-    const shapeCast = (request) => {
-      const ignored = new Set(request.ignore || []);
-      const queryExtents = queryHalfExtents(request.shape);
-      let best = { hit: false };
-      for (const entity of data.entities) {
-        if (ignored.has(entity.id)) continue;
-        const transform = entity.components.Transform;
-        const collider = entity.components.Collider;
-        if (!transform || !collider || !passesFilter(collider, request)) continue;
-        const bounds = colliderBounds(entity);
-        const size = bounds.halfExtents.map((value) => value * 2);
-        const hit = intersectAabb(
-          request,
-          bounds.center,
-          [size[0] + queryExtents[0] * 2, size[1] + queryExtents[1] * 2, size[2] + queryExtents[2] * 2]
-        );
-        if (hit.hit && (!best.hit || hit.distance < best.distance || (hit.distance === best.distance && entity.id < best.entity))) {
-          best = { ...hit, entity: entity.id };
-        }
-      }
-      return best;
-    };
+    const livePhysicsQuery = (service, request) => JSON.parse(
+      __tnPhysicsQueryJson(service, JSON.stringify(request))
+    );
     const addVec3 = (left, right) => [left[0] + right[0], left[1] + right[1], left[2] + right[2]];
     const scaleVec3 = (value, scalar) => [value[0] * scalar, value[1] * scalar, value[2] * scalar];
     const characterMovementDelta = (axisX, axisZ, speed, fixedDelta) => {
@@ -651,13 +599,15 @@ function __tnInvokeSystem(options) {
     };
     const animations = {};
     const normalizeEntityRef = (entity) => typeof entity === "string" ? entity : entity.id;
-    const physicsBodyCommand = (service, entity, value) => {
+    const physicsBodyCommand = (service, entity, value, point) => {
       const entityId = normalizeEntityRef(entity);
       const target = entityIndex.get(entityId);
+      const requiresPoint = service === "physics.addForceAtPoint" || service === "physics.applyImpulseAtPoint";
       const validVector = Array.isArray(value) && value.length === 3 && value.every((part) => Number.isFinite(part));
+      const validPoint = !requiresPoint || Array.isArray(point) && point.length === 3 && point.every((part) => Number.isFinite(part));
       const result = !target
         ? { accepted: false, entity: entityId, status: "missing" }
-        : !validVector
+        : !validVector || !validPoint
           ? { accepted: false, entity: entityId, status: "invalid-vector" }
           : target.components.RigidBody?.kind !== "dynamic"
             ? { accepted: false, entity: entityId, status: "invalid-body" }
@@ -668,10 +618,32 @@ function __tnInvokeSystem(options) {
           request: {
             entity: entityId,
             fixedDelta: finiteNumber(data.time.fixedDelta, finiteNumber(data.time.fixedDt, 0.016)),
+            ...(point === undefined ? {} : { point: clone(point) }),
             value: clone(value)
           },
           result
         }
+      });
+      return clone(result);
+    };
+    const vehicleControllerCommand = (entity, inputs) => {
+      const entityId = normalizeEntityRef(entity);
+      const target = entityIndex.get(entityId);
+      const controller = target?.components?.VehicleController;
+      const validInputs = inputs && typeof inputs === "object"
+        && ["brake", "clutch", "handbrake", "throttle"].every((field) => Number.isFinite(inputs[field]) && inputs[field] >= 0 && inputs[field] <= 1)
+        && Number.isFinite(inputs.steer) && inputs.steer >= -1 && inputs.steer <= 1
+        && (inputs.gear === undefined || Number.isInteger(inputs.gear) && inputs.gear >= -1 && inputs.gear <= (controller?.transmission?.forwardRatios?.length ?? 0));
+      const result = !target
+        ? { accepted: false, entity: entityId, status: "missing" }
+        : !controller || !target.components.WheelAssembly
+          ? { accepted: false, entity: entityId, status: "invalid-controller" }
+          : !validInputs
+            ? { accepted: false, entity: entityId, status: "invalid-input" }
+            : { accepted: true, entity: entityId, status: "applied" };
+      effects.services.push({
+        service: "physics.vehicle.setInputs",
+        payload: { request: { entity: entityId, inputs: clone(inputs) }, result }
       });
       return clone(result);
     };
@@ -1513,6 +1485,9 @@ function __tnInvokeSystem(options) {
         addForce(entity, force) {
           return physicsBodyCommand("physics.addForce", entity, force);
         },
+        addForceAtPoint(entity, force, point) {
+          return physicsBodyCommand("physics.addForceAtPoint", entity, force, point);
+        },
         addTorque(entity, torque) {
           return physicsBodyCommand("physics.addTorque", entity, torque);
         },
@@ -1522,21 +1497,24 @@ function __tnInvokeSystem(options) {
         applyImpulse(entity, impulse) {
           return physicsBodyCommand("physics.applyImpulse", entity, impulse);
         },
+        applyImpulseAtPoint(entity, impulse, point) {
+          return physicsBodyCommand("physics.applyImpulseAtPoint", entity, impulse, point);
+        },
         overlap(payload) {
           const request = clone(payload);
-          const result = overlap(request);
+          const result = livePhysicsQuery("physics.overlap", request);
           effects.services.push({ service: "physics.overlap", payload: { request, result } });
           return result;
         },
         raycast(payload) {
           const request = clone(payload);
-          const result = raycast(request);
+          const result = livePhysicsQuery("physics.raycast", request);
           effects.services.push({ service: "physics.raycast", payload: { request, result } });
           return result;
         },
         shapeCast(payload) {
           const request = clone(payload);
-          const result = shapeCast(request);
+          const result = livePhysicsQuery("physics.shapeCast", request);
           effects.services.push({ service: "physics.shapeCast", payload: { request, result } });
           return result;
         },
@@ -1551,6 +1529,11 @@ function __tnInvokeSystem(options) {
         },
         setLinearVelocity(entity, velocity) {
           return physicsBodyCommand("physics.setLinearVelocity", entity, velocity);
+        },
+        vehicle: {
+          setInputs(entity, inputs) {
+            return vehicleControllerCommand(entity, inputs);
+          }
         }
       },
     navigation: {

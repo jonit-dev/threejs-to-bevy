@@ -1,0 +1,8 @@
+{
+  "schema": "threenative.physics-proof-provenance",
+  "version": "0.1.0",
+  "sourcePath": "src/scripts/advancedPhysicsFoundation.ts",
+  "sourceHash": "sha256-bee6f33cf2040a9b69f2e27802dd6f095beadb9136aff065c9ed0e9576d81744",
+  "bundlePath": "game.bundle",
+  "bundleHash": "sha256-8901390d93c9e180d848c11e41c00745982609df0e7a136f4de94b8a8294711b"
+}

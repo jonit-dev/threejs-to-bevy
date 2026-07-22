@@ -1,4 +1,5 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
+export { validatePhysicsComponents, validateVehicleController } from "./physicsValidation.js";
 export {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,
@@ -285,6 +286,7 @@ export type {
   IScriptPersistenceSaveRecord,
   IScriptPersistenceSaveResult,
   IScriptPhysicsBodyCommandResult,
+  IScriptVehicleSetInputsResult,
   IScriptPhysicsFilterRequest,
   IScriptPhysicsOverlapRequest,
   IScriptPhysicsOverlapResult,
@@ -320,6 +322,20 @@ export type {
   ScriptSettingValue,
   ScriptVec3,
 } from "./scriptServices.js";
+export {
+  PHYSICS_CAPABILITY_DESCRIPTORS,
+  PHYSICS_CAPABILITY_LIMITS,
+  PHYSICS_OBSERVATION_TOLERANCES,
+  PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION,
+  PHYSICS_INVARIANT_REGISTRY,
+  PHYSICS_PHASE3_OUTCOME_TOLERANCES,
+  PHYSICS_PHASE3_VEHICLE_TOLERANCES,
+  PHYSICS_SCRIPT_SERVICE_DESCRIPTORS,
+  combinePhysicsSurfaceValues,
+  physicsDescriptorDrift,
+  type IPhysicsDescriptorConsumers,
+  type PhysicsScriptService,
+} from "./physicsCapabilities.js";
 export type {
   IAssetIr,
   IAssetsManifest,
@@ -388,6 +404,23 @@ export type {
   ICameraZoomHelper,
   IRenderLayersComponent,
   IColliderComponent,
+  ICompoundColliderComponent,
+  ICompoundColliderShape,
+  IPhysicsSlipCurvePoint,
+  IPhysicsSurfaceComponent,
+  ITireModelComponent,
+  IWheelAssemblyComponent,
+  IWheelAssemblyObservation,
+  IWheelControlInput,
+  IWheelObservation,
+  IWheelSuspensionComponent,
+  IVehicleAssistConfig,
+  IVehicleControllerComponent,
+  IVehicleControllerInput,
+  IVehicleControllerObservation,
+  PhysicsSurfaceCombineRule,
+  IPhysicsBodyObservation,
+  IPhysicsQueryHitObservation,
   IEnvironmentInstanceIr,
   IEnvironmentCameraBookmarkIr,
   IEnvironmentExclusionZoneIr,

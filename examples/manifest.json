@@ -3,6 +3,16 @@
   "version": "0.1.0",
   "examples": [
     {
+      "classification": "fixture-only",
+      "path": "examples/advanced-physics-drivetrain",
+      "reason": "Fixture-backed Phase 3 drivetrain playtest wrapper; paired web/native evidence and release readiness remain owned by the advanced-physics capability gate."
+    },
+    {
+      "classification": "fixture-only",
+      "path": "examples/advanced-physics-foundation",
+      "reason": "Fixture-backed Phase 1 compound-collider, force-at-point, and mass-property evidence owner; it is not an independently buildable source project."
+    },
+    {
       "classification": "build-only",
       "path": "examples/coin-patrol",
       "reason": "Golden-path authoring acceptance fixture for top-down pickup, lives, HUD/resource mutation, and native parity follow-up."

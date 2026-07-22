@@ -1,0 +1,577 @@
+{
+  "schema": "threenative.advanced-physics-drivetrain-scenarios",
+  "version": "0.1.0",
+  "fixedDt": 0.016666666666666666,
+  "entity": "chassis",
+  "scenarios": [
+    {
+      "id": "automaticLaunch",
+      "travelCorridor": { "endpoint": [0, -100] },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "launch",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "checkpoints": [
+        0,
+        115,
+        150
+      ],
+      "outcomeBounds": {
+        "straightStability": {
+          "startTick": 60,
+          "throughTick": 119,
+          "maxLateralDisplacement": 0.5,
+          "maxAbsYaw": 0.06,
+          "maxAbsYawRate": 0.25,
+          "minimumGroundedWheelCoverage": 0.975,
+          "maxConsecutiveZeroContactTicks": 1,
+          "requireTerminalAllWheelsGrounded": true
+        }
+      }
+    },
+    {
+      "id": "manualShift",
+      "travelCorridor": { "endpoint": [0, -100] },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "manual"
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "gear-1",
+          "steps": 1,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "gear": 1,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "hold-1",
+          "steps": 59,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "gear-2",
+          "steps": 1,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "gear": 2,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "hold-2",
+          "steps": 59,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "checkpoints": [
+        0,
+        119,
+        179
+      ]
+    },
+    {
+      "id": "steering",
+      "travelCorridor": { "endpoint": [15, -80] },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "steer",
+          "steps": 90,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0.5,
+            "throttle": 1
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "checkpoints": [
+        0,
+        149
+      ]
+    },
+    {
+      "id": "braking",
+      "travelCorridor": { "endpoint": [0, -100] },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "warmup",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "brake",
+          "steps": 60,
+          "input": {
+            "brake": 1,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 0
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 900,
+          "upshiftRpm": 2100
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "checkpoints": [
+        0,
+        115,
+        185,
+        220
+      ]
+    },
+    {
+      "id": "reverse",
+      "travelCorridor": { "endpoint": [0, 100] },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "manual"
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "reverse-command",
+          "steps": 1,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "gear": -1,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "reverse-hold",
+          "steps": 119,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "checkpoints": [
+        0,
+        179
+      ]
+    },
+    {
+      "id": "assistTransitions",
+      "travelCorridor": { "endpoint": [30, -40] },
+      "initialPose": {
+        "position": [
+          30,
+          1.02,
+          40
+        ]
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "inactive",
+          "steps": 1,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 0
+          }
+        },
+        {
+          "label": "tcs-active",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        },
+        {
+          "label": "abs-active",
+          "steps": 60,
+          "input": {
+            "brake": 1,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 0
+          }
+        },
+        {
+          "label": "released",
+          "steps": 60,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 0
+          }
+        }
+      ],
+      "controllerOverride": {
+        "engine": {
+          "engineBraking": 0
+        },
+        "assists": {
+          "abs": {
+            "enabled": true,
+            "slipThreshold": 0.01
+          }
+        },
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        }
+      },
+      "checkpoints": [
+        0,
+        180,
+        240,
+        300
+      ]
+    },
+    {
+      "id": "retry",
+      "travelCorridor": { "endpoint": [0, -100] },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "launch",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "initialPose": {
+        "position": [
+          0,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        }
+      },
+      "checkpoints": [
+        0,
+        115,
+        150
+      ],
+      "outcomeBounds": {
+        "straightStability": {
+          "startTick": 60,
+          "throughTick": 119,
+          "maxLateralDisplacement": 0.5,
+          "maxAbsYaw": 0.06,
+          "maxAbsYawRate": 0.25,
+          "minimumGroundedWheelCoverage": 0.975,
+          "maxConsecutiveZeroContactTicks": 1,
+          "requireTerminalAllWheelsGrounded": true
+        }
+      }
+    },
+    {
+      "id": "differentialOpen",
+      "travelCorridor": { "endpoint": [30, -40] },
+      "initialPose": {
+        "position": [
+          30,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "differential": {
+          "kind": "open"
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        },
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        }
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "open",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "checkpoints": [
+        0,
+        179
+      ]
+    },
+    {
+      "id": "differentialLocked",
+      "travelCorridor": { "endpoint": [30, -40] },
+      "initialPose": {
+        "position": [
+          30,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "differential": {
+          "kind": "locked"
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        },
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        }
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "locked",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "checkpoints": [
+        0,
+        179
+      ]
+    },
+    {
+      "id": "differentialLimitedSlip",
+      "travelCorridor": { "endpoint": [30, -40] },
+      "initialPose": {
+        "position": [
+          30,
+          1.02,
+          40
+        ]
+      },
+      "controllerOverride": {
+        "differential": {
+          "kind": "limited-slip",
+          "limitedSlipRatio": 2.5
+        },
+        "assists": {
+          "abs": {
+            "enabled": false
+          },
+          "tcs": {
+            "enabled": false
+          }
+        },
+        "transmission": {
+          "shiftPolicy": "automatic",
+          "downshiftRpm": 950,
+          "upshiftRpm": 2100
+        }
+      },
+      "segments": [
+        { "label": "settle", "steps": 60, "input": { "brake": 0, "clutch": 0, "handbrake": 0, "steer": 0, "throttle": 0 } },
+        {
+          "label": "limited-slip",
+          "steps": 120,
+          "input": {
+            "brake": 0,
+            "clutch": 0,
+            "handbrake": 0,
+            "steer": 0,
+            "throttle": 1
+          }
+        }
+      ],
+      "checkpoints": [
+        0,
+        179
+      ]
+    }
+  ]
+}

@@ -13,6 +13,7 @@ export {
   type IWebAudioSupportTrace,
 } from "./audio.js";
 export { loadBundle, validateAndLoadBundle, WebBundleValidationError, type IWebBundle } from "./loadBundle.js";
+export { traceAdvancedPhysicsFoundation, type IAdvancedPhysicsFoundationBodyTrace, type IAdvancedPhysicsFoundationTrace } from "./advancedPhysicsFoundation.js";
 export { reportWebConformance } from "./conformance.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";
@@ -41,7 +42,8 @@ export { advanceAnimationPlayback, mapWorld, syncMeshRendererMaterials, syncTran
 export { selectMeshLodLevel, traceWebMeshLod, updateWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
 export { aabbIntersectsAabb, meshAabb, meshBoundingSphere, sampleMeshPoints, sphereIntersectsSphere, type IAabb, type IBoundingSphere } from "./meshBounds.js";
 export { ease, sampleCatmullRom, sampleCubicBezier, sampleLine, sampleQuadraticBezier, type EasingKind } from "./pathSampling.js";
-export { stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IPhysicsJointObservation, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";
+export { initializePhysicsRuntime, preparePhysicsRuntime, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive, type IPhysicsEventPayload, type IPhysicsJointObservation, type IRigidBodyTraceInput, type IRigidBodyTraceObservation } from "./physics.js";
+export { applyPhysicsVehicleBindings, buildPhysicsVehicleDebugOverlay, disposePhysicsVehicleRuntime, isValidPhysicsVehicleControllerInput, observePhysicsVehicleControllers, observePhysicsVehicles, observePhysicsVehicleVisuals, setPhysicsVehicleControllerInputs, setPhysicsVehicleControlInput, stepPhysicsVehicles, tracePhysicsVehicleControllerInputs, tracePhysicsVehicleControls, updatePhysicsVehicleVisuals, type IPhysicsVehicleControllerTraceSample, type IPhysicsVehicleControllerTraceSegment, type IPhysicsVehicleControlSegment, type IPhysicsVehicleControlTraceSample, type IPhysicsVehicleVisualObservation } from "./physicsVehicle.js";
 export { createPhysicsSensorRuntimeState, tracePhysicsSensors, type IPhysicsSensorAdvanceOptions, type IPhysicsSensorEvent, type IPhysicsSensorRuntimeState, type IPhysicsSensorTraceInput } from "./sensors.js";
 export { interpolateQuat, interpolateTransform, interpolateVec3, smoothDampVec3, type ITransformSample } from "./transformInterpolation.js";
 export { resolveWalkableMovement, type IWalkabilityResolution } from "./walkability.js";

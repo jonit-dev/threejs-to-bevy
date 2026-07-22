@@ -100,7 +100,7 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
           { description: "Optional explicit step kind. wait never synthesizes a keyboard key.", name: "kind", type: "input | wait" },
           { description: "KeyboardEvent.code to press, for example KeyW, KeyD, Space, or KeyR.", name: "press", type: "string" },
           { description: "Frames to hold the key before release.", name: "holdFrames", type: "positive integer" },
-          { description: "Fixed simulation ticks to hold the key. One fixed tick maps to one rendered-frame wait in browser proofs.", name: "holdTicks", type: "positive integer" },
+          { description: "Exact fixed simulation ticks to hold the key. Browser proofs step the paused runtime directly when supported.", name: "holdTicks", type: "positive integer" },
           { description: "Whether to release the pressed key after holdFrames. Defaults to true.", name: "release", type: "boolean" },
           { description: "Frames to wait without new input.", name: "waitFrames", type: "positive integer" },
           { description: "Fixed simulation ticks to wait without input.", name: "waitTicks", type: "positive integer" },
@@ -110,7 +110,7 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
     ],
     timing: {
       fixedDeltaSeconds: 1 / 60,
-      relation: "holdTicks and waitTicks count fixed-update ticks; browser playtest advances one rendered frame per fixed tick. holdFrames/waitFrames are compatibility aliases.",
+      relation: "holdTicks and waitTicks count exact fixed-update ticks through the paused runtime proof hook. holdFrames/waitFrames retain rendered-frame compatibility behavior; older runtimes fall back to rendered frames.",
       ticksPerRenderedFrame: 1,
     },
   };

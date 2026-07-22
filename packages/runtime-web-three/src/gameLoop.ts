@@ -1,4 +1,5 @@
-import type { IAssetsManifest, IAudioIr, IEnvironmentSceneIr, IGameFlowIr, IIrSchemaFile, IInteractionsIr, ILocalDataIr, IPrefabsIr, IRuntimeConfigIr, ISystemsIr, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAudioIr, IEnvironmentSceneIr, IGameFlowIr, IIrSchemaFile, IInteractionsIr, ILocalDataIr, IPrefabsIr, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IWorldIr } from "@threenative/ir";
+import { PHYSICS_SCRIPT_SERVICE_DESCRIPTORS } from "@threenative/ir/physicsCapabilities";
 import type { IWebInputState } from "./input.js";
 import type { IThreeWorld } from "./mapWorld.js";
 import { applyAnimationServiceEffects, applyMaterialPatchEffects, syncMeshRendererMaterials, syncTransforms } from "./mapWorld.js";
@@ -6,7 +7,8 @@ import { stepKinematicMovers } from "./kinematicMover.js";
 import { stepPatrols } from "./patrol.js";
 import { stepStateMachines } from "./stateMachines.js";
 import { stepCountdowns } from "./countdowns.js";
-import { stepPhysics } from "./physics.js";
+import { preparePhysicsRuntime, stepPhysics } from "./physics.js";
+import { applyPhysicsVehicleBindings, setPhysicsVehicleControllerInputs, stepPhysicsVehicles, updatePhysicsVehicleVisuals } from "./physicsVehicle.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
 import { webSystemRuntimeStateFor } from "./systems/context.js";
 import type { ISystemEffectLog } from "./systems/log.js";
@@ -19,6 +21,7 @@ import { createInteractionRuntimeState, runInteractionFixedTick, type IInteracti
 import { createWebPersistenceService, type IWebPersistenceService } from "./systems/services/persistence.js";
 
 const MAX_FIXED_STEPS_PER_FRAME = 5;
+const exactFixedTickStepping = new WeakSet<IGameLoopState>();
 
 export interface IGameLoopState {
   accumulator: number;
@@ -60,6 +63,7 @@ export function setPaused(state: IGameLoopState, paused: boolean): void {
 }
 
 export async function runGameFrame(options: {
+  advancePaused?: boolean;
   assets?: IAssetsManifest;
   audio?: IAudioIr;
   delta: number;
@@ -83,24 +87,28 @@ export async function runGameFrame(options: {
   systems: ISystemsIr;
   ui?: import("@threenative/ir").IUiIr;
   uiState?: IRenderedUi;
+  vehicleControllerInputs?: ReadonlyMap<string, IVehicleControllerInput>;
   world: IWorldIr;
 }): Promise<void> {
   const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
   const frameDelta = Math.min(Math.max(options.delta, 0), 0.25);
   const runtimeState = options.runtimeState ?? webSystemRuntimeStateFor(options.world, { assets: options.assets, audio: options.audio });
   const state = options.state;
+  if (state !== undefined && exactFixedTickStepping.has(state) && options.advancePaused !== true) return;
   const persistence = state?.persistence ?? (options.localData === undefined ? undefined : createWebPersistenceService(options.localData, { storageKey: options.persistenceStorageKey }));
   if (state !== undefined && state.persistence === undefined && persistence !== undefined) state.persistence = persistence;
   const frameOptions = { ...options, persistence };
   if (state !== undefined) {
     state.elapsed += frameDelta;
-    if (!state.paused) {
+    if (!state.paused || options.advancePaused === true) {
+      const schedulePaused = state.paused && options.advancePaused !== true;
       options.input?.beginFrame();
+      let applyVehicleGearEdges = true;
       state.accumulator += frameDelta;
       state.accumulator = Math.min(state.accumulator, fixedDelta * MAX_FIXED_STEPS_PER_FRAME);
       if (!state.startupComplete) {
         runtimeState.sensors.advance(options.world, { fixedDelta, phase: "startup", tick: state.tick });
-        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "startup", tick: state.tick }));
+        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: 0, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "startup", tick: state.tick }));
         state.startupComplete = true;
       }
       while (state.accumulator >= fixedDelta) {
@@ -108,13 +116,18 @@ export async function runGameFrame(options: {
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
         stepPatrols(options.world, fixedDelta);
-        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: state.tick }));
+        preparePhysicsRuntime(options.world, options.environmentScene, options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined);
+        if (options.input !== undefined) applyPhysicsVehicleBindings(options.world, options.input, applyVehicleGearEdges);
+        applyVehicleGearEdges = false;
+        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: state.tick }));
+        for (const [entity, input] of options.vehicleControllerInputs ?? []) setPhysicsVehicleControllerInputs(options.world, entity, input);
+        stepPhysicsVehicles(options.world, fixedDelta);
         stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: state.tick, writeLedger: runtimeState.writeLedger });
         stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
         const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         stepStateMachines(options.world, state.tick, sensorEvents);
         if (options.interactions !== undefined) collectInteractionResult(options.mapped, runInteractionFixedTick({ gameFlow: options.gameFlow, interactions: options.interactions, mapped: options.mapped, prefabs: options.prefabs, presentation: runtimeState.presentation, sensorEvents, state: state.interactions, systems: options.systems, tick: state.tick, world: options.world, writeLedger: runtimeState.writeLedger }));
-        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "fixedUpdate", systemFilter: (system) => !isPrePhysicsSystem(system), tick: state.tick }));
+        collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "fixedUpdate", systemFilter: (system) => !isPrePhysicsSystem(system), tick: state.tick }));
         recordFixedTransformStep(state, beforeFixed, snapshotWorldTransforms(options.world));
         state.tick += 1;
         state.accumulator -= fixedDelta;
@@ -122,8 +135,8 @@ export async function runGameFrame(options: {
       const rawBeforeVariable = snapshotWorldTransforms(options.world);
       const overlaidEntities = overlayInterpolatedFixedTransforms(options.world, state, fixedDelta);
       const beforeVariable = snapshotWorldTransforms(options.world);
-      collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "update", tick: state.tick }));
-      collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: state.paused, runtimeState, schedule: "postUpdate", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "update", tick: state.tick }));
+      collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "postUpdate", tick: state.tick }));
       const afterVariable = snapshotWorldTransforms(options.world);
       restoreUnwrittenFixedTransforms(options.world, rawBeforeVariable, beforeVariable, afterVariable, overlaidEntities);
       removeVariableTransformWrites(state, beforeVariable, afterVariable);
@@ -136,7 +149,11 @@ export async function runGameFrame(options: {
     collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
     stepPatrols(options.world, fixedDelta);
+    preparePhysicsRuntime(options.world, options.environmentScene, options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined);
+    if (options.input !== undefined) applyPhysicsVehicleBindings(options.world, options.input);
     collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: 0 }));
+    for (const [entity, input] of options.vehicleControllerInputs ?? []) setPhysicsVehicleControllerInputs(options.world, entity, input);
+    stepPhysicsVehicles(options.world, fixedDelta);
     stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: 0, writeLedger: runtimeState.writeLedger });
     stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
     const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
@@ -155,18 +172,39 @@ export async function runGameFrame(options: {
   if (state !== undefined) {
     applyFixedTransformInterpolation(options.mapped, state, fixedDelta);
   }
+  updatePhysicsVehicleVisuals(options.world, options.mapped, state === undefined ? 1 : state.accumulator / fixedDelta);
   syncMeshRendererMaterials(options.world, options.mapped.objectsById);
   syncWorldText(options.world, options.mapped, frameDelta);
 }
 
+export async function runExactFixedTicks(
+  options: Parameters<typeof runGameFrame>[0],
+  ticks: number,
+): Promise<{ endTick: number; startTick: number; ticks: number }> {
+  if (!Number.isInteger(ticks) || ticks <= 0) throw new Error("Exact fixed-tick stepping requires a positive integer tick count.");
+  const state = options.state;
+  if (state === undefined || !state.paused) throw new Error("Exact fixed-tick stepping requires a paused game-loop lifecycle.");
+  if (exactFixedTickStepping.has(state)) throw new Error("Exact fixed-tick stepping is already active for this game-loop lifecycle.");
+  const fixedDelta = options.fixedDelta ?? options.runtimeConfig?.time.fixedDelta ?? 1 / 60;
+  const startTick = state.tick;
+  exactFixedTickStepping.add(state);
+  state.accumulator = 0;
+  try {
+    for (let tick = 0; tick < ticks; tick += 1) {
+      await runGameFrame({ ...options, advancePaused: true, delta: fixedDelta });
+    }
+  } finally {
+    state.accumulator = 0;
+    exactFixedTickStepping.delete(state);
+  }
+  const advancedTicks = state.tick - startTick;
+  if (advancedTicks !== ticks) throw new Error(`Exact fixed-tick stepping advanced ${advancedTicks} ticks; expected ${ticks}.`);
+  return { endTick: state.tick, startTick, ticks };
+}
+
 const PRE_PHYSICS_BODY_SERVICES = new Set([
   "character.move",
-  "physics.addForce",
-  "physics.addTorque",
-  "physics.applyAngularImpulse",
-  "physics.applyImpulse",
-  "physics.setAngularVelocity",
-  "physics.setLinearVelocity",
+  ...PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => descriptor.mutation).map((descriptor) => descriptor.service),
 ]);
 
 function isPrePhysicsSystem(system: ISystemsIr["systems"][number]): boolean {

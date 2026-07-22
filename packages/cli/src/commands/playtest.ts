@@ -37,6 +37,7 @@ declare global {
     runtimeObservationSnapshot?(): unknown;
     runtimeDiagnosticsSnapshot?(): unknown;
     setPaused?(paused: boolean): void;
+    stepFixedTicks?(ticks: number): Promise<{ endTick: number; startTick: number; ticks: number }>;
     writeAuditSnapshot?(): unknown;
     setEntityTransform?(id: string, transform: { position?: Vec3; rotation?: [number, number, number, number]; scale?: Vec3 }): boolean;
     uiNodeSnapshot?(id: string): unknown;
@@ -47,6 +48,7 @@ type Vec3 = [number, number, number];
 type MovementAxis = "x" | "y" | "z";
 
 const ITERATE_NOTICE = "Standalone playtest is subsumed by tn iterate --project . --json for the normal agent verify loop.";
+const NATIVE_PROOF_ADVANCE_MAX_TICKS = 60;
 
 export interface IAxisExpectation {
   axis: MovementAxis;
@@ -754,6 +756,7 @@ function readinessSampleNearTick(samples: readonly Record<string, unknown>[], ti
 export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[]; stepScreenshots?: Readonly<Record<string, string>> }): unknown {
   const commands: Array<Record<string, unknown>> = [];
   const captureTicks = nativeScenarioCaptureTicks(scenario);
+  const screenshotTicks = new Set((artifacts.recordingFrames ?? []).map((frame) => frame.tick));
   let tick = captureTicks.beforeTick + 1;
   for (const setup of scenario.setup?.entities ?? []) {
     commands.push({
@@ -798,15 +801,22 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
     }
     if (step.press !== undefined) {
       commands.push({ code: step.press, pressed: true, tick, type: "key" });
-      tick += playtestStepHoldTicks(step);
+      const holdTicks = playtestStepHoldTicks(step);
+      if (step.holdTicks !== undefined) appendNativeExactAdvance(commands, tick, holdTicks, screenshotTicks);
+      tick += holdTicks;
       if (step.release) {
         commands.push({ code: step.press, pressed: false, tick, type: "key" });
       }
     }
-    tick += playtestStepWaitTicks(step);
+    const waitTicks = playtestStepWaitTicks(step);
+    if (step.waitTicks !== undefined) appendNativeExactAdvance(commands, tick, waitTicks, screenshotTicks);
+    tick += waitTicks;
     if (step.screenshot !== undefined) {
       const path = artifacts.stepScreenshots?.[step.screenshot];
-      if (path !== undefined) commands.push({ path, tick, type: "screenshot" });
+      if (path !== undefined) {
+        commands.push({ path, tick, type: "screenshot" });
+        screenshotTicks.add(tick);
+      }
     }
   }
   if (artifacts.afterArtifact !== undefined) {
@@ -818,6 +828,21 @@ export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifact
     schema: "threenative.native-proof-harness",
     version: "0.1.0",
   };
+}
+
+function appendNativeExactAdvance(commands: Array<Record<string, unknown>>, startTick: number, ticks: number, screenshotTicks: ReadonlySet<number>): void {
+  const endTick = startTick + ticks;
+  let tick = startTick;
+  while (tick < endTick) {
+    if (screenshotTicks.has(tick)) {
+      tick += 1;
+      continue;
+    }
+    const nextScreenshot = [...screenshotTicks].filter((candidate) => candidate > tick && candidate < endTick).sort((left, right) => left - right)[0];
+    const nextTick = Math.min(endTick, tick + NATIVE_PROOF_ADVANCE_MAX_TICKS, nextScreenshot ?? endTick);
+    commands.push({ frames: nextTick - tick, tick, type: "advance" });
+    tick = nextTick;
+  }
 }
 
 export function nativeSceneQueryEffectLog(samples: readonly Record<string, unknown>[]): { entries: unknown[] } {
@@ -1193,23 +1218,29 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       }
       if (step.press !== undefined) {
         await dispatchKeyboardCode(page, "keydown", step.press);
-        await setWebPaused(page, false);
-        for (let tick = 0; tick < playtestStepHoldTicks(step, options.frames); tick += 1) {
-          await waitForWebFrameAdvance(page, 1);
+        const holdTicks = playtestStepHoldTicks(step, options.frames);
+        if (step.holdTicks !== undefined) {
+          await advanceWebFixedTicks(page, holdTicks);
           runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+        } else {
+          await advanceWebRenderedFrames(page, holdTicks, async () => {
+            runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+          });
         }
-        await setWebPaused(page, true);
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
       }
       if (step.waitFrames !== undefined || step.waitTicks !== undefined || step.kind === "wait") {
-        await setWebPaused(page, false);
-        for (let tick = 0; tick < playtestStepWaitTicks(step); tick += 1) {
-          await waitForWebFrameAdvance(page, 1);
+        const waitTicks = playtestStepWaitTicks(step);
+        if (step.waitTicks !== undefined) {
+          await advanceWebFixedTicks(page, waitTicks);
           runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+        } else {
+          await advanceWebRenderedFrames(page, waitTicks, async () => {
+            runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
+          });
         }
-        await setWebPaused(page, true);
       }
     }
     const after = await readTransformSample(page, options.entityId);
@@ -1612,6 +1643,30 @@ async function setWebPaused(page: { evaluate<T, A>(fn: (arg: A) => T, arg: A): P
   await page.evaluate((value) => {
     globalThis.__THREENATIVE_RUNTIME__?.setPaused?.(value);
   }, paused);
+}
+
+export async function advanceWebFixedTicks(page: import("playwright").Page, ticks: number): Promise<"exact-fixed-ticks" | "rendered-frame-fallback"> {
+  const exact = await page.evaluate(async (count) => {
+    const step = globalThis.__THREENATIVE_RUNTIME__?.stepFixedTicks;
+    if (typeof step !== "function") return false;
+    await step(count);
+    return true;
+  }, ticks);
+  if (exact) return "exact-fixed-ticks";
+  await advanceWebRenderedFrames(page, ticks);
+  return "rendered-frame-fallback";
+}
+
+async function advanceWebRenderedFrames(page: import("playwright").Page, frames: number, afterFrame?: () => Promise<void>): Promise<void> {
+  await setWebPaused(page, false);
+  try {
+    for (let frame = 0; frame < frames; frame += 1) {
+      await waitForWebFrameAdvance(page, 1);
+      await afterFrame?.();
+    }
+  } finally {
+    await setWebPaused(page, true);
+  }
 }
 
 async function waitForWebFrameAdvance(page: import("playwright").Page, frames: number): Promise<void> {

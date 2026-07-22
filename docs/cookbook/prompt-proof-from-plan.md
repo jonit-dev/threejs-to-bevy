@@ -46,6 +46,10 @@ Generated progress and HUD assertions require `changed: true`; retry also
 observes entity movement back to its authored start. A final equals-only value
 is not treated as proof that a transition occurred.
 
+Use `holdTicks` and `waitTicks` when acceptance depends on an exact number of
+fixed updates. Browser proof runs step those ticks while the normal render
+lifecycle remains paused; frame-named fields retain compatibility behavior.
+
 ## proof
 ```bash
 tn authoring validate --project . --json

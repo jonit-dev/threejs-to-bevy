@@ -7,7 +7,7 @@ import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { SSRPass } from "three/examples/jsm/postprocessing/SSRPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, IWorldIr, RenderLookProfileName } from "@threenative/ir";
+import type { IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IVehicleControllerObservation, IWheelAssemblyObservation, IWorldIr, RenderLookProfileName } from "@threenative/ir";
 import { serializeRuntimeWriteAudit } from "@threenative/ir/runtimeDiagnostics";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
@@ -32,7 +32,7 @@ import { createContactShadowsManager, type IContactShadowsManager, type IContact
 import { HeightFogPass, webHeightFogSettings } from "./rendering/heightFogPass.js";
 import { GodRaysPass, webGodRaysSettings } from "./rendering/godrays/GodRaysPass.js";
 import { SsgiPass, webSsgiSettings } from "./rendering/ssgi/ssgiPass.js";
-import { createGameLoopState, runGameFrame, setPaused as setGameLoopPaused } from "./gameLoop.js";
+import { createGameLoopState, runExactFixedTicks, runGameFrame, setPaused as setGameLoopPaused } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
@@ -47,6 +47,7 @@ import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 import { colorToThree } from "./worldMapping/colors.js";
 import { forgetMeshLodGeometries, meshLodGeometries, traceWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
+import { observePhysicsVehicleControllers, observePhysicsVehicles } from "./physicsVehicle.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
@@ -57,6 +58,7 @@ export interface IRenderResult {
   dispose(): void;
   effectLog: ISystemEffectLog;
   entityWorldPosition(id: string): [number, number, number] | undefined;
+  entityWorldRotation(id: string): [number, number, number, number] | undefined;
   meshLodSnapshot(): IWebMeshLodSelection[];
   performanceSnapshot(): IWebRuntimePerformanceSnapshot;
   resetPerformanceTrace(): void;
@@ -67,10 +69,14 @@ export interface IRenderResult {
   runtimeDiagnostics: IWebRuntimeDiagnostics;
   runtimeDiagnosticsSnapshot(): IWebRuntimeDiagnostics;
   setPaused(paused: boolean): void;
+  stepFixedTicks(ticks: number): Promise<{ endTick: number; startTick: number; ticks: number }>;
   setEntityTransform(id: string, transform: IWebRuntimeTransformPatch): boolean;
+  setVehicleControllerInputs(id: string, inputs?: IVehicleControllerInput): boolean;
   overlayHost?: IWebOverlayHost;
   ui?: IRenderedUi;
   uiNodeSnapshot(id: string): IRenderedUiNode | undefined;
+  vehicleControllerSnapshot(id?: string): IVehicleControllerObservation[];
+  vehicleWheelSnapshot(id?: string): IWheelAssemblyObservation[];
 }
 
 export interface IWebRuntimeTransformPatch {
@@ -115,6 +121,12 @@ export interface IWebRuntimeProbeObservations {
     loaded: boolean;
     repeat?: [number, number];
   }>;
+}
+
+const EMPTY_SYSTEMS: ISystemsIr = Object.freeze({ schema: "threenative.systems", systems: [], version: "0.1.0" });
+
+export function requiresWebFixedLoop(world: IWorldIr): boolean {
+  return world.entities.some((entity) => entity.components.RigidBody?.kind === "dynamic");
 }
 
 export interface IRenderOptions {
@@ -345,11 +357,20 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   exposeDebugSceneSnapshot(mapped.scene);
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
+  let gameLoopExecution: Promise<void> = Promise.resolve();
+  const enqueueGameLoop = <T>(operation: () => Promise<T>): Promise<T> => {
+    const result = gameLoopExecution.then(operation);
+    gameLoopExecution = result.then(() => undefined, () => undefined);
+    return result;
+  };
   const runtimeState = webSystemRuntimeStateFor(bundle.world, { assets: bundle.assets, audio: bundle.audio });
   mapped.presentation = runtimeState.presentation;
   const effectLog = createSystemEffectLog();
+  const vehicleControllerInputs = new Map<string, IVehicleControllerInput>();
   const resourceObservations: IResourceObservation[] = [];
   const systemModule = await (options.systemModuleLoader ?? loadSystemModuleUrl)(source, bundle.manifest);
+  const runtimeSystems = bundle.systems ?? EMPTY_SYSTEMS;
+  const runsFixedLoop = bundle.systems !== undefined || requiresWebFixedLoop(bundle.world);
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig, options.captureDrawingBuffer));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig, options.targetProfile ?? "desktop-web");
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
@@ -478,8 +499,8 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     : createWebCaptureTransformTrace(options.captureTraceEntityId, captureFrames, bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60);
   for (let frame = 0; frame < captureFrames; frame += 1) {
     consumeOverlayEvents();
-    if (bundle.systems !== undefined) {
-      await runGameFrame({
+    if (runsFixedLoop) {
+      await enqueueGameLoop(() => runGameFrame({
         assets: bundle.assets,
         audio: bundle.audio,
         componentSchemas: bundle.componentSchemas,
@@ -499,11 +520,12 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         runtimeConfig: bundle.runtimeConfig,
         serviceObserver: consumeAudioServices,
         state: loopState,
-        systems: bundle.systems,
+        systems: runtimeSystems,
         ui: bundle.ui,
         uiState: ui,
+        vehicleControllerInputs,
         world: bundle.world,
-      });
+      }));
       publishOverlaySnapshots();
       consumeAudioEvents();
     } else if (hasKinematicMovers(bundle.world)) {
@@ -540,7 +562,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     disposeThreeWorld(mapped);
     renderer.dispose();
   };
-  if (options.captureFrames === undefined && (bundle.systems !== undefined || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world) || contactShadows.requiresContinuousUpdates() || pipeline.requiresContinuousUpdates)) {
+  if (options.captureFrames === undefined && (runsFixedLoop || hasAnimationPlayback(mapped) || hasKinematicMovers(bundle.world) || contactShadows.requiresContinuousUpdates() || pipeline.requiresContinuousUpdates)) {
     const frameTimings = createFrameTimingTrace();
     resetPerformanceTrace = () => frameTimings.reset();
     lifecycle = createWebRenderLifecycle({
@@ -552,36 +574,39 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
         resizeLifecycle.sync();
         const timing = frameTimings.record(time);
         const delta = timing.deltaMs / 1000;
-        if (bundle.systems !== undefined) {
-          consumeOverlayEvents();
-          drainUiActionsIntoInput(ui, input);
-          await runGameFrame({
-            assets: bundle.assets,
-            audio: bundle.audio,
-            componentSchemas: bundle.componentSchemas,
-            delta,
-            effectLog,
-            environmentScene: bundle.environmentScene,
-            gameFlow: bundle.gameFlow,
-            input,
-            interactions: bundle.interactions,
-            localData: bundle.localData,
-            mapped,
-            module: systemModule,
-            prefabs: bundle.prefabs,
-            persistenceStorageKey: source,
-            resourceObservations,
-            runtimeState,
-            runtimeConfig: bundle.runtimeConfig,
-            serviceObserver: consumeAudioServices,
-            state: loopState,
-            systems: bundle.systems,
-            ui: bundle.ui,
-            uiState: ui,
-            world: bundle.world,
+        if (runsFixedLoop) {
+          await enqueueGameLoop(async () => {
+            consumeOverlayEvents();
+            drainUiActionsIntoInput(ui, input);
+            await runGameFrame({
+              assets: bundle.assets,
+              audio: bundle.audio,
+              componentSchemas: bundle.componentSchemas,
+              delta,
+              effectLog,
+              environmentScene: bundle.environmentScene,
+              gameFlow: bundle.gameFlow,
+              input,
+              interactions: bundle.interactions,
+              localData: bundle.localData,
+              mapped,
+              module: systemModule,
+              prefabs: bundle.prefabs,
+              persistenceStorageKey: source,
+              resourceObservations,
+              runtimeState,
+              runtimeConfig: bundle.runtimeConfig,
+              serviceObserver: consumeAudioServices,
+              state: loopState,
+              systems: runtimeSystems,
+              ui: bundle.ui,
+              uiState: ui,
+              vehicleControllerInputs,
+              world: bundle.world,
+            });
+            publishOverlaySnapshots();
+            consumeAudioEvents();
           });
-          publishOverlaySnapshots();
-          consumeAudioEvents();
         } else if (hasKinematicMovers(bundle.world)) {
           stepKinematicMovers(bundle.world, loopState.elapsed + delta);
           loopState.elapsed += delta;
@@ -624,6 +649,13 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       object.getWorldPosition(position);
       return vectorToTuple(position);
     },
+    entityWorldRotation(id: string) {
+      const object = mapped.objectsById.get(id);
+      if (object === undefined) return undefined;
+      const rotation = new THREE.Quaternion();
+      object.getWorldQuaternion(rotation);
+      return [rotation.x, rotation.y, rotation.z, rotation.w];
+    },
     meshLodSnapshot() {
       return mapped.meshLod === undefined ? [] : traceWebMeshLod(mapped.meshLod);
     },
@@ -651,6 +683,48 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     setPaused(paused: boolean) {
       setGameLoopPaused(loopState, paused);
     },
+    async stepFixedTicks(ticks: number) {
+      const result = await enqueueGameLoop(async () => {
+        consumeOverlayEvents();
+        drainUiActionsIntoInput(ui, input);
+        const exact = await runExactFixedTicks({
+          assets: bundle.assets,
+          audio: bundle.audio,
+          componentSchemas: bundle.componentSchemas,
+          delta: bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60,
+          effectLog,
+          environmentScene: bundle.environmentScene,
+          gameFlow: bundle.gameFlow,
+          input,
+          interactions: bundle.interactions,
+          localData: bundle.localData,
+          mapped,
+          module: systemModule,
+          prefabs: bundle.prefabs,
+          persistenceStorageKey: source,
+          resourceObservations,
+          runtimeState,
+          runtimeConfig: bundle.runtimeConfig,
+          serviceObserver: consumeAudioServices,
+          state: loopState,
+          systems: runtimeSystems,
+          ui: bundle.ui,
+          uiState: ui,
+          vehicleControllerInputs,
+          world: bundle.world,
+        }, ticks);
+        publishOverlaySnapshots();
+        consumeAudioEvents();
+        return exact;
+      });
+      mapped.reconcile?.(bundle.world);
+      advanceAnimationPlayback(mapped, (bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60) * ticks);
+      uiOverlay?.update();
+      colliderDebugOverlay?.update();
+      mapped.bakedProbeLighting?.sync(mapped.camera.getWorldPosition(new THREE.Vector3()));
+      pipeline.render(bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60);
+      return result;
+    },
     setEntityTransform(id: string, transform: IWebRuntimeTransformPatch) {
       const entity = bundle.world.entities.find((candidate) => candidate.id === id);
       const object = mapped.objectsById.get(id);
@@ -668,12 +742,25 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       pipeline.render();
       return true;
     },
+    setVehicleControllerInputs(id: string, inputs?: IVehicleControllerInput) {
+      const entity = bundle.world.entities.find((candidate) => candidate.id === id);
+      if (entity?.components.VehicleController === undefined || entity.components.WheelAssembly === undefined || entity.components.RigidBody?.kind !== "dynamic") return false;
+      if (inputs === undefined) vehicleControllerInputs.delete(id);
+      else vehicleControllerInputs.set(id, structuredClone(inputs));
+      return true;
+    },
     ...(ui === undefined ? {} : { ui }),
     uiNodeSnapshot(id: string) {
       if (ui === undefined) {
         return undefined;
       }
       return cloneJsonValue(findRenderedUiNode(ui.root, id)) as IRenderedUiNode | undefined;
+    },
+    vehicleControllerSnapshot(id?: string) {
+      return observePhysicsVehicleControllers(bundle.world).filter((observation) => id === undefined || observation.entity === id);
+    },
+    vehicleWheelSnapshot(id?: string) {
+      return observePhysicsVehicles(bundle.world).filter((observation) => id === undefined || observation.entity === id);
     },
   };
 }

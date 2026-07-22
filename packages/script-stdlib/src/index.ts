@@ -28,6 +28,7 @@ export {
 export type { IMaterialPatch } from "./feedback.js";
 export { CameraRig, CharacterRig, KinematicMoverEx, RespawnEx, TriggerEx } from "./rigs.js";
 export { defineBehavior } from "./behavior.js";
+export { vehicle, type VehicleFacade } from "./physics.js";
 export type { BehaviorFunction, BehaviorSchedule, IBehaviorCommandMetadata, IBehaviorFunction, IBehaviorMetadata, IBehaviorQueryMetadata } from "./behavior.js";
 export type {
   ICameraRigOptions,
@@ -69,6 +70,7 @@ export type {
   ScriptParticlesFacade,
   ScriptPersistenceFacade,
   ScriptPhysicsFacade,
+  ScriptPhysicsVehicleFacade,
   ScriptPickingFacade,
   ScriptPluginsFacade,
   ScriptPresentationContextFacades,

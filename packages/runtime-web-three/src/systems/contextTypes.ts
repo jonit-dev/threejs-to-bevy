@@ -49,6 +49,7 @@ import type {
   IScriptTaskDeclarationView,
   IScriptTweenCommandOptions,
   IScriptTweenCommandResult,
+  IScriptVehicleSetInputsResult,
   IScriptUiActionEvent,
   IScriptUiActivateResult,
   IScriptUiDisabledResult,
@@ -58,6 +59,7 @@ import type {
   IScriptWorldTextCommandOptions,
   IScriptWorldTextCommandResult,
   IUiIr,
+  IVehicleControllerInput,
   IWorldEntity,
   IrSystemService,
   IrTweenEasing,
@@ -241,15 +243,20 @@ export interface ISystemContext {
   };
   physics: {
     addForce(entity: string, force: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    addForceAtPoint(entity: string, force: readonly [number, number, number], point: readonly [number, number, number]): IPhysicsBodyCommandResult;
     addTorque(entity: string, torque: readonly [number, number, number]): IPhysicsBodyCommandResult;
     applyAngularImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
     applyImpulse(entity: string, impulse: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    applyImpulseAtPoint(entity: string, impulse: readonly [number, number, number], point: readonly [number, number, number]): IPhysicsBodyCommandResult;
     overlap(options: IScriptPhysicsOverlapRequest): IScriptPhysicsOverlapResult;
     raycast(options: IScriptPhysicsRaycastRequest): IScriptPhysicsRaycastResult;
     sensor(options?: IPhysicsSensorRequest): IPhysicsSensorResult;
     shapeCast(options: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult;
     setAngularVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
     setLinearVelocity(entity: string, velocity: readonly [number, number, number]): IPhysicsBodyCommandResult;
+    vehicle: {
+      setInputs(entity: string, inputs: IVehicleControllerInput): IScriptVehicleSetInputsResult;
+    };
   };
   navigation: {
     path(options: IScriptNavigationPathRequest): IScriptNavigationPathResult;

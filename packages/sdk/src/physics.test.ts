@@ -3,7 +3,7 @@ import test from "node:test";
 
 import * as sdk from "./index.js";
 import { SdkError } from "./errors.js";
-import { boxCollider, capsuleCollider, meshCollider, rigidBody, sphereCollider, type PhysicsColliderKind } from "./physics.js";
+import { boxCollider, capsuleCollider, meshCollider, physicsSurface, rigidBody, sphereCollider, tireModel, wheelAssembly, wheelControlInput, type PhysicsColliderKind } from "./physics.js";
 
 type AssertNever<T extends never> = T;
 type UnsupportedPublicColliderKind = AssertNever<Exclude<PhysicsColliderKind, "box" | "capsule" | "mesh" | "sphere">>;
@@ -45,6 +45,17 @@ test("physics should expose only promoted portable collider helpers", () => {
     ["box", "sphere", "capsule", "mesh"],
   );
   assert.equal("cylinderCollider" in sdk, false);
+});
+
+test("physics should author bounded vehicle contracts without losing stable references", () => {
+  const tire = tireModel({ lateralSlipCurve: [{ slip: -1, grip: 0.5 }, { slip: 1, grip: 0.5 }], loadSensitivity: 1, longitudinalSlipCurve: [{ slip: -1, grip: 0.7 }, { slip: 1, grip: 0.7 }], rollingResistance: 0.02 });
+  const assembly = wheelAssembly([{ attachment: [-1, 0, 1], braked: true, driven: true, id: "front-left", radius: 0.35, steering: true, suspension: { damperRate: 2400, springRate: 30_000, travel: 0.25 }, tire: "tire.sport", visual: "wheel.front-left", width: 0.24 }], { maxSteeringAngle: 0.6, maxSuspensionForce: 20_000, maxTireForce: 12_000 });
+  assert.equal(tire.longitudinalSlipCurve[0]?.slip, -1);
+  assert.equal(assembly.wheels[0]?.visual, "wheel.front-left");
+  assert.deepEqual(physicsSurface({ combineRule: "multiply", grip: 0.6, rollingResistance: 0.04 }), { combineRule: "multiply", grip: 0.6, rollingResistance: 0.04 });
+  assert.deepEqual(wheelControlInput({ brake: 0.25, drive: -0.5, steering: 1 }), { brake: 0.25, drive: -0.5, steering: 1 });
+  assert.throws(() => tireModel({ ...tire, lateralSlipCurve: [{ slip: 0, grip: 1 }, { slip: 0, grip: 0.5 }] }), (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_PHYSICS_TIRE_SLIP_CURVE_NON_MONOTONIC");
+  assert.throws(() => wheelControlInput({ brake: 1.1, drive: 0, steering: 0 }), (error: unknown) => error instanceof SdkError && error.code === "TN_SDK_PHYSICS_WHEEL_CONTROL_INVALID");
 });
 
 test("physics should create primitive solver material and body metadata", () => {

@@ -35,6 +35,29 @@ const MAX_FIXED_STEPS_PER_FRAME: f32 = 5.0;
 
 thread_local! {
     static SCRIPT_HOST: RefCell<Option<NativeScriptHost>> = const { RefCell::new(None) };
+    static ACTIVE_PHYSICS_RUNTIME: RefCell<Option<usize>> = const { RefCell::new(None) };
+}
+
+struct NativePhysicsQueryScope {
+    previous: Option<usize>,
+}
+
+impl NativePhysicsQueryScope {
+    fn enter(script_posed_entities: &BTreeSet<String>) -> Self {
+        let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+        let previous = ACTIVE_PHYSICS_RUNTIME.with(|active| active.replace(Some(runtime_id)));
+        Self { previous }
+    }
+}
+
+impl Drop for NativePhysicsQueryScope {
+    fn drop(&mut self) {
+        ACTIVE_PHYSICS_RUNTIME.with(|active| active.replace(self.previous));
+    }
+}
+
+pub(crate) fn active_physics_runtime_id() -> Option<usize> {
+    ACTIVE_PHYSICS_RUNTIME.with(|active| *active.borrow())
 }
 
 struct NativeScriptHost {
@@ -490,6 +513,9 @@ pub fn run_native_systems_frame_with_input(
             ),
         ));
     }
+
+    let _physics_query_scope = NativePhysicsQueryScope::enter(&state.script_posed_entities);
+    crate::physics::ensure_native_physics_runtime(bundle, &state.script_posed_entities);
 
     state.paused = options.paused;
     state.elapsed += options.delta;
@@ -1012,11 +1038,14 @@ struct NativeSystemScheduleFilter {
 const PRE_PHYSICS_BODY_SERVICES: &[&str] = &[
     "character.move",
     "physics.addForce",
+    "physics.addForceAtPoint",
     "physics.addTorque",
     "physics.applyAngularImpulse",
     "physics.applyImpulse",
+    "physics.applyImpulseAtPoint",
     "physics.setAngularVelocity",
     "physics.setLinearVelocity",
+    "physics.vehicle.setInputs",
 ];
 
 fn is_pre_physics_system(system: &SystemIr) -> bool {
@@ -1616,6 +1645,23 @@ fn create_script_host(
             format!("Failed to initialize QuickJS host: {source}"),
         )
     })?;
+
+    context
+        .add_callback(
+            "__tnPhysicsQueryJson",
+            |service: String, request_json: String| -> Result<String, String> {
+                let runtime_id = ACTIVE_PHYSICS_RUNTIME.with(|active| *active.borrow()).ok_or_else(|| {
+                    "TN_BEVY_PHYSICS_QUERY_WORLD_UNAVAILABLE: Native physics queries require the live game-loop host.".to_owned()
+                })?;
+                crate::physics::query_cached_physics_json(runtime_id, &service, &request_json)
+            },
+        )
+        .map_err(|source| {
+            host_error(
+                "TN_BEVY_SYSTEM_HOST_INIT_FAILED",
+                format!("Failed to register retained physics query callback: {source}"),
+            )
+        })?;
 
     context
         .eval_module(&module_source(&script_source), true)

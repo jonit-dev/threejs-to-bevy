@@ -4,7 +4,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { validateBundle } from "./validate.js";
+import { validateVehicleController } from "./physicsValidation.js";
+import { validateBundle, type IIrDiagnostic } from "./validate.js";
 import { writeJson, writeTestBundle } from "./testFixtures.js";
 
 test("physics should reject unbounded dynamic mesh collider", async () => {
@@ -525,6 +526,121 @@ test("physics should reject backend navigation handles and malformed dynamic reb
     );
   } finally {
     await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject duplicate compound child ids, raw handles, and dynamic triangle children", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-compound-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "world.ir.json", physicsWorld([{
+      CompoundCollider: {
+        children: [
+          { id: "front", localPose: { position: [0, 0, 0] }, solverHandle: 42, shape: { kind: "box", size: [1, 1, 1] } },
+          { id: "front", localPose: { position: [1, 0, 0] }, shape: { kind: "triangleMesh", source: "mesh.raw" } },
+        ],
+      },
+      RigidBody: { kind: "dynamic" },
+    }]));
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.filter((diagnostic) => diagnostic.code.startsWith("TN_IR_PHYSICS_COMPOUND")).map(({ code, path }) => ({ code, path })), [
+      { code: "TN_IR_PHYSICS_COMPOUND_CHILD_FIELD_UNSUPPORTED", path: "world.ir.json/entities/0/components/CompoundCollider/children/0/solverHandle" },
+      { code: "TN_IR_PHYSICS_COMPOUND_CHILD_ID_DUPLICATE", path: "world.ir.json/entities/0/components/CompoundCollider/children/1/id" },
+      { code: "TN_IR_PHYSICS_COMPOUND_DYNAMIC_TRIANGLE_UNSUPPORTED", path: "world.ir.json/entities/0/components/CompoundCollider/children/1/shape/kind" },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject duplicate and coplanar compound convex hull points before bundle emission", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-compound-degenerate-hull-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "world.ir.json", physicsWorld([
+      {
+        CompoundCollider: {
+          children: [{ id: "duplicate", localPose: { position: [0, 0, 0] }, shape: { kind: "convexHull", points: [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 1, 0]] } }],
+        },
+        RigidBody: { kind: "dynamic" },
+      },
+      {
+        CompoundCollider: {
+          children: [{ id: "coplanar", localPose: { position: [0, 0, 0] }, shape: { kind: "convexHull", points: [[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0]] } }],
+        },
+        RigidBody: { kind: "dynamic" },
+      },
+    ]));
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.filter((diagnostic) => diagnostic.code === "TN_IR_PHYSICS_COMPOUND_CONVEX_HULL_DEGENERATE").map(({ message, path }) => ({ message, path })), [
+      { message: "Compound convexHull points must be unique.", path: "world.ir.json/entities/0/components/CompoundCollider/children/0/shape/points" },
+      { message: "Compound convexHull points must span a non-zero three-dimensional volume.", path: "world.ir.json/entities/1/components/CompoundCollider/children/0/shape/points" },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should accept bounded wheel, tire, and surface contracts with resolved references", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-wheel-valid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "world.ir.json", physicsWorld([
+      { TireModel: { lateralSlipCurve: [{ slip: -1, grip: 0.7 }, { slip: 0, grip: 1 }, { slip: 1, grip: 0.7 }], loadSensitivity: 0.9, longitudinalSlipCurve: [{ slip: -1, grip: 0.6 }, { slip: 0, grip: 1 }, { slip: 1, grip: 0.6 }], rollingResistance: 0.02 } },
+      { WheelAssembly: { maxSteeringAngle: 0.6, maxSuspensionForce: 20_000, maxTireForce: 12_000, wheels: [{ attachment: [-0.8, -0.3, 1.2], braked: true, driven: true, id: "front-left", radius: 0.35, steering: true, suspension: { damperRate: 2400, springRate: 30_000, travel: 0.25 }, tire: "entity-0", visual: "entity-2", width: 0.24 }] } },
+      {},
+      { PhysicsSurface: { combineRule: "multiply", grip: 0.65, rollingResistance: 0.04 } },
+    ]));
+
+    const result = await validateBundle(root);
+    assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid wheel geometry and non-monotonic tire curves at exact paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-physics-wheel-invalid-"));
+  try {
+    await writeTestBundle(root, { createAssetsDir: true });
+    await writeJson(root, "world.ir.json", physicsWorld([
+      { TireModel: { lateralSlipCurve: [{ slip: 0, grip: 1 }, { slip: 0, grip: 0.8 }], loadSensitivity: 1, longitudinalSlipCurve: [{ slip: -1, grip: 0.5 }, { slip: 1, grip: 0.5 }], rollingResistance: 0.02 } },
+      { WheelAssembly: { maxSteeringAngle: 0.6, maxSuspensionForce: 20_000, maxTireForce: 12_000, wheels: [{ attachment: [0, 0, 0], braked: true, driven: true, id: "front-left", radius: 0, steering: true, suspension: { damperRate: 2, springRate: 3, travel: 0.2 }, tire: "entity-0", width: 0.2 }] } },
+    ]));
+
+    const result = await validateBundle(root);
+    assert.equal(result.ok, false);
+    assert.deepEqual(result.diagnostics.filter((item) => item.code === "TN_IR_PHYSICS_TIRE_SLIP_CURVE_NON_MONOTONIC" || item.code === "TN_IR_PHYSICS_WHEEL_GEOMETRY_INVALID").map(({ code, path, suggestion }) => ({ code, path, suggestion })), [
+      { code: "TN_IR_PHYSICS_TIRE_SLIP_CURVE_NON_MONOTONIC", path: "world.ir.json/entities/0/components/TireModel/lateralSlipCurve/1/slip", suggestion: "Sort points by slip and remove duplicate slip coordinates; grip may rise or fall." },
+      { code: "TN_IR_PHYSICS_WHEEL_GEOMETRY_INVALID", path: "world.ir.json/entities/1/components/WheelAssembly/wheels/0/radius", suggestion: "Author positive real-world wheel radius and width values inside the portable bounds." },
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject invalid and out-of-order vehicle gear ratios at the exact transmission path", () => {
+  const wheelAssembly = { wheels: [{ driven: true, id: "rear-left" }] };
+  const base = {
+    brakes: { frontBias: 0.6, handbrakeWheelIds: ["rear-left"] },
+    differential: { kind: "open" },
+    engine: { engineBraking: 0.1, idleRpm: 900, redlineRpm: 6500, torqueCurve: [{ rpm: 900, torque: 100 }, { rpm: 6500, torque: 80 }] },
+    steering: { speedCurve: [{ speed: 0, scale: 1 }, { speed: 40, scale: 0.3 }] },
+    transmission: { clutchResponse: 0.2, finalDrive: 3.7, forwardRatios: [3.1, 1.9], reverseRatio: 3, shiftPolicy: "manual" },
+  };
+  for (const [forwardRatios, code] of [
+    [[3.1, 0], "TN_IR_PHYSICS_VEHICLE_GEAR_RATIOS_INVALID"],
+    [[1.9, 3.1], "TN_IR_PHYSICS_VEHICLE_GEAR_RATIOS_ORDER_INVALID"],
+  ] as const) {
+    const diagnostics: IIrDiagnostic[] = [];
+    validateVehicleController({ ...base, transmission: { ...base.transmission, forwardRatios } }, "/entities/0/components/VehicleController", wheelAssembly, diagnostics);
+    assert.ok(diagnostics.some((item) => item.code === code && item.path === "/entities/0/components/VehicleController/transmission/forwardRatios"), JSON.stringify(diagnostics));
   }
 });
 

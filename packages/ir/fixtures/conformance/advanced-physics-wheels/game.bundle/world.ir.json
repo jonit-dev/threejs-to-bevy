@@ -1,0 +1,59 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "ground-asphalt",
+      "components": {
+        "Collider": { "kind": "box", "size": [100, 0.1, 50] },
+        "PhysicsSurface": { "combineRule": "multiply", "grip": 1, "rollingResistance": 0 },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, 25] }
+      }
+    },
+    {
+      "id": "ground-ice",
+      "components": {
+        "Collider": { "kind": "box", "size": [100, 0.1, 50] },
+        "PhysicsSurface": { "combineRule": "multiply", "grip": 0.1, "rollingResistance": 0 },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, 0, -25] }
+      }
+    },
+    {
+      "id": "touring-tire",
+      "components": {
+        "TireModel": {
+          "lateralSlipCurve": [{ "slip": 0, "grip": 1 }, { "slip": 1, "grip": 1 }],
+          "loadSensitivity": 0,
+          "longitudinalSlipCurve": [{ "slip": 0, "grip": 1 }, { "slip": 1, "grip": 1 }],
+          "rollingResistance": 0
+        },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    { "id": "wheel-visual-rear-right", "components": { "Hierarchy": { "parent": "chassis" }, "Transform": { "position": [0, 0, 0] } } },
+    { "id": "wheel-visual-front-left", "components": { "Hierarchy": { "parent": "chassis" }, "Transform": { "position": [0, 0, 0] } } },
+    { "id": "wheel-visual-rear-left", "components": { "Hierarchy": { "parent": "chassis" }, "Transform": { "position": [0, 0, 0] } } },
+    { "id": "wheel-visual-front-right", "components": { "Hierarchy": { "parent": "chassis" }, "Transform": { "position": [0, 0, 0] } } },
+    {
+      "id": "chassis",
+      "components": {
+        "Collider": { "kind": "box", "size": [1.6, 0.4, 3] },
+        "RigidBody": { "enabledRotations": [false, true, false], "gravityScale": 1, "kind": "dynamic", "mass": 100, "velocity": [0, 0, 0] },
+        "Transform": { "position": [0, 1.02, 25] },
+        "WheelAssembly": {
+          "maxSteeringAngle": 0.6,
+          "maxSuspensionForce": 10000,
+          "maxTireForce": 5000,
+          "wheels": [
+            { "attachment": [0.65, -0.2, 1], "braked": true, "driven": true, "id": "rear-right", "radius": 0.3, "steering": false, "suspension": { "damperRate": 500, "springRate": 20000, "travel": 0.5 }, "tire": "touring-tire", "visual": "wheel-visual-rear-right", "width": 0.2 },
+            { "attachment": [-0.65, -0.2, -1], "braked": true, "driven": true, "id": "front-left", "radius": 0.3, "steering": true, "suspension": { "damperRate": 500, "springRate": 20000, "travel": 0.5 }, "tire": "touring-tire", "visual": "wheel-visual-front-left", "width": 0.2 },
+            { "attachment": [-0.65, -0.2, 1], "braked": true, "driven": true, "id": "rear-left", "radius": 0.3, "steering": false, "suspension": { "damperRate": 500, "springRate": 20000, "travel": 0.5 }, "tire": "touring-tire", "visual": "wheel-visual-rear-left", "width": 0.2 },
+            { "attachment": [0.65, -0.2, -1], "braked": true, "driven": true, "id": "front-right", "radius": 0.3, "steering": true, "suspension": { "damperRate": 500, "springRate": 20000, "travel": 0.5 }, "tire": "touring-tire", "visual": "wheel-visual-front-right", "width": 0.2 }
+          ]
+        }
+      }
+    }
+  ]
+}

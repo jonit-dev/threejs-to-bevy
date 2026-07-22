@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    {
+      "format": "generated",
+      "id": "mesh.ground",
+      "kind": "mesh",
+      "primitive": "box",
+    "size": [
+      40,
+      0.1,
+      400
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.split-ground",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        5,
+        0.1,
+        100
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.chassis",
+      "kind": "mesh",
+      "primitive": "box",
+      "size": [
+        1.15,
+        0.4,
+        2.2
+      ]
+    },
+    {
+      "format": "generated",
+      "id": "mesh.wheel",
+      "kind": "mesh",
+      "primitive": "cylinder",
+      "size": [
+        0.38,
+        0.6
+      ]
+    }
+  ]
+}

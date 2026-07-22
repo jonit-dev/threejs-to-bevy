@@ -1213,12 +1213,34 @@ fn apply_resource(bundle: &mut LoadedBundle, resource: &NativeSystemResourceEffe
 }
 
 fn apply_physics_body_service(bundle: &mut LoadedBundle, service: &NativeSystemServiceEffect) {
+    if service.service == "physics.vehicle.setInputs" {
+        let Some(request) = service.payload.get("request") else {
+            return;
+        };
+        let Some(entity) = request.get("entity").and_then(Value::as_str) else {
+            return;
+        };
+        let Some(inputs) = request
+            .get("inputs")
+            .cloned()
+            .and_then(|inputs| serde_json::from_value(inputs).ok())
+        else {
+            return;
+        };
+        let Some(runtime_id) = crate::systems_host::active_physics_runtime_id() else {
+            return;
+        };
+        crate::physics_vehicle::set_physics_vehicle_controller_inputs(runtime_id, entity, inputs);
+        return;
+    }
     if !matches!(
         service.service.as_str(),
         "physics.addForce"
+            | "physics.addForceAtPoint"
             | "physics.addTorque"
             | "physics.applyAngularImpulse"
             | "physics.applyImpulse"
+            | "physics.applyImpulseAtPoint"
             | "physics.setAngularVelocity"
             | "physics.setLinearVelocity"
     ) {
@@ -1233,6 +1255,23 @@ fn apply_physics_body_service(bundle: &mut LoadedBundle, service: &NativeSystemS
     let Some(value) = request.get("value").and_then(physics_service_vector) else {
         return;
     };
+    if matches!(
+        service.service.as_str(),
+        "physics.addForceAtPoint" | "physics.applyImpulseAtPoint"
+    ) {
+        let Some(point) = request.get("point").and_then(physics_service_vector) else {
+            return;
+        };
+        let commands = bundle
+            .world
+            .resources
+            .entry("__threenativePhysicsAtPointCommands".to_owned())
+            .or_insert_with(|| Value::Array(Vec::new()));
+        if let Some(commands) = commands.as_array_mut() {
+            commands.push(serde_json::json!({ "entity": entity_id, "kind": service.service, "point": point, "value": value }));
+        }
+        return;
+    }
     let fixed_delta = request
         .get("fixedDelta")
         .and_then(Value::as_f64)

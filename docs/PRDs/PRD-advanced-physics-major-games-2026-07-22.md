@@ -312,15 +312,15 @@ and both runtimes report the same normalized live body/query observation.
 
 **Implementation:**
 
-- [ ] Add descriptor registry and a drift assertion covering IR, script-service,
+- [x] Add descriptor registry and a drift assertion covering IR, script-service,
   web, native, authoring-operation, fixture, and gate ownership.
-- [ ] Add `CompoundCollider` with stable child IDs and local pose; support box,
+- [x] Add `CompoundCollider` with stable child IDs and local pose; support box,
   sphere, capsule, and compiler-produced bounded convex hull children.
-- [ ] Add `physics.addForceAtPoint` and `physics.applyImpulseAtPoint` with SI
+- [x] Add `physics.addForceAtPoint` and `physics.applyImpulseAtPoint` with SI
   semantics and same-tick scheduling.
-- [ ] Replace conservative public query/proof claims with normalized retained
+- [x] Replace conservative public query/proof claims with normalized retained
   Rapier raycast, shape-cast, overlap, and contact observations.
-- [ ] Preserve existing primitive contracts and reject raw handles/dynamic
+- [x] Preserve existing primitive contracts and reject raw handles/dynamic
   triangle children with actionable diagnostics.
 
 **Tests required:**
@@ -359,15 +359,15 @@ for a chassis on surfaces with different grip.
 
 **Implementation:**
 
-- [ ] Define stable wheel IDs, local attachments, suspension travel/spring/
+- [x] Define stable wheel IDs, local attachments, suspension travel/spring/
   damper, radius/width, steering/driven/braked flags, and visual targets.
-- [ ] Define bounded longitudinal and lateral slip curves, load sensitivity,
+- [x] Define bounded longitudinal and lateral slip curves, load sensitivity,
   rolling resistance, and deterministic material/surface combine rules.
-- [ ] Use retained-world ray/shape casts, apply suspension and tire forces at
+- [x] Use retained-world ray/shape casts, apply suspension and tire forces at
   contact points, and cap invalid/extreme forces through authored limits.
-- [ ] Publish contact, compression, normal load, slip ratio/angle, angular
+- [x] Publish contact, compression, normal load, slip ratio/angle, angular
   speed, surface, and grounded state in stable wheel order.
-- [ ] Keep wheel visuals presentation-only and interpolate from physics state.
+- [x] Keep wheel visuals presentation-only and interpolate from physics state.
 
 **Tests required:**
 
@@ -406,14 +406,14 @@ differential, steering, brakes, and bounded driving assists.
 
 **Implementation:**
 
-- [ ] Add bounded piecewise engine torque curve, idle/redline, forward/reverse
+- [x] Add bounded piecewise engine torque curve, idle/redline, forward/reverse
   ratios, final drive, clutch response, and open/locked/limited-slip differential.
-- [ ] Add throttle, brake, handbrake, steer, clutch, and gear inputs with
+- [x] Add throttle, brake, handbrake, steer, clutch, and gear inputs with
   declarative bindings plus `ctx.physics.vehicle.setInputs`.
-- [ ] Add speed-sensitive steering, brake bias, engine braking, auto/manual
+- [x] Add speed-sensitive steering, brake bias, engine braking, auto/manual
   shift policy, optional ABS/TCS, and deterministic state transitions.
-- [ ] Publish speed, engine RPM, gear, torque path, and assist activations.
-- [ ] Add `tn physics vehicle add|inspect|validate --json` through the owning
+- [x] Publish speed, engine RPM, gear, torque path, and assist activations.
+- [x] Add `tn physics vehicle add|inspect|validate --json` through the owning
   operation descriptor; derive MCP/editor metadata and generated API cards.
 
 **Tests required:**
@@ -753,8 +753,95 @@ checkpoint. Manual checkpoints are additional for Phases 2, 3, 4, 6, 7, and 8.
 
 ## 9. Verification Evidence
 
-Implementation evidence is intentionally empty while this PRD is active. Each
-phase appends commands, pass/fail results, artifact paths, hashes, review verdict,
-and manual sign-off here. The PRD moves to `docs/PRDs/done` only after every
+Each phase appends commands, pass/fail results, artifact paths, hashes, review
+verdict, and manual sign-off here. The PRD moves to `docs/PRDs/done` only after every
 acceptance criterion is checked and current status/capability indexes point to
 the final evidence.
+
+### Phase 1 evidence (checkpoint PASS)
+
+- Focused paired evidence: `node tools/verify/dist/physicsSelfVerification.js
+  --phase-1-only` writes the example report at
+  `examples/advanced-physics-foundation/artifacts/physics-self-verification/scene-report.json`
+  and the non-destructive Phase 1 aggregate at
+  `tools/verify/artifacts/advanced-physics/phase-1-foundation/verification-report.json`.
+- Current focused result: evidence assertions pass for exact compound-child
+  query identity, fixed-tick force/impulse-at-point motion, ordered script-host
+  services, the no-command causal control, registry-owned numeric tolerances,
+  and stale source/bundle controls. The checked source hash is
+  `sha256-bee6f33cf2040a9b69f2e27802dd6f095beadb9136aff065c9ed0e9576d81744`;
+  the checked bundle hash is
+  `sha256-8901390d93c9e180d848c11e41c00745982609df0e7a136f4de94b8a8294711b`.
+- Focused contract verification: the selected IR physics and descriptor tests,
+  verify-tools build, native trace binary check, and Rust formatting check pass.
+- Full `pnpm verify:physics-self-verification` passes after the V7 query trace
+  runner was moved to the retained native game-loop host. Its nested
+  `pnpm verify:conformance` run also passes, including the live V7 physics query
+  trace and the browser rendering fixture.
+- Checkpoint review verdict: **PASS** on 2026-07-22 after independent read-only
+  re-audit. The final review found no remaining Phase 1 functional, registry,
+  schema-compatibility, runtime, evidence, or documentation blocker.
+  Capability/status entries are limited to Phase 1 behavior; later-phase
+  claims remain residual.
+
+### Phase 2 evidence (checkpoint PASS)
+
+- Focused paired evidence: `pnpm verify:focused
+  verify:advanced-physics-wheels` writes the current report and paired web/native
+  traces under `tools/verify/artifacts/advanced-physics/phase-2-wheels/`.
+  The gate passes with zero diagnostics and both automated and manual
+  checkpoints passing against tolerance registry `0.3.0`.
+- The checked source hash is
+  `sha256-a0f5481e804d7434a93d6e2e4e87de5bae2e8c749f0bb825706f7ae151e1f3a2`;
+  the checked bundle hash is
+  `sha256-51af5ef89df27348bbf1a35f6379594d94ba684324bc2fc359433ce11b297942`;
+  and the manual screenshot hash is
+  `sha256-1025fa0e2fa89060e4e710d35317862a4e495f993e2a14877690020a3115ea9e`.
+- Paired scenarios prove static suspension load, asphalt-to-ice response,
+  steering, braking, stable authored wheel/contact/visual order, causal flag
+  negatives, full chassis and wheel telemetry, and presentation-only visual
+  interpolation with bounded spin and wrap-safe shortest-path interpolation.
+- Focused verification passes: 54 verify-tools tests, four IR descriptor/drift
+  tests, the 498-test web runtime suite, five native vehicle tests, two native
+  visual-consumption tests, docs consistency, and `git diff --check`.
+- `pnpm verify:conformance` passes on an unchanged warm rerun. The preceding
+  attempt recorded only a fixed 120-second cold Bevy compile timeout (`124`),
+  not a test or parity diagnostic.
+- Manual browser evidence records one solver-owned asphalt-to-ice crossing with
+  keyboard steering/braking and replay, changing contact/surface telemetry,
+  debug rays/normals, and all four authored visual targets with zero console
+  errors.
+- Checkpoint review verdict: **PASS** on 2026-07-22 after independent read-only
+  final audit. The reviewer found no remaining Phase 2 contract, validation,
+  compiler, solver, visual-consumption, evidence, manual-debug, or documentation
+  blocker. Production drivetrain/controller behavior remains a Phase 3 boundary.
+
+### Phase 3 evidence (checkpoint PASS)
+
+- `pnpm verify:focused verify:advanced-physics-drivetrain` passes with zero
+  diagnostics and both automated and manual checkpoints passing against
+  tolerance registry `0.4.0`. The aggregate and paired traces are under
+  `tools/verify/artifacts/advanced-physics/phase-3-drivetrain/`.
+- The checked source hash is
+  `sha256-d8efda8148bbb07e591a9f5a5c10dbcf25321715965a9c4323abc12f538c2367`;
+  the checked bundle hash is
+  `sha256-4fc3114d1d9eb5d77705af6fa01d9fd118f8b68cff9a9f7e5730ce421612b8bc`;
+  and the manual browser screenshot hash is
+  `sha256-7e0464a1b6057e59f2be68f6bc59290e49b3c87b080dab0568f2a2064a0d2768`.
+- Paired traces prove automatic and manual shifting, steering, service braking,
+  reverse, ABS/TCS transitions, deterministic fresh retry, and open, locked,
+  and limited-slip differential torque paths. Numeric comparisons use stable
+  checkpoints and manifest-owned local travel/stability bounds.
+- Real `tn playtest` runs pass on web and graphical desktop with zero runtime
+  diagnostics. Their target-specific summaries are under
+  `examples/advanced-physics-drivetrain/artifacts/playtest/advanced-physics-drivetrain-automatic-launch/web/`
+  and `desktop/`; the desktop evidence is produced by the real Bevy runtime.
+- Manual browser review exercised launch, left/right slalom, braking, reverse,
+  release, page reload, and a fresh retry launch. The retry reset the chassis
+  to its authored start and moved it again under exact fixed-tick stepping.
+  The HUD showed gear/RPM/clutch and authored-order
+  torque telemetry, TCS and ABS each activated, all four wheels remained
+  visible, and runtime diagnostics reported zero errors.
+- Course-correction exit verification passes: the complete native Rust suite,
+  conformance, cookbook, typecheck, docs consistency, focused drivetrain gate,
+  and the full JavaScript workspace suite with bounded test-runner concurrency.

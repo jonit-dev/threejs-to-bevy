@@ -790,7 +790,8 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   validatePortablePhysicsLayerCapacity(world, path, diagnostics);
   const entityIds = new Set(world.entities.map((entity) => entity.id));
   const rigidBodyEntityIds = new Set(world.entities.filter((entity) => entity.components.RigidBody !== undefined).map((entity) => entity.id));
-  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, rigidBodyEntityIds, diagnostics));
+  const tireModelEntityIds = new Set(world.entities.filter((entity) => entity.components.TireModel !== undefined).map((entity) => entity.id));
+  world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, rigidBodyEntityIds, tireModelEntityIds, diagnostics));
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
 }
 

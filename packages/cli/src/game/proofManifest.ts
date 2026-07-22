@@ -20,12 +20,15 @@ export interface IProofManifest {
 }
 
 export interface IProofArtifactMetadata {
+  artifactHashes?: Record<string, string>;
   bundleHash?: string;
   commandParameters: Record<string, unknown>;
   fileCount: number;
   generatedAt: string;
+  completedAt?: string;
   schema: "threenative.proof-artifact-metadata";
   sourceHash: string;
+  startedAt?: string;
   version: "0.1.0";
 }
 
@@ -67,23 +70,50 @@ const assetRoots = ["assets"];
 const bundleRoots = ["dist"];
 
 export async function buildProofManifest(options: { commandParameters?: Record<string, unknown>; projectPath: string }): Promise<IProofManifest> {
-  const files = [
+  const configured = await configuredProofRoots(options.projectPath);
+  const files = dedupeFiles([
     ...await collectHashes(options.projectPath, sourceRoots, "source"),
+    ...await collectHashes(options.projectPath, configured.source, "source"),
     ...await collectHashes(options.projectPath, assetRoots, "asset"),
     ...await collectHashes(options.projectPath, bundleRoots, "bundle"),
-  ].sort((left, right) => left.path.localeCompare(right.path));
+    ...await collectHashes(options.projectPath, configured.bundle, "bundle"),
+  ]).sort((left, right) => left.path.localeCompare(right.path));
   const sourceHash = hashRows(files.filter((file) => file.role === "source"));
   const bundleRows = files.filter((file) => file.role === "bundle");
   return {
     ...(bundleRows.length === 0 ? {} : { bundleHash: hashRows(bundleRows) }),
     commandParameters: options.commandParameters ?? {},
     files,
-    generatedAt: new Date(0).toISOString(),
+    generatedAt: new Date().toISOString(),
     projectPath: options.projectPath,
     schema: "threenative.proof-manifest",
     sourceHash,
     version: "0.1.0",
   };
+}
+
+async function configuredProofRoots(projectPath: string): Promise<{ bundle: string[]; source: string[] }> {
+  const configPath = resolve(projectPath, "threenative.config.json");
+  if (!await exists(configPath)) return { bundle: [], source: [] };
+  try {
+    const config = JSON.parse(await readFile(configPath, "utf8")) as { entry?: unknown; outDir?: unknown };
+    return {
+      bundle: typeof config.outDir === "string" ? [config.outDir] : [],
+      source: ["threenative.config.json", "playtests", ...(typeof config.entry === "string" ? [config.entry] : [])],
+    };
+  } catch {
+    return { bundle: [], source: ["threenative.config.json"] };
+  }
+}
+
+function dedupeFiles(files: IProofFileHash[]): IProofFileHash[] {
+  const seen = new Set<string>();
+  return files.filter((file) => {
+    const key = `${file.role}:${file.path}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export async function buildProofArtifactMetadata(options: { commandParameters?: Record<string, unknown>; projectPath: string }): Promise<IProofArtifactMetadata> {

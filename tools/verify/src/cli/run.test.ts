@@ -22,6 +22,7 @@ test("focused gate dispatcher should list current capability gates", () => {
   assert.ok(names.length >= 12, "expected the typed focused gate registry to stay populated");
   for (const name of [
     "verify:agent-io",
+    "verify:advanced-physics-wheels",
     "verify:animation-physics-residuals",
     "verify:baked-gi",
     "verify:bundle-safety-hardening",

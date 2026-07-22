@@ -14,6 +14,11 @@ test("scripting host matrix should be sorted and unique", () => {
   assert.equal(SCRIPT_HOST_SERVICE_MATRIX.every((entry) => entry.web === "implemented" && entry.bevy === "implemented"), true);
 });
 
+test("script service extractors should preserve nested service identifiers", () => {
+  assert.deepEqual(extractServices('"physics.raycast" | "physics.vehicle.setInputs"'), ["physics.raycast", "physics.vehicle.setInputs"]);
+  assert.deepEqual(extractNativeServiceEffects('service: "physics.vehicle.setInputs"'), ["physics.vehicle.setInputs"]);
+});
+
 test("scripting host matrix should match SDK IR web Bevy and docs surfaces", async () => {
   const services = [...PROMOTED_SCRIPT_SERVICES].sort();
   const [sdkSystem, irSystems, webContext, bevyBridge, docsMatrix] = await Promise.all([
@@ -65,19 +70,23 @@ function extractNativeContextMethods(source: string): string[] {
     const firstLineEnd = tail.indexOf("\n") + 1;
     const nextRootOffset = tail.slice(firstLineEnd).search(/^ {4,6}[a-zA-Z][a-zA-Z0-9]*: \{$/m);
     const body = nextRootOffset === -1 ? tail : tail.slice(0, firstLineEnd + nextRootOffset);
-    return [...body.matchAll(new RegExp(`^ {${rootIndent + 2}}([a-zA-Z][a-zA-Z0-9]*)\\([^\\n]*\\) \\{`, "gm"))]
+    const direct = [...body.matchAll(new RegExp(`^ {${rootIndent + 2}}([a-zA-Z][a-zA-Z0-9]*)\\([^\\n]*\\) \\{`, "gm"))]
       .map((match) => `${root}.${match[1] ?? ""}`);
+    const nested = [...body.matchAll(new RegExp(`^ {${rootIndent + 2}}([a-zA-Z][a-zA-Z0-9]*): \\{([\\s\\S]*?)(?=^ {${rootIndent + 2}}[a-zA-Z][a-zA-Z0-9]*(?:: \\{|\\()|^ {${rootIndent}}\\})`, "gm"))]
+      .flatMap((match) => [...(match[2] ?? "").matchAll(new RegExp(`^ {${rootIndent + 4}}([a-zA-Z][a-zA-Z0-9]*)\\([^\\n]*\\) \\{`, "gm"))]
+        .map((method) => `${root}.${match[1] ?? ""}.${method[1] ?? ""}`));
+    return [...direct, ...nested];
   }).sort();
 }
 
 function extractNativeServiceEffects(source: string): string[] {
-  const emitted = [...source.matchAll(/service: "([a-z]+\.[A-Za-z][A-Za-z0-9]*)"/g)].map((match) => match[1] ?? "");
-  const delegated = [...source.matchAll(/physicsBodyCommand\("([a-z]+\.[A-Za-z][A-Za-z0-9]*)"/g)].map((match) => match[1] ?? "");
+  const emitted = [...source.matchAll(/service: "([a-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+)"/g)].map((match) => match[1] ?? "");
+  const delegated = [...source.matchAll(/physicsBodyCommand\("([a-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+)"/g)].map((match) => match[1] ?? "");
   return [...new Set([...emitted, ...delegated])].sort();
 }
 
 function extractServices(source: string): string[] {
-  return [...new Set([...source.matchAll(/"([a-z]+\.[A-Za-z][A-Za-z0-9]*)"/g)].map((match) => match[1] ?? ""))].sort();
+  return [...new Set([...source.matchAll(/"([a-z][A-Za-z0-9]*(?:\.[A-Za-z][A-Za-z0-9]*)+)"/g)].map((match) => match[1] ?? ""))].sort();
 }
 
 function escapeRegExp(value: string): string {

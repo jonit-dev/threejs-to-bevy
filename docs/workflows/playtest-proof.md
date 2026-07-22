@@ -21,11 +21,12 @@ tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stab
 ```
 
 Scenario steps may count fixed simulation ticks directly. `holdTicks` and
-`waitTicks` use a 1/60-second fixed delta; the browser proof runner advances
-one rendered frame per tick. Use `kind: "wait"` for an explicit no-input
-interval instead of pressing an unbound key. `holdFrames` and `waitFrames`
-remain compatibility aliases. Run `tn playtest schema --json` for the full
-machine-readable shape.
+`waitTicks` advance the paused browser runtime by exactly that many fixed
+updates. Slow headless rendering cannot add catch-up ticks. Use `kind: "wait"`
+for an explicit no-input interval instead of pressing an unbound key.
+`holdFrames` and `waitFrames` retain rendered-frame compatibility behavior,
+and older runtimes fall back to that behavior. Run `tn playtest schema --json`
+for the full machine-readable shape.
 
 ```json
 {

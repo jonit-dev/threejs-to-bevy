@@ -26,12 +26,14 @@ tn iterate --project . --json
    `AGENT_GAME_PLAN.md` only if planning fails or a required plan field is
    absent. Review mechanic responsibilities before running any mutation.
 2. Choose one branch from the plan:
-   - When it reports `authoringMode: "custom-on-starter"`, run the emitted
-     `nextInspectionCommand` first. If inspection returns a capability-selected
-     `nextAuthoringCommand`, run that bounded prototype command before opening
-     broad source files. Only hand-author the missing behavior in
-     `content/**/*.json` and `src/scripts/**/*.ts` when no executable authoring
-     command is returned or its responsibilities do not cover the prompt.
+   - When it reports `TN_GAME_PLAN_OFF_RECIPE`, run the emitted
+     `nextInspectionCommand` first. Treat `authoringMode: "custom-on-starter"`
+     as confirmation that the starter must be extended. If inspection returns
+     a capability-selected `nextAuthoringCommand`, run that bounded prototype
+     command before opening broad source files. Only custom-author the missing
+     behavior in `content/**/*.json` and `src/scripts/**/*.ts` when no executable
+     authoring command is returned or its responsibilities do not cover the
+     prompt's core verbs and acceptance criteria.
    - When coverage is complete, inspect the candidate's responsibilities and
      proof, then use its `mechanicDecomposition[].cookbookId` with
      `tn cookbook show <id> --json` before running a reviewed mutation command.

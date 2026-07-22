@@ -1,6 +1,9 @@
 import type { IIrDiagnostic } from "./validate.js";
 import type { IIrNamedSchema, IIrSchemaField, IIrSchemaFile, IWorldIr } from "./types.js";
 import { isNumberTuple, isRecord } from "./validationPrimitives.js";
+import { PHYSICS_CAPABILITY_DESCRIPTORS } from "./physicsCapabilities.js";
+
+const BUILT_IN_PHYSICS_COMPONENTS = new Set<string>(PHYSICS_CAPABILITY_DESCRIPTORS.map((descriptor) => descriptor.component));
 
 export function validateSchemaFile(
   schemaFile: IIrSchemaFile,
@@ -66,7 +69,7 @@ export function validateResources(
 }
 
 export function isBuiltInComponent(componentName: string): boolean {
-  return ["Camera", "CharacterController", "Collider", "ContactShadows", "Hierarchy", "Light", "MeshRenderer", "Patrol", "PhysicsJoint", "RenderLayers", "RigidBody", "StateMachine", "Transform", "Visibility", "WorldText"].includes(componentName);
+  return BUILT_IN_PHYSICS_COMPONENTS.has(componentName) || ["Camera", "CharacterController", "Collider", "ContactShadows", "Hierarchy", "Light", "MeshRenderer", "Patrol", "PhysicsJoint", "RenderLayers", "RigidBody", "StateMachine", "Transform", "Visibility", "WorldText"].includes(componentName);
 }
 
 export function isBuiltInResource(resourceName: string): boolean {

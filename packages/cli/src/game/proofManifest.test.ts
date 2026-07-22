@@ -69,3 +69,26 @@ test("proof diff reports asset file changes", async () => {
     await rm(root, { force: true, recursive: true });
   }
 });
+
+test("hashes configured external source and bundle roots", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-proof-configured-"));
+  try {
+    await mkdir(join(root, "fixture/game.bundle"), { recursive: true });
+    await mkdir(join(root, "example/playtests"), { recursive: true });
+    await writeFile(join(root, "fixture/game.bundle/world.ir.json"), "{}\n");
+    await writeFile(join(root, "fixture/game.bundle/manifest.json"), "{}\n");
+    await writeFile(join(root, "example/playtests/flight.json"), "{}\n");
+    await writeFile(join(root, "example/threenative.config.json"), JSON.stringify({ entry: "../fixture/game.bundle/world.ir.json", outDir: "../fixture/game.bundle" }));
+
+    const manifest = await buildProofManifest({ projectPath: join(root, "example") });
+
+    assert.ok(manifest.files.some((file) => file.role === "source" && file.path === "../fixture/game.bundle/world.ir.json"));
+    assert.ok(manifest.files.some((file) => file.role === "bundle" && file.path === "../fixture/game.bundle/manifest.json"));
+    assert.ok(manifest.files.some((file) => file.role === "source" && file.path === "playtests/flight.json"));
+    assert.notEqual(manifest.sourceHash, "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    assert.ok(manifest.bundleHash);
+    assert.notEqual(manifest.generatedAt, "1970-01-01T00:00:00.000Z");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});

@@ -53,6 +53,7 @@ pub mod persistence_reload;
 pub mod persistence_storage;
 pub mod physics;
 pub mod physics_sensors;
+pub mod physics_vehicle;
 pub mod picking;
 pub mod presentation;
 pub mod production_hardening;
@@ -699,6 +700,7 @@ struct ScriptedRuntimeWorldParams<'w, 's> {
     animation_queue: Option<ResMut<'w, map_world::NativeAnimationServiceQueue>>,
     commands: Commands<'w, 's>,
     fast_forward: Option<Res<'w, proof_harness::NativeProofHarnessFastForward>>,
+    global_transforms: Query<'w, 's, &'static GlobalTransform>,
     input: Option<Res<'w, input::NativeInputState>>,
     _main_thread: NonSend<'w, ScriptedRuntimeMainThread>,
     material_handles: Option<Res<'w, map_world::NativeMaterialHandles>>,
@@ -723,6 +725,7 @@ struct ScriptedRuntimeWorldParams<'w, 's> {
     proof_harness: Option<Res<'w, proof_harness::NativeProofHarnessState>>,
     resource_observations: Option<ResMut<'w, systems_host::NativeResourceObservationState>>,
     scripted: ScriptedRuntimeParams<'w>,
+    stable_ids: Query<'w, 's, &'static ThreeNativeId>,
     text_nodes: Query<
         'w,
         's,
@@ -733,7 +736,15 @@ struct ScriptedRuntimeWorldParams<'w, 's> {
         ),
     >,
     time: Res<'w, Time>,
-    transforms: Query<'w, 's, (&'static ThreeNativeId, &'static mut Transform)>,
+    transforms: Query<
+        'w,
+        's,
+        (
+            &'static ThreeNativeId,
+            &'static mut Transform,
+            Option<&'static Parent>,
+        ),
+    >,
     ui_action_queue: Option<ResMut<'w, ui::NativeUiActionQueue>>,
     ui_binding_targets: Option<Res<'w, ui::NativeUiBindingTargets>>,
 }
@@ -743,6 +754,7 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
         mut animation_queue,
         mut commands,
         fast_forward,
+        global_transforms,
         input,
         _main_thread,
         material_handles,
@@ -751,6 +763,7 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
         proof_harness,
         mut resource_observations,
         mut scripted,
+        stable_ids,
         mut text_nodes,
         time,
         mut transforms,
@@ -852,6 +865,15 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
         fixed_delta,
         &mut transforms,
     );
+    if let Some(loop_state) = sync_loop_state {
+        sync_physics_vehicle_visuals(
+            loop_state,
+            fixed_delta,
+            &global_transforms,
+            &stable_ids,
+            &mut transforms,
+        );
+    }
     sync_scripted_materials(&entities_by_id, material_handles.as_deref(), &mut materials);
     sync_scripted_ui_text(
         &runtime.bundle,
@@ -1147,14 +1169,14 @@ fn sync_scripted_transforms(
     entities_by_id: &HashMap<&str, &WorldEntity>,
     loop_state: Option<&systems_host::NativeGameLoopState>,
     fixed_delta: f32,
-    transforms: &mut Query<(&ThreeNativeId, &mut Transform)>,
+    transforms: &mut Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
 ) {
     let interpolation_alpha = if fixed_delta > 0.0 {
         loop_state.map(|state| (state.accumulator / fixed_delta).clamp(0.0, 1.0))
     } else {
         None
     };
-    for (stable_id, mut target) in transforms.iter_mut() {
+    for (stable_id, mut target, _) in transforms.iter_mut() {
         let Some(source) = entities_by_id
             .get(stable_id.0.as_str())
             .and_then(|entity| entity.components.transform.as_ref())
@@ -1181,6 +1203,74 @@ fn sync_scripted_transforms(
             if *target != next {
                 *target = next;
             }
+        }
+    }
+}
+
+fn sync_physics_vehicle_visuals(
+    loop_state: &systems_host::NativeGameLoopState,
+    fixed_delta: f32,
+    global_transforms: &Query<&GlobalTransform>,
+    stable_ids: &Query<&ThreeNativeId>,
+    transforms: &mut Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
+) {
+    let alpha = if fixed_delta > 0.0 {
+        (loop_state.accumulator / fixed_delta).clamp(0.0, 1.0)
+    } else {
+        0.0
+    };
+    let runtime_id = physics::native_physics_runtime_id(&loop_state.script_posed_entities);
+    apply_physics_vehicle_visuals(runtime_id, alpha, global_transforms, stable_ids, transforms);
+}
+
+fn apply_physics_vehicle_visuals(
+    runtime_id: usize,
+    alpha: f32,
+    global_transforms: &Query<&GlobalTransform>,
+    stable_ids: &Query<&ThreeNativeId>,
+    transforms: &mut Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
+) {
+    let visuals = physics_vehicle::observe_physics_vehicle_visuals(runtime_id, alpha)
+        .into_iter()
+        .map(|visual| (visual.target_id.clone(), visual))
+        .collect::<HashMap<_, _>>();
+    if visuals.is_empty() {
+        return;
+    }
+    for (stable_id, mut target, parent) in transforms.iter_mut() {
+        let Some(visual) = visuals.get(&stable_id.0) else {
+            continue;
+        };
+        let [x, y, z] = visual.interpolated_position;
+        let world_position = Vec3::new(x, y, z);
+        let local_wheel_rotation = Quat::from_euler(
+            EulerRot::XYZ,
+            visual.interpolated_spin_angle,
+            visual.interpolated_steering_angle,
+            0.0,
+        );
+        let [qx, qy, qz, qw] = visual.interpolated_chassis_rotation;
+        let world_rotation = Quat::from_xyzw(qx, qy, qz, qw) * local_wheel_rotation;
+        let direct_chassis_parent = parent
+            .and_then(|parent| stable_ids.get(parent.get()).ok())
+            .is_some_and(|parent_id| parent_id.0 == visual.entity);
+        if direct_chassis_parent {
+            let [px, py, pz] = visual.interpolated_chassis_position;
+            let chassis_position = Vec3::new(px, py, pz);
+            let chassis_rotation = Quat::from_xyzw(qx, qy, qz, qw);
+            target.translation = chassis_rotation.inverse() * (world_position - chassis_position);
+            target.rotation = chassis_rotation.inverse() * world_rotation;
+        } else if let Some(parent_global) =
+            parent.and_then(|parent| global_transforms.get(parent.get()).ok())
+        {
+            target.translation = parent_global
+                .affine()
+                .inverse()
+                .transform_point3(world_position);
+            target.rotation = parent_global.compute_transform().rotation.inverse() * world_rotation;
+        } else {
+            target.translation = world_position;
+            target.rotation = world_rotation;
         }
     }
 }
@@ -1407,6 +1497,89 @@ mod tests {
     use threenative_loader::load_bundle;
 
     use super::*;
+
+    #[test]
+    fn wheel_visual_presentation_should_apply_interpolated_parent_space_transform() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../packages/ir/fixtures/conformance/advanced-physics-wheels/game.bundle");
+        let mut bundle = load_bundle(root).expect("wheel fixture should load");
+        let runtime = BTreeSet::new();
+        let runtime_id = physics::native_physics_runtime_id(&runtime);
+        assert!(physics_vehicle::set_physics_vehicle_control_input(
+            runtime_id,
+            "chassis",
+            physics_vehicle::WheelControlInput {
+                brake: 0.0,
+                drive: 1.0,
+                steering: 0.5,
+            },
+        ));
+        physics::step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+        let visual = physics_vehicle::observe_physics_vehicle_visuals(runtime_id, 0.5)
+            .into_iter()
+            .find(|visual| visual.wheel_id == "front-left")
+            .expect("front-left visual state should exist");
+
+        let [chassis_x, chassis_y, chassis_z] = visual.interpolated_chassis_position;
+        let [qx, qy, qz, qw] = visual.interpolated_chassis_rotation;
+        let chassis_rotation = Quat::from_xyzw(qx, qy, qz, qw);
+        let parent_transform =
+            Transform::from_xyz(chassis_x, chassis_y, chassis_z).with_rotation(chassis_rotation);
+        let stale_parent_global = GlobalTransform::from(
+            Transform::from_xyz(3.0, 1.0, -2.0).with_rotation(Quat::from_rotation_y(0.4)),
+        );
+        let mut world = World::new();
+        let parent = world
+            .spawn((
+                ThreeNativeId("chassis".to_owned()),
+                parent_transform,
+                stale_parent_global,
+            ))
+            .id();
+        let target = world
+            .spawn((
+                ThreeNativeId(visual.target_id.clone()),
+                Transform::from_xyz(9.0, 9.0, 9.0),
+                GlobalTransform::IDENTITY,
+            ))
+            .id();
+        world.entity_mut(target).set_parent(parent);
+
+        let mut system_state = bevy::ecs::system::SystemState::<(
+            Query<&GlobalTransform>,
+            Query<&ThreeNativeId>,
+            Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
+        )>::new(&mut world);
+        let (global_transforms, stable_ids, mut transforms) = system_state.get_mut(&mut world);
+        apply_physics_vehicle_visuals(
+            runtime_id,
+            0.5,
+            &global_transforms,
+            &stable_ids,
+            &mut transforms,
+        );
+        system_state.apply(&mut world);
+
+        let applied = world
+            .entity(target)
+            .get::<Transform>()
+            .copied()
+            .expect("visual target transform should exist");
+        let expected_position = chassis_rotation.inverse()
+            * (Vec3::from_array(visual.interpolated_position)
+                - Vec3::new(chassis_x, chassis_y, chassis_z));
+        assert!(applied.translation.abs_diff_eq(expected_position, 1.0e-5));
+        let world_rotation = Quat::from_xyzw(qx, qy, qz, qw)
+            * Quat::from_euler(
+                EulerRot::XYZ,
+                visual.interpolated_spin_angle,
+                visual.interpolated_steering_angle,
+                0.0,
+            );
+        let expected_rotation = chassis_rotation.inverse() * world_rotation;
+        assert!(applied.rotation.abs_diff_eq(expected_rotation, 1.0e-5));
+        assert_ne!(applied.translation, Vec3::splat(9.0));
+    }
 
     #[test]
     fn should_apply_baked_sh_probe_without_bevy_default_ambient() {

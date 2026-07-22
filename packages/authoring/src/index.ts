@@ -6,6 +6,8 @@ export type {
   IAuthoringDiagnosticRelated,
 } from "./diagnostics.js";
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
+export type { IAddVehicleControllerOptions, IVehicleControllerOperationOptions } from "./operations.js";
+export { addVehicleController, inspectVehicleController, validateVehicleControllerSource } from "./operations.js";
 export type {
   IApplyAuthoringBatchOptions,
   IAuthoringBatchApplyResult,

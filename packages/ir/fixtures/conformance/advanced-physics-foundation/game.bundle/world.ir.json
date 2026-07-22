@@ -1,0 +1,28 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "compound.body",
+      "components": {
+        "CompoundCollider": {
+          "children": [
+            {
+              "id": "left",
+              "localPose": { "position": [-0.75, 0, 0] },
+              "shape": { "kind": "box", "size": [1, 1, 1] }
+            },
+            {
+              "id": "right",
+              "localPose": { "position": [0.75, 0, 0] },
+              "shape": { "kind": "sphere", "radius": 0.5 }
+            }
+          ]
+        },
+        "RigidBody": { "angularVelocity": [0, 0, 0], "gravityScale": 0, "kind": "dynamic", "mass": 2, "velocity": [0, 0, 0] },
+        "Transform": { "position": [0, 2, 0] }
+      }
+    }
+  ],
+  "resources": { "AdvancedPhysicsReport": {} }
+}

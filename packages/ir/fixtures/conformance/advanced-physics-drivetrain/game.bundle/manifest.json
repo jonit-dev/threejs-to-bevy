@@ -1,0 +1,8 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-advanced-physics-drivetrain",
+  "requiredCapabilities": { "physics": ["surface", "tire-model", "wheel-assembly", "vehicle-controller"] },
+  "entry": { "world": "world.ir.json", "systems": "systems.ir.json", "scripts": "scripts.bundle.js" },
+  "files": { "assets": "assets.manifest.json", "input": "input.ir.json", "materials": "materials.ir.json", "scripts": "scripts.bundle.js", "targetProfile": "target.profile.json" }
+}

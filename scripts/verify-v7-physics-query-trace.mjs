@@ -14,6 +14,7 @@ export async function verifyV7PhysicsQueryTrace(options = {}) {
       resolve(repoRoot, "packages/ir/fixtures/conformance/advanced-physics-character/game.bundle"),
     mismatchCode: "TN_VERIFY_V7_PHYSICS_QUERY_TRACE_MISMATCH",
     mismatchLabel: "V7 physics query trace",
+    nativeArgs: ["--live-physics"],
   });
 }
 

@@ -1071,15 +1071,20 @@ fn service_readable_components(service: &str) -> Vec<String> {
             "Transform".to_owned(),
         ],
         "physics.addForce"
+        | "physics.addForceAtPoint"
         | "physics.addTorque"
         | "physics.applyAngularImpulse"
         | "physics.applyImpulse"
+        | "physics.applyImpulseAtPoint"
         | "physics.setAngularVelocity"
         | "physics.setLinearVelocity" => vec![
             "Collider".to_owned(),
             "RigidBody".to_owned(),
             "Transform".to_owned(),
         ],
+        "physics.vehicle.setInputs" => {
+            vec!["VehicleController".to_owned(), "WheelAssembly".to_owned()]
+        }
         "picking.mesh" => vec!["MeshRenderer".to_owned(), "Transform".to_owned()],
         "picking.pointerRay" => vec!["Camera".to_owned(), "Transform".to_owned()],
         _ => Vec::new(),

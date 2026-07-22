@@ -1,0 +1,6 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "../../packages/ir/fixtures/conformance/advanced-physics-drivetrain/game.bundle/world.ir.json",
+  "outDir": "../../packages/ir/fixtures/conformance/advanced-physics-drivetrain/game.bundle"
+}

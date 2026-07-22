@@ -434,6 +434,8 @@ pub struct WorldEntity {
 pub struct EntityComponents {
     pub camera: Option<CameraComponent>,
     pub collider: Option<ColliderComponent>,
+    pub compound_collider: Option<CompoundColliderComponent>,
+    pub physics_surface: Option<PhysicsSurfaceComponent>,
     pub contact_shadows: Option<ContactShadowsComponent>,
     pub hierarchy: Option<HierarchyComponent>,
     pub kinematic_mover: Option<KinematicMoverComponent>,
@@ -443,10 +445,13 @@ pub struct EntityComponents {
     pub physics_joint: Option<PhysicsJointComponent>,
     pub render_layers: Option<RenderLayersComponent>,
     pub rigid_body: Option<RigidBodyComponent>,
+    pub tire_model: Option<TireModelComponent>,
+    pub vehicle_controller: Option<VehicleControllerComponent>,
     pub spawner: Option<SpawnerComponent>,
     pub state_machine: Option<StateMachineComponent>,
     pub transform: Option<TransformComponent>,
     pub visibility: Option<VisibilityComponent>,
+    pub wheel_assembly: Option<WheelAssemblyComponent>,
     pub world_text: Option<WorldTextComponent>,
     #[serde(flatten)]
     pub extra: HashMap<String, serde_json::Value>,
@@ -456,6 +461,8 @@ macro_rules! for_each_typed_component {
     ($callback:ident, $components:expr $(, $argument:expr)*) => {
         $callback!($components, camera, "Camera" $(, $argument)*);
         $callback!($components, collider, "Collider" $(, $argument)*);
+        $callback!($components, compound_collider, "CompoundCollider" $(, $argument)*);
+        $callback!($components, physics_surface, "PhysicsSurface" $(, $argument)*);
         $callback!($components, contact_shadows, "ContactShadows" $(, $argument)*);
         $callback!($components, hierarchy, "Hierarchy" $(, $argument)*);
         $callback!($components, kinematic_mover, "KinematicMover" $(, $argument)*);
@@ -465,10 +472,13 @@ macro_rules! for_each_typed_component {
         $callback!($components, physics_joint, "PhysicsJoint" $(, $argument)*);
         $callback!($components, render_layers, "RenderLayers" $(, $argument)*);
         $callback!($components, rigid_body, "RigidBody" $(, $argument)*);
+        $callback!($components, tire_model, "TireModel" $(, $argument)*);
+        $callback!($components, vehicle_controller, "VehicleController" $(, $argument)*);
         $callback!($components, spawner, "Spawner" $(, $argument)*);
         $callback!($components, state_machine, "StateMachine" $(, $argument)*);
         $callback!($components, transform, "Transform" $(, $argument)*);
         $callback!($components, visibility, "Visibility" $(, $argument)*);
+        $callback!($components, wheel_assembly, "WheelAssembly" $(, $argument)*);
         $callback!($components, world_text, "WorldText" $(, $argument)*);
     };
 }
@@ -976,6 +986,196 @@ pub struct ColliderComponent {
     pub slope: Option<ColliderSlopeComponent>,
     pub sensor: Option<serde_json::Value>,
     pub trigger: Option<bool>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompoundColliderComponent {
+    pub children: Vec<CompoundColliderChild>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompoundColliderChild {
+    pub filter: Option<CompoundColliderFilter>,
+    pub id: String,
+    pub local_pose: CompoundColliderLocalPose,
+    pub material: Option<CompoundColliderMaterial>,
+    pub shape: CompoundColliderShape,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompoundColliderFilter {
+    pub layer: Option<String>,
+    pub mask: Option<Vec<String>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompoundColliderLocalPose {
+    pub position: [f32; 3],
+    pub rotation: Option<[f32; 4]>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct CompoundColliderMaterial {
+    pub friction: Option<f32>,
+    pub restitution: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", tag = "kind")]
+pub enum CompoundColliderShape {
+    Box { size: [f32; 3] },
+    Capsule { height: f32, radius: f32 },
+    ConvexHull { points: Vec<[f32; 3]> },
+    Sphere { radius: f32 },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsSurfaceComponent {
+    pub combine_rule: String,
+    pub grip: f32,
+    pub rolling_resistance: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsSlipCurvePoint {
+    pub grip: f32,
+    pub slip: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TireModelComponent {
+    pub lateral_slip_curve: Vec<PhysicsSlipCurvePoint>,
+    pub load_sensitivity: f32,
+    pub longitudinal_slip_curve: Vec<PhysicsSlipCurvePoint>,
+    pub rolling_resistance: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WheelAssemblyComponent {
+    pub max_steering_angle: f32,
+    pub max_suspension_force: f32,
+    pub max_tire_force: f32,
+    pub wheels: Vec<WheelComponent>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WheelComponent {
+    pub attachment: [f32; 3],
+    pub braked: bool,
+    pub driven: bool,
+    pub id: String,
+    pub radius: f32,
+    pub steering: bool,
+    pub suspension: WheelSuspensionComponent,
+    pub tire: String,
+    pub visual: Option<String>,
+    pub width: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WheelSuspensionComponent {
+    pub damper_rate: f32,
+    pub spring_rate: f32,
+    pub travel: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleControllerComponent {
+    pub assists: Option<VehicleAssistsComponent>,
+    pub bindings: Option<VehicleBindingsComponent>,
+    pub brakes: VehicleBrakesComponent,
+    pub differential: VehicleDifferentialComponent,
+    pub engine: VehicleEngineComponent,
+    pub steering: VehicleSteeringComponent,
+    pub transmission: VehicleTransmissionComponent,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleEngineComponent {
+    pub engine_braking: f32,
+    pub idle_rpm: f32,
+    pub redline_rpm: f32,
+    pub torque_curve: Vec<VehicleTorqueCurvePoint>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VehicleTorqueCurvePoint {
+    pub rpm: f32,
+    pub torque: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleTransmissionComponent {
+    pub clutch_response: f32,
+    pub downshift_rpm: Option<f32>,
+    pub final_drive: f32,
+    pub forward_ratios: Vec<f32>,
+    pub reverse_ratio: f32,
+    pub shift_policy: String,
+    pub upshift_rpm: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleDifferentialComponent {
+    pub kind: String,
+    pub limited_slip_ratio: Option<f32>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleSteeringComponent {
+    pub speed_curve: Vec<VehicleSteeringCurvePoint>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VehicleSteeringCurvePoint {
+    pub scale: f32,
+    pub speed: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleBrakesComponent {
+    pub front_bias: f32,
+    pub handbrake_wheel_ids: Vec<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct VehicleAssistsComponent {
+    pub abs: Option<VehicleAssistComponent>,
+    pub tcs: Option<VehicleAssistComponent>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleAssistComponent {
+    pub enabled: bool,
+    pub response: f32,
+    pub slip_threshold: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct VehicleBindingsComponent {
+    pub brake: Option<String>,
+    pub clutch: Option<String>,
+    pub gear_down: Option<String>,
+    pub gear_up: Option<String>,
+    pub handbrake: Option<String>,
+    pub steer: Option<String>,
+    pub throttle: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

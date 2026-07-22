@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boxCollider, BoxGeometry, capsuleCollider, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, rigidBody, Scene, sphereCollider } from "@threenative/sdk";
+import { boxCollider, BoxGeometry, capsuleCollider, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, physicsSurface, rigidBody, Scene, sphereCollider, tireModel, wheelAssembly } from "@threenative/sdk";
 
 import { sceneToWorld } from "./scene-to-world.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -25,6 +25,19 @@ test("physics should emit player collider and kinematic body", () => {
 
   assert.deepEqual(entity?.components.RigidBody, { damping: 0.2, gravityScale: 0, kind: "kinematic", velocity: [1, 0, 0] });
   assert.deepEqual(entity?.components.Collider, { friction: 0.6, kind: "box", layer: "player", mask: ["world"], restitution: 0.1, size: [1, 2, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } });
+});
+
+test("physics should losslessly emit wheel references, tire curves, surfaces, and force limits", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({ geometry: new BoxGeometry(), id: "vehicle", material: new MeshStandardMaterial(), physics: physics({ wheelAssembly: wheelAssembly([{ attachment: [-1, 0, 1], braked: true, driven: true, id: "front-left", radius: 0.35, steering: true, suspension: { damperRate: 2400, springRate: 30_000, travel: 0.25 }, tire: "tire.sport", visual: "wheel.front-left", width: 0.24 }], { maxSteeringAngle: 0.6, maxSuspensionForce: 20_000, maxTireForce: 12_000 }) }) }));
+  scene.add(new Mesh({ geometry: new BoxGeometry(), id: "tire.sport", material: new MeshStandardMaterial(), physics: physics({ tireModel: tireModel({ lateralSlipCurve: [{ slip: -1, grip: 0.5 }, { slip: 1, grip: 0.5 }], loadSensitivity: 1, longitudinalSlipCurve: [{ slip: -1, grip: 0.7 }, { slip: 1, grip: 0.7 }], rollingResistance: 0.02 }) }) }));
+  scene.add(new Mesh({ geometry: new BoxGeometry(), id: "road", material: new MeshStandardMaterial(), physics: physics({ surface: physicsSurface({ combineRule: "minimum", grip: 0.65, rollingResistance: 0.04 }) }) }));
+  scene.add(new Mesh({ geometry: new BoxGeometry(), id: "wheel.front-left", material: new MeshStandardMaterial() }));
+
+  const emitted = sceneToWorld(scene).world.entities;
+  assert.deepEqual(emitted.find((entity) => entity.id === "vehicle")?.components.WheelAssembly, { maxSteeringAngle: 0.6, maxSuspensionForce: 20_000, maxTireForce: 12_000, wheels: [{ attachment: [-1, 0, 1], braked: true, driven: true, id: "front-left", radius: 0.35, steering: true, suspension: { damperRate: 2400, springRate: 30_000, travel: 0.25 }, tire: "tire.sport", visual: "wheel.front-left", width: 0.24 }] });
+  assert.equal(emitted.find((entity) => entity.id === "tire.sport")?.components.TireModel?.longitudinalSlipCurve[0]?.slip, -1);
+  assert.deepEqual(emitted.find((entity) => entity.id === "road")?.components.PhysicsSurface, { combineRule: "minimum", grip: 0.65, rollingResistance: 0.04 });
 });
 
 test("physics should losslessly emit every SDK collider field and enroll sensor capabilities", () => {

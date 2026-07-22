@@ -20,7 +20,7 @@ export async function verifyV6ResourceEventTrace(options = {}) {
 
   const web = await runWebTrace(root, bundlePath);
   await writeFile(webEffectsPath, `${JSON.stringify(web, null, 2)}\n`);
-  await runNativeTrace(root, bundlePath, nativeEffectsPath, options.runNativeTrace);
+  await runNativeTrace(root, bundlePath, nativeEffectsPath, options.runNativeTrace, options.nativeArgs);
   const native = normalizeLog(JSON.parse(await readFile(nativeEffectsPath, "utf8")));
   const comparison = compareLogs(web, native, { mismatchCode, mismatchLabel });
   await writeFile(
@@ -49,6 +49,7 @@ export async function verifyV6ResourceEventTrace(options = {}) {
 
 async function runWebTrace(root, bundlePath) {
   const runtime = await import(pathToFileURL(resolve(root, "packages/runtime-web-three/dist/index.js")).href);
+  await runtime.initializePhysicsRuntime();
   const bundle = await runtime.loadBundle(bundlePath);
   const module = await runtime.loadSystemModule(bundlePath, bundle.manifest);
   const effectLog = runtime.createSystemEffectLog();
@@ -74,7 +75,7 @@ async function runWebTrace(root, bundlePath) {
   return normalizeLog(runtime.stableSystemEffectLog(effectLog));
 }
 
-async function runNativeTrace(root, bundlePath, nativeEffectsPath, runner) {
+async function runNativeTrace(root, bundlePath, nativeEffectsPath, runner, nativeArgs = []) {
   if (runner !== undefined) {
     await runner({ bundlePath, nativeEffectsPath, root });
     return;
@@ -91,6 +92,7 @@ async function runNativeTrace(root, bundlePath, nativeEffectsPath, runner) {
       "--",
       resolve(bundlePath),
       resolve(nativeEffectsPath),
+      ...nativeArgs,
     ],
     { cwd: resolve(root, "runtime-bevy") },
   );

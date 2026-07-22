@@ -1,0 +1,34 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "systems": [
+    {
+      "name": "advancedPhysicsFoundation",
+      "schedule": "fixedUpdate",
+      "reads": ["CompoundCollider", "RigidBody", "Transform"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": [],
+      "resourceWrites": [],
+      "services": ["physics.addForceAtPoint", "physics.applyImpulseAtPoint"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_advancedPhysicsFoundation" }
+    },
+    {
+      "name": "advancedPhysicsQuery",
+      "schedule": "update",
+      "reads": ["CompoundCollider", "Transform"],
+      "writes": [],
+      "queries": [],
+      "commands": [],
+      "eventReads": [],
+      "eventWrites": [],
+      "resourceReads": ["AdvancedPhysicsReport"],
+      "resourceWrites": ["AdvancedPhysicsReport"],
+      "services": ["physics.raycast"],
+      "script": { "bundle": "scripts.bundle.js", "exportName": "system_advancedPhysicsQuery" }
+    }
+  ]
+}
