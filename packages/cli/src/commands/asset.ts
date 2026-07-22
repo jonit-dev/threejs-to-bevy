@@ -1,7 +1,7 @@
 import { access, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
-import { addAsset, recordBlenderGenerator, type IAuthoringOperationResult } from "@threenative/authoring";
+import { addAsset, dispatchAuthoringOperation, recordBlenderGenerator, type IAuthoringOperationResult } from "@threenative/authoring";
 import { extractGltfAssetMetadata } from "@threenative/compiler";
 import type { IGltfSceneAssetIr } from "@threenative/ir";
 
@@ -9,6 +9,7 @@ import { importPolyHavenAsset, listPolyHavenCategories, polyHavenStatus, searchP
 import { assetProviderRegistry, findAssetProvider, renderAssetProviderHelp } from "../assetProviders/registry.js";
 import { fetchSketchfabPreview, importSketchfabModel, searchSketchfab, sketchfabStatus, type ISketchfabDependencies } from "../assetProviders/sketchfab.js";
 import { assetSourceRelevanceScore, exportAssetSourcesJsonl, getAssetSource, searchAssetSources, suggestAssetSources, type IAssetSourceRecord, type IAssetSourceSearchOptions } from "../assetSourceCatalog/catalog.js";
+import { assetGenerationProviderRegistry, BLENDER_ASSET_GENERATION_PROVIDER, findAssetGenerationProvider, renderAssetGenerationProviderHelp } from "../assetGenerationProviders/registry.js";
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { hyper3dStatus, importHyper3dJob, pollHyper3dJob, submitHyper3dJob, type IHyper3dDependencies } from "../modelProviders/hyper3d.js";
 import { assetCreationStrategy, findModelProvider, modelProviderRegistry } from "../modelProviders/registry.js";
@@ -18,42 +19,16 @@ import { assetRepairCommand } from "./assetRepair.js";
 import { generatorCommand, type IGeneratorCommandOptions } from "./sourceGeneratorCommand.js";
 
 export interface IAssetCommandOptions extends IGeneratorCommandOptions {
+  authoringDispatch?: typeof dispatchAuthoringOperation;
   hyper3dDependencies?: IHyper3dDependencies;
   polyHavenDependencies?: IPolyHavenDependencies;
   sketchfabDependencies?: ISketchfabDependencies;
 }
 
-const assetGenerateBlenderIdPatternSource = "^[a-z][a-z0-9._-]*$";
-
 export const ASSET_GENERATE_BLENDER_DESCRIPTOR = {
-  assetIdPattern: assetGenerateBlenderIdPatternSource,
-  usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
-  mcp: {
-    argv: {
-      arguments: [
-        { name: "assetId", positional: true },
-        { encoding: "json", flag: "--recipe", name: "recipe" },
-        { flag: "--out", name: "out" },
-        { flag: "--overwrite-policy", name: "overwritePolicy" },
-      ],
-      fixed: ["--provider", "blender"],
-      prefix: ["asset", "generate"],
-      projectScoped: true,
-    },
-    description: "Generate and register a bounded Blender recipe through tn asset generate --json without installing tools or accepting code.",
-    inputSchema: {
-      additionalProperties: false,
-      properties: {
-        assetId: { pattern: assetGenerateBlenderIdPatternSource, type: "string" },
-        out: { pattern: "^assets/generated/[a-z][a-z0-9._-]*\\.glb$", type: "string" },
-        overwritePolicy: { enum: ["manual", "replace", "skip"], type: "string" },
-        recipe: { oneOf: [{ pattern: "^content/generators/[a-z][a-z0-9._-]*\\.recipe\\.json$", type: "string" }, { type: "object" }] },
-      },
-      required: ["assetId", "recipe"],
-      type: "object",
-    },
-    name: "asset.generate_blender",
-  },
+  assetIdPattern: BLENDER_ASSET_GENERATION_PROVIDER.assetIdPattern,
+  usage: BLENDER_ASSET_GENERATION_PROVIDER.usage,
+  mcp: BLENDER_ASSET_GENERATION_PROVIDER.mcp,
 } as const;
 
 export const ASSET_INSPECT_MCP_DESCRIPTOR = {
@@ -63,7 +38,7 @@ export const ASSET_INSPECT_MCP_DESCRIPTOR = {
   name: "asset.inspect",
 } as const;
 
-const assetGenerateBlenderIdPattern = new RegExp(ASSET_GENERATE_BLENDER_DESCRIPTOR.assetIdPattern, "u");
+const assetGenerateBlenderIdPattern = new RegExp(BLENDER_ASSET_GENERATION_PROVIDER.assetIdPattern, "u");
 
 type Severity = "info" | "warning" | "error";
 
@@ -274,20 +249,34 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
     const assetId = positionals[1];
     const provider = readFlag(normalizedArgv, "--provider");
     const recipeInput = readFlag(normalizedArgv, "--recipe");
-    if (assetId === undefined || provider !== "blender" || recipeInput === undefined) {
+    if (normalizedArgv.includes("--help") || normalizedArgv.includes("-h")) {
+      const payload = { code: "TN_ASSET_GENERATE_HELP", message: "Local asset-generation providers and their current availability.", providers: assetGenerationProviderRegistry };
+      return { exitCode: 0, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${renderAssetGenerationProviderHelp()}\n` };
+    }
+    const providerDescriptor = provider === undefined ? undefined : findAssetGenerationProvider(provider);
+    if (provider !== undefined && providerDescriptor === undefined) {
+      return diagnosticResult({
+        code: "TN_ASSET_GENERATE_PROVIDER_UNKNOWN",
+        message: `Unknown local asset-generation provider '${provider}'. Available providers: ${assetGenerationProviderRegistry.map((candidate) => candidate.id).join(", ")}.`,
+      }, { exitCode: 2, json, stderr: !json });
+    }
+    if (assetId === undefined || providerDescriptor === undefined || recipeInput === undefined) {
       return diagnosticResult({
         code: "TN_ASSET_GENERATE_ARGS_MISSING",
-        message: "Usage: tn asset generate <asset-id> --provider blender --recipe <project-path-or-json> [--out <assets/generated/id.glb>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json].",
+        message: `Usage: ${renderAssetGenerationProviderHelp().replaceAll("\n              ", " or ")}.`,
       }, { exitCode: 2, json, stderr: !json });
     }
     if (!assetGenerateBlenderIdPattern.test(assetId)) {
       return diagnosticResult({
         code: "TN_ASSET_GENERATE_ASSET_ID_INVALID",
-        message: `Asset generator id '${assetId}' must match ${ASSET_GENERATE_BLENDER_DESCRIPTOR.assetIdPattern}.`,
+        message: `Asset generator id '${assetId}' must match ${BLENDER_ASSET_GENERATION_PROVIDER.assetIdPattern}.`,
       }, { exitCode: 2, json, stderr: !json });
     }
     let inlineRecipe: Record<string, unknown> | undefined;
     if (recipeInput.trimStart().startsWith("{")) {
+      if (providerDescriptor.id === "img2threejs") {
+        return diagnosticResult({ code: "TN_IMG2THREEJS_RECIPE_PATH_REQUIRED", message: "img2threejs generation requires a reviewed project-local recipe path; inline JSON is not accepted." }, { exitCode: 2, json, stderr: !json });
+      }
       try {
         const parsed = JSON.parse(recipeInput) as unknown;
         if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) throw new Error("recipe JSON must be an object");
@@ -303,10 +292,34 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
     if (assetConflict !== undefined) {
       return diagnosticResult({
         code: "TN_ASSET_GENERATE_MANUAL_ASSET_CONFLICT",
-        message: `Asset '${assetId}' is already declared in '${assetConflict}'. Blender generation cannot take ownership of an existing declaration.`,
+        message: `Asset '${assetId}' is already declared in '${assetConflict}'. Local generation cannot take ownership of an existing declaration.`,
       }, { exitCode: 1, json, stderr: !json });
     }
     const provenancePath = resolve(projectPath, "content/generators", `${assetId}.generator.json`);
+    if (providerDescriptor.id === "img2threejs") {
+      const provenanceSnapshot = await snapshotAssetGenerateFile(provenancePath);
+      let recorded: Awaited<ReturnType<typeof dispatchAuthoringOperation>>;
+      try {
+        recorded = await (options.authoringDispatch ?? dispatchAuthoringOperation)({
+          args: { generatorId: assetId, output, overwritePolicy, recipePath: recipeInput },
+          name: providerDescriptor.provenanceOperation,
+          projectPath,
+        });
+      } catch {
+        await restoreAssetGenerateFile(provenancePath, provenanceSnapshot).catch(() => undefined);
+        return diagnosticResult({ code: "TN_ASSET_GENERATE_RECORD_FAILED", message: `img2threejs generator '${assetId}' could not be recorded; prior generator source was restored.` }, { exitCode: 1, json, stderr: !json });
+      }
+      if (!recorded.ok) {
+        await restoreAssetGenerateFile(provenancePath, provenanceSnapshot);
+        return renderAuthoringResult("asset", recorded, json, `Asset generator '${assetId}' recorded.`);
+      }
+      const recordedProvenance = await snapshotAssetGenerateFile(provenancePath);
+      const run = await generatorCommand(["run", assetId, "--project", projectPath, ...(json ? ["--json"] : [])], options);
+      if (run.exitCode !== 0) {
+        await restoreAssetGenerateFileIfUnchanged(provenancePath, recordedProvenance, provenanceSnapshot);
+      }
+      return renderAssetGenerateRunResult(run, recorded.filesWritten, json);
+    }
     const recipePath = inlineRecipe === undefined ? undefined : resolve(projectPath, "content/generators", `${assetId}.recipe.json`);
     const [provenanceSnapshot, recipeSnapshot] = await Promise.all([snapshotAssetGenerateFile(provenancePath), recipePath === undefined ? undefined : snapshotAssetGenerateFile(recipePath)]);
     let recorded: Awaited<ReturnType<typeof recordBlenderGenerator>>;
@@ -316,7 +329,7 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
         output,
         overwritePolicy,
         projectPath,
-        providerVersion: "4.5.11",
+        providerVersion: BLENDER_ASSET_GENERATION_PROVIDER.providerVersion,
         ...(inlineRecipe === undefined ? { recipePath: recipeInput } : { recipe: inlineRecipe }),
       });
     } catch {
@@ -338,9 +351,7 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
         }, { exitCode: 1, json, stderr: !json });
       }
     }
-    if (!json || run.stdout.trim() === "") return run;
-    const payload = JSON.parse(run.stdout) as Record<string, unknown>;
-    return { ...run, stdout: `${JSON.stringify({ ...payload, code: run.exitCode === 0 ? "TN_ASSET_GENERATE_OK" : payload.code, command: "asset generate", recordedFiles: run.exitCode === 0 ? recorded.filesWritten : [] }, null, 2)}\n` };
+    return renderAssetGenerateRunResult(run, run.exitCode === 0 ? recorded.filesWritten : [], json);
   }
 
   if (subcommand === "source") {
@@ -501,6 +512,20 @@ async function snapshotAssetGenerateFile(path: string): Promise<Uint8Array | und
   try { return await readFile(path); } catch { return undefined; }
 }
 
+function renderAssetGenerateRunResult(run: ICommandResult, recordedFiles: string[], json: boolean): ICommandResult {
+  if (!json || run.stdout.trim() === "") return run;
+  const payload = JSON.parse(run.stdout) as Record<string, unknown>;
+  return {
+    ...run,
+    stdout: `${JSON.stringify({
+      ...payload,
+      code: run.exitCode === 0 ? "TN_ASSET_GENERATE_OK" : payload.code,
+      command: "asset generate",
+      recordedFiles: run.exitCode === 0 ? recordedFiles : [],
+    }, null, 2)}\n`,
+  };
+}
+
 async function restoreAssetGenerateFile(path: string, snapshot: Uint8Array | undefined): Promise<void> {
   if (snapshot === undefined) {
     await rm(path, { force: true });
@@ -508,6 +533,16 @@ async function restoreAssetGenerateFile(path: string, snapshot: Uint8Array | und
   }
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, snapshot);
+}
+
+async function restoreAssetGenerateFileIfUnchanged(path: string, expected: Uint8Array | undefined, snapshot: Uint8Array | undefined): Promise<boolean> {
+  const current = await snapshotAssetGenerateFile(path);
+  const unchanged = current === undefined || expected === undefined
+    ? current === expected
+    : Buffer.from(current).equals(Buffer.from(expected));
+  if (!unchanged) return false;
+  await restoreAssetGenerateFile(path, snapshot);
+  return true;
 }
 
 async function assetSourceCommand(argv: readonly string[], json: boolean): Promise<ICommandResult> {

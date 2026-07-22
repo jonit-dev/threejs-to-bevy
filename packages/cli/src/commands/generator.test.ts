@@ -9,6 +9,7 @@ import { promisify } from "node:util";
 import { generatorCommand } from "./sourceDocuments.js";
 import type { IBlenderGeneratorDependencies } from "../blender/runBlenderGenerator.js";
 import type { IExternalToolStatus } from "../externalTools/manager.js";
+import type { IRunImg2ThreejsGeneratorResult } from "../img2threejs/runImg2ThreejsGenerator.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -462,6 +463,54 @@ test("generator record-blender writes a bounded inline recipe without running Bl
   }
 });
 
+test("should rerun recorded img2threejs provenance through the shared provider runner", async () => {
+  const root = await createImg2ThreejsGeneratorProject();
+  let calls = 0;
+  try {
+    const result = await generatorCommand(["run", "prop.radio", "--project", root, "--json"], {
+      img2ThreejsRunner: async (projectPath, generatorId) => {
+        calls += 1;
+        assert.equal(projectPath, root);
+        assert.equal(generatorId, "prop.radio");
+        return img2ThreejsSentinelResult(projectPath);
+      },
+    });
+    const payload = JSON.parse(result.stdout) as Record<string, unknown> & { inspection: { bounds: { size: number[] }; counts: { triangles: number } }; nextCommands: string[] };
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(calls, 1);
+    assert.equal(payload.code, "TN_GENERATOR_RUN_OK");
+    assert.equal(payload.command, "generator run");
+    assert.equal(payload.outputHash, `sha256:${"b".repeat(64)}`);
+    assert.equal(payload.inspection.counts.triangles, 12);
+    assert.deepEqual(payload.inspection.bounds.size, [1.4, 0.82, 0.38]);
+    assert.deepEqual(payload.nextCommands, [
+      "tn asset inspect assets/generated/prop.radio.glb --json",
+      "tn model-test assets/generated/prop.radio.glb --angles 0,90,180,270 --json",
+      "tn build",
+    ]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve Blender and TypeScript generator behavior", async () => {
+  const typescriptRoot = await mkdtemp(join(tmpdir(), "tn-generator-preserve-typescript-"));
+  const blenderRoot = await createBlenderGeneratorProject();
+  try {
+    await mkdir(join(typescriptRoot, "src/generators"), { recursive: true });
+    await writeFile(join(typescriptRoot, "src/generators/preserve.ts"), `export async function preserve({ project }) { return project.transaction().operation("scene.create", { sceneId: "preserved" }).commit(); }\n`);
+    const record = await generatorCommand(["record", "preserve", "--module", "src/generators/preserve.ts", "--export", "preserve", "--outputs", "content/scenes/preserved.scene.json", "--project", typescriptRoot, "--json"]);
+    const typescriptRun = await generatorCommand(["run", "preserve", "--project", typescriptRoot, "--json"]);
+    const blenderRun = await generatorCommand(["run", "robot", "--project", blenderRoot, "--json"], { blenderDependencies: { toolStatus: async () => ({ ...readyBlenderStatus(), code: "TN_EXTERNAL_TOOL_MISSING", ready: false, source: "missing" }) } });
+    assert.equal(record.exitCode, 0);
+    assert.equal(typescriptRun.exitCode, 0, typescriptRun.stdout);
+    assert.equal((JSON.parse(typescriptRun.stdout) as { code: string }).code, "TN_GENERATOR_RUN_OK");
+    assert.equal((JSON.parse(blenderRun.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics[0]?.code, "TN_EXTERNAL_TOOL_MISSING");
+  } finally {
+    await Promise.all([rm(typescriptRoot, { force: true, recursive: true }), rm(blenderRoot, { force: true, recursive: true })]);
+  }
+});
+
 async function createBlenderGeneratorProject(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-cli-blender-generator-"));
   await mkdir(join(root, "content", "generators"), { recursive: true });
@@ -480,6 +529,58 @@ async function createBlenderGeneratorProject(): Promise<string> {
   await writeFile(join(root, "content", "generators", "robot.recipe.json"), `${JSON.stringify(recipe, null, 2)}\n`, "utf8");
   await writeFile(join(root, "content", "generators", "robot.generator.json"), `${JSON.stringify(provenance, null, 2)}\n`, "utf8");
   return root;
+}
+
+async function createImg2ThreejsGeneratorProject(): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-img2threejs-generator-"));
+  await mkdir(join(root, "content/generators"), { recursive: true });
+  const sha = `sha256:${"a".repeat(64)}`;
+  const provenance = {
+    acceptedPasses: [{ evidence: [{ path: "artifacts/img2threejs/prop.radio/review.png", sha256: sha }], id: "blockout", reviewHash: sha }],
+    budgets: { maxMaterials: 8, maxOutputBytes: 2_000_000, maxTextures: 8, maxTriangles: 20_000, timeoutMs: 10_000 },
+    export: "createPropRadioModel",
+    id: "prop.radio",
+    inputHash: sha,
+    module: "src/generators/createPropRadioModel.ts",
+    outputs: ["assets/generated/prop.radio.glb"],
+    overwritePolicy: "replace",
+    provider: "img2threejs",
+    providerVersion: "1.2.0",
+    recipe: "content/generators/prop.radio.img2threejs.json",
+    schema: "threenative.generator-provenance",
+    sculptSpec: "content/generators/prop.radio.sculpt-spec.json",
+    sourceHashes: { factory: sha, recipe: sha, resources: [], sculptSpec: sha, sourceImage: sha, validationReport: sha },
+    sourceImage: "content/references/prop.radio.png",
+    upstream: { commit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b", internalForkTree: "3f410de76c9a7ae53875abe7b47f99edf3beb2a6", repository: "https://github.com/hoainho/img2threejs", skillVersion: "1.2.0" },
+    version: "0.1.0",
+  };
+  await writeFile(join(root, "content/generators/prop.radio.generator.json"), `${JSON.stringify(provenance, null, 2)}\n`);
+  return root;
+}
+
+function img2ThreejsSentinelResult(projectPath: string): IRunImg2ThreejsGeneratorResult {
+  return {
+    code: "TN_IMG2THREEJS_RUN_OK",
+    diagnostics: [],
+    filesWritten: ["assets/generated/prop.radio.glb", "content/assets/prop.radio.assets.json", "content/generators/prop.radio.generator.json"],
+    generatorId: "prop.radio",
+    inputHash: `sha256:${"a".repeat(64)}`,
+    inspection: {
+      bounds: { center: [0, 0, 0], max: [0.7, 0.41, 0.19], min: [-0.7, -0.41, -0.19], size: [1.4, 0.82, 0.38], source: "accessor-min-max" },
+      code: "TN_ASSET_INSPECT_OK",
+      counts: { accessors: 3, animations: 0, buffers: 1, images: 1, materials: 2, meshes: 2, nodes: 4, scenes: 1, textures: 1, triangles: 12 },
+      diagnostics: [],
+      file: { byteSize: 9_340, path: "assets/generated/prop.radio.glb", type: "glb" },
+      message: "Asset inspection completed.",
+    },
+    message: "Generated and registered 'assets/generated/prop.radio.glb'.",
+    ok: true,
+    outputHash: `sha256:${"b".repeat(64)}`,
+    projectPath,
+    proofFiles: ["artifacts/img2threejs/prop.radio/reload-proof/hash/source.png"],
+    validation: { issues: { messages: [], numErrors: 0, numHints: 0, numInfos: 0, numWarnings: 0 } },
+    visualMetrics: { meanNormalizedRgbDelta: 0, passed: true, silhouetteIou: 1, ssim: 1, thresholds: { meanNormalizedRgbDelta: 3 / 255, silhouetteIou: 0.995, ssim: 0.98 } },
+  };
 }
 
 function readyBlenderStatus(): IExternalToolStatus {

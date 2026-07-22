@@ -26,7 +26,9 @@ import { pathToFileURL } from "node:url";
 import { ModuleKind, ScriptTarget, transpileModule } from "typescript";
 
 import { type ICommandResult } from "../diagnostics.js";
-import { runBlenderGenerator, type IBlenderGeneratorDependencies, type IBlenderGeneratorRunResult } from "../blender/runBlenderGenerator.js";
+import { findAssetGenerationProvider, type IAssetGenerationProviderRunResult } from "../assetGenerationProviders/registry.js";
+import type { IBlenderGeneratorDependencies } from "../blender/runBlenderGenerator.js";
+import type { IRunImg2ThreejsGeneratorDependencies, IRunImg2ThreejsGeneratorResult } from "../img2threejs/runImg2ThreejsGenerator.js";
 import {
   normalizeArgv,
   readCsvFlag,
@@ -40,6 +42,8 @@ import {
 
 export interface IGeneratorCommandOptions extends ISourceCommandOptions {
   blenderDependencies?: Partial<IBlenderGeneratorDependencies>;
+  img2ThreejsDependencies?: IRunImg2ThreejsGeneratorDependencies;
+  img2ThreejsRunner?: (projectPath: string, generatorId: string, dependencies?: IRunImg2ThreejsGeneratorDependencies) => Promise<IRunImg2ThreejsGeneratorResult>;
 }
 
 export async function generatorCommand(argv: readonly string[], options: IGeneratorCommandOptions = {}): Promise<ICommandResult> {
@@ -100,7 +104,7 @@ export async function generatorCommand(argv: readonly string[], options: IGenera
     if (generatorId === undefined) {
       return renderUsage(json, "TN_GENERATOR_RUN_ARGS_MISSING", generatorRunUsage());
     }
-    return runGenerator({ blenderDependencies: options.blenderDependencies, generatorId, json, projectPath });
+    return runGenerator({ blenderDependencies: options.blenderDependencies, generatorId, img2ThreejsDependencies: options.img2ThreejsDependencies, img2ThreejsRunner: options.img2ThreejsRunner, json, projectPath });
   }
 
   return renderUsage(json, "TN_GENERATOR_COMMAND_UNKNOWN", generatorUsage());
@@ -120,19 +124,11 @@ interface IGeneratorDocumentData {
   provider?: "typescript";
 }
 
-interface IBlenderGeneratorDocumentData {
-  id: string;
-  outputs: string[];
-  provider: "blender";
-  providerVersion: string;
-  recipe: string;
-  schema: string;
-  version: string;
-}
-
 interface IRunGeneratorOptions {
   blenderDependencies?: Partial<IBlenderGeneratorDependencies>;
   generatorId: string;
+  img2ThreejsDependencies?: IRunImg2ThreejsGeneratorDependencies;
+  img2ThreejsRunner?: (projectPath: string, generatorId: string, dependencies?: IRunImg2ThreejsGeneratorDependencies) => Promise<IRunImg2ThreejsGeneratorResult>;
   json: boolean;
   projectPath: string;
 }
@@ -164,9 +160,16 @@ async function runGenerator(options: IRunGeneratorOptions): Promise<ICommandResu
   }
 
   const generator = readResult.document.data as Partial<IGeneratorDocumentData>;
-  if ((generator as Partial<IBlenderGeneratorDocumentData>).provider === "blender") {
-    const blenderResult = await runBlenderGenerator({ generatorId: options.generatorId, projectPath: options.projectPath }, options.blenderDependencies);
-    return renderBlenderGeneratorRunResult(options.json, blenderResult);
+  const provider = typeof (generator as { provider?: unknown }).provider === "string" ? findAssetGenerationProvider((generator as { provider: string }).provider) : undefined;
+  if (provider !== undefined) {
+    const providerResult = await provider.runGenerator({
+      blenderDependencies: options.blenderDependencies,
+      generatorId: options.generatorId,
+      img2ThreejsDependencies: options.img2ThreejsDependencies,
+      img2ThreejsRunner: options.img2ThreejsRunner,
+      projectPath: options.projectPath,
+    });
+    return renderLocalGeneratorRunResult(options.json, providerResult);
   }
   const generatorDiagnostics = validateGeneratorRunDocument(generator, generatorFile);
   if (generatorDiagnostics.length > 0) {
@@ -333,12 +336,14 @@ function openGeneratorProject(projectPath: string, generatorId: string): Generat
   return new GeneratorAuthoringClientProject(projectPath, generatorId);
 }
 
-function renderBlenderGeneratorRunResult(json: boolean, payload: IBlenderGeneratorRunResult): ICommandResult {
+function renderLocalGeneratorRunResult(json: boolean, payload: IAssetGenerationProviderRunResult): ICommandResult {
+  const generatedGlb = payload.filesWritten.find((file) => file.endsWith(".glb")) ?? "<generated.glb>";
   const result = {
-    code: payload.ok ? "TN_GENERATOR_RUN_OK" : "TN_GENERATOR_RUN_FAILED",
-    message: payload.ok ? `Generator '${payload.generatorId}' ran.` : `Generator '${payload.generatorId}' failed.`,
     ...payload,
-    nextCommands: payload.ok ? [`tn asset inspect ${payload.filesWritten.find((file) => file.endsWith(".glb")) ?? "<generated.glb>"} --json`, `tn model-test ${payload.filesWritten.find((file) => file.endsWith(".glb")) ?? "<generated.glb>"} --angles 0,90,180,270 --json`, "tn build"] : undefined,
+    code: payload.ok ? "TN_GENERATOR_RUN_OK" : "TN_GENERATOR_RUN_FAILED",
+    command: "generator run",
+    message: payload.ok ? `Generator '${payload.generatorId}' ran.` : `Generator '${payload.generatorId}' failed.`,
+    nextCommands: payload.ok ? [`tn asset inspect ${generatedGlb} --json`, `tn model-test ${generatedGlb} --angles 0,90,180,270 --json`, "tn build"] : undefined,
   };
   if (json) return { exitCode: payload.ok ? 0 : 1, stdout: `${JSON.stringify(result, null, 2)}\n` };
   if (payload.ok) return { exitCode: 0, stdout: `${result.message}\n` };

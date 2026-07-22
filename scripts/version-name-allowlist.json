@@ -80,6 +80,14 @@
       "policy": "Expand as conformance runners migrate off hard-coded milestone fixture paths."
     },
     {
+      "id": "agent-benchmark-observation-protocol-owners",
+      "pathPattern": "^tools/agent-benchmark/(PROTOCOL\\.md|src/proof-contract(?:\\.test)?\\.ts)$",
+      "classification": "schema-version",
+      "owner": "agent-benchmark",
+      "rationale": "These exact owners define and assert the versioned scorer observation-route contract; their v* values are protocol identifiers rather than release milestones.",
+      "policy": "Change these identifiers only with a benchmark observation-protocol migration and keep the source, tests, and protocol document synchronized."
+    },
+    {
       "id": "general-scripts",
       "pathPattern": "^scripts/",
       "classification": "compat-alias",

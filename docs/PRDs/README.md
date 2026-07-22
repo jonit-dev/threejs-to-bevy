@@ -174,6 +174,10 @@ Links under `done/` are historical implementation evidence, not active backlog.
   bounded structured-recipe generator that emits normal inspected GLB assets,
   reuses generator provenance, targets 19/22 useful BlenderMCP outcomes through
   safe CLI/MCP equivalents, and adapts its catalog-first verification strategy.
+- [Internal img2threejs GLB Authoring Provider](done/internal-img2threejs-glb-authoring-provider.md) - done:
+  adopts a minimal internal img2threejs fork behind a CLI-first, descriptor-owned
+  asset-generation provider, with a derived MCP adapter and bounded reviewed
+  Three.js-factory-to-GLB export, registration, provenance, and parity proof.
 - [Cross-Platform Distribution](other/cross-platform-distribution-2026-07-13.md):
   defines one registry-driven build, signing, and proof workflow for web,
   Windows, macOS, Linux, Android, and iOS/iPadOS, including both native Bevy

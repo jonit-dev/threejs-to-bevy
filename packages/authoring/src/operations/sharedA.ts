@@ -28,6 +28,13 @@ import {
   flowTriggerKeys,
   generatorDocumentKeys,
   generatorDocumentSchema,
+  img2ThreejsAcceptedPassKeys,
+  img2ThreejsBudgetKeys,
+  img2ThreejsHashedResourceKeys,
+  img2ThreejsProviderManifest,
+  img2ThreejsProvenanceUpstreamKeys,
+  img2ThreejsRecipeLimits,
+  img2ThreejsSourceHashKeys,
   blenderRecipeAnimationKeyframeKeys,
   blenderRecipeAnimationKeys,
   blenderRecipeAnimationTrackKeys,
@@ -1033,7 +1040,7 @@ export async function validateGeneratorDocument(file: string, data: unknown, pro
   }
   validateLogicalId(diagnostics, file, "/id", data.id, "generator provenance document");
   const provider = data.provider === undefined ? "typescript" : data.provider;
-  validateEnumString(diagnostics, file, "/provider", provider, supportedGeneratorProviders, "generator provider", "Use 'typescript' or 'blender'.");
+  validateEnumString(diagnostics, file, "/provider", provider, supportedGeneratorProviders, "generator provider", "Use 'typescript', 'blender', or 'img2threejs'.");
   if (provider === "typescript") {
     validateGeneratedPathString(diagnostics, file, "/module", data.module, "generator module must be a non-empty source path.");
     validateRequiredString(diagnostics, file, "/export", data.export, "generator export must be a non-empty string.");
@@ -1050,9 +1057,11 @@ export async function validateGeneratorDocument(file: string, data: unknown, pro
         diagnostics.push(generatorProviderFieldDiagnostic(file, `/${field}`, field, "blender", ["providerVersion", "recipe"]));
       }
     }
+  } else if (provider === "img2threejs") {
+    validateImg2ThreejsGeneratorProvenance(diagnostics, file, data);
   }
   validateStringList(diagnostics, file, "/outputs", data.outputs, "generator outputs must be an array of non-empty project-relative paths.");
-  if (provider === "blender" && Array.isArray(data.outputs)) {
+  if ((provider === "blender" || provider === "img2threejs") && Array.isArray(data.outputs)) {
     data.outputs.forEach((output, index) => validateBlenderOutputPath(diagnostics, file, `/outputs/${index}`, output));
   }
   if (data.overwritePolicy !== undefined) {
@@ -1079,6 +1088,101 @@ export async function validateGeneratorDocument(file: string, data: unknown, pro
     }
   }
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateImg2ThreejsGeneratorProvenance(diagnostics: IAuthoringDiagnostic[], file: string, data: Record<string, unknown>): void {
+  if (data.version !== "0.1.0") diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/version", "img2threejs provenance version must be 0.1.0.", data.version));
+  validateRequiredString(diagnostics, file, "/providerVersion", data.providerVersion, "img2threejs providerVersion must be a non-empty string.");
+  validateRequiredString(diagnostics, file, "/module", data.module, "img2threejs module must be a non-empty project source path.");
+  validateRequiredString(diagnostics, file, "/export", data.export, "img2threejs export must be a non-empty named export.");
+  validateRequiredString(diagnostics, file, "/sourceImage", data.sourceImage, "img2threejs sourceImage must be a non-empty project source path.");
+  validateRequiredString(diagnostics, file, "/sculptSpec", data.sculptSpec, "img2threejs sculptSpec must be a non-empty project source path.");
+  if (typeof data.recipe !== "string" || !/^content\/generators\/[a-z][a-z0-9._-]*\.img2threejs\.json$/.test(data.recipe) || data.recipe.includes("..")) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/recipe", "img2threejs recipe must be contained under content/generators/ and end in .img2threejs.json.", data.recipe));
+  }
+  if (typeof data.module !== "string" || !/^src\/generators\/[A-Za-z0-9._/-]+\.ts$/.test(data.module) || data.module.includes("..")) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/module", "img2threejs module must be a TypeScript source beneath src/generators/.", data.module));
+  if (typeof data.sourceImage !== "string" || !data.sourceImage.startsWith("content/references/") || data.sourceImage.includes("..")) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/sourceImage", "img2threejs sourceImage must remain beneath content/references/.", data.sourceImage));
+  if (typeof data.sculptSpec !== "string" || !/^content\/generators\/[a-z][a-z0-9._-]*\.sculpt-spec\.json$/.test(data.sculptSpec) || data.sculptSpec.includes("..")) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/sculptSpec", "img2threejs sculptSpec must remain beneath content/generators/.", data.sculptSpec));
+  if (data.providerVersion !== img2ThreejsProviderManifest.skillVersion) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/providerVersion", `img2threejs providerVersion must match reviewed skill ${img2ThreejsProviderManifest.skillVersion}.`, data.providerVersion));
+  validateImg2ThreejsUpstream(diagnostics, file, data.upstream);
+  validateImg2ThreejsSourceHashes(diagnostics, file, data.sourceHashes);
+  validateImg2ThreejsAcceptedPasses(diagnostics, file, data.acceptedPasses);
+  validateImg2ThreejsBudgets(diagnostics, file, data.budgets);
+  if (!isSha256(data.inputHash)) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/inputHash", "img2threejs inputHash must be a sha256 digest.", data.inputHash));
+  if (data.overwritePolicy === undefined) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/overwritePolicy", "img2threejs overwritePolicy is required.", data.overwritePolicy));
+}
+
+function validateImg2ThreejsUpstream(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  if (!isRecord(value)) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/upstream", "img2threejs upstream provenance must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/upstream", value, img2ThreejsProvenanceUpstreamKeys));
+  const expected = { commit: img2ThreejsProviderManifest.reviewedCommit, internalForkTree: img2ThreejsProviderManifest.internalForkTree, repository: img2ThreejsProviderManifest.repository, skillVersion: img2ThreejsProviderManifest.skillVersion };
+  for (const [key, expectedValue] of Object.entries(expected)) if (value[key] !== expectedValue) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/upstream/${key}`, `img2threejs upstream ${key} must match the reviewed provider manifest.`, value[key]));
+}
+
+function validateImg2ThreejsSourceHashes(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  if (!isRecord(value)) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/sourceHashes", "img2threejs sourceHashes must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/sourceHashes", value, img2ThreejsSourceHashKeys));
+  for (const key of ["recipe", "sourceImage", "sculptSpec", "factory", "validationReport"] as const) if (!isSha256(value[key])) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/sourceHashes/${key}`, `img2threejs ${key} source hash must be a sha256 digest.`, value[key]));
+  validateImg2ThreejsHashedResources(diagnostics, file, "/sourceHashes/resources", value.resources, ["assets/", "content/"]);
+}
+
+function validateImg2ThreejsAcceptedPasses(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  if (!Array.isArray(value) || value.length === 0) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/acceptedPasses", "img2threejs acceptedPasses must be a non-empty array.", value));
+    return;
+  }
+  const ids = new Set<string>();
+  value.forEach((pass, index) => {
+    if (!isRecord(pass)) {
+      diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/acceptedPasses/${index}`, "img2threejs accepted pass must be an object.", pass));
+      return;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, `/acceptedPasses/${index}`, pass, img2ThreejsAcceptedPassKeys));
+    if (typeof pass.id !== "string" || pass.id === "" || ids.has(pass.id)) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/acceptedPasses/${index}/id`, "img2threejs accepted pass id must be unique and non-empty.", pass.id));
+    else ids.add(pass.id);
+    if (!isSha256(pass.reviewHash)) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/acceptedPasses/${index}/reviewHash`, "img2threejs reviewHash must be a sha256 digest.", pass.reviewHash));
+    validateImg2ThreejsHashedResources(diagnostics, file, `/acceptedPasses/${index}/evidence`, pass.evidence, ["artifacts/", "content/"]);
+  });
+}
+
+function validateImg2ThreejsHashedResources(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, allowedPrefixes: readonly string[]): void {
+  if (!Array.isArray(value)) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, path, "img2threejs hashed resources must be an array.", value));
+    return;
+  }
+  value.forEach((resource, index) => {
+    if (!isRecord(resource)) {
+      diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `${path}/${index}`, "img2threejs hashed resource must be an object.", resource));
+      return;
+    }
+    diagnostics.push(...unknownKeyDiagnostics(file, `${path}/${index}`, resource, img2ThreejsHashedResourceKeys));
+    const normalized = typeof resource.path === "string" ? normalizeRelativePath(resource.path) : undefined;
+    if (normalized === undefined || normalized === "" || normalized !== resource.path || normalized.startsWith("/") || /^[a-z][a-z0-9+.-]*:/iu.test(normalized) || normalized.startsWith("//") || !allowedPrefixes.some((prefix) => normalized.startsWith(prefix)) || isGeneratedArtifactPath(normalized)) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `${path}/${index}/path`, "img2threejs hashed resource path must be durable and project-relative.", resource.path));
+    if (!isSha256(resource.sha256)) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `${path}/${index}/sha256`, "img2threejs resource hash must be a sha256 digest.", resource.sha256));
+  });
+}
+
+function validateImg2ThreejsBudgets(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {
+  if (!isRecord(value)) {
+    diagnostics.push(img2ThreejsProvenanceDiagnostic(file, "/budgets", "img2threejs budgets must be an object.", value));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/budgets", value, img2ThreejsBudgetKeys));
+  for (const [key, limit] of Object.entries(img2ThreejsRecipeLimits)) if (typeof value[key] !== "number" || !Number.isInteger(value[key]) || Number(value[key]) <= 0 || Number(value[key]) > limit) diagnostics.push(img2ThreejsProvenanceDiagnostic(file, `/budgets/${key}`, `img2threejs budget must be a positive integer no greater than ${limit}.`, value[key]));
+}
+
+function isSha256(value: unknown): value is string {
+  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+}
+
+function img2ThreejsProvenanceDiagnostic(file: string, path: string, message: string, value: unknown): IAuthoringDiagnostic {
+  return authoringDiagnostic({ code: "TN_IMG2THREEJS_PROVENANCE_INVALID", file, fix: { instruction: "Re-record this generator from its reviewed img2threejs workspace." }, message, path, value });
 }
 
 export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDiagnostic[] {

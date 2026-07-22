@@ -1,7 +1,8 @@
 import type { ICommandResult } from "../diagnostics.js";
+import type { AssetGenerationProviderId, IAssetGenerationMcpPathRole } from "../assetGenerationProviders/registry.js";
 
 export type CommandHandler = (argv: readonly string[]) => Promise<ICommandResult>;
-export type CommandMcpToolName = "asset.creation_strategy" | "asset.generate_blender" | "asset.hyper3d_generate" | "asset.hyper3d_import" | "asset.hyper3d_poll" | "asset.hyper3d_status" | "asset.hunyuan_status" | "asset.inspect" | "asset.model_test" | "asset.polyhaven_categories" | "asset.polyhaven_import" | "asset.polyhaven_search" | "asset.polyhaven_status" | "asset.sketchfab_import" | "asset.sketchfab_preview" | "asset.sketchfab_search" | "asset.sketchfab_status" | "cookbook_lookup";
+export type CommandMcpToolName = "asset.creation_strategy" | `asset.generate_${AssetGenerationProviderId}` | "asset.hyper3d_generate" | "asset.hyper3d_import" | "asset.hyper3d_poll" | "asset.hyper3d_status" | "asset.hunyuan_status" | "asset.inspect" | "asset.model_test" | "asset.polyhaven_categories" | "asset.polyhaven_import" | "asset.polyhaven_search" | "asset.polyhaven_status" | "asset.sketchfab_import" | "asset.sketchfab_preview" | "asset.sketchfab_search" | "asset.sketchfab_status" | "cookbook_lookup";
 
 export interface ICommandMcpArgvArgumentDefinition {
   boolean?: boolean;
@@ -25,6 +26,7 @@ export interface ICommandMcpAdapterDefinition {
   description: string;
   inputSchema?: Record<string, unknown>;
   name: CommandMcpToolName;
+  pathRoles?: readonly IAssetGenerationMcpPathRole[];
 }
 
 export interface ICommandDefinition {

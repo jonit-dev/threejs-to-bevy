@@ -51,6 +51,22 @@ Frontmatter also accepts two optional list fields that power discovery:
   mechanic-row cookbook references from these instead of a hardcoded map, so
   a new entry becomes recommendable by declaring the blocks it covers.
 
+Reviewed local-provider entries may also declare:
+
+- `providerBoundary: local-reviewed-source` to run the `proof` commands during
+  normal `pnpm verify:cookbook` execution. Use
+  `providerBoundary: installed-tool-opt-in` only when proof needs a separately
+  installed external authoring tool.
+- `fixtureManifest: <repo-relative-path>` to materialize bounded fixture files
+  into the fresh starter before commands run. The manifest uses schema
+  `threenative.cookbook-fixture` version `0.1.0`; each file declares one of
+  `text`, `base64`, or `json`. Paths must remain inside the project, file and
+  aggregate byte budgets are enforced, duplicates are rejected, and an
+  optional `sha256` verifies exact bytes. A JSON/string value of
+  `{{sha256:earlier/file}}` resolves to the prefixed SHA-256 of an earlier
+  manifest file, allowing validation and provenance documents to bind their
+  inputs without a handwritten setup script.
+
 Typed-spec cookbook entries should use `tn authoring compile-typed-spec --json`
 after `src/game.spec.ts` exists. Set `authoring: typed-spec` and
 `scriptPath: src/game.spec.ts` in frontmatter to have the gate write the script

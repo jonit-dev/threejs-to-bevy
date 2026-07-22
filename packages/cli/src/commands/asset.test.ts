@@ -7,22 +7,75 @@ import { createInterface } from "node:readline";
 import test from "node:test";
 import { pathToFileURL } from "node:url";
 
+import type { IAuthoringOperationResult, IDispatchAuthoringOperationOptions } from "@threenative/authoring";
+
 import { findAssetSourceCatalogPath, resolveAssetSourceCatalogPath } from "../assetSourceCatalog/catalog.js";
+import { assetGenerationProviderRegistry } from "../assetGenerationProviders/registry.js";
+import type { IRunImg2ThreejsGeneratorResult } from "../img2threejs/runImg2ThreejsGenerator.js";
 import { CLI_COMMAND_REGISTRY } from "../index.js";
 import { ASSET_GENERATE_BLENDER_DESCRIPTOR, assetCommand } from "./asset.js";
+import { generatorCommand } from "./sourceGeneratorCommand.js";
 
 const assetCatalogPath = resolveAssetSourceCatalogPath();
 const catalogTest = existsSync(assetCatalogPath) ? test : test.skip;
 
-test("should derive asset generate help from the Blender MCP descriptor owner", () => {
-  assert.equal(CLI_COMMAND_REGISTRY.asset.usage.split("\n", 1)[0], ASSET_GENERATE_BLENDER_DESCRIPTOR.usage);
+test("should derive asset generate help from the provider registry", async () => {
+  const textHelp = await assetCommand(["generate", "--help"]);
+  const help = await assetCommand(["generate", "--help", "--json"]);
+  const payload = JSON.parse(help.stdout) as { providers: Array<{ availability: string; id: string; upstream?: { reviewedCommit: string } }> };
+  for (const provider of assetGenerationProviderRegistry) {
+    assert.equal(textHelp.stdout.split(provider.usage).length - 1, 1);
+    assert.equal(payload.providers.find((candidate) => candidate.id === provider.id)?.availability, provider.availability);
+  }
+  assert.equal(CLI_COMMAND_REGISTRY.asset!.usage.split(ASSET_GENERATE_BLENDER_DESCRIPTOR.usage).length - 1, 1);
+  assert.equal(payload.providers.find((provider) => provider.id === "img2threejs")?.upstream?.reviewedCommit, "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b");
   const orderedFlags = ASSET_GENERATE_BLENDER_DESCRIPTOR.mcp.argv.arguments.flatMap((argument) => "flag" in argument ? [argument.flag] : []);
   let cursor = -1;
   for (const flag of orderedFlags) {
-    const next = ASSET_GENERATE_BLENDER_DESCRIPTOR.usage.indexOf(flag, cursor + 1);
+    const next = assetGenerationProviderRegistry[0]?.usage.indexOf(flag, cursor + 1) ?? -1;
     assert.ok(next > cursor, `${flag} must remain represented in descriptor-derived help order`);
     cursor = next;
   }
+});
+
+test("should reject unknown local generation providers and reach img2threejs recording", async () => {
+  const unknown = await assetCommand(["generate", "crate", "--provider", "missing", "--recipe", "content/generators/crate.recipe.json", "--json"]);
+  const reachable = await assetCommand(["generate", "crate", "--provider", "img2threejs", "--recipe", "content/generators/crate.img2threejs.json", "--json"]);
+  assert.equal((JSON.parse(unknown.stdout) as { code: string }).code, "TN_ASSET_GENERATE_PROVIDER_UNKNOWN");
+  assert.ok((JSON.parse(reachable.stdout) as { diagnostics: Array<{ code: string }> }).diagnostics.some((diagnostic) => diagnostic.code.startsWith("TN_IMG2THREEJS_")));
+});
+
+test("should preserve Blender generation behavior after registry extraction", () => {
+  assert.deepEqual(ASSET_GENERATE_BLENDER_DESCRIPTOR, {
+    assetIdPattern: "^[a-z][a-z0-9._-]*$",
+    usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
+    mcp: {
+      argv: {
+        arguments: [
+          { name: "assetId", positional: true },
+          { encoding: "json", flag: "--recipe", name: "recipe" },
+          { flag: "--out", name: "out" },
+          { flag: "--overwrite-policy", name: "overwritePolicy" },
+        ],
+        fixed: ["--provider", "blender"],
+        prefix: ["asset", "generate"],
+        projectScoped: true,
+      },
+      description: "Generate and register a bounded Blender recipe through tn asset generate --json without installing tools or accepting code.",
+      inputSchema: {
+        additionalProperties: false,
+        properties: {
+          assetId: { pattern: "^[a-z][a-z0-9._-]*$", type: "string" },
+          out: { pattern: "^assets/generated/[a-z][a-z0-9._-]*\\.glb$", type: "string" },
+          overwritePolicy: { enum: ["manual", "replace", "skip"], type: "string" },
+          recipe: { oneOf: [{ pattern: "^content/generators/[a-z][a-z0-9._-]*\\.recipe\\.json$", type: "string" }, { type: "object" }] },
+        },
+        required: ["assetId", "recipe"],
+        type: "object",
+      },
+      name: "asset.generate_blender",
+    },
+  });
 });
 
 test("should expose Poly Haven provider commands through registry help", async () => {
@@ -575,6 +628,107 @@ test("should roll back Blender recipe and provenance when asset generation fails
   }
 });
 
+test("should return one complete img2threejs asset generation payload", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-img2threejs-"));
+  const generatorId = "prop.radio";
+  try {
+    const authoringDispatch = async (options: IDispatchAuthoringOperationOptions): Promise<IAuthoringOperationResult> => {
+      assert.equal(options.name, "generator.record_img2threejs");
+      await writeImg2ThreejsProvenance(root, generatorId);
+      return { changed: true, diagnostics: [], filesWritten: [`content/generators/${generatorId}.generator.json`], ok: true, projectPath: root };
+    };
+    const img2ThreejsRunner = async (projectPath: string): Promise<IRunImg2ThreejsGeneratorResult> => {
+      const result = img2ThreejsAssetSentinelResult(projectPath, generatorId);
+      await mkdir(join(root, "assets/generated"), { recursive: true });
+      await mkdir(join(root, "content/assets"), { recursive: true });
+      await writeFile(join(root, `assets/generated/${generatorId}.glb`), "sentinel-glb");
+      await writeFile(join(root, `content/assets/${generatorId}.assets.json`), `${JSON.stringify({ assets: [{ id: generatorId, path: `assets/generated/${generatorId}.glb`, source: `generator:${generatorId}`, type: "model" }], id: generatorId, schema: "threenative.assets", version: "0.1.0" }, null, 2)}\n`);
+      await writeImg2ThreejsProvenance(root, generatorId, result.outputHash);
+      return result;
+    };
+
+    const asset = await assetCommand([
+      "generate", generatorId, "--provider", "img2threejs", "--recipe", `content/generators/${generatorId}.img2threejs.json`, "--overwrite-policy", "replace", "--project", root, "--json",
+    ], { authoringDispatch, img2ThreejsRunner });
+    const rerun = await generatorCommand(["run", generatorId, "--project", root, "--json"], { img2ThreejsRunner });
+    const assetPayload = JSON.parse(asset.stdout) as Record<string, unknown>;
+    const rerunPayload = JSON.parse(rerun.stdout) as Record<string, unknown>;
+
+    assert.equal(asset.exitCode, 0, asset.stdout);
+    assert.equal(assetPayload.code, "TN_ASSET_GENERATE_OK");
+    assert.equal(assetPayload.command, "asset generate");
+    assert.deepEqual(assetPayload.recordedFiles, [`content/generators/${generatorId}.generator.json`]);
+    assert.deepEqual(assetPayload.inspection, img2ThreejsAssetSentinelResult(root, generatorId).inspection);
+    assert.deepEqual(assetPayload.diagnostics, []);
+    assert.deepEqual(assetPayload.filesWritten, [`assets/generated/${generatorId}.glb`, `content/assets/${generatorId}.assets.json`, `content/generators/${generatorId}.generator.json`]);
+    assert.equal(assetPayload.inputHash, `sha256:${"a".repeat(64)}`);
+    assert.equal(assetPayload.outputHash, `sha256:${"b".repeat(64)}`);
+    assert.deepEqual(assetPayload.proofFiles, [`artifacts/img2threejs/${generatorId}/reload-proof/hash/source.png`]);
+    assert.deepEqual(assetPayload.nextCommands, [
+      `tn asset inspect assets/generated/${generatorId}.glb --json`,
+      `tn model-test assets/generated/${generatorId}.glb --angles 0,90,180,270 --json`,
+      "tn build",
+    ]);
+    assert.deepEqual(withoutAssetGenerateEnvelope(assetPayload), withoutAssetGenerateEnvelope(rerunPayload));
+    assert.equal(await readFile(join(root, `assets/generated/${generatorId}.glb`), "utf8"), "sentinel-glb");
+    assert.match(await readFile(join(root, `content/assets/${generatorId}.assets.json`), "utf8"), new RegExp(`generator:${generatorId.replace(".", "\\.")}`));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should leave no partial source or output on registration failure", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-img2threejs-rollback-"));
+  const generatorId = "prop.radio";
+  const provenancePath = join(root, `content/generators/${generatorId}.generator.json`);
+  const outputPath = join(root, `assets/generated/${generatorId}.glb`);
+  const assetPath = join(root, `content/assets/${generatorId}.assets.json`);
+  try {
+    await writeImg2ThreejsProvenance(root, generatorId, `sha256:${"c".repeat(64)}`);
+    await mkdir(join(root, "assets/generated"), { recursive: true });
+    await mkdir(join(root, "content/assets"), { recursive: true });
+    await writeFile(outputPath, "accepted-output");
+    await writeFile(assetPath, `${JSON.stringify({ assets: [{ id: generatorId, path: `assets/generated/${generatorId}.glb`, source: `generator:${generatorId}`, type: "model" }], id: generatorId, schema: "threenative.assets", version: "0.1.0" }, null, 2)}\n`);
+    const before = await Promise.all([readFile(provenancePath), readFile(outputPath), readFile(assetPath)]);
+    const authoringDispatch = async (options: IDispatchAuthoringOperationOptions): Promise<IAuthoringOperationResult> => {
+      assert.equal(options.name, "generator.record_img2threejs");
+      await writeImg2ThreejsProvenance(root, generatorId);
+      return { changed: true, diagnostics: [], filesWritten: [`content/generators/${generatorId}.generator.json`], ok: true, projectPath: root };
+    };
+    const img2ThreejsRunner = async (projectPath: string): Promise<IRunImg2ThreejsGeneratorResult> => ({
+      code: "TN_IMG2THREEJS_PROMOTION_FAILED",
+      diagnostics: [{ code: "TN_IMG2THREEJS_PROMOTION_FAILED", message: "Asset registration transaction failed.", path: `content/assets/${generatorId}.assets.json`, severity: "error" }],
+      filesWritten: [], generatorId, message: "Generation failed.", ok: false, projectPath,
+    });
+
+    const result = await assetCommand([
+      "generate", generatorId, "--provider", "img2threejs", "--recipe", `content/generators/${generatorId}.img2threejs.json`, "--overwrite-policy", "replace", "--project", root, "--json",
+    ], { authoringDispatch, img2ThreejsRunner });
+    const payload = JSON.parse(result.stdout) as { code: string; recordedFiles: string[] };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_GENERATOR_RUN_FAILED");
+    assert.deepEqual(payload.recordedFiles, []);
+    assert.deepEqual(await Promise.all([readFile(provenancePath), readFile(outputPath), readFile(assetPath)]), before);
+
+    const concurrentProvenance = "concurrent-user-provenance";
+    const concurrentFailure = await assetCommand([
+      "generate", generatorId, "--provider", "img2threejs", "--recipe", `content/generators/${generatorId}.img2threejs.json`, "--overwrite-policy", "replace", "--project", root, "--json",
+    ], {
+      authoringDispatch,
+      img2ThreejsRunner: async (projectPath) => {
+        await writeFile(provenancePath, concurrentProvenance);
+        return { code: "TN_IMG2THREEJS_PROMOTION_FAILED", diagnostics: [], filesWritten: [], generatorId, message: "Generation failed.", ok: false, projectPath };
+      },
+    });
+    assert.equal(concurrentFailure.exitCode, 1);
+    assert.equal(await readFile(provenancePath, "utf8"), concurrentProvenance);
+    assert.deepEqual(await Promise.all([readFile(outputPath), readFile(assetPath)]), before.slice(1));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should not replace a manually registered asset with generated source", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-manual-conflict-"));
   try {
@@ -897,6 +1051,61 @@ test("should reject missing inspect path", async () => {
   assert.equal(payload.code, "TN_ASSET_PATH_MISSING");
   assert.equal(payload.severity, "error");
 });
+
+async function writeImg2ThreejsProvenance(root: string, generatorId: string, outputHash?: string): Promise<void> {
+  const sha = `sha256:${"a".repeat(64)}`;
+  const provenance = {
+    acceptedPasses: [{ evidence: [{ path: `artifacts/img2threejs/${generatorId}/review.png`, sha256: sha }], id: "blockout", reviewHash: sha }],
+    budgets: { maxMaterials: 8, maxOutputBytes: 2_000_000, maxTextures: 8, maxTriangles: 20_000, timeoutMs: 10_000 },
+    export: "createPropRadioModel",
+    id: generatorId,
+    inputHash: sha,
+    module: "src/generators/createPropRadioModel.ts",
+    outputs: [`assets/generated/${generatorId}.glb`],
+    overwritePolicy: "replace",
+    provider: "img2threejs",
+    providerVersion: "1.2.0",
+    recipe: `content/generators/${generatorId}.img2threejs.json`,
+    schema: "threenative.generator-provenance",
+    sculptSpec: `content/generators/${generatorId}.sculpt-spec.json`,
+    sourceHashes: { factory: sha, recipe: sha, resources: [], sculptSpec: sha, sourceImage: sha, validationReport: sha },
+    sourceImage: `content/references/${generatorId}.png`,
+    upstream: { commit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b", internalForkTree: "3f410de76c9a7ae53875abe7b47f99edf3beb2a6", repository: "https://github.com/hoainho/img2threejs", skillVersion: "1.2.0" },
+    version: "0.1.0",
+    ...(outputHash === undefined ? {} : { outputHash }),
+  };
+  await mkdir(join(root, "content/generators"), { recursive: true });
+  await writeFile(join(root, `content/generators/${generatorId}.generator.json`), `${JSON.stringify(provenance, null, 2)}\n`);
+}
+
+function img2ThreejsAssetSentinelResult(projectPath: string, generatorId: string): IRunImg2ThreejsGeneratorResult {
+  return {
+    code: "TN_IMG2THREEJS_RUN_OK",
+    diagnostics: [],
+    filesWritten: [`assets/generated/${generatorId}.glb`, `content/assets/${generatorId}.assets.json`, `content/generators/${generatorId}.generator.json`],
+    generatorId,
+    inputHash: `sha256:${"a".repeat(64)}`,
+    inspection: {
+      bounds: { center: [0, 0, 0], max: [0.7, 0.41, 0.19], min: [-0.7, -0.41, -0.19], size: [1.4, 0.82, 0.38], source: "accessor-min-max" },
+      code: "TN_ASSET_INSPECT_OK",
+      counts: { accessors: 3, animations: 0, buffers: 1, images: 1, materials: 2, meshes: 2, nodes: 4, scenes: 1, textures: 1, triangles: 12 },
+      diagnostics: [],
+      file: { byteSize: 12, path: `assets/generated/${generatorId}.glb`, type: "glb" },
+      message: "Asset inspection completed.",
+    },
+    message: `Generated and registered 'assets/generated/${generatorId}.glb'.`,
+    ok: true,
+    outputHash: `sha256:${"b".repeat(64)}`,
+    projectPath,
+    proofFiles: [`artifacts/img2threejs/${generatorId}/reload-proof/hash/source.png`],
+    validation: { issues: { messages: [], numErrors: 0, numHints: 0, numInfos: 0, numWarnings: 0 } },
+    visualMetrics: { meanNormalizedRgbDelta: 0, passed: true, silhouetteIou: 1, ssim: 1, thresholds: { meanNormalizedRgbDelta: 3 / 255, silhouetteIou: 0.995, ssim: 0.98 } },
+  };
+}
+
+function withoutAssetGenerateEnvelope(payload: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(payload).filter(([key]) => key !== "code" && key !== "command" && key !== "recordedFiles"));
+}
 
 function makeGlb(json: unknown, binaryChunk?: Buffer): Buffer {
   const jsonText = JSON.stringify(json);

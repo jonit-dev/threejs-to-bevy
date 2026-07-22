@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { readFile, readdir, writeFile } from "node:fs/promises";
+import { access, readFile, readdir, writeFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "./diagnostics.js";
@@ -18,7 +18,7 @@ export interface IGeneratorOutputOwner {
   input: string;
   output: string;
   provenancePath: string;
-  provider: "blender" | "typescript";
+  provider: "blender" | "img2threejs" | "typescript";
 }
 
 export interface IGeneratorProvenanceIndex {
@@ -53,9 +53,9 @@ export async function resolveGeneratorProvenance(projectPath: string): Promise<I
     if (hasAuthoringErrors([...readResult.diagnostics, ...validation]) || !isRecord(readResult.document.data)) continue;
 
     const data = readResult.document.data;
-    const provider = data.provider === "blender" ? "blender" : "typescript";
+    const provider = data.provider === "blender" ? "blender" : data.provider === "img2threejs" ? "img2threejs" : "typescript";
     if (typeof data.id !== "string" || !Array.isArray(data.outputs)) continue;
-    const input = provider === "blender" ? data.recipe : data.module;
+    const input = provider === "typescript" ? data.module : data.recipe;
     if (typeof input !== "string") continue;
     for (const outputValue of data.outputs) {
       if (typeof outputValue !== "string") continue;
@@ -99,6 +99,73 @@ export async function resolveGeneratorProvenance(projectPath: string): Promise<I
     }
   }
   return { diagnostics: sortAuthoringDiagnostics(diagnostics), filesRead, ownersByOutput };
+}
+
+export interface IGeneratorOutputClaimOptions {
+  generatorId: string;
+  output: string;
+  overwritePolicy: "manual" | "replace" | "skip";
+  projectPath: string;
+  provider: "blender" | "img2threejs";
+}
+
+export async function validateGeneratorOutputClaim(options: IGeneratorOutputClaimOptions): Promise<IAuthoringDiagnostic[]> {
+  let output: string;
+  try {
+    output = normalizeOwnedOutput(options.output);
+  } catch (error) {
+    return [authoringDiagnostic({
+      code: "TN_IMG2THREEJS_RECIPE_INVALID",
+      file: options.output,
+      fix: { instruction: "Write generated GLBs beneath assets/generated/ using a project-relative path." },
+      message: "Generated output path is unsafe.",
+      path: "/output",
+      value: error instanceof Error ? error.message : String(error),
+    })];
+  }
+  const index = await resolveGeneratorProvenance(options.projectPath);
+  const diagnostics = [...index.diagnostics];
+  const owner = index.ownersByOutput.get(output);
+  if (owner !== undefined && (owner.generatorId !== options.generatorId || owner.provider !== options.provider)) {
+    diagnostics.push(authoringDiagnostic({
+      code: "TN_AUTHORING_GENERATED_OUTPUT_OWNER_CONFLICT",
+      file: output,
+      fix: { instruction: "Keep exactly one generator provenance owner for this output." },
+      message: `Generated output '${output}' is already owned by generator '${owner.generatorId}'.`,
+      path: "/output",
+      value: { existingOwner: owner.provenancePath, requestedGeneratorId: options.generatorId },
+    }));
+    return sortAuthoringDiagnostics(diagnostics);
+  }
+  if (options.overwritePolicy === "manual" && owner === undefined) {
+    try {
+      await access(resolve(options.projectPath, output));
+      diagnostics.push(authoringDiagnostic({
+        code: "TN_GENERATOR_OUTPUT_CONFLICT",
+        file: output,
+        fix: { instruction: "Move the manual output, choose a new asset id, or explicitly use overwrite policy 'replace'.", allowed: ["replace"] },
+        message: `Generated output '${output}' already exists without matching generator provenance.`,
+        path: "/output",
+      }));
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+    }
+  }
+  if (options.overwritePolicy === "skip" && owner === undefined) {
+    try {
+      await access(resolve(options.projectPath, output));
+      diagnostics.push(authoringDiagnostic({
+        code: "TN_GENERATOR_OUTPUT_CONFLICT",
+        file: output,
+        fix: { instruction: "Leave the existing output untouched or explicitly use overwrite policy 'replace'.", allowed: ["replace"] },
+        message: `Generated output '${output}' already exists and overwrite policy 'skip' does not claim manual output.`,
+        path: "/output",
+      }));
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+    }
+  }
+  return sortAuthoringDiagnostics(diagnostics);
 }
 
 export function generatedOutputOwnershipDiagnostic(

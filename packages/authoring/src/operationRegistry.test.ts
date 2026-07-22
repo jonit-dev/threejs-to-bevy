@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
@@ -200,6 +201,271 @@ test("should reload Blender recipe and provider provenance in a fresh process", 
     });
     assert.equal(child.status, 0, child.stderr);
     assert.deepEqual(JSON.parse(child.stdout), { diagnostics: [], ok: true });
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should record a reviewed img2threejs generator workspace", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const result = await dispatchAuthoringOperation({
+      args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath },
+      name: "generator.record_img2threejs",
+      projectPath: root,
+    });
+    const provenance = JSON.parse(await readFile(join(root, "content/generators/prop.radio.generator.json"), "utf8")) as Record<string, unknown>;
+    const acceptedPasses = provenance.acceptedPasses as Array<Record<string, unknown>>;
+    const sourceHashes = provenance.sourceHashes as Record<string, unknown>;
+    const descriptor = getAuthoringOperationDescriptor("generator.record_img2threejs");
+    const reloaded = await validateAuthoringProject({ projectPath: root });
+    assert.equal(result.ok, true, JSON.stringify(result.diagnostics));
+    assert.equal(reloaded.ok, true, JSON.stringify(reloaded.diagnostics));
+    assert.deepEqual(result.filesWritten, ["content/generators/prop.radio.generator.json"]);
+    assert.equal(provenance.provider, "img2threejs");
+    assert.equal(provenance.recipe, workspace.recipePath);
+    assert.equal(provenance.sourceImage, "content/references/prop.radio.png");
+    assert.equal(provenance.sculptSpec, "content/generators/prop.radio.sculpt-spec.json");
+    assert.equal(provenance.module, "src/generators/createPropRadioModel.ts");
+    assert.equal(provenance.export, "createPropRadioModel");
+    assert.deepEqual(acceptedPasses.map((pass) => pass.id), ["blockout", "structural-pass", "material-pass", "optimization-pass"]);
+    assert.equal(acceptedPasses.every((pass) => typeof pass.reviewHash === "string" && String(pass.reviewHash).startsWith("sha256:")), true);
+    assert.equal(Object.values(sourceHashes).filter((value) => typeof value === "string").every((value) => value.startsWith("sha256:")), true);
+    assert.equal(typeof provenance.inputHash === "string" && provenance.inputHash.startsWith("sha256:"), true);
+    assert.equal(descriptor?.providerManifest?.reviewedCommit, "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should preserve accepted img2threejs run state when re-recording the same owner", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const first = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    assert.equal(first.ok, true, JSON.stringify(first.diagnostics));
+    const provenancePath = join(root, "content/generators/prop.radio.generator.json");
+    const accepted = JSON.parse(await readFile(provenancePath, "utf8")) as Record<string, unknown>;
+    accepted.outputHash = `sha256:${"a".repeat(64)}`;
+    accepted.lastRun = { marker: "accepted-run", outputHash: accepted.outputHash };
+    await writeFile(provenancePath, `${JSON.stringify(accepted, null, 2)}\n`);
+
+    const rerecorded = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, overwritePolicy: "replace", recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    const preserved = JSON.parse(await readFile(provenancePath, "utf8")) as Record<string, unknown>;
+    assert.equal(rerecorded.ok, true, JSON.stringify(rerecorded.diagnostics));
+    assert.equal(preserved.outputHash, accepted.outputHash);
+    assert.deepEqual(preserved.lastRun, accepted.lastRun);
+    assert.equal(preserved.overwritePolicy, "replace");
+
+    const moved = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: "assets/generated/prop.radio-moved.glb", overwritePolicy: "replace", recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    const movedData = JSON.parse(await readFile(provenancePath, "utf8")) as Record<string, unknown>;
+    assert.equal(moved.ok, true, JSON.stringify(moved.diagnostics));
+    assert.equal(movedData.outputHash, undefined);
+    assert.equal(movedData.lastRun, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject img2threejs review gaps before recording", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const specPath = join(root, "content/generators/prop.radio.sculpt-spec.json");
+    const spec = JSON.parse(await readFile(specPath, "utf8")) as Record<string, unknown>;
+    (spec.reviewHistory as Array<Record<string, unknown>>)[1]!.action = "refine-code";
+    await writeFile(specPath, `${JSON.stringify(spec, null, 2)}\n`);
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IMG2THREEJS_REVIEW_INCOMPLETE");
+    assert.equal(result.ok, false);
+    assert.match(diagnostic?.message ?? "", /structural-pass.*refine-code/);
+    assert.match(diagnostic?.fix?.instruction ?? "", /Resume 'structural-pass'/);
+    await assert.rejects(readFile(join(root, "content/generators/prop.radio.generator.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject malformed img2threejs provenance after a fresh reload", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const recorded = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    assert.equal(recorded.ok, true, JSON.stringify(recorded.diagnostics));
+    const provenancePath = join(root, "content/generators/prop.radio.generator.json");
+    const provenance = JSON.parse(await readFile(provenancePath, "utf8")) as Record<string, unknown>;
+    delete provenance.sourceHashes;
+    await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`);
+    const child = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      [
+        "const { validateAuthoringProject } = await import(process.env.TN_AUTHORING_OPERATIONS_URL);",
+        "const result = await validateAuthoringProject({ projectPath: process.env.TN_AUTHORING_PROJECT });",
+        "process.stdout.write(JSON.stringify(result.diagnostics));",
+      ].join("\n"),
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, TN_AUTHORING_OPERATIONS_URL: new URL("./operations.js", import.meta.url).href, TN_AUTHORING_PROJECT: root },
+    });
+    assert.equal(child.status, 0, child.stderr);
+    const diagnostics = JSON.parse(child.stdout) as Array<{ code: string; path: string }>;
+    assert.equal(diagnostics.some((item) => item.code === "TN_IMG2THREEJS_PROVENANCE_INVALID" && item.path === "/sourceHashes"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unsafe img2threejs provenance paths after a fresh reload", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const recorded = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    assert.equal(recorded.ok, true, JSON.stringify(recorded.diagnostics));
+    const provenancePath = join(root, "content/generators/prop.radio.generator.json");
+    const provenance = JSON.parse(await readFile(provenancePath, "utf8")) as Record<string, unknown>;
+    delete provenance.version;
+    (((provenance.sourceHashes as Record<string, unknown>).resources as Array<Record<string, unknown>>)[0]!).path = "https://evil.example/texture.png";
+    (((provenance.acceptedPasses as Array<Record<string, unknown>>)[0]!.evidence as Array<Record<string, unknown>>)[0]!).path = "/etc/passwd";
+    await writeFile(provenancePath, `${JSON.stringify(provenance, null, 2)}\n`);
+    const child = spawnSync(process.execPath, [
+      "--input-type=module",
+      "--eval",
+      [
+        "const { validateAuthoringProject } = await import(process.env.TN_AUTHORING_OPERATIONS_URL);",
+        "const result = await validateAuthoringProject({ projectPath: process.env.TN_AUTHORING_PROJECT });",
+        "process.stdout.write(JSON.stringify(result.diagnostics));",
+      ].join("\n"),
+    ], {
+      encoding: "utf8",
+      env: { ...process.env, TN_AUTHORING_OPERATIONS_URL: new URL("./operations.js", import.meta.url).href, TN_AUTHORING_PROJECT: root },
+    });
+    assert.equal(child.status, 0, child.stderr);
+    const diagnostics = JSON.parse(child.stdout) as Array<{ code: string; path: string }>;
+    assert.equal(diagnostics.some((item) => item.code === "TN_IMG2THREEJS_PROVENANCE_INVALID" && item.path === "/version"), true);
+    assert.equal(diagnostics.some((item) => item.code === "TN_IMG2THREEJS_PROVENANCE_INVALID" && item.path === "/sourceHashes/resources/0/path"), true);
+    assert.equal(diagnostics.some((item) => item.code === "TN_IMG2THREEJS_PROVENANCE_INVALID" && item.path === "/acceptedPasses/0/evidence/0/path"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unreviewed upstream commits", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const recipePath = join(root, workspace.recipePath);
+    const recipe = JSON.parse(await readFile(recipePath, "utf8")) as Record<string, unknown>;
+    (recipe.upstream as Record<string, unknown>).commit = "0000000000000000000000000000000000000000";
+    await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`);
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IMG2THREEJS_UPSTREAM_UNREVIEWED");
+    assert.equal(result.ok, false);
+    assert.match(diagnostic?.message ?? "", /e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b/);
+    assert.match(diagnostic?.fix?.instruction ?? "", /supported internal skill/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject unknown img2threejs recipe fields", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const recipePath = join(root, workspace.recipePath);
+    const recipe = JSON.parse(await readFile(recipePath, "utf8")) as Record<string, unknown>;
+    recipe.command = "run arbitrary code";
+    await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`);
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    const diagnostic = result.diagnostics.find((item) => item.code === "TN_IMG2THREEJS_RECIPE_INVALID");
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.path, "/command");
+    assert.match(diagnostic?.message ?? "", /Unknown field/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject failed or stale img2threejs strict validation reports", async () => {
+  for (const mode of ["failed", "stale"] as const) {
+    const root = await createRegistryProject();
+    try {
+      const workspace = await createReviewedImg2ThreejsWorkspace(root);
+      const reportPath = join(root, "content/generators/prop.radio.validation.json");
+      const report = JSON.parse(await readFile(reportPath, "utf8")) as Record<string, unknown>;
+      if (mode === "failed") (report.result as Record<string, unknown>).ok = false;
+      else report.sculptSpecHash = `sha256:${"0".repeat(64)}`;
+      await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`);
+      const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+      assert.equal(result.ok, false, mode);
+      assert.equal(result.diagnostics.some((item) => item.code === "TN_IMG2THREEJS_SPEC_INVALID"), true, mode);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  }
+});
+
+test("should reject source factory texture and output traversal", async () => {
+  const cases: Array<{ field: string; mutate(root: string, recipe: Record<string, unknown>, spec: Record<string, unknown>): Promise<void> | void; output?: string }> = [
+    { field: "source", mutate: (_root, recipe) => { recipe.sourceImage = "../outside.png"; } },
+    { field: "factory", mutate: (_root, recipe) => { (recipe.factory as Record<string, unknown>).module = "../factory.ts"; } },
+    { field: "texture", mutate: (_root, _recipe, spec) => { (((spec.materials as Array<Record<string, unknown>>)[0]!.referencePbr as Record<string, unknown>).maps as Record<string, unknown>).albedo = { path: "../texture.png" }; } },
+    { field: "source symlink", mutate: async (root) => {
+      const outside = join(tmpdir(), `${basename(root)}-outside.png`);
+      await writeFile(outside, "outside-project-image");
+      await rm(join(root, "content/references/prop.radio.png"));
+      await symlink(outside, join(root, "content/references/prop.radio.png"));
+    } },
+    { field: "source cross-root symlink", mutate: async (root) => {
+      await writeFile(join(root, "src/not-a-reference.png"), "wrong-source-root");
+      await rm(join(root, "content/references/prop.radio.png"));
+      await symlink(join(root, "src/not-a-reference.png"), join(root, "content/references/prop.radio.png"));
+    } },
+    { field: "output parent symlink", mutate: async (root) => {
+      await mkdir(join(root, "assets"), { recursive: true });
+      await symlink(join(root, "content/references"), join(root, "assets/generated"));
+    } },
+    { field: "output", mutate: () => undefined, output: "../prop.radio.glb" },
+  ];
+  for (const testCase of cases) {
+    const root = await createRegistryProject();
+    try {
+      const workspace = await createReviewedImg2ThreejsWorkspace(root);
+      const recipeFile = join(root, workspace.recipePath);
+      const specFile = join(root, "content/generators/prop.radio.sculpt-spec.json");
+      const recipe = JSON.parse(await readFile(recipeFile, "utf8")) as Record<string, unknown>;
+      const spec = JSON.parse(await readFile(specFile, "utf8")) as Record<string, unknown>;
+      await testCase.mutate(root, recipe, spec);
+      await writeFile(recipeFile, `${JSON.stringify(recipe, null, 2)}\n`);
+      await writeFile(specFile, `${JSON.stringify(spec, null, 2)}\n`);
+      const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: testCase.output ?? workspace.output, recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+      assert.equal(result.ok, false, testCase.field);
+      assert.equal(result.diagnostics.some((item) => item.code === "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT"), true, testCase.field);
+      await assert.rejects(readFile(join(root, "content/generators/prop.radio.generator.json")));
+    } finally {
+      await rm(root, { force: true, recursive: true });
+      await rm(join(tmpdir(), `${basename(root)}-outside.png`), { force: true });
+    }
+  }
+});
+
+test("should preserve manual generated output under manual overwrite policy", async () => {
+  const root = await createRegistryProject();
+  try {
+    const workspace = await createReviewedImg2ThreejsWorkspace(root);
+    const outputFile = join(root, workspace.output);
+    await mkdir(join(root, "assets/generated"), { recursive: true });
+    await writeFile(outputFile, "manual-output");
+    const recipeBefore = await readFile(join(root, workspace.recipePath), "utf8");
+    const specBefore = await readFile(join(root, "content/generators/prop.radio.sculpt-spec.json"), "utf8");
+    const result = await dispatchAuthoringOperation({ args: { generatorId: "prop.radio", output: workspace.output, overwritePolicy: "manual", recipePath: workspace.recipePath }, name: "generator.record_img2threejs", projectPath: root });
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((item) => item.code === "TN_GENERATOR_OUTPUT_CONFLICT"), true);
+    assert.equal(await readFile(outputFile, "utf8"), "manual-output");
+    assert.equal(await readFile(join(root, workspace.recipePath), "utf8"), recipeBefore);
+    assert.equal(await readFile(join(root, "content/generators/prop.radio.sculpt-spec.json"), "utf8"), specBefore);
+    await assert.rejects(readFile(join(root, "content/generators/prop.radio.generator.json")));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -759,6 +1025,7 @@ test("should expose operation metadata and registry diagnostics", async () => {
     "environment.set_source_asset_lod",
     "generator.record",
     "generator.record_blender",
+    "generator.record_img2threejs",
     "scene.create",
     "scene.placement_add",
     "scene.placement_inspect",
@@ -906,4 +1173,121 @@ function validBlenderRecipe(overrides: Record<string, unknown> = {}): Record<str
     parts: [{ id: "body", primitive: "cube", material: "paint", scale: [1, 1, 1], modifiers: [{ kind: "bevel", width: 0.08, segments: 3 }] }],
     ...overrides,
   };
+}
+
+async function createReviewedImg2ThreejsWorkspace(root: string): Promise<{ output: string; recipePath: string }> {
+  const recipePath = "content/generators/prop.radio.img2threejs.json";
+  const output = "assets/generated/prop.radio.glb";
+  await mkdir(join(root, "content/generators"), { recursive: true });
+  await mkdir(join(root, "content/references"), { recursive: true });
+  await mkdir(join(root, "src/generators"), { recursive: true });
+  await mkdir(join(root, "artifacts/img2threejs/prop.radio"), { recursive: true });
+  await writeFile(join(root, "content/references/prop.radio.png"), "reference-image");
+  await writeFile(join(root, "content/references/prop.radio-albedo.png"), "albedo-texture");
+  await writeFile(join(root, "src/generators/createPropRadioModel.ts"), "export function createPropRadioModel() { return {}; }\n");
+  await writeFile(join(root, "artifacts/img2threejs/prop.radio/blockout.png"), "blockout-render");
+  await writeFile(join(root, "artifacts/img2threejs/prop.radio/blockout-comparison.png"), "blockout-comparison");
+  const visualEvidence = {
+    referenceScreenshot: "content/references/prop.radio.png",
+    renderScreenshot: "artifacts/img2threejs/prop.radio/blockout.png",
+    comparisonImage: "artifacts/img2threejs/prop.radio/blockout-comparison.png",
+    cameraView: "three-quarter",
+    notes: "accepted",
+    aiVisionNotes: "accepted",
+  };
+  const buildPasses = [
+    { id: "blockout", goal: "Match silhouette", componentRefs: ["root"], acceptance: ["Silhouette accepted"] },
+    { id: "structural-pass", goal: "Confirm structure", componentRefs: ["root"], acceptance: ["Structure accepted"] },
+    { id: "material-pass", goal: "Confirm material", componentRefs: ["root"], acceptance: ["Material accepted"] },
+    { id: "optimization-pass", goal: "Confirm budgets", componentRefs: ["root"], acceptance: ["Budgets accepted"] },
+  ];
+  const featureReviewTarget = { id: "body", name: "Radio body", tier: "critical", mustPass: true, passIds: ["blockout", "structural-pass", "material-pass"], componentRefs: ["root"], evidenceRefs: ["full-object"], minimumScore: 0.85 };
+  const acceptedVisualReview = (passId: string, timestamp: string) => ({ timestamp, passId, estimatedFidelity: 0.92, aiVisionScore: 0.93, visualAcceptanceThreshold: 0.7, layerScores: { silhouette: 0.94 }, featureReviews: [{ id: "body", score: 0.92, visible: true }], action: "continue", summary: "accepted", matched: [], mismatches: [], specFixes: [], codeFixes: [], evidence: [], visualEvidence });
+  const spec = {
+    targetName: "Radio",
+    targetId: "prop.radio",
+    schemaVersion: "2.0",
+    sourceImage: "content/references/prop.radio.png",
+    suitability: "pass",
+    coordinateFrame: { up: "+Y" },
+    silhouette: { primary: "rounded box" },
+    preSpecAssessment: {
+      objectClass: { primaryType: "portable radio", primaryDomain: "object", formLanguage: ["rectilinear"], structureKind: ["enclosure"], motionPotential: ["static"], materialFamilies: ["plastic"] },
+      complexity: { tier: "simple", scores: {}, estimatedCounts: { macroComponents: 1, materialLayers: 1 }, reasoning: ["One primary enclosure"] },
+      specDepthDecision: { requiredDepth: "simple", minimumComponentLevels: ["macro"], needsRepetitionSystems: false, needsMaterialLocalOverrides: false, needsMultipleReviewViews: false, needsActionReadyHierarchy: false },
+      unknownsToResolveBeforeImplementation: [],
+      detailInventory: { targetMinDetails: 0, details: [] },
+    },
+    componentTree: [{ id: "root", level: "macro", primitive: "box", material: "paint" }],
+    materials: [{ id: "paint", colorVariation: { palette: ["#333333", "#666666"] }, roughness: { base: 0.6, variation: 0.1, map: "independent-roughness" }, dirt: { amount: 0.1 }, referencePbr: { maps: { albedo: { path: "content/references/prop.radio-albedo.png" }, roughness: { path: "content/references/prop.radio-albedo.png" }, height: { path: "content/references/prop.radio-albedo.png" }, normal: { path: "content/references/prop.radio-albedo.png" }, ao: { path: "content/references/prop.radio-albedo.png" } } } }],
+    proceduralStrategy: ["Build blockout"],
+    qualityContract: {
+      qualityBar: "simple",
+      definitionOfDone: ["The reviewed radio matches the reference."],
+      minimumSpecDepth: { macroComponents: 1, mesoComponents: 0, microFeatureGroups: 0, materialLayers: 1, repetitionSystems: 0, reviewViewpoints: 0 },
+      featureGroups: [
+        { id: "silhouette", name: "Silhouette", required: true, qualityCriteria: ["Match silhouette"] },
+        { id: "structure", name: "Structure", required: true, qualityCriteria: ["Match structure"] },
+        { id: "material", name: "Material", required: true, qualityCriteria: ["Match material"] },
+      ],
+      visualDeltaChecks: ["Compare silhouette"],
+      antiShallowSpecRules: ["Require all passes"],
+    },
+    lookDevTargets: { qualityPriority: "standard" },
+    lightingFromPhoto: ["key light with exposure", "fill light with filmic tone mapping", "environment light with contact shadow"],
+    selfCorrectLoop: { visualAcceptance: { threshold: 0.7, layerScoresRequired: true, requiredLayerScores: ["silhouette"], featureReviewPolicy: { enabled: true, criticalDefaultThreshold: 0.8 } } },
+    featureReviewTargets: [featureReviewTarget],
+    buildPasses,
+    reviewHistory: [
+      acceptedVisualReview("blockout", "2026-07-21T00:00:00.000Z"),
+      acceptedVisualReview("structural-pass", "2026-07-21T00:01:00.000Z"),
+      acceptedVisualReview("material-pass", "2026-07-21T00:02:00.000Z"),
+      { timestamp: "2026-07-21T00:03:00.000Z", passId: "optimization-pass", estimatedFidelity: 0.92, aiVisionScore: null, visualAcceptanceThreshold: 0.7, layerScores: {}, featureReviews: [], action: "continue", summary: "accepted", matched: [], mismatches: [], specFixes: [], codeFixes: [], evidence: [] },
+    ],
+    sculptPipeline: { passGateMode: "locked-sequential", passOrder: buildPasses.map((pass) => pass.id), currentPass: "complete", completedPasses: buildPasses.map((pass) => pass.id), lastCompletedPass: "optimization-pass", blockedReason: "all build passes completed", nextRequiredEvidence: [] },
+  };
+  const recipe = {
+    schema: "threenative.img2threejs-generator",
+    version: "0.1.0",
+    id: "prop.radio",
+    sourceImage: "content/references/prop.radio.png",
+    sculptSpec: "content/generators/prop.radio.sculpt-spec.json",
+    validationReport: "content/generators/prop.radio.validation.json",
+    factory: { module: "src/generators/createPropRadioModel.ts", export: "createPropRadioModel" },
+    upstream: { repository: "https://github.com/hoainho/img2threejs", commit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b", skillVersion: "1.2.0" },
+    export: { rootNode: "prop.radio", embedTextures: true, includeRuntimeExtras: true },
+    budgets: { maxOutputBytes: 33_554_432, maxTriangles: 250_000, maxMaterials: 64, maxTextures: 64, timeoutMs: 120_000 },
+  };
+  const specBytes = `${JSON.stringify(spec, null, 2)}\n`;
+  const specHash = `sha256:${createHash("sha256").update(specBytes).digest("hex")}`;
+  const validationReport = {
+    schema: "threenative.img2threejs-validation",
+    version: "0.1.0",
+    validator: {
+      repository: "https://github.com/hoainho/img2threejs",
+      commit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b",
+      skillVersion: "1.2.0",
+      command: "python3 forge/stage2_spec/validate_sculpt_spec.py content/generators/prop.radio.sculpt-spec.json --strict-quality --json",
+    },
+    sculptSpecHash: specHash,
+    result: {
+      ok: true,
+      errors: [],
+      warnings: [
+        "missing terminologyProfile; descriptions may drift into vague non-3D language",
+        "missing scores block; image validation evidence will be weaker",
+        "missing qualityTargets; self-correction loop has no explicit fidelity bar",
+        "missing actionReadiness; generated model may not be ready for animation/transformation/destruction",
+        "selfCorrectLoop.screenshotPolicy is missing; visual review may drift without screenshots",
+        "missing viewEvidence; local visual claims cannot be traced back to image regions",
+        "component 'root' is missing actionProfile; future animation/destruction may require refactor",
+        "only one component found; this is likely still blockout quality",
+      ],
+      summary: { targetName: "Radio", suitability: "pass", components: 1, materials: 1 },
+    },
+  };
+  await writeFile(join(root, "content/generators/prop.radio.sculpt-spec.json"), specBytes);
+  await writeFile(join(root, "content/generators/prop.radio.validation.json"), `${JSON.stringify(validationReport, null, 2)}\n`);
+  await writeFile(join(root, recipePath), `${JSON.stringify(recipe, null, 2)}\n`);
+  return { output, recipePath };
 }

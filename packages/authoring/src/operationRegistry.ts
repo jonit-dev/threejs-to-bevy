@@ -1,6 +1,7 @@
 import { authoringDiagnostic } from "./diagnostics.js";
 import { normalizeRelativePath, type AuthoringDocumentKind } from "./documents.js";
 import { loadAuthoringProject } from "./project.js";
+import { img2ThreejsProviderManifest } from "./schemas.js";
 import {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,
@@ -66,6 +67,7 @@ import {
   setDistributionTarget,
   recordGeneratorProvenance,
   recordBlenderGenerator,
+  recordImg2ThreejsGenerator,
   removeComponent,
   removeEntity,
   removeResource,
@@ -190,6 +192,16 @@ export interface IAuthoringOperationAdapterExclusions {
   editorSmoke?: IAuthoringOperationAdapterExclusion;
 }
 
+export interface IAuthoringProviderManifest {
+  id: string;
+  internalForkTree: string;
+  internalForkUrl: string;
+  license: { name: string; spdx: string; url: string };
+  repository: string;
+  reviewedCommit: string;
+  skillVersion: string;
+}
+
 export interface IAuthoringOperationDescriptor<TName extends string = AuthoringOperationName> {
   adapters?: {
     cli?: IAuthoringOperationCliAdapterDescriptor;
@@ -201,6 +213,7 @@ export interface IAuthoringOperationDescriptor<TName extends string = AuthoringO
   mutationPolicy: AuthoringOperationMutationPolicy;
   name: TName;
   pathPolicy: AuthoringOperationPathPolicy;
+  providerManifest?: IAuthoringProviderManifest;
   resultShape: AuthoringOperationResultShape;
   sourceFamily: AuthoringOperationSourceFamily;
   targetResolver: AuthoringOperationTargetResolver;
@@ -385,6 +398,19 @@ const operationEntries = [
       recipe: optionalObject(args, "recipe"),
       recipePath: optionalString(args, "recipePath"),
       requestedBudgets: optionalObject(args, "requestedBudgets"),
+    })),
+  operation(withProviderManifest(descriptor("generator.record_img2threejs", "Validate and record a reviewed project-local img2threejs workspace without running its exporter.", "generator", "source-document", [
+    stringArg("generatorId"),
+    stringArg("recipePath"),
+    stringArg("output"),
+    stringArg("overwritePolicy", false, ["manual", "replace", "skip"]),
+  ]), img2ThreejsProviderManifest), async ({ args, projectPath }) =>
+    recordImg2ThreejsGenerator({
+      generatorId: requiredString(args, "generatorId"),
+      output: requiredString(args, "output"),
+      overwritePolicy: optionalString(args, "overwritePolicy"),
+      projectPath,
+      recipePath: requiredString(args, "recipePath"),
     })),
   operation(descriptor("scene.create", "Create a structured scene source document.", "scene", "source-document", [
     stringArg("sceneId"),
@@ -1395,6 +1421,7 @@ function operationDescriptor(operation: IAuthoringOperationDescriptor): IAuthori
     mutationPolicy: operation.mutationPolicy,
     name: operation.name,
     pathPolicy: operation.pathPolicy,
+    ...(operation.providerManifest === undefined ? {} : { providerManifest: { ...operation.providerManifest, license: { ...operation.providerManifest.license } } }),
     resultShape: operation.resultShape,
     sourceFamily: operation.sourceFamily,
     targetResolver: operation.targetResolver,
@@ -1783,6 +1810,13 @@ function withEditor<const TName extends string>(
   delete adapterExclusions.editor;
   if (editor.smoke !== undefined) delete adapterExclusions.editorSmoke;
   return { ...descriptor, adapterExclusions, adapters: { ...descriptor.adapters, editor } };
+}
+
+function withProviderManifest<const TName extends string>(
+  descriptor: IAuthoringOperationDescriptor<TName>,
+  providerManifest: IAuthoringProviderManifest,
+): IAuthoringOperationDescriptor<TName> {
+  return { ...descriptor, providerManifest };
 }
 
 function adapterExclusion(reason: string): IAuthoringOperationAdapterExclusion {

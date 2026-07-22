@@ -19,6 +19,31 @@ Current support:
   `array`/`bevel`/`boolean`/`mirror`/`solidify`; `join`/`parent`;
   position/rotation/scale tracks; and linear/step interpolation. Raw Python,
   remote recipe inputs, and unbounded operations are rejected.
+- Reviewed project-local img2threejs factories can generate one named,
+  textured `THREE.Group` through `tn asset generate <id> --provider
+  img2threejs`; the recorded provider provenance can be rerun through `tn
+  generator run <id>` using the same descriptor-owned runner. Accepted output
+  hashes enforce `manual`/`skip` ownership conflicts, `replace` remains
+  explicit, and optimistic publication preserves concurrent edits.
+  The CLI compiles only the declared factory, executes it in a network-blocked
+  isolated Chromium context, serves only hash-reviewed project-local
+  PNG/JPEG/WebP resources, embeds images, validates typed named runtime extras,
+  and compares fixed source/reload renders before atomically committing the
+  Khronos-validated and ThreeNative-inspected GLB, generator provenance, and
+  asset registration. The promoted matrix is bounded to triangle
+  `BufferGeometry`, `MeshBasicMaterial`/`MeshStandardMaterial`, canvas/local
+  image textures in six proved slots, and three glTF extensions. Physical and
+  shader materials, animations, morph targets, lights, cameras, helpers,
+  custom texture kinds, and broader upstream factories remain outside it.
+  The same provider descriptor derives the `asset.generate_img2threejs` MCP
+  schema and bounded CLI argv. MCP accepts only project-contained reviewed
+  recipe/output paths and returns the CLI structured payload; it does not own
+  a second exporter, provider state, or diagnostic mapper. The focused
+  `verify:img2threejs` descriptor rebuilds two clean copies, requires identical
+  GLB/ownership hashes and semantic inspection, exercises all eight security
+  and ownership controls, captures four web angles, and loads the same GLB in
+  Bevy with `assetsReady` recorded at capture. That desktop result is a native
+  load/nonblank smoke, not a web/Bevy pixel-parity promotion.
 - Snapshot-first Poly Haven model/texture/HDRI search and import with CC0
   provenance, plus explicit-network Sketchfab search/preview and OAuth-backed
   license/target-scale import. Live Sketchfab download evidence remains pending
@@ -77,12 +102,19 @@ Verification:
 - `tn asset provider search poly-haven --query crate --type models --live --json`
 - `tn asset provider preview sketchfab <model-uid> --json`
 - `tn asset generate robot.guardian --provider blender --recipe content/generators/robot.guardian.recipe.json --json`
+- `tn asset generate prop.radio --provider img2threejs --recipe content/generators/prop.radio.img2threejs.json --json`
+- MCP `asset.generate_img2threejs` with the same project-local reviewed recipe
+- `tn generator run prop.radio --json`
+- `tn model-test assets/generated/prop.radio.glb --angles 0,90,180,270 --json`
 - `tn environment add-scatter-layer --json`
 - `tn world generate --json`
 - `tn world proof --json`
 - `tn model-test assets/hero.glb --screenshot --json`
 - `tn model-test assets/hero.glb --angles 0,90,180,270 --json`
 - `pnpm verify:model-test-material`
+- `pnpm verify:img2threejs` (two deterministic clean exports, Khronos and
+  ThreeNative inspection, fixed reload metrics, four web angles, native
+  assets-ready load, and eight exact negative controls)
 - `pnpm verify:release`
 - `pnpm verify:blender-tool`
 - `pnpm verify:blender-host` (downloads nothing implicitly; requires an already
@@ -115,6 +147,11 @@ Evidence and owning gates:
 - [portable model-test/material gate](../../../tools/verify/src/modelTestMaterialGate.ts),
   [expected/observed material report](../../../tools/verify/artifacts/model-test-material/material-report.json),
   and [four-angle contact sheet](../../../tools/verify/artifacts/model-test-material/contact-sheet.png)
+- [img2threejs tracked fixture and rights owner](../../../tools/verify/evidence/img2threejs/deterministic-fixture.json),
+  [focused gate](../../../tools/verify/src/img2ThreejsGate.ts),
+  [verification report](../../../tools/verify/artifacts/img2threejs/verification-report.json),
+  [four-angle contact sheet](../../../tools/verify/artifacts/img2threejs/contact-sheets/four-angle-web.svg),
+  and [independent-reference review sheet](../../../tools/verify/artifacts/img2threejs/contact-sheets/independent-reference.svg)
 - [phase evidence and pending boundaries](../../PRDs/other/optional-headless-blender-asset-generation.md#verification-evidence)
 
 The commands write hash-bound reports under

@@ -115,6 +115,61 @@ x64/arm64 and Windows x64 remain rejected with
 `TN_EXTERNAL_TOOL_HOST_UNPROVEN` until the opt-in matrix retains equivalent
 install, cleanup, generation, and visual evidence.
 
+### Reviewed img2threejs GLB Finalization
+
+Use the internal img2threejs provider only when the user explicitly selects a
+ThreeNative/GLB result after the skill's image assessment, sculpt-spec build
+passes, and visual reviews are accepted. It is not a one-shot image-to-3D
+command and does not replace that judgment. Prefer the catalog for an existing
+asset and the bounded Blender provider for a simple structured primitive
+recipe; choose img2threejs when a reviewed project-local Three.js factory is
+the durable source that must be finalized as a normal GLB.
+
+The reviewed workspace owns these inputs:
+
+```text
+content/references/<id>.png
+content/generators/<id>.sculpt-spec.json
+content/generators/<id>.validation.json
+content/generators/<id>.img2threejs.json
+src/generators/create<Model>.ts
+```
+
+The recipe is structured JSON and names the reviewed source image, validated
+sculpt spec, local factory module/export, pinned upstream identity, output
+options, and budgets. CLI and MCP accept a project-local recipe path; neither
+surface accepts inline TypeScript, a remote factory URL, browser handles, or
+an unreviewed upstream commit.
+
+```bash
+tn asset generate prop.radio --provider img2threejs --recipe content/generators/prop.radio.img2threejs.json --project . --json
+tn generator run prop.radio --project . --json
+tn asset inspect assets/generated/prop.radio.glb --json
+tn model-test assets/generated/prop.radio.glb --angles 0,90,180,270 --out artifacts/model-test --json
+tn authoring validate --project . --json
+tn build --project . --json
+```
+
+Finalization executes the declared factory once in isolated, network-blocked
+Chromium, embeds supported reviewed local/canvas textures, validates the GLB,
+compares fixed source/reload renders, and atomically commits the GLB,
+hash-bound generator provenance, and normal asset registration. After that,
+the generated file follows the ordinary bundle-local GLB path in web and Bevy;
+img2threejs, its Python scripts, review prompts, and authoring factory are not
+runtime dependencies. `manual` and `skip` preserve changed/unowned output;
+`replace` must be explicit.
+
+Fix compatibility or parity failures in the sculpt spec, factory, or reviewed
+local resource and repeat the skill review. Do not edit emitted GLB bytes or
+weaken proof thresholds. V1 is limited to the documented object-focused
+triangle geometry, Basic/Standard materials, six texture slots, and typed
+socket/collider/destruction metadata. Physical/custom shaders, rigs, morphs,
+animations, review lights/cameras/helpers, external resources, broader
+upstream factories, and native pixel parity remain unsupported. Record source
+rights separately from the MIT-licensed skill code. The executable clean-project
+pattern is [img2threejs generated prop](../cookbook/img2threejs-generated-prop.md),
+and the pinned fork/sync procedure is [the vendor record](../vendor/img2threejs.md).
+
 ## Inspecting Model Scale and Dependencies
 
 Use the CLI inspection workflow before placing a new model into gameplay space:

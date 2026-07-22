@@ -18,6 +18,7 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(GATE_DESCRIPTORS.map((descriptor) => descriptor.name), [
     "verify:android-webview-distribution",
     "verify:desktop-distribution",
+    "verify:img2threejs",
     "verify:native-overlay-cef",
     "verify:overlay-scaffold",
     "verify:emitted-commands",
@@ -30,6 +31,7 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
   assert.deepEqual(GATE_DESCRIPTORS.filter((descriptor) => !descriptor.release.enrolled).map((descriptor) => descriptor.name), [
     "verify:android-webview-distribution",
     "verify:desktop-distribution",
+    "verify:img2threejs",
     "verify:emitted-commands",
     "verify:portable-feedback",
   ]);
@@ -51,6 +53,7 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
 
   assert.equal(focused["verify:agent-io"]?.metadata.owner, "tools/verify agent IO budget gate");
   assert.equal(focused["verify:session-cost"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/sessionCostGate.js");
+  assert.equal(focused["verify:img2threejs"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/img2ThreejsGate.js");
   assert.equal(focused["verify:overlay-scaffold"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/overlayScaffoldGate.js");
   assert.equal(focused["verify:native-overlay-cef"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/nativeOverlayCefGate.js");
   assert.deepEqual(release.map((gate) => [gate.script, gate.reportPath]), [

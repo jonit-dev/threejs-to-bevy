@@ -78,6 +78,27 @@ const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
     release: { enrolled: false, name: "verify desktop distribution", timingCategory: "visual-native" },
   },
   {
+    artifact: { reportPath: "tools/verify/artifacts/img2threejs/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/authoring", "build"],
+        ["pnpm", "--filter", "@threenative/compiler", "build"],
+        ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+        ["pnpm", "--filter", "@threenative/cli", "build"],
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "tools/verify/dist/img2ThreejsGate.js"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Reviewed img2threejs source-to-GLB runtime evidence gate.",
+    focused: { profile: "focused" },
+    name: "verify:img2threejs",
+    owner: "tools/verify img2threejs gate and tracked fixture manifest",
+    protects: "Pinned reviewed source, deterministic GLB finalization, visual reload, web/native loading, rights evidence, and eight fail-closed controls.",
+    reason: "Prevents the local provider from advancing when source review, browser isolation, GLB compatibility, output ownership, parity, or runtime consumption regresses.",
+    release: { enrolled: false, name: "verify img2threejs", timingCategory: "visual-native" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/native-overlay-cef/verification-report.json" },
     command: {
       commands: [

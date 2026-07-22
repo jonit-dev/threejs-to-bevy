@@ -8,7 +8,7 @@ import { join, resolve } from "node:path";
 import test from "node:test";
 
 import { AUTHORING_BATCH_SCHEMA, AUTHORING_BATCH_VERSION, AUTHORING_OPERATION_NAMES } from "@threenative/authoring";
-import { assetCommand, assetCreationStrategy, blenderMcpOutcomeCoverage, CLI_COMMAND_REGISTRY, dispatch, type IAssetCommandOptions } from "@threenative/cli";
+import { assetCommand, assetCreationStrategy, assetGenerationProviderRegistry, blenderMcpOutcomeCoverage, CLI_COMMAND_REGISTRY, dispatch, type IAssetCommandOptions } from "@threenative/cli";
 
 import { AUTHORING_MCP_TOOLS, callAuthoringMcpTool, type IAuthoringMcpResult } from "./index.js";
 
@@ -264,6 +264,126 @@ test("should match the real CLI asset generation core through injected Blender d
   } finally {
     await rm(mcpRoot, { force: true, recursive: true });
     await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("should derive img2threejs MCP schema argv and description from its provider descriptor", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-img2threejs-descriptor-"));
+  const provider = assetGenerationProviderRegistry.find((candidate) => candidate.id === "img2threejs")!;
+  const configured = (Array.isArray(CLI_COMMAND_REGISTRY.asset.adapters?.mcp) ? CLI_COMMAND_REGISTRY.asset.adapters.mcp : []).find((candidate) => candidate.name === provider.mcp.name);
+  const tool = AUTHORING_MCP_TOOLS.find((candidate) => candidate.name === provider.mcp.name);
+  const calls: string[][] = [];
+  try {
+    assert.notEqual(configured, undefined);
+    const { pathRoles, ...publicAdapter } = configured!;
+    assert.deepEqual(publicAdapter, provider.mcp);
+    assert.deepEqual(pathRoles, provider.mcpPathRoles);
+    assert.deepEqual(tool, { description: provider.mcp.description, inputSchema: provider.mcp.inputSchema, name: provider.mcp.name });
+
+    const recipe = "content/generators/prop.radio.img2threejs.json";
+    const out = "assets/generated/prop.radio.glb";
+    const result = await callAuthoringMcpTool({ arguments: { assetId: "prop.radio", out, overwritePolicy: "replace", recipe }, name: provider.mcp.name }, {
+      allowedProjectRoots: [root],
+      execute: async (argv) => { calls.push([...argv]); return { exitCode: 0, stdout: "{}\n" }; },
+      projectRoot: root,
+    });
+    assert.equal(result.isError, false);
+    assert.deepEqual(calls, [["asset", "generate", "prop.radio", "--recipe", recipe, "--out", out, "--overwrite-policy", "replace", "--provider", "img2threejs", "--project", root, "--json"]]);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should return byte-equivalent core results through CLI and MCP", async () => {
+  const mcpRoot = await mkdtemp(join(tmpdir(), "tn-mcp-img2threejs-parity-"));
+  const cliRoot = await mkdtemp(join(tmpdir(), "tn-cli-img2threejs-parity-"));
+  const recipe = "content/generators/prop.radio.img2threejs.json";
+  try {
+    const mcp = await callAuthoringMcpTool({ arguments: { assetId: "prop.radio", overwritePolicy: "replace", recipe }, name: "asset.generate_img2threejs" }, {
+      allowedProjectRoots: [mcpRoot], execute: (argv) => assetCommand(argv.slice(1), fakeImg2ThreejsOptions(mcpRoot)), projectRoot: mcpRoot,
+    });
+    const cli = await assetCommand(["generate", "prop.radio", "--provider", "img2threejs", "--recipe", recipe, "--overwrite-policy", "replace", "--project", cliRoot, "--json"], fakeImg2ThreejsOptions(cliRoot));
+    const cliPayload = JSON.parse(cli.stdout) as Record<string, unknown>;
+    const mcpPayload = mcp.content as Record<string, unknown>;
+
+    assert.equal(mcp.isError, false);
+    assert.equal(cli.exitCode, 0);
+    assert.deepEqual(stripProjectPath(mcpPayload), stripProjectPath(cliPayload));
+    assert.equal(await readFile(join(mcpRoot, "assets/generated/prop.radio.glb"), "utf8"), await readFile(join(cliRoot, "assets/generated/prop.radio.glb"), "utf8"));
+    assert.equal(await readFile(join(mcpRoot, "content/assets/prop.radio.assets.json"), "utf8"), await readFile(join(cliRoot, "content/assets/prop.radio.assets.json"), "utf8"));
+    assert.equal(mcpPayload.projectPath, mcpRoot);
+    assert.deepEqual(findForbiddenImg2ThreejsPayloadKeys(mcpPayload), []);
+    const redactedEnvelope = JSON.stringify(mcp).replaceAll(mcpRoot, "<configured-project-root>");
+    assert.equal(redactedEnvelope.includes("image-byte-canary"), false);
+    assert.equal(redactedEnvelope.includes(tmpdir()), false);
+  } finally {
+    await rm(mcpRoot, { force: true, recursive: true });
+    await rm(cliRoot, { force: true, recursive: true });
+  }
+});
+
+test("should reject inline code remote URLs traversal symlinks and generated recipe paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-img2threejs-guards-"));
+  const outside = await mkdtemp(join(tmpdir(), "tn-mcp-img2threejs-outside-"));
+  let calls = 0;
+  const execute = async () => { calls += 1; return { exitCode: 0, stdout: "{}\n" }; };
+  const invoke = (argumentsValue: Record<string, unknown>) => callAuthoringMcpTool({ arguments: argumentsValue, name: "asset.generate_img2threejs" }, { allowedProjectRoots: [root], execute, projectRoot: root });
+  try {
+    const invalidArguments: Array<{ args: Record<string, unknown>; code: string }> = [
+      { args: { assetId: "prop.radio", recipe: { code: "export default 1" } }, code: "TN_MCP_ARGUMENT_INVALID" },
+      { args: { assetId: "prop.radio", code: "export default 1", recipe: "content/generators/prop.radio.img2threejs.json" }, code: "TN_MCP_ARGUMENT_INVALID" },
+      { args: { assetId: "prop.radio", browserHandle: "unsafe", recipe: "content/generators/prop.radio.img2threejs.json" }, code: "TN_MCP_ARGUMENT_INVALID" },
+      { args: { assetId: "prop.radio", recipe: "https://example.invalid/prop.radio.img2threejs.json" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", recipe: "file:///tmp/prop.radio.img2threejs.json" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", recipe: "data:application/json,%7B%7D" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", recipe: "content/generators/../escape.img2threejs.json" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", out: "assets/generated/../escape.glb", recipe: "content/generators/prop.radio.img2threejs.json" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", recipe: "dist/prop.radio.img2threejs.json" }, code: "TN_MCP_PATH_REJECTED" },
+      { args: { assetId: "prop.radio", overwritePolicy: "force", recipe: "content/generators/prop.radio.img2threejs.json" }, code: "TN_MCP_ARGUMENT_INVALID" },
+    ];
+    for (const fixture of invalidArguments) {
+      const result = await invoke(fixture.args);
+      assert.equal((result.content as IJsonPayload).code, fixture.code, JSON.stringify(fixture.args));
+    }
+
+    await mkdir(join(root, "content/generators"), { recursive: true });
+    await writeFile(join(outside, "outside.img2threejs.json"), "{}\n");
+    await symlink(join(outside, "outside.img2threejs.json"), join(root, "content/generators/prop.radio.img2threejs.json"));
+    const recipeSymlink = await invoke({ assetId: "prop.radio", recipe: "content/generators/prop.radio.img2threejs.json" });
+    assert.equal((recipeSymlink.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    await rm(join(root, "content/generators/prop.radio.img2threejs.json"), { force: true });
+    await symlink(join(outside, "missing.img2threejs.json"), join(root, "content/generators/prop.radio.img2threejs.json"));
+    const danglingRecipeSymlink = await invoke({ assetId: "prop.radio", recipe: "content/generators/prop.radio.img2threejs.json" });
+    assert.equal((danglingRecipeSymlink.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    await rm(join(root, "content/generators/prop.radio.img2threejs.json"), { force: true });
+    await writeFile(join(root, "content/generators/prop.radio.img2threejs.json"), "{}\n");
+    await mkdir(join(root, "assets"), { recursive: true });
+    await symlink(outside, join(root, "assets/generated"));
+    const outputSymlink = await invoke({ assetId: "prop.radio", recipe: "content/generators/prop.radio.img2threejs.json" });
+    assert.equal((outputSymlink.content as IJsonPayload).code, "TN_MCP_PATH_REJECTED");
+    assert.equal(calls, 0);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+    await rm(outside, { force: true, recursive: true });
+  }
+});
+
+test("should preserve img2threejs source and output when MCP generation fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-mcp-img2threejs-rollback-"));
+  try {
+    const provenancePath = join(root, "content/generators/prop.radio.generator.json");
+    await writeImg2ThreejsMcpProvenance(root, `sha256:${"c".repeat(64)}`);
+    const before = await readFile(provenancePath);
+    const options = fakeImg2ThreejsOptions(root, true);
+    const result = await callAuthoringMcpTool({ arguments: { assetId: "prop.radio", overwritePolicy: "replace", recipe: "content/generators/prop.radio.img2threejs.json" }, name: "asset.generate_img2threejs" }, {
+      allowedProjectRoots: [root], execute: (argv) => assetCommand(argv.slice(1), options), projectRoot: root,
+    });
+    assert.equal(result.isError, true);
+    assert.deepEqual(await readFile(provenancePath), before);
+    await assert.rejects(readFile(join(root, "assets/generated/prop.radio.glb")));
+    await assert.rejects(readFile(join(root, "content/assets/prop.radio.assets.json")));
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });
 
@@ -807,6 +927,74 @@ test("mcp smoke performs inspect mutate validate build and verify", async () => 
 
 async function callMcp(root: string, name: Parameters<typeof callAuthoringMcpTool>[0]["name"], args: Record<string, unknown>): Promise<IAuthoringMcpResult> {
   return callAuthoringMcpTool({ arguments: args, name }, { allowedProjectRoots: [root], projectRoot: root });
+}
+
+function fakeImg2ThreejsOptions(root: string, fail = false): IAssetCommandOptions {
+  const authoringDispatch: NonNullable<IAssetCommandOptions["authoringDispatch"]> = async (options) => {
+    assert.equal(options.name, "generator.record_img2threejs");
+    await writeImg2ThreejsMcpProvenance(root);
+    return { changed: true, diagnostics: [], filesWritten: ["content/generators/prop.radio.generator.json"], ok: true, projectPath: root };
+  };
+  const img2ThreejsRunner: NonNullable<IAssetCommandOptions["img2ThreejsRunner"]> = async (projectPath, generatorId) => {
+    if (fail) {
+      return { code: "TN_IMG2THREEJS_PROMOTION_FAILED", diagnostics: [{ code: "TN_IMG2THREEJS_PROMOTION_FAILED", message: "Injected registration failure.", path: "content/assets/prop.radio.assets.json", severity: "error" }], filesWritten: [], generatorId, message: "Generation failed.", ok: false, projectPath };
+    }
+    const outputPath = `assets/generated/${generatorId}.glb`;
+    const assetPath = `content/assets/${generatorId}.assets.json`;
+    const outputHash = `sha256:${"b".repeat(64)}`;
+    await mkdir(join(root, "assets/generated"), { recursive: true });
+    await mkdir(join(root, "content/assets"), { recursive: true });
+    await writeFile(join(root, outputPath), "deterministic-img2threejs-glb");
+    await writeFile(join(root, assetPath), `${JSON.stringify({ assets: [{ id: generatorId, path: outputPath, source: `generator:${generatorId}`, type: "model" }], id: generatorId, schema: "threenative.assets", version: "0.1.0" }, null, 2)}\n`);
+    await writeImg2ThreejsMcpProvenance(root, outputHash);
+    return {
+      code: "TN_IMG2THREEJS_RUN_OK",
+      diagnostics: [],
+      filesWritten: [outputPath, assetPath, `content/generators/${generatorId}.generator.json`],
+      generatorId,
+      inputHash: `sha256:${"a".repeat(64)}`,
+      inspection: {
+        bounds: { center: [0, 0, 0], max: [0.7, 0.41, 0.19], min: [-0.7, -0.41, -0.19], size: [1.4, 0.82, 0.38], source: "accessor-min-max" },
+        code: "TN_ASSET_INSPECT_OK",
+        counts: { accessors: 3, animations: 0, buffers: 1, images: 1, materials: 2, meshes: 2, nodes: 4, scenes: 1, textures: 1, triangles: 12 },
+        diagnostics: [], file: { byteSize: 29, path: outputPath, type: "glb" }, message: "Asset inspection completed.",
+      },
+      message: `Generated and registered '${outputPath}'.`,
+      ok: true,
+      outputHash,
+      projectPath,
+      proofFiles: [`artifacts/img2threejs/${generatorId}/reload-proof/hash/source.png`],
+      validation: { issues: { messages: [], numErrors: 0, numHints: 0, numInfos: 0, numWarnings: 0 } },
+      visualMetrics: { meanNormalizedRgbDelta: 0, passed: true, silhouetteIou: 1, ssim: 1, thresholds: { meanNormalizedRgbDelta: 3 / 255, silhouetteIou: 0.995, ssim: 0.98 } },
+    };
+  };
+  return { authoringDispatch, img2ThreejsRunner };
+}
+
+async function writeImg2ThreejsMcpProvenance(root: string, outputHash?: string): Promise<void> {
+  const sha = `sha256:${"a".repeat(64)}`;
+  const provenance = {
+    acceptedPasses: [{ evidence: [{ path: "artifacts/img2threejs/prop.radio/review.png", sha256: sha }], id: "blockout", reviewHash: sha }],
+    budgets: { maxMaterials: 8, maxOutputBytes: 2_000_000, maxTextures: 8, maxTriangles: 20_000, timeoutMs: 10_000 },
+    export: "createPropRadioModel", id: "prop.radio", inputHash: sha, module: "src/generators/createPropRadioModel.ts",
+    outputs: ["assets/generated/prop.radio.glb"], overwritePolicy: "replace", provider: "img2threejs", providerVersion: "1.2.0",
+    recipe: "content/generators/prop.radio.img2threejs.json", schema: "threenative.generator-provenance", sculptSpec: "content/generators/prop.radio.sculpt-spec.json",
+    sourceHashes: { factory: sha, recipe: sha, resources: [], sculptSpec: sha, sourceImage: sha, validationReport: sha }, sourceImage: "content/references/prop.radio.png",
+    upstream: { commit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b", internalForkTree: "3f410de76c9a7ae53875abe7b47f99edf3beb2a6", repository: "https://github.com/hoainho/img2threejs", skillVersion: "1.2.0" },
+    version: "0.1.0", ...(outputHash === undefined ? {} : { outputHash }),
+  };
+  await mkdir(join(root, "content/generators"), { recursive: true });
+  await writeFile(join(root, "content/generators/prop.radio.generator.json"), `${JSON.stringify(provenance, null, 2)}\n`);
+}
+
+function findForbiddenImg2ThreejsPayloadKeys(value: unknown, path = ""): string[] {
+  if (Array.isArray(value)) return value.flatMap((item, index) => findForbiddenImg2ThreejsPayloadKeys(item, `${path}/${index}`));
+  if (typeof value !== "object" || value === null) return [];
+  const forbidden = new Set(["browserHandle", "dataBase64", "logs", "reloadedRgba", "sourceImageBytes", "sourceRgba"]);
+  return Object.entries(value).flatMap(([key, item]) => [
+    ...(forbidden.has(key) ? [`${path}/${key}`] : []),
+    ...findForbiddenImg2ThreejsPayloadKeys(item, `${path}/${key}`),
+  ]);
 }
 
 function fakeBlenderDependencies(): NonNullable<IAssetCommandOptions["blenderDependencies"]> {

@@ -1,5 +1,5 @@
-import { readFile, realpath } from "node:fs/promises";
-import { dirname, relative, resolve, sep } from "node:path";
+import { lstat, readFile, readlink, realpath } from "node:fs/promises";
+import { dirname, join, relative, resolve, sep } from "node:path";
 
 import {
   applyAuthoringBatch,
@@ -117,6 +117,19 @@ export async function callAuthoringMcpTool(call: IAuthoringMcpToolCall, options:
         message: error instanceof Error ? error.message : String(error),
         path: call.name,
       });
+    }
+  } else {
+    const commandAdapter = commandMcpAdapter(call.name);
+    if (commandAdapter?.argv !== undefined) {
+      try {
+        validateCommandMcpArguments(commandAdapter, args);
+      } catch (error) {
+        return mcpDiagnostic({
+          code: "TN_MCP_ARGUMENT_INVALID",
+          message: error instanceof Error ? error.message : String(error),
+          path: call.name,
+        });
+      }
     }
   }
   const earlyArgumentDiagnostic = validateEarlyCommandArguments(call.name, args);
@@ -293,17 +306,10 @@ async function validateProjectRoot(projectRoot: string, allowedProjectRoots: rea
 }
 
 async function validateToolPaths(name: AuthoringMcpToolName, args: Record<string, unknown>, projectRoot: string): Promise<{ code: string; message: string; path: string } | undefined> {
-  if (name === "asset.generate_blender") {
-    const recipe = args.recipe;
-    if (typeof recipe === "string") {
-      const invalidRecipePath = await validateContainedPath(projectRoot, "recipe", recipe, /^content\/generators\/[a-z][a-z0-9._-]*\.recipe\.json$/u);
-      if (invalidRecipePath !== undefined) return invalidRecipePath;
-    } else if (containsForbiddenRecipeField(recipe)) {
-      return { code: "TN_MCP_ARGUMENT_INVALID", message: "MCP Blender recipes cannot contain Python, code, scripts, modules, add-ons, operators, or remote URLs.", path: "recipe" };
-    }
-    const out = optionalStringArg(args, "out") ?? `assets/generated/${stringArg(args, "assetId")}.glb`;
-    const invalidOutputPath = await validateContainedPath(projectRoot, "out", out, /^assets\/generated\/[a-z][a-z0-9._-]*\.glb$/u);
-    if (invalidOutputPath !== undefined) return invalidOutputPath;
+  const generationAdapter = commandMcpAdapter(name);
+  if (generationAdapter?.pathRoles !== undefined) {
+    const invalidGenerationPath = await validateLocalGenerationPaths(generationAdapter, args, projectRoot);
+    if (invalidGenerationPath !== undefined) return invalidGenerationPath;
   }
   if (name === "asset.hyper3d_generate" && typeof args.image === "string") {
     if (/^[a-z][a-z0-9+.-]*:/iu.test(args.image)) return { code: "TN_MCP_PATH_REJECTED", message: "MCP Hyper3D image input must be a project-local path, not a remote URL.", path: args.image };
@@ -337,6 +343,43 @@ async function validateToolPaths(name: AuthoringMcpToolName, args: Record<string
   return undefined;
 }
 
+async function validateLocalGenerationPaths(
+  adapter: ICommandMcpAdapterDefinition,
+  args: Record<string, unknown>,
+  projectRoot: string,
+): Promise<{ code: string; message: string; path: string } | undefined> {
+  for (const role of adapter.pathRoles ?? []) {
+    let value = args[role.argument];
+    if (value === undefined && role.defaultFromAssetId === true) value = `assets/generated/${stringArg(args, "assetId")}.glb`;
+    if (isRecord(value) && role.allowInlineObject === true) continue;
+    if (typeof value !== "string") continue;
+    if (role.kind === "reviewed-source") {
+      if (/^[a-z][a-z0-9+.-]*:/iu.test(value) || value.startsWith("//")) {
+        return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${role.argument}' must be project-local, not a URL.`, path: value };
+      }
+      if (/(?:^|\/)(?:dist|artifacts|runtime|\.cache)(?:\/|$)|\.bundle(?:\/|$)/u.test(value)) {
+        return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${role.argument}' must not target generated bundle, artifact, cache, or runtime paths.`, path: value };
+      }
+    }
+    const pattern = commandAdapterStringPattern(adapter, role.argument);
+    if (pattern === undefined) {
+      return { code: "TN_MCP_DESCRIPTOR_INVALID", message: `MCP adapter '${adapter.name}' is missing a string pattern for '${role.argument}'.`, path: adapter.name };
+    }
+    const invalid = await validateContainedPath(projectRoot, role.argument, value, new RegExp(pattern, "u"));
+    if (invalid !== undefined) return invalid;
+  }
+  return undefined;
+}
+
+function commandAdapterStringPattern(adapter: ICommandMcpAdapterDefinition, argument: string): string | undefined {
+  const properties = isRecord(adapter.inputSchema?.properties) ? adapter.inputSchema.properties : undefined;
+  const property = properties === undefined || !isRecord(properties[argument]) ? undefined : properties[argument];
+  if (typeof property?.pattern === "string") return property.pattern;
+  if (!Array.isArray(property?.oneOf)) return undefined;
+  const patterns = property.oneOf.flatMap((candidate) => isRecord(candidate) && candidate.type === "string" && typeof candidate.pattern === "string" ? [candidate.pattern] : []);
+  return patterns.length === 1 ? patterns[0] : undefined;
+}
+
 function commandMcpAdapter(name: AuthoringMcpToolName): ICommandMcpAdapterDefinition | undefined {
   return Object.values(CLI_COMMAND_REGISTRY).flatMap((command) => command.adapters?.mcp === undefined ? [] : Array.isArray(command.adapters.mcp) ? command.adapters.mcp : [command.adapters.mcp]).find((adapter) => adapter.name === name);
 }
@@ -352,9 +395,9 @@ function validateCommandMcpArguments(adapter: ICommandMcpAdapterDefinition, args
   }
   for (const [key, property] of Object.entries(properties)) {
     if (args[key] !== undefined && isRecord(property)) {
-      const pathArgument = adapter.argv?.arguments.some((argument) => argument.name === key && argument.resolveProjectPath === true) === true || ["image", "out", "recipe"].includes(key);
-      if (key === "recipe" && typeof args[key] === "string") validateJsonSchemaValue(args[key], { type: "string" }, key);
-      else if (pathArgument && typeof property.pattern === "string") { const { pattern: _pattern, ...withoutPathPattern } = property; validateJsonSchemaValue(args[key], withoutPathPattern, key); }
+      const pathArgument = adapter.argv?.arguments.some((argument) => argument.name === key && argument.resolveProjectPath === true) === true || adapter.pathRoles?.some((role) => role.argument === key) === true || ["image", "out", "recipe"].includes(key);
+      const earlyValidatedArgument = adapter.pathRoles !== undefined && key === "assetId";
+      if (pathArgument || earlyValidatedArgument) validateJsonSchemaValue(args[key], withoutJsonSchemaPatterns(property), key);
       else validateJsonSchemaValue(args[key], property, key);
     }
   }
@@ -363,14 +406,22 @@ function validateCommandMcpArguments(adapter: ICommandMcpAdapterDefinition, args
     const hasImage = args.image !== undefined;
     if (hasPrompt === hasImage) throw new Error("MCP tool 'asset.hyper3d_generate' requires exactly one of 'prompt' or 'image'.");
   }
-  if (adapter.name === "asset.generate_blender") {
-    const earlyDiagnostic = validateEarlyCommandArguments(adapter.name, args);
-    if (earlyDiagnostic !== undefined) throw new Error(earlyDiagnostic.message);
-    if (typeof args.recipe !== "string" && !isRecord(args.recipe)) throw new Error("MCP argument 'recipe' must be a project-local recipe path or recipe object.");
-    const overwritePolicy = optionalStringArg(args, "overwritePolicy");
-    if (overwritePolicy !== undefined && !["manual", "replace", "skip"].includes(overwritePolicy)) throw new Error("MCP argument 'overwritePolicy' must be manual, replace, or skip.");
-    if (args.out !== undefined) stringArg(args, "out");
+  if (adapter.pathRoles !== undefined) {
+    for (const role of adapter.pathRoles) {
+      const value = args[role.argument];
+      if (role.allowInlineObject === true && isRecord(value) && containsForbiddenRecipeField(value)) {
+        throw new Error(`MCP inline '${role.argument}' cannot contain Python, code, scripts, modules, add-ons, operators, drivers, or remote URLs.`);
+      }
+    }
   }
+}
+
+function withoutJsonSchemaPatterns(schema: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(schema).flatMap(([key, value]) => {
+    if (key === "pattern") return [];
+    if (key === "oneOf" && Array.isArray(value)) return [[key, value.map((candidate) => isRecord(candidate) ? withoutJsonSchemaPatterns(candidate) : candidate)]];
+    return [[key, value]];
+  }));
 }
 
 function validateJsonSchemaValue(value: unknown, schema: Record<string, unknown>, key: string): void {
@@ -463,14 +514,14 @@ function isAuthoringBatchTool(name: AuthoringMcpToolName): name is "authoring.ba
 }
 
 function validateEarlyCommandArguments(name: AuthoringMcpToolName, args: Record<string, unknown>): { code: string; message: string; path: string } | undefined {
-  if (name !== "asset.generate_blender") return undefined;
   const adapter = commandMcpAdapter(name);
+  if (adapter?.pathRoles === undefined) return undefined;
   const properties = isRecord(adapter?.inputSchema?.properties) ? adapter.inputSchema.properties : undefined;
   const assetIdSchema = properties === undefined || !isRecord(properties.assetId) ? undefined : properties.assetId;
   const pattern = assetIdSchema?.pattern;
   const assetId = args.assetId;
   if (typeof pattern !== "string") {
-    return { code: "TN_MCP_DESCRIPTOR_INVALID", message: "The asset.generate_blender descriptor is missing its assetId pattern.", path: "asset.generate_blender" };
+    return { code: "TN_MCP_DESCRIPTOR_INVALID", message: `The ${adapter.name} descriptor is missing its assetId pattern.`, path: adapter.name };
   }
   if (typeof assetId !== "string" || !new RegExp(pattern, "u").test(assetId)) {
     return { code: "TN_MCP_ARGUMENT_INVALID", message: `MCP argument 'assetId' must match ${pattern}.`, path: "assetId" };
@@ -494,11 +545,33 @@ async function validateContainedPath(projectRoot: string, key: string, value: st
     return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${key}' must stay in its bounded project source path.`, path: value };
   }
   const projectRealPath = await realpath(projectRoot).catch(() => undefined);
-  const candidateRealPath = await resolveThroughExistingAncestor(resolved);
+  const candidateRealPath = projectRealPath === undefined ? undefined : await resolvePathThroughSymlinks(projectRoot, projectRealPath, resolved);
   if (projectRealPath === undefined || candidateRealPath === undefined || !isContained(projectRealPath, candidateRealPath)) {
     return { code: "TN_MCP_PATH_REJECTED", message: `MCP tool argument '${key}' resolves outside the allowed project root.`, path: value };
   }
   return undefined;
+}
+
+async function resolvePathThroughSymlinks(projectRoot: string, projectRealPath: string, path: string): Promise<string | undefined> {
+  const segments = relative(projectRoot, path).split(sep).filter((segment) => segment.length > 0);
+  let current = projectRealPath;
+  for (let index = 0; index < segments.length; index += 1) {
+    const segment = segments[index]!;
+    const candidate = join(current, segment);
+    try {
+      const info = await lstat(candidate);
+      if (info.isSymbolicLink()) {
+        const target = resolve(dirname(candidate), await readlink(candidate));
+        current = await resolveThroughExistingAncestor(target) ?? target;
+      } else {
+        current = candidate;
+      }
+    } catch (error) {
+      if (!isNodeError(error, "ENOENT")) return undefined;
+      return resolve(current, ...segments.slice(index));
+    }
+  }
+  return current;
 }
 
 async function resolveThroughExistingAncestor(path: string): Promise<string | undefined> {
@@ -507,12 +580,17 @@ async function resolveThroughExistingAncestor(path: string): Promise<string | un
     try {
       const ancestorRealPath = await realpath(ancestor);
       return resolve(ancestorRealPath, relative(ancestor, path));
-    } catch {
+    } catch (error) {
+      if (!isNodeError(error, "ENOENT")) return undefined;
       const parent = dirname(ancestor);
       if (parent === ancestor) return undefined;
       ancestor = parent;
     }
   }
+}
+
+function isNodeError(error: unknown, code: string): error is NodeJS.ErrnoException {
+  return error instanceof Error && "code" in error && error.code === code;
 }
 
 function isContained(root: string, candidate: string): boolean {

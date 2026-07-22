@@ -1,4 +1,5 @@
-import { access, mkdir, readFile, realpath, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { access, mkdir, readFile, realpath, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 import {
   normalizeDistribution,
@@ -18,6 +19,7 @@ import { validateMaterialDocument } from "./materialValidation.js";
 import { buildUiSourceRecipe, mergeById } from "./uiRecipes.js";
 import { generatedPathDiagnostic, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
 import { loadAuthoringProject, type IAuthoringProject } from "../project.js";
+import { validateGeneratorOutputClaim } from "../generatorProvenance.js";
 import {
   cameraComponentKeys,
   characterControllerComponentKeys,
@@ -42,6 +44,19 @@ import {
   generatorDocumentSchema,
   blenderRecipeLimits,
   blenderRecipeSchema,
+  img2ThreejsBudgetKeys,
+  img2ThreejsExportKeys,
+  img2ThreejsFactoryKeys,
+  img2ThreejsProviderManifest,
+  img2ThreejsRecipeKeys,
+  img2ThreejsRecipeLimits,
+  img2ThreejsRecipeSchema,
+  img2ThreejsUpstreamKeys,
+  img2ThreejsValidationKeys,
+  img2ThreejsValidationResultKeys,
+  img2ThreejsValidationSchema,
+  img2ThreejsValidationSummaryKeys,
+  img2ThreejsValidationValidatorKeys,
   inputAxisKeys,
   inputActionKeys,
   inputControlsSettingsKeys,
@@ -137,6 +152,8 @@ import {
   uiStyleKeys,
   type IScriptReference,
   type ISceneDocument,
+  type IImg2ThreejsAcceptedPass,
+  type IImg2ThreejsRecipe,
   isRecord,
 } from "../schemas.js";
 
@@ -1052,6 +1069,478 @@ export async function recordBlenderGenerator(
     return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
   }
   return authoringOperationResult({ changed: true, diagnostics, filesWritten: filesWritten.sort(), projectPath: project.projectPath });
+}
+
+export interface IRecordImg2ThreejsGeneratorOptions extends IAuthoringOperationContext {
+  generatorId: string;
+  output: string;
+  overwritePolicy?: string;
+  projectPath: string;
+  recipePath: string;
+}
+
+export interface IRecordImg2ThreejsGeneratorDependencies {
+  writeDocument(options: Parameters<typeof writeAuthoringJsonDocument>[0]): ReturnType<typeof writeAuthoringJsonDocument>;
+}
+
+interface IContainedImg2ThreejsResource {
+  bytes: Buffer;
+  path: string;
+  sha256: string;
+}
+
+interface IValidatedImg2ThreejsWorkspace {
+  acceptedPasses: IImg2ThreejsAcceptedPass[];
+  evidenceResources: IContainedImg2ThreejsResource[];
+  factory: IContainedImg2ThreejsResource;
+  recipe: IImg2ThreejsRecipe;
+  recipeResource: IContainedImg2ThreejsResource;
+  sculptSpec: IContainedImg2ThreejsResource;
+  sourceImage: IContainedImg2ThreejsResource;
+  textureResources: IContainedImg2ThreejsResource[];
+  validationReport: IContainedImg2ThreejsResource;
+}
+
+const img2ThreejsVisualPasses = new Set(["blockout", "structural-pass", "form-refinement", "material-pass", "surface-pass", "lighting-pass", "interaction-pass"]);
+
+export async function recordImg2ThreejsGenerator(
+  options: IRecordImg2ThreejsGeneratorOptions,
+  dependencies: IRecordImg2ThreejsGeneratorDependencies = { writeDocument: writeAuthoringJsonDocument },
+): Promise<IAuthoringOperationResult> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const diagnostics = [...project.diagnostics];
+  validateLogicalId(diagnostics, "", "/generatorId", options.generatorId, "generator");
+  const overwritePolicy = options.overwritePolicy === "replace" || options.overwritePolicy === "skip" || options.overwritePolicy === "manual"
+    ? options.overwritePolicy
+    : "manual";
+  if (options.overwritePolicy !== undefined && overwritePolicy !== options.overwritePolicy) {
+    diagnostics.push(img2ThreejsDiagnostic(options.recipePath, "/overwritePolicy", "TN_IMG2THREEJS_RECIPE_INVALID", "Overwrite policy must be manual, replace, or skip.", options.overwritePolicy, ["manual", "replace", "skip"]));
+  }
+
+  const workspace = await validateImg2ThreejsWorkspace(project.projectPath, options, diagnostics);
+  diagnostics.push(...await validateGeneratorOutputClaim({
+    generatorId: options.generatorId,
+    output: options.output,
+    overwritePolicy,
+    projectPath: project.projectPath,
+    provider: "img2threejs",
+  }));
+  if (workspace === undefined || hasAuthoringErrors(diagnostics)) {
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+
+  const sourceHashes = {
+    factory: workspace.factory.sha256,
+    recipe: workspace.recipeResource.sha256,
+    resources: workspace.textureResources.map((resource) => ({ path: resource.path, sha256: resource.sha256 })),
+    sculptSpec: workspace.sculptSpec.sha256,
+    sourceImage: workspace.sourceImage.sha256,
+    validationReport: workspace.validationReport.sha256,
+  };
+  const inputHash = hashImg2ThreejsInput([
+    ["recipe", workspace.recipeResource],
+    ["sourceImage", workspace.sourceImage],
+    ["sculptSpec", workspace.sculptSpec],
+    ["factory", workspace.factory],
+    ["validationReport", workspace.validationReport],
+    ...workspace.textureResources.map((resource): [string, IContainedImg2ThreejsResource] => ["resource", resource]),
+    ...workspace.evidenceResources.map((resource): [string, IContainedImg2ThreejsResource] => ["reviewEvidence", resource]),
+  ]);
+  const provenancePath = `content/generators/${options.generatorId}.generator.json`;
+  const provenanceAbsolute = resolve(project.projectPath, provenancePath);
+  const normalizedOutput = normalizeRelativePath(options.output);
+  const previousDocument = project.documents.find((document) => document.kind === "generator" && document.projectRelativePath === provenancePath);
+  const previousData = isRecord(previousDocument?.data) ? previousDocument.data : undefined;
+  const preserveAcceptedRun = previousData?.provider === "img2threejs"
+    && previousData.id === options.generatorId
+    && Array.isArray(previousData.outputs)
+    && previousData.outputs.length === 1
+    && previousData.outputs[0] === normalizedOutput;
+  const provenanceData = {
+    acceptedPasses: workspace.acceptedPasses,
+    budgets: workspace.recipe.budgets,
+    export: workspace.recipe.factory.export,
+    id: options.generatorId,
+    inputHash,
+    module: workspace.recipe.factory.module,
+    outputs: [normalizedOutput],
+    overwritePolicy,
+    provider: "img2threejs",
+    providerVersion: workspace.recipe.upstream.skillVersion,
+    recipe: workspace.recipeResource.path,
+    schema: generatorDocumentSchema,
+    sculptSpec: workspace.sculptSpec.path,
+    sourceHashes,
+    sourceImage: workspace.sourceImage.path,
+    upstream: {
+      commit: workspace.recipe.upstream.commit,
+      internalForkTree: img2ThreejsProviderManifest.internalForkTree,
+      repository: workspace.recipe.upstream.repository,
+      skillVersion: workspace.recipe.upstream.skillVersion,
+    },
+    version: "0.1.0",
+    ...(preserveAcceptedRun && typeof previousData.outputHash === "string" && /^sha256:[a-f0-9]{64}$/u.test(previousData.outputHash) ? { outputHash: previousData.outputHash } : {}),
+    ...(preserveAcceptedRun && isRecord(previousData.lastRun) ? { lastRun: structuredClone(previousData.lastRun) } : {}),
+  };
+  diagnostics.push(...await validateGeneratorDocument(provenancePath, provenanceData));
+  if (hasAuthoringErrors(diagnostics)) return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+
+  const previousProvenance = await readOptionalFile(provenanceAbsolute);
+  try {
+    await mkdir(dirname(provenanceAbsolute), { recursive: true });
+    await dependencies.writeDocument({ data: provenanceData, file: provenanceAbsolute, kind: "generator", projectRelativePath: provenancePath });
+  } catch (error) {
+    const restoreFailures: string[] = [];
+    try {
+      await restoreOptionalFile(provenanceAbsolute, previousProvenance);
+    } catch (restoreError) {
+      restoreFailures.push(errorMessage(restoreError));
+    }
+    diagnostics.push(img2ThreejsDiagnostic(provenancePath, "", "TN_IMG2THREEJS_RECIPE_INVALID", `Could not atomically record img2threejs generator '${options.generatorId}'. Prior provenance was restored.`, { cause: errorMessage(error), restoreFailures }, [provenancePath]));
+    return authoringOperationResult({ diagnostics, projectPath: project.projectPath });
+  }
+  return authoringOperationResult({ changed: true, diagnostics, filesWritten: [provenancePath], projectPath: project.projectPath });
+}
+
+async function validateImg2ThreejsWorkspace(
+  projectPath: string,
+  options: IRecordImg2ThreejsGeneratorOptions,
+  diagnostics: IAuthoringDiagnostic[],
+): Promise<IValidatedImg2ThreejsWorkspace | undefined> {
+  const recipeResource = await readImg2ThreejsResource(projectPath, options.recipePath, "/recipePath", ["content/generators/"], diagnostics, ".img2threejs.json");
+  await validateImg2ThreejsOutputPath(projectPath, options.output, diagnostics);
+  if (recipeResource === undefined) return undefined;
+  let parsedRecipe: unknown;
+  try {
+    parsedRecipe = JSON.parse(recipeResource.bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    diagnostics.push(img2ThreejsDiagnostic(recipeResource.path, "", "TN_IMG2THREEJS_RECIPE_INVALID", "img2threejs recipe must contain valid JSON.", errorMessage(error), ["Regenerate the provider recipe through the internal img2threejs skill."]));
+    return undefined;
+  }
+  const recipe = validateImg2ThreejsRecipe(recipeResource.path, parsedRecipe, options.generatorId, diagnostics);
+  if (recipe === undefined) return undefined;
+
+  if (recipe.upstream.repository !== img2ThreejsProviderManifest.repository
+    || recipe.upstream.commit !== img2ThreejsProviderManifest.reviewedCommit
+    || recipe.upstream.skillVersion !== img2ThreejsProviderManifest.skillVersion) {
+    diagnostics.push(img2ThreejsDiagnostic(recipeResource.path, "/upstream/commit", "TN_IMG2THREEJS_UPSTREAM_UNREVIEWED", `Recipe names an unreviewed img2threejs upstream. Supported commit is '${img2ThreejsProviderManifest.reviewedCommit}' from skill ${img2ThreejsProviderManifest.skillVersion}.`, recipe.upstream, ["Use the supported internal skill or complete docs/vendor/img2threejs.md upgrade gates."]));
+  }
+
+  const [sourceImage, sculptSpec, factory, validationReport] = await Promise.all([
+    readImg2ThreejsResource(projectPath, recipe.sourceImage, "/sourceImage", ["content/references/"], diagnostics),
+    readImg2ThreejsResource(projectPath, recipe.sculptSpec, "/sculptSpec", ["content/generators/"], diagnostics, ".sculpt-spec.json"),
+    readImg2ThreejsResource(projectPath, recipe.factory.module, "/factory/module", ["src/generators/"], diagnostics, ".ts"),
+    readImg2ThreejsResource(projectPath, recipe.validationReport, "/validationReport", ["content/generators/"], diagnostics, ".validation.json"),
+  ]);
+  if (sourceImage === undefined || sculptSpec === undefined || factory === undefined || validationReport === undefined) return undefined;
+
+  let spec: unknown;
+  try {
+    spec = JSON.parse(sculptSpec.bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    diagnostics.push(img2ThreejsDiagnostic(sculptSpec.path, "", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt spec must contain valid JSON.", errorMessage(error), [img2ThreejsValidatorCommand(sculptSpec.path)]));
+    return undefined;
+  }
+  if (!isRecord(spec)) {
+    diagnostics.push(img2ThreejsDiagnostic(sculptSpec.path, "", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt spec must be a JSON object.", spec, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+    return undefined;
+  }
+  validateImg2ThreejsSpecShape(sculptSpec.path, spec, recipe, diagnostics);
+  validateImg2ThreejsValidationReport(validationReport.path, validationReport.bytes, sculptSpec, spec, diagnostics);
+  const texturePaths = collectImg2ThreejsTexturePaths(sculptSpec.path, spec, diagnostics);
+  const textureResources = (await Promise.all(texturePaths.map((path, index) => readImg2ThreejsResource(projectPath, path, `/materials/resources/${index}`, ["content/", "assets/"], diagnostics)))).filter((resource): resource is IContainedImg2ThreejsResource => resource !== undefined);
+  const review = await deriveImg2ThreejsAcceptedPasses(projectPath, sculptSpec.path, spec, diagnostics);
+  if (hasAuthoringErrors(diagnostics) || review === undefined) return undefined;
+  return { acceptedPasses: review.acceptedPasses, evidenceResources: review.evidenceResources, factory, recipe, recipeResource, sculptSpec, sourceImage, textureResources, validationReport };
+}
+
+function validateImg2ThreejsRecipe(file: string, value: unknown, generatorId: string, diagnostics: IAuthoringDiagnostic[]): IImg2ThreejsRecipe | undefined {
+  if (!isRecord(value)) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "", "TN_IMG2THREEJS_RECIPE_INVALID", "img2threejs recipe must be a JSON object.", value, ["Regenerate the recipe through the internal img2threejs skill."]));
+    return undefined;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", value, img2ThreejsRecipeKeys).map(asImg2ThreejsRecipeDiagnostic));
+  const nested: Array<[string, unknown, ReadonlySet<string>]> = [
+    ["/factory", value.factory, img2ThreejsFactoryKeys],
+    ["/upstream", value.upstream, img2ThreejsUpstreamKeys],
+    ["/export", value.export, img2ThreejsExportKeys],
+    ["/budgets", value.budgets, img2ThreejsBudgetKeys],
+  ];
+  for (const [path, item, keys] of nested) {
+    if (!isRecord(item)) diagnostics.push(img2ThreejsDiagnostic(file, path, "TN_IMG2THREEJS_RECIPE_INVALID", `${path.slice(1)} must be an object.`, item, ["Regenerate the recipe through the internal img2threejs skill."]));
+    else diagnostics.push(...unknownKeyDiagnostics(file, path, item, keys).map(asImg2ThreejsRecipeDiagnostic));
+  }
+  if (value.schema !== img2ThreejsRecipeSchema) diagnostics.push(img2ThreejsDiagnostic(file, "/schema", "TN_IMG2THREEJS_RECIPE_INVALID", `Recipe schema must be '${img2ThreejsRecipeSchema}'.`, value.schema, [img2ThreejsRecipeSchema]));
+  if (value.version !== "0.1.0") diagnostics.push(img2ThreejsDiagnostic(file, "/version", "TN_IMG2THREEJS_RECIPE_INVALID", "Recipe version must be '0.1.0'.", value.version, ["0.1.0"]));
+  if (value.id !== generatorId) diagnostics.push(img2ThreejsDiagnostic(file, "/id", "TN_IMG2THREEJS_RECIPE_INVALID", "Recipe id must match the generator id.", value.id, [generatorId]));
+  for (const [path, item] of [["/sourceImage", value.sourceImage], ["/sculptSpec", value.sculptSpec], ["/validationReport", value.validationReport]] as const) {
+    if (typeof item !== "string" || item.trim() === "") diagnostics.push(img2ThreejsDiagnostic(file, path, "TN_IMG2THREEJS_RECIPE_INVALID", `${path.slice(1)} must be a non-empty project-relative path.`, item, ["Use a durable project-local path."]));
+  }
+  if (isRecord(value.factory)) {
+    for (const field of ["module", "export"] as const) if (typeof value.factory[field] !== "string" || value.factory[field].trim() === "") diagnostics.push(img2ThreejsDiagnostic(file, `/factory/${field}`, "TN_IMG2THREEJS_RECIPE_INVALID", `factory.${field} must be a non-empty string.`, value.factory[field], ["Declare the named project-local factory export."]));
+  }
+  if (isRecord(value.upstream)) for (const field of ["repository", "commit", "skillVersion"] as const) if (typeof value.upstream[field] !== "string" || value.upstream[field].trim() === "") diagnostics.push(img2ThreejsDiagnostic(file, `/upstream/${field}`, "TN_IMG2THREEJS_RECIPE_INVALID", `upstream.${field} must be a non-empty string.`, value.upstream[field], ["Regenerate the recipe through the supported internal skill."]));
+  if (isRecord(value.export)) {
+    if (typeof value.export.rootNode !== "string" || value.export.rootNode.trim() === "") diagnostics.push(img2ThreejsDiagnostic(file, "/export/rootNode", "TN_IMG2THREEJS_RECIPE_INVALID", "export.rootNode must be a non-empty stable node name.", value.export.rootNode, [generatorId]));
+    if (value.export.embedTextures !== true) diagnostics.push(img2ThreejsDiagnostic(file, "/export/embedTextures", "TN_IMG2THREEJS_RECIPE_INVALID", "Initial provider output must embed supported textures.", value.export.embedTextures, ["true"]));
+    if (typeof value.export.includeRuntimeExtras !== "boolean") diagnostics.push(img2ThreejsDiagnostic(file, "/export/includeRuntimeExtras", "TN_IMG2THREEJS_RECIPE_INVALID", "export.includeRuntimeExtras must be a boolean.", value.export.includeRuntimeExtras, ["true", "false"]));
+  }
+  if (isRecord(value.budgets)) {
+    for (const [key, hardLimit] of Object.entries(img2ThreejsRecipeLimits)) {
+      const requested = value.budgets[key];
+      if (!Number.isInteger(requested) || typeof requested !== "number" || requested <= 0 || requested > hardLimit) diagnostics.push(img2ThreejsDiagnostic(file, `/budgets/${key}`, "TN_IMG2THREEJS_RECIPE_INVALID", `Budget '${key}' must be a positive integer no greater than ${hardLimit}.`, requested, [`1..${hardLimit}`]));
+    }
+  }
+  return hasAuthoringErrors(diagnostics) ? undefined : value as unknown as IImg2ThreejsRecipe;
+}
+
+function validateImg2ThreejsSpecShape(file: string, spec: Record<string, unknown>, recipe: IImg2ThreejsRecipe, diagnostics: IAuthoringDiagnostic[]): void {
+  const required: Array<[string, "array" | "object" | "string"]> = [
+    ["targetName", "string"], ["suitability", "string"], ["coordinateFrame", "object"], ["silhouette", "object"],
+    ["componentTree", "array"], ["materials", "array"], ["proceduralStrategy", "array"], ["buildPasses", "array"], ["reviewHistory", "array"], ["sculptPipeline", "object"],
+  ];
+  for (const [key, kind] of required) {
+    const item = spec[key];
+    const valid = kind === "array" ? Array.isArray(item) && item.length > 0 : kind === "object" ? isRecord(item) && Object.keys(item).length > 0 : typeof item === "string" && item.trim() !== "";
+    if (!valid) diagnostics.push(img2ThreejsDiagnostic(file, `/${key}`, "TN_IMG2THREEJS_SPEC_INVALID", `Strict img2threejs spec requires ${key} to be a non-empty ${kind === "string" ? "string" : kind}.`, item, [img2ThreejsValidatorCommand(file)]));
+  }
+  if (typeof spec.sourceImage !== "string" || normalizeRelativePath(spec.sourceImage) !== normalizeRelativePath(recipe.sourceImage)) diagnostics.push(img2ThreejsDiagnostic(file, "/sourceImage", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt spec sourceImage must match the provider recipe.", spec.sourceImage, [recipe.sourceImage]));
+  if (Array.isArray(spec.buildPasses) && spec.buildPasses.length === 0) diagnostics.push(img2ThreejsDiagnostic(file, "/buildPasses", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt spec must declare at least one ordered build pass.", spec.buildPasses, [img2ThreejsValidatorCommand(file)]));
+}
+
+function validateImg2ThreejsValidationReport(file: string, bytes: Buffer, sculptSpec: IContainedImg2ThreejsResource, spec: Record<string, unknown>, diagnostics: IAuthoringDiagnostic[]): void {
+  let value: unknown;
+  try {
+    value = JSON.parse(bytes.toString("utf8")) as unknown;
+  } catch (error) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator report must contain valid JSON.", errorMessage(error), [img2ThreejsValidatorCommand(sculptSpec.path)]));
+    return;
+  }
+  if (!isRecord(value)) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator report must be a JSON object.", value, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "", value, img2ThreejsValidationKeys).map(asImg2ThreejsSpecDiagnostic));
+  if (value.schema !== img2ThreejsValidationSchema || value.version !== "0.1.0") diagnostics.push(img2ThreejsDiagnostic(file, "/schema", "TN_IMG2THREEJS_SPEC_INVALID", `Strict validator report must use ${img2ThreejsValidationSchema} version 0.1.0.`, { schema: value.schema, version: value.version }, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+  if (value.sculptSpecHash !== sculptSpec.sha256) diagnostics.push(img2ThreejsDiagnostic(file, "/sculptSpecHash", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator report is stale for the current sculpt spec bytes.", value.sculptSpecHash, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+  const validator = value.validator;
+  if (!isRecord(validator)) diagnostics.push(img2ThreejsDiagnostic(file, "/validator", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator identity must be an object.", validator, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+  else {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/validator", validator, img2ThreejsValidationValidatorKeys).map(asImg2ThreejsSpecDiagnostic));
+    const expected = { command: img2ThreejsValidatorCommand(sculptSpec.path), commit: img2ThreejsProviderManifest.reviewedCommit, repository: img2ThreejsProviderManifest.repository, skillVersion: img2ThreejsProviderManifest.skillVersion };
+    for (const [key, expectedValue] of Object.entries(expected)) if (validator[key] !== expectedValue) diagnostics.push(img2ThreejsDiagnostic(file, `/validator/${key}`, "TN_IMG2THREEJS_SPEC_INVALID", `Strict validator ${key} must match the reviewed provider contract.`, validator[key], [expectedValue]));
+  }
+  const result = value.result;
+  if (!isRecord(result)) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "/result", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator result must be an object.", result, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+    return;
+  }
+  diagnostics.push(...unknownKeyDiagnostics(file, "/result", result, img2ThreejsValidationResultKeys).map(asImg2ThreejsSpecDiagnostic));
+  if (result.ok !== true || !Array.isArray(result.errors) || result.errors.length !== 0 || !Array.isArray(result.warnings) || !result.warnings.every((warning) => typeof warning === "string")) diagnostics.push(img2ThreejsDiagnostic(file, "/result", "TN_IMG2THREEJS_SPEC_INVALID", "Pinned strict-quality validation must report ok=true, no errors, and structured warnings.", result, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+  const summary = result.summary;
+  if (!isRecord(summary)) diagnostics.push(img2ThreejsDiagnostic(file, "/result/summary", "TN_IMG2THREEJS_SPEC_INVALID", "Strict validator summary must be an object.", summary, [img2ThreejsValidatorCommand(sculptSpec.path)]));
+  else {
+    diagnostics.push(...unknownKeyDiagnostics(file, "/result/summary", summary, img2ThreejsValidationSummaryKeys).map(asImg2ThreejsSpecDiagnostic));
+    const expected = { components: Array.isArray(spec.componentTree) ? spec.componentTree.length : 0, materials: Array.isArray(spec.materials) ? spec.materials.length : 0, suitability: spec.suitability, targetName: spec.targetName };
+    for (const [key, expectedValue] of Object.entries(expected)) if (summary[key] !== expectedValue) diagnostics.push(img2ThreejsDiagnostic(file, `/result/summary/${key}`, "TN_IMG2THREEJS_SPEC_INVALID", `Strict validator summary ${key} is stale.`, summary[key], [String(expectedValue)]));
+  }
+}
+
+async function deriveImg2ThreejsAcceptedPasses(projectPath: string, file: string, spec: Record<string, unknown>, diagnostics: IAuthoringDiagnostic[]): Promise<{ acceptedPasses: IImg2ThreejsAcceptedPass[]; evidenceResources: IContainedImg2ThreejsResource[] } | undefined> {
+  if (!Array.isArray(spec.buildPasses) || !Array.isArray(spec.reviewHistory) || !isRecord(spec.sculptPipeline)) return undefined;
+  const buildPasses: Array<{ id: string; value: Record<string, unknown> }> = [];
+  const ids = new Set<string>();
+  spec.buildPasses.forEach((value, index) => {
+    if (!isRecord(value) || typeof value.id !== "string" || value.id.trim() === "" || ids.has(value.id)) {
+      diagnostics.push(img2ThreejsDiagnostic(file, `/buildPasses/${index}/id`, "TN_IMG2THREEJS_SPEC_INVALID", "Every build pass must have a unique non-empty id.", isRecord(value) ? value.id : value, [img2ThreejsValidatorCommand(file)]));
+      return;
+    }
+    ids.add(value.id);
+    buildPasses.push({ id: value.id, value });
+  });
+  const passOrder = spec.sculptPipeline.passOrder;
+  if (spec.sculptPipeline.passGateMode !== "locked-sequential" || !Array.isArray(passOrder) || !sameStringArray(passOrder, buildPasses.map((pass) => pass.id))) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "/sculptPipeline", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt pipeline must use locked-sequential mode with passOrder matching buildPasses.", spec.sculptPipeline, ["python3 forge/stage3_build/orchestrate_passes.py sync <spec> --in-place --json"]));
+  }
+  const acceptedPasses: IImg2ThreejsAcceptedPass[] = [];
+  const evidenceByPath = new Map<string, IContainedImg2ThreejsResource>();
+  let previousIndex = -1;
+  for (const pass of buildPasses) {
+    const matching = spec.reviewHistory.map((entry, index) => ({ entry, index })).filter((candidate) => isRecord(candidate.entry) && candidate.entry.passId === pass.id);
+    const selected = matching.at(-1);
+    if (selected === undefined || !isRecord(selected.entry)) {
+      diagnostics.push(img2ThreejsDiagnostic(file, "/reviewHistory", "TN_IMG2THREEJS_REVIEW_INCOMPLETE", `Build pass '${pass.id}' is incomplete: no review exists.`, { passId: pass.id }, [`Resume '${pass.id}' in the internal img2threejs skill and append an accepted review.`]));
+      return undefined;
+    }
+    const failure = selected.index <= previousIndex ? "review order is not contiguous" : reviewCompletionFailure(spec, selected.entry, pass.id);
+    if (failure !== undefined) {
+      diagnostics.push(img2ThreejsDiagnostic(file, `/reviewHistory`, "TN_IMG2THREEJS_REVIEW_INCOMPLETE", `Build pass '${pass.id}' is incomplete: ${failure}.`, { passId: pass.id }, [`Resume '${pass.id}' in the internal img2threejs skill and append an accepted review.`]));
+      return undefined;
+    }
+    previousIndex = selected.index;
+    const evidence: Array<{ path: string; sha256: string }> = [];
+    if (img2ThreejsVisualPasses.has(pass.id)) {
+      const visual = selected.entry.visualEvidence as Record<string, unknown>;
+      for (const [field, path] of [["referenceScreenshot", visual.referenceScreenshot], ["renderScreenshot", visual.renderScreenshot], ["comparisonImage", visual.comparisonImage]] as const) {
+        const resource = typeof path === "string" ? await readImg2ThreejsResource(projectPath, path, `/reviewHistory/${selected.index}/visualEvidence/${field}`, ["content/", "artifacts/"], diagnostics) : undefined;
+        if (resource !== undefined) {
+          evidenceByPath.set(resource.path, resource);
+          evidence.push({ path: resource.path, sha256: resource.sha256 });
+        }
+      }
+    }
+    acceptedPasses.push({ evidence, id: pass.id, reviewHash: sha256(Buffer.from(stableImg2ThreejsJson({ buildPass: pass.value, review: selected.entry }), "utf8")) });
+  }
+  if (spec.sculptPipeline.currentPass !== "complete" || !sameStringArray(spec.sculptPipeline.completedPasses, acceptedPasses.map((pass) => pass.id))) {
+    diagnostics.push(img2ThreejsDiagnostic(file, "/sculptPipeline", "TN_IMG2THREEJS_SPEC_INVALID", "Sculpt pipeline completion metadata is out of sync with accepted review history.", spec.sculptPipeline, ["python3 forge/stage3_build/orchestrate_passes.py sync <spec> --in-place --json"]));
+  }
+  return hasAuthoringErrors(diagnostics) ? undefined : { acceptedPasses, evidenceResources: [...evidenceByPath.values()].sort((left, right) => left.path.localeCompare(right.path)) };
+}
+
+function reviewCompletionFailure(spec: Record<string, unknown>, review: Record<string, unknown>, passId: string): string | undefined {
+  if (review.action !== "continue") return `latest decision is '${String(review.action)}', not 'continue'`;
+  if (!img2ThreejsVisualPasses.has(passId)) return undefined;
+  if (!isRecord(review.visualEvidence) || typeof review.visualEvidence.referenceScreenshot !== "string" || review.visualEvidence.referenceScreenshot === "" || typeof review.visualEvidence.renderScreenshot !== "string" || review.visualEvidence.renderScreenshot === "" || typeof review.visualEvidence.comparisonImage !== "string" || review.visualEvidence.comparisonImage === "") return "reference, render, and comparison evidence are required";
+  const score = review.aiVisionScore;
+  const threshold = review.visualAcceptanceThreshold ?? 0.7;
+  if (typeof score !== "number" || typeof threshold !== "number" || !Number.isFinite(score) || !Number.isFinite(threshold) || score < threshold) return "AI vision score does not meet its threshold";
+  const loop = isRecord(spec.selfCorrectLoop) ? spec.selfCorrectLoop : {};
+  const acceptance = isRecord(loop.visualAcceptance) ? loop.visualAcceptance : {};
+  if (acceptance.layerScoresRequired === true) {
+    const layerScores = isRecord(review.layerScores) ? review.layerScores : undefined;
+    if (layerScores === undefined || Object.keys(layerScores).length === 0) return "required layer scores are missing";
+    if (Array.isArray(acceptance.requiredLayerScores) && acceptance.requiredLayerScores.some((layer) => typeof layer === "string" && !(layer in layerScores))) return "one or more required layer scores are missing";
+  }
+  return img2ThreejsFeatureGateFailure(spec, review, passId);
+}
+
+function img2ThreejsFeatureGateFailure(spec: Record<string, unknown>, review: Record<string, unknown>, passId: string): string | undefined {
+  const loop = isRecord(spec.selfCorrectLoop) ? spec.selfCorrectLoop : {};
+  const acceptance = isRecord(loop.visualAcceptance) ? loop.visualAcceptance : {};
+  const policy = isRecord(acceptance.featureReviewPolicy) ? acceptance.featureReviewPolicy : {};
+  if (policy.enabled !== true) return undefined;
+  const targets = Array.isArray(spec.featureReviewTargets) ? spec.featureReviewTargets.filter((target): target is Record<string, unknown> => isRecord(target) && Array.isArray(target.passIds) && target.passIds.includes(passId)) : [];
+  const reviews = new Map((Array.isArray(review.featureReviews) ? review.featureReviews : []).filter(isRecord).map((item) => [item.id, item]));
+  const defaultThreshold = typeof policy.criticalDefaultThreshold === "number" ? policy.criticalDefaultThreshold : 0.8;
+  for (const target of targets.filter((item) => item.tier === "critical" || item.mustPass === true)) {
+    const item = reviews.get(target.id);
+    const threshold = typeof target.minimumScore === "number" ? target.minimumScore : defaultThreshold;
+    if (!isRecord(item) || item.visible === false || typeof item.score !== "number" || item.score < threshold) return `critical feature '${String(target.id)}' did not meet threshold ${threshold}`;
+  }
+  const important = targets.filter((item) => item.tier === "important").map((target) => reviews.get(target.id)).filter((item): item is Record<string, unknown> => isRecord(item) && typeof item.score === "number");
+  if (important.length > 0 && typeof policy.importantAverageThreshold === "number" && important.reduce((sum, item) => sum + Number(item.score), 0) / important.length < policy.importantAverageThreshold) return "important feature average is below threshold";
+  return undefined;
+}
+
+function collectImg2ThreejsTexturePaths(file: string, spec: Record<string, unknown>, diagnostics: IAuthoringDiagnostic[]): string[] {
+  const paths = new Set<string>();
+  if (!Array.isArray(spec.materials)) return [];
+  spec.materials.forEach((material, materialIndex) => {
+    if (!isRecord(material) || !isRecord(material.referencePbr) || !isRecord(material.referencePbr.maps)) return;
+    for (const [channel, value] of Object.entries(material.referencePbr.maps)) {
+      if (!isRecord(value)) continue;
+      const path = typeof value.path === "string" ? value.path : typeof value.url === "string" ? value.url : undefined;
+      if (path === undefined || path.trim() === "") continue;
+      if (typeof value.url === "string" || isRemoteImg2ThreejsPath(path)) diagnostics.push(img2ThreejsDiagnostic(file, `/materials/${materialIndex}/referencePbr/maps/${channel}`, "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT", "Texture resources must be project-local files, not URLs.", path, ["Move the texture under content/ and record its project-relative path."]));
+      else paths.add(path);
+    }
+  });
+  return [...paths].sort();
+}
+
+async function readImg2ThreejsResource(projectPath: string, inputPath: string, jsonPath: string, allowedPrefixes: readonly string[], diagnostics: IAuthoringDiagnostic[], suffix?: string): Promise<IContainedImg2ThreejsResource | undefined> {
+  const normalized = normalizeRelativePath(inputPath);
+  if (inputPath !== normalized || normalized.startsWith("../") || normalized === ".." || normalized.startsWith("/") || isRemoteImg2ThreejsPath(inputPath) || !allowedPrefixes.some((prefix) => normalized.startsWith(prefix)) || (suffix !== undefined && !normalized.endsWith(suffix)) || isGeneratedArtifactPath(normalized)) {
+    diagnostics.push(img2ThreejsDiagnostic(normalized || inputPath, jsonPath, "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT", "img2threejs resource must remain in its prescribed project-local source directory.", inputPath, allowedPrefixes.map((prefix) => `${prefix}<file>${suffix ?? ""}`)));
+    return undefined;
+  }
+  try {
+    const [projectRealPath, resourceRealPath] = await Promise.all([realpath(projectPath), realpath(resolve(projectPath, normalized))]);
+    const contained = normalizeRelativePath(relative(projectRealPath, resourceRealPath));
+    if (contained.startsWith("../") || contained === ".." || !allowedPrefixes.some((prefix) => contained.startsWith(prefix)) || (suffix !== undefined && !contained.endsWith(suffix)) || isGeneratedArtifactPath(contained)) throw new Error("symbolic link resolves outside its prescribed source root");
+    const info = await stat(resourceRealPath);
+    if (!info.isFile()) throw new Error("resource is not a regular file");
+    const bytes = await readFile(resourceRealPath);
+    return { bytes, path: normalized, sha256: sha256(bytes) };
+  } catch (error) {
+    diagnostics.push(img2ThreejsDiagnostic(normalized, jsonPath, "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT", `Could not read contained img2threejs resource '${normalized}'.`, errorMessage(error), ["Restore the file beneath the prescribed project path and remove escaping symlinks."]));
+    return undefined;
+  }
+}
+
+async function validateImg2ThreejsOutputPath(projectPath: string, output: string, diagnostics: IAuthoringDiagnostic[]): Promise<void> {
+  const normalized = normalizeRelativePath(output);
+  if (normalized !== output || !normalized.startsWith("assets/generated/") || !normalized.endsWith(".glb") || normalized.includes("/../") || normalized.startsWith("/")) {
+    diagnostics.push(img2ThreejsDiagnostic(normalized || output, "/output", "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT", "img2threejs output must be a project-relative GLB beneath assets/generated/.", output, ["assets/generated/<asset-id>.glb"]));
+    return;
+  }
+  const outputAbsolute = resolve(projectPath, normalized);
+  let ancestor = dirname(outputAbsolute);
+  while (ancestor !== dirname(ancestor)) {
+    try {
+      const [projectRealPath, ancestorRealPath] = await Promise.all([realpath(projectPath), realpath(ancestor)]);
+      const contained = normalizeRelativePath(relative(projectRealPath, ancestorRealPath));
+      const lexical = normalizeRelativePath(relative(resolve(projectPath), ancestor));
+      if (contained !== lexical || contained.startsWith("../") || contained === "..") throw new Error("output parent symlink leaves its prescribed assets/generated path");
+      try {
+        const outputRealPath = await realpath(outputAbsolute);
+        const resolvedOutput = normalizeRelativePath(relative(projectRealPath, outputRealPath));
+        if (!resolvedOutput.startsWith("assets/generated/") || !resolvedOutput.endsWith(".glb")) throw new Error("output symlink leaves assets/generated");
+      } catch (error) {
+        if (!(error instanceof Error && "code" in error && error.code === "ENOENT")) throw error;
+      }
+      return;
+    } catch (error) {
+      if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+        ancestor = dirname(ancestor);
+        continue;
+      }
+      diagnostics.push(img2ThreejsDiagnostic(normalized, "/output", "TN_IMG2THREEJS_RESOURCE_OUTSIDE_PROJECT", "img2threejs output parent must remain inside the project after symlink resolution.", errorMessage(error), ["assets/generated/<asset-id>.glb"]));
+      return;
+    }
+  }
+}
+
+function img2ThreejsDiagnostic(file: string, path: string, code: string, message: string, value: unknown, allowed: readonly string[]): IAuthoringDiagnostic {
+  return authoringDiagnostic({ code, file, fix: { instruction: allowed[0] ?? "Repair the referenced img2threejs source and retry.", allowed }, message, path, value });
+}
+
+function asImg2ThreejsRecipeDiagnostic(diagnostic: IAuthoringDiagnostic): IAuthoringDiagnostic {
+  return img2ThreejsDiagnostic(diagnostic.file ?? "", diagnostic.path ?? "", "TN_IMG2THREEJS_RECIPE_INVALID", diagnostic.message, diagnostic.value, ["Remove unknown fields and regenerate the recipe through the internal img2threejs skill."]);
+}
+
+function asImg2ThreejsSpecDiagnostic(diagnostic: IAuthoringDiagnostic): IAuthoringDiagnostic {
+  return img2ThreejsDiagnostic(diagnostic.file ?? "", diagnostic.path ?? "", "TN_IMG2THREEJS_SPEC_INVALID", diagnostic.message, diagnostic.value, ["Regenerate the strict validator report through the reviewed internal img2threejs skill."]);
+}
+
+function img2ThreejsValidatorCommand(path: string): string {
+  return `python3 forge/stage2_spec/validate_sculpt_spec.py ${path} --strict-quality --json`;
+}
+
+function isRemoteImg2ThreejsPath(path: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/iu.test(path) || path.startsWith("//");
+}
+
+function sameStringArray(value: unknown, expected: readonly string[]): boolean {
+  return Array.isArray(value) && value.length === expected.length && value.every((item, index) => item === expected[index]);
+}
+
+function sha256(bytes: Uint8Array): string {
+  return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
+}
+
+function stableImg2ThreejsJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableImg2ThreejsJson).join(",")}]`;
+  if (isRecord(value)) return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableImg2ThreejsJson(value[key])}`).join(",")}}`;
+  return JSON.stringify(value) ?? "null";
+}
+
+function hashImg2ThreejsInput(entries: ReadonlyArray<readonly [string, IContainedImg2ThreejsResource]>): string {
+  const hash = createHash("sha256");
+  for (const [role, resource] of [...entries].sort((left, right) => `${left[0]}:${left[1].path}`.localeCompare(`${right[0]}:${right[1].path}`))) {
+    hash.update(role); hash.update("\0"); hash.update(resource.path); hash.update("\0"); hash.update(resource.sha256); hash.update("\0");
+  }
+  return `sha256:${hash.digest("hex")}`;
 }
 
 async function readOptionalFile(path: string): Promise<string | undefined> {

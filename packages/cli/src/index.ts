@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 
 import { addCommand } from "./commands/add.js";
 import { ASSET_POLY_HAVEN_MCP_DESCRIPTORS, ASSET_PROVIDER_MCP_DESCRIPTORS, ASSET_PROVIDER_STATUS_MCP_DESCRIPTORS, ASSET_SKETCHFAB_MCP_DESCRIPTORS } from "./assetProviders/registry.js";
+import { assetGenerationMcpAdapters, assetGenerationProviderRegistry, renderAssetGenerationProviderHelp } from "./assetGenerationProviders/registry.js";
 import { actorCommand } from "./commands/actor.js";
 import { ASSET_GENERATE_BLENDER_DESCRIPTOR, ASSET_INSPECT_MCP_DESCRIPTOR, assetCommand } from "./commands/asset.js";
 import { authoringCommand } from "./commands/authoring.js";
@@ -45,7 +46,7 @@ import { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, MODEL_PROVIDER_MCP_DESCRIPTORS,
 import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
 export type { CommandMcpToolName, ICommandMcpAdapterDefinition } from "./commands/registry.js";
 export type { IAssetCommandOptions } from "./commands/asset.js";
-export { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, ASSET_GENERATE_BLENDER_DESCRIPTOR, ASSET_INSPECT_MCP_DESCRIPTOR, ASSET_POLY_HAVEN_MCP_DESCRIPTORS, ASSET_PROVIDER_STATUS_MCP_DESCRIPTORS, ASSET_SKETCHFAB_MCP_DESCRIPTORS, MODEL_PROVIDER_MCP_DESCRIPTORS, MODEL_TEST_MCP_DESCRIPTOR, assetCommand, assetCreationStrategy, blenderMcpOutcomeCoverage, modelProviderRegistry };
+export { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, ASSET_GENERATE_BLENDER_DESCRIPTOR, ASSET_INSPECT_MCP_DESCRIPTOR, ASSET_POLY_HAVEN_MCP_DESCRIPTORS, ASSET_PROVIDER_STATUS_MCP_DESCRIPTORS, ASSET_SKETCHFAB_MCP_DESCRIPTORS, MODEL_PROVIDER_MCP_DESCRIPTORS, MODEL_TEST_MCP_DESCRIPTOR, assetCommand, assetCreationStrategy, assetGenerationMcpAdapters, assetGenerationProviderRegistry, blenderMcpOutcomeCoverage, modelProviderRegistry };
 export { authoringCommand } from "./commands/authoring.js";
 export { buildCommand } from "./commands/build.js";
 export { toolCommand } from "./commands/tool.js";
@@ -65,12 +66,12 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   },
   asset: {
     adapters: {
-      mcp: [ASSET_GENERATE_BLENDER_DESCRIPTOR.mcp, ASSET_INSPECT_MCP_DESCRIPTOR, ...ASSET_PROVIDER_MCP_DESCRIPTORS, ...MODEL_PROVIDER_MCP_DESCRIPTORS, ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR],
+      mcp: [...assetGenerationMcpAdapters, ASSET_INSPECT_MCP_DESCRIPTOR, ...ASSET_PROVIDER_MCP_DESCRIPTORS, ...MODEL_PROVIDER_MCP_DESCRIPTORS, ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR],
     },
     description: "Inspect GLB/glTF assets, query source catalog records, and mutate structured asset source documents.",
     implemented: true,
     subcommands: ["add", "generate", "import", "inspect", "model-provider", "provider", "repair", "source", "strategy"],
-    usage: `${ASSET_GENERATE_BLENDER_DESCRIPTOR.usage}\n              ${modelProviderRegistry.flatMap((provider) => provider.features.map((feature) => feature.usage)).join("\n              ")}\n              tn asset model-provider status hunyuan [--json]\n              tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset import <source-path-or-url> --id <asset-id> [--license <id>] [--attribution <text>] [--variant name=#rrggbb] [--project <path>] [--json]\n              tn asset repair <path.glb|path.gltf> --strip-extensions [--no-backup] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--full] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <audio|buffer|model|texture> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]`,
+    usage: `${renderAssetGenerationProviderHelp()}\n              ${modelProviderRegistry.flatMap((provider) => provider.features.map((feature) => feature.usage)).join("\n              ")}\n              tn asset model-provider status hunyuan [--json]\n              tn asset inspect <path-or-directory> [--recursive] [--json]\n              tn asset import <source-path-or-url> --id <asset-id> [--license <id>] [--attribution <text>] [--variant name=#rrggbb] [--project <path>] [--json]\n              tn asset repair <path.glb|path.gltf> --strip-extensions [--no-backup] [--json]\n              tn asset source search [--query <text>] [--game-category <category>] [--file-role <role>] [--format glb] [--direct-only] [--full] [--json]\n              tn asset source get <asset-source-id> [--json]\n              tn asset add <asset-id> --type <audio|buffer|model|texture> --path <source-path> [--project <path>] [--json]\n              tn asset add <asset-id> --type render-target --width <n> --height <n> [--usage color|depth] [--format rgba8|rgba16f|depth24plus] [--sample-count <n>] [--project <path>] [--json]`,
   },
   actor: {
     description: "Apply reusable actor archetypes to structured source.",

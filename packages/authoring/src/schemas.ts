@@ -17,6 +17,18 @@ export const audioDocumentSchema = "threenative.audio";
 export const meshDocumentSchema = "threenative.meshes";
 export const generatorDocumentSchema = "threenative.generator-provenance";
 export const blenderRecipeSchema = "threenative.blender-recipe";
+export const img2ThreejsRecipeSchema = "threenative.img2threejs-generator";
+export const img2ThreejsValidationSchema = "threenative.img2threejs-validation";
+
+export const img2ThreejsProviderManifest = {
+  id: "img2threejs",
+  internalForkTree: "3f410de76c9a7ae53875abe7b47f99edf3beb2a6",
+  internalForkUrl: "https://github.com/jonit-dev/img2threejs-internal",
+  license: { name: "MIT License", spdx: "MIT", url: "https://github.com/hoainho/img2threejs/blob/e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b/LICENSE" },
+  repository: "https://github.com/hoainho/img2threejs",
+  reviewedCommit: "e8ff28a6ae0cb534c7b2ebc15cb3f06709262d5b",
+  skillVersion: "1.2.0",
+} as const;
 
 export const sceneDocumentKeys = new Set(["schema", "version", "id", "kind", "activation", "initial", "entities", "instances", "placementSets", "prefabs", "resources", "systems", "scriptLifecycles", "ui", "provenance"]);
 export const uiDocumentKeys = new Set(["schema", "version", "id", "nodes", "bindings", "components", "focusOrder", "screens", "recipes", "provenance"]);
@@ -35,7 +47,7 @@ export const sequenceDocumentKeys = new Set(["schema", "version", "id", "duratio
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
-export const generatorDocumentKeys = new Set(["schema", "version", "id", "provider", "providerVersion", "module", "export", "recipe", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance"]);
+export const generatorDocumentKeys = new Set(["schema", "version", "id", "provider", "providerVersion", "module", "export", "recipe", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance", "sourceImage", "sculptSpec", "upstream", "sourceHashes", "acceptedPasses", "budgets"]);
 export const blenderRecipeKeys = new Set(["schema", "version", "id", "materials", "parts", "operations", "animations", "budgets"]);
 export const blenderRecipeMaterialKeys = new Set(["id", "baseColor", "metallic", "roughness", "emissive", "alphaMode", "doubleSided"]);
 export const blenderRecipePartKeys = new Set(["id", "primitive", "material", "position", "rotation", "scale", "segments", "rings", "shading", "modifiers"]);
@@ -45,6 +57,19 @@ export const blenderRecipeAnimationKeys = new Set(["id", "duration", "loop", "tr
 export const blenderRecipeAnimationTrackKeys = new Set(["node", "property", "keyframes"]);
 export const blenderRecipeAnimationKeyframeKeys = new Set(["time", "value", "interpolation"]);
 export const blenderRecipeBudgetKeys = new Set(["maxParts", "maxMaterials", "maxModifiersPerPart", "maxSegments", "maxPolygons", "maxOutputBytes", "maxAnimations", "maxTracksPerAnimation", "maxKeyframesPerTrack", "maxOperations", "maxJoinInputs"]);
+export const img2ThreejsRecipeKeys = new Set(["schema", "version", "id", "sourceImage", "sculptSpec", "validationReport", "factory", "upstream", "export", "budgets"]);
+export const img2ThreejsFactoryKeys = new Set(["module", "export"]);
+export const img2ThreejsUpstreamKeys = new Set(["repository", "commit", "skillVersion"]);
+export const img2ThreejsExportKeys = new Set(["rootNode", "embedTextures", "includeRuntimeExtras"]);
+export const img2ThreejsBudgetKeys = new Set(["maxOutputBytes", "maxTriangles", "maxMaterials", "maxTextures", "timeoutMs"]);
+export const img2ThreejsProvenanceUpstreamKeys = new Set(["repository", "commit", "skillVersion", "internalForkTree"]);
+export const img2ThreejsSourceHashKeys = new Set(["recipe", "sourceImage", "sculptSpec", "factory", "validationReport", "resources"]);
+export const img2ThreejsHashedResourceKeys = new Set(["path", "sha256"]);
+export const img2ThreejsAcceptedPassKeys = new Set(["id", "reviewHash", "evidence"]);
+export const img2ThreejsValidationKeys = new Set(["schema", "version", "validator", "sculptSpecHash", "result"]);
+export const img2ThreejsValidationValidatorKeys = new Set(["repository", "commit", "skillVersion", "command"]);
+export const img2ThreejsValidationResultKeys = new Set(["ok", "errors", "warnings", "summary"]);
+export const img2ThreejsValidationSummaryKeys = new Set(["targetName", "suitability", "components", "materials"]);
 export const entityKeys = new Set(["archetype", "id", "prefab", "tags", "transform", "components"]);
 export const instanceKeys = new Set(["id", "prefab", "tags", "transform", "components"]);
 export const placementSetKeys = new Set(["id", "kind", "prefab", "pattern", "idFormat", "idValues", "defaults", "indexBindings", "overrides"]);
@@ -144,7 +169,7 @@ export const inputPersistedBindingOverrideKeys = new Set(["actionOrAxisId", "axi
 export const audioSoundKeys = new Set(["id", "asset"]);
 export const meshKeys = new Set(["attributes", "id", "indices", "kind", "primitive", "size", "storage"]);
 export const supportedGeneratorOverwritePolicies = new Set(["manual", "replace", "skip"]);
-export const supportedGeneratorProviders = new Set(["typescript", "blender"]);
+export const supportedGeneratorProviders = new Set(["typescript", "blender", "img2threejs"]);
 export const supportedBlenderRecipePrimitives = new Set(["cube", "sphere", "cylinder", "cone", "torus"]);
 export const supportedBlenderRecipeModifiers = new Set(["array", "bevel", "boolean", "mirror", "solidify"]);
 export const supportedBlenderRecipeOperations = new Set(["join", "parent"]);
@@ -165,6 +190,14 @@ export const blenderRecipeLimits = {
   maxPolygons: 500_000,
   maxSegments: 128,
   maxTracksPerAnimation: 128,
+} as const;
+
+export const img2ThreejsRecipeLimits = {
+  maxMaterials: 64,
+  maxOutputBytes: 32 * 1024 * 1024,
+  maxTextures: 64,
+  maxTriangles: 250_000,
+  timeoutMs: 120_000,
 } as const;
 
 export interface IBlenderRecipe {
@@ -200,7 +233,64 @@ export interface IBlenderGeneratorProvenance {
   overwritePolicy?: "manual" | "replace" | "skip";
 }
 
-export type GeneratorProvenance = ITypescriptGeneratorProvenance | IBlenderGeneratorProvenance;
+export interface IImg2ThreejsRecipe {
+  schema: typeof img2ThreejsRecipeSchema;
+  version: "0.1.0";
+  id: string;
+  sourceImage: string;
+  sculptSpec: string;
+  validationReport: string;
+  factory: { module: string; export: string };
+  upstream: { repository: string; commit: string; skillVersion: string };
+  export: { rootNode: string; embedTextures: true; includeRuntimeExtras: boolean };
+  budgets: {
+    maxOutputBytes: number;
+    maxTriangles: number;
+    maxMaterials: number;
+    maxTextures: number;
+    timeoutMs: number;
+  };
+}
+
+export interface IImg2ThreejsAcceptedPass {
+  id: string;
+  reviewHash: string;
+  evidence: Array<{ path: string; sha256: string }>;
+}
+
+export interface IImg2ThreejsGeneratorProvenance {
+  schema: typeof generatorDocumentSchema;
+  version: "0.1.0";
+  id: string;
+  provider: "img2threejs";
+  providerVersion: string;
+  recipe: string;
+  sourceImage: string;
+  sculptSpec: string;
+  module: string;
+  export: string;
+  upstream: {
+    repository: string;
+    commit: string;
+    skillVersion: string;
+    internalForkTree: string;
+  };
+  sourceHashes: {
+    recipe: string;
+    sourceImage: string;
+    sculptSpec: string;
+    factory: string;
+    validationReport: string;
+    resources: Array<{ path: string; sha256: string }>;
+  };
+  acceptedPasses: IImg2ThreejsAcceptedPass[];
+  budgets: IImg2ThreejsRecipe["budgets"];
+  inputHash: string;
+  outputs: string[];
+  overwritePolicy: "manual" | "replace" | "skip";
+}
+
+export type GeneratorProvenance = ITypescriptGeneratorProvenance | IBlenderGeneratorProvenance | IImg2ThreejsGeneratorProvenance;
 export const supportedFlowTriggerKinds = new Set(["allCollected", "event", "resourceEquals", "timer"]);
 export const supportedFlowActionKinds = new Set(["activateUiScreen", "emitEvent", "playSequence", "sceneChange", "setResource", "setTimeScale", "spawnerEnable"]);
 export const supportedSequenceTrackKinds = new Set(["audio", "cameraPose", "event", "timeScale", "transform", "ui"]);

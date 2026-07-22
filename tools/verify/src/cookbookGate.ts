@@ -1,7 +1,8 @@
 import { spawnSync } from "node:child_process";
-import { cp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { cp, lstat, mkdir, readFile, readdir, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { basename, resolve } from "node:path";
+import { basename, dirname, isAbsolute, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLI_COMMAND_DEFINITIONS } from "@threenative/cli";
 import { OVERLAY_SCAFFOLD_REGISTRY, overlayBuildScript } from "@threenative/cli/overlay-scaffold";
@@ -33,11 +34,26 @@ export interface ICookbookGateReport {
 interface IParsedCookbookEntry {
   authoring?: "typed-spec";
   commands: string[];
+  fixtureManifest?: string;
   id: string;
   proofCommands: string[];
   script: string;
   scriptPath?: string;
-  providerBoundary?: "installed-tool-opt-in" | "mock-only";
+  providerBoundary?: "installed-tool-opt-in" | "local-reviewed-source" | "mock-only";
+}
+
+interface ICookbookFixtureFile {
+  base64?: string;
+  json?: unknown;
+  path: string;
+  sha256?: string;
+  text?: string;
+}
+
+interface ICookbookFixtureManifest {
+  files: ICookbookFixtureFile[];
+  schema: "threenative.cookbook-fixture";
+  version: "0.1.0";
 }
 
 export async function runCookbookGate(options: { entriesDir?: string; entryId?: string; externalTools?: boolean; root?: string; templateDir?: string } = {}): Promise<ICookbookGateReport> {
@@ -91,10 +107,38 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; externalTools
       recursive: true,
       filter: (source) => !source.includes("/node_modules/") && !source.includes("/dist/") && !source.includes("/artifacts/"),
     });
+    if (options.entry.fixtureManifest !== undefined) {
+      try {
+        if (options.entry.providerBoundary === "local-reviewed-source") await validateCookbookFixtureReviewMetadata(options.root, options.entry.fixtureManifest);
+        await materializeCookbookFixtureManifest(options.root, projectPath, options.entry.fixtureManifest);
+      } catch (error) {
+        diagnostics.push({
+          code: "TN_COOKBOOK_GATE_FIXTURE_INVALID",
+          message: `Entry '${options.entry.id}' fixture manifest failed: ${error instanceof Error ? error.message : String(error)}`,
+          severity: "error",
+        });
+        return { commands, diagnostics, entryId: options.entry.id, ok: false };
+      }
+    }
     if (options.entry.scriptPath !== undefined && options.entry.script.trim() !== "") {
       const outPath = resolve(projectPath, options.entry.scriptPath);
-      await mkdir(resolve(outPath, ".."), { recursive: true });
-      await writeFile(outPath, `${options.entry.script.trim()}\n`, "utf8");
+      const scriptBytes = `${options.entry.script.trim()}\n`;
+      let fixtureOwned = false;
+      if (options.entry.fixtureManifest !== undefined) {
+        try {
+          fixtureOwned = (await readFile(outPath, "utf8")) === scriptBytes;
+          if (!fixtureOwned) {
+            diagnostics.push({ code: "TN_COOKBOOK_GATE_FIXTURE_SCRIPT_CONFLICT", message: `Entry '${options.entry.id}' scriptPath conflicts with its fixture-owned file '${options.entry.scriptPath}'.`, severity: "error" });
+            return { commands, diagnostics, entryId: options.entry.id, ok: false };
+          }
+        } catch (error) {
+          if (!isMissing(error)) throw error;
+        }
+      }
+      if (!fixtureOwned) {
+        await mkdir(resolve(outPath, ".."), { recursive: true });
+        await writeFile(outPath, scriptBytes, "utf8");
+      }
     }
     for (const command of options.entry.commands) {
       if (options.entry.providerBoundary === "mock-only" && command.startsWith("tn audio generate-sfx ")) continue;
@@ -109,7 +153,7 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; externalTools
         return { commands, diagnostics, entryId: options.entry.id, ok: false };
       }
     }
-    if (options.entry.providerBoundary === "installed-tool-opt-in" && options.externalTools) {
+    if (options.entry.providerBoundary === "local-reviewed-source" || (options.entry.providerBoundary === "installed-tool-opt-in" && options.externalTools)) {
       for (const command of options.entry.proofCommands) {
         const result = runTnCommand(command, options.root, projectPath);
         commands.push(result);
@@ -184,6 +228,116 @@ async function verifyEntry(options: { entry: IParsedCookbookEntry; externalTools
   } finally {
     await rm(projectPath, { force: true, recursive: true });
   }
+}
+
+export async function validateCookbookFixtureReviewMetadata(root: string, manifestInput: string): Promise<void> {
+  const manifestPath = containedPath(root, manifestInput, "fixture manifest");
+  const [rootRealPath, manifestRealPath] = await Promise.all([realpath(root), realpath(manifestPath)]);
+  assertContained(rootRealPath, manifestRealPath, "fixture manifest");
+  const parsed = JSON.parse(await readFile(manifestRealPath, "utf8")) as unknown;
+  if (!isRecord(parsed) || !isRecord(parsed.rights) || !isRecord(parsed.reviewedSource) || !isRecord(parsed.manualCompositionReview)) throw new Error("local-reviewed-source fixture requires rights, reviewedSource, and manualCompositionReview metadata");
+  for (const field of ["creator", "copyrightOwner", "license", "permission", "evidenceKind", "limitations"] as const) {
+    if (typeof parsed.rights[field] !== "string" || parsed.rights[field].trim() === "") throw new Error(`local-reviewed-source fixture rights.${field} must be a non-empty string`);
+  }
+  for (const field of ["repository", "commit", "skillVersion", "internalFork", "internalForkCommit", "internalForkTree", "reviewDecision", "reviewedAt"] as const) {
+    if (typeof parsed.reviewedSource[field] !== "string" || parsed.reviewedSource[field].trim() === "") throw new Error(`local-reviewed-source fixture reviewedSource.${field} must be a non-empty string`);
+  }
+  if (parsed.reviewedSource.reviewDecision !== "accepted") throw new Error("local-reviewed-source fixture reviewedSource.reviewDecision must be 'accepted'");
+  for (const field of ["reviewer", "decision", "scope", "observations", "previewHelpers"] as const) {
+    if (typeof parsed.manualCompositionReview[field] !== "string" || parsed.manualCompositionReview[field].trim() === "") throw new Error(`local-reviewed-source fixture manualCompositionReview.${field} must be a non-empty string`);
+  }
+  if (parsed.manualCompositionReview.decision !== "accepted-for-bounded-fixture") throw new Error("local-reviewed-source fixture manualCompositionReview.decision must be 'accepted-for-bounded-fixture'");
+  if (typeof parsed.manualCompositionReview.score !== "number" || !Number.isFinite(parsed.manualCompositionReview.score) || parsed.manualCompositionReview.score < 0 || parsed.manualCompositionReview.score > 1) throw new Error("local-reviewed-source fixture manualCompositionReview.score must be between 0 and 1");
+}
+
+export async function materializeCookbookFixtureManifest(root: string, projectPath: string, manifestInput: string): Promise<void> {
+  const manifestPath = containedPath(root, manifestInput, "fixture manifest");
+  const [rootRealPath, projectRealPath, manifestRealPath] = await Promise.all([realpath(root), realpath(projectPath), realpath(manifestPath)]);
+  assertContained(rootRealPath, manifestRealPath, "fixture manifest");
+  const parsed = JSON.parse(await readFile(manifestRealPath, "utf8")) as unknown;
+  if (!isRecord(parsed) || parsed.schema !== "threenative.cookbook-fixture" || parsed.version !== "0.1.0" || !Array.isArray(parsed.files)) {
+    throw new Error("expected schema 'threenative.cookbook-fixture' version '0.1.0' with a files array");
+  }
+  if (parsed.files.length === 0 || parsed.files.length > 32) throw new Error("files must contain between 1 and 32 entries");
+  const manifest = parsed as unknown as ICookbookFixtureManifest;
+  const hashes = new Map<string, string>();
+  const seen = new Set<string>();
+  let totalBytes = 0;
+  for (const file of manifest.files) {
+    if (!isRecord(file) || typeof file.path !== "string") throw new Error("each fixture file requires a path");
+    const inputPath = file.path.replaceAll("\\", "/");
+    const target = containedPath(projectPath, inputPath, "fixture file");
+    const normalizedPath = relative(projectPath, target).replaceAll("\\", "/");
+    if (seen.has(normalizedPath)) throw new Error(`duplicate fixture path '${normalizedPath}'`);
+    seen.add(normalizedPath);
+    const contentFields = ["base64", "json", "text"].filter((field) => Object.prototype.hasOwnProperty.call(file, field));
+    if (contentFields.length !== 1) throw new Error(`fixture file '${normalizedPath}' must define exactly one of base64, json, or text`);
+    let bytes: Buffer;
+    if (contentFields[0] === "base64") {
+      if (typeof file.base64 !== "string" || !isCanonicalBase64(file.base64)) throw new Error(`fixture file '${normalizedPath}' base64 content is invalid`);
+      bytes = Buffer.from(file.base64, "base64");
+    } else if (contentFields[0] === "text") {
+      if (typeof file.text !== "string") throw new Error(`fixture file '${normalizedPath}' text content must be a string`);
+      bytes = Buffer.from(resolveHashReferences(file.text, hashes), "utf8");
+    } else {
+      bytes = Buffer.from(`${JSON.stringify(resolveJsonHashReferences(file.json, hashes), null, 2)}\n`, "utf8");
+    }
+    totalBytes += bytes.byteLength;
+    if (bytes.byteLength > 2 * 1024 * 1024 || totalBytes > 8 * 1024 * 1024) throw new Error("fixture byte budget exceeded");
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    if (file.sha256 !== undefined && file.sha256 !== digest) throw new Error(`fixture hash mismatch for '${normalizedPath}'`);
+    await mkdir(dirname(target), { recursive: true });
+    const parentRealPath = await realpath(dirname(target));
+    assertContained(projectRealPath, parentRealPath, "fixture file parent");
+    try {
+      if ((await lstat(target)).isSymbolicLink()) throw new Error(`fixture file '${normalizedPath}' targets a symbolic link`);
+    } catch (error) {
+      if (!isMissing(error)) throw error;
+    }
+    await writeFile(target, bytes);
+    hashes.set(normalizedPath, digest);
+  }
+}
+
+function isCanonicalBase64(value: string): boolean {
+  if (value === "" || value.length % 4 !== 0 || !/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/u.test(value)) return false;
+  return Buffer.from(value, "base64").toString("base64") === value;
+}
+
+function resolveHashReferences(value: string, hashes: ReadonlyMap<string, string>): string {
+  return value.replace(/\{\{sha256:([^}]+)\}\}/gu, (_match, path: string) => {
+    const hash = hashes.get(path);
+    if (hash === undefined) throw new Error(`hash reference '${path}' must name an earlier fixture file`);
+    return `sha256:${hash}`;
+  });
+}
+
+function resolveJsonHashReferences(value: unknown, hashes: ReadonlyMap<string, string>): unknown {
+  if (typeof value === "string") return resolveHashReferences(value, hashes);
+  if (Array.isArray(value)) return value.map((entry) => resolveJsonHashReferences(entry, hashes));
+  if (isRecord(value)) return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, resolveJsonHashReferences(entry, hashes)]));
+  return value;
+}
+
+function containedPath(root: string, input: string, label: string): string {
+  if (input.trim() === "" || isAbsolute(input)) throw new Error(`${label} path must be project-relative`);
+  const target = resolve(root, input);
+  const rel = relative(root, target);
+  if (rel === "" || rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(rel)) throw new Error(`${label} path escapes its owner`);
+  return target;
+}
+
+function assertContained(root: string, target: string, label: string): void {
+  const rel = relative(root, target);
+  if (rel === ".." || rel.startsWith(`..${process.platform === "win32" ? "\\" : "/"}`) || isAbsolute(rel)) throw new Error(`${label} path escapes its owner through a symbolic link`);
+}
+
+function isMissing(error: unknown): boolean {
+  return isRecord(error) && error.code === "ENOENT";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 async function readDeclaredOverlayIds(projectPath: string): Promise<string[]> {
@@ -271,14 +425,15 @@ function runTnCommand(command: string, root: string, cwd: string): ICookbookGate
 function parseEntry(source: string, file: string): IParsedCookbookEntry | undefined {
   const id = /^id:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const authoringValue = /^authoring:\s*(.+)$/m.exec(source)?.[1]?.trim();
+  const fixtureManifest = /^fixtureManifest:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const providerBoundaryValue = /^providerBoundary:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const scriptPath = /^scriptPath:\s*(.+)$/m.exec(source)?.[1]?.trim();
   const commands = section(source, "commands")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#"));
   const proofCommands = section(source, "proof")?.split(/\r?\n/).map((line) => line.trim()).filter((line) => line !== "" && !line.startsWith("#") && line.startsWith("tn ")) ?? [];
   const script = section(source, "script") ?? "";
   const authoring = authoringValue === "typed-spec" ? authoringValue : undefined;
-  const providerBoundary = providerBoundaryValue === "mock-only" || providerBoundaryValue === "installed-tool-opt-in" ? providerBoundaryValue : undefined;
-  return id === undefined || commands === undefined ? undefined : { authoring, commands, id, proofCommands, providerBoundary, script, scriptPath };
+  const providerBoundary = providerBoundaryValue === "mock-only" || providerBoundaryValue === "installed-tool-opt-in" || providerBoundaryValue === "local-reviewed-source" ? providerBoundaryValue : undefined;
+  return id === undefined || commands === undefined ? undefined : { authoring, commands, fixtureManifest, id, proofCommands, providerBoundary, script, scriptPath };
 }
 
 function validateCookbookCrossReferences(

@@ -43,7 +43,8 @@
   "devDependencies": {
     "@types/node": "^20.19.25",
     "@types/pngjs": "^6.0.5",
-    "@types/sql.js": "^1.4.11"
+    "@types/sql.js": "^1.4.11",
+    "@types/three": "0.181.0"
   },
   "dependencies": {
     "@threenative/authoring": "workspace:*",
@@ -53,10 +54,12 @@
     "@threenative/runtime-web-three": "workspace:*",
     "@threenative/sdk": "workspace:*",
     "dotenv": "^17.4.2",
+    "gltf-validator": "2.0.0-dev.3.10",
     "playwright": "^1.60.0",
     "pngjs": "^7.0.0",
     "sharp": "^0.35.2",
     "sql.js": "^1.14.1",
+    "three": "0.181.2",
     "typescript": "^5.9.3"
   },
   "optionalDependencies": {
