@@ -1950,6 +1950,32 @@ test("should reject a physics joint connected to an entity without a rigid body"
   }
 });
 
+test("should reject motor fields unsupported by the joint kind", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-joint-motor-kind-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [
+        { id: "base", components: { Collider: { kind: "box", size: [1, 1, 1] }, RigidBody: { kind: "static" }, Transform: { position: [0, 0, 0] } } },
+        { id: "turret", components: { Collider: { kind: "box", size: [1, 1, 1] }, PhysicsJoint: { axis: [0, 1, 0], connectedEntity: "base", kind: "hinge", motor: { maxForce: 12, mode: "velocity", target: 1 } }, RigidBody: { kind: "dynamic" }, Transform: { position: [0, 1, 0] } } },
+      ],
+      resources: {},
+    });
+
+    const result = await validateBundle(root);
+    const diagnostic = result.diagnostics.find((candidate) => candidate.code === "TN_IR_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED");
+
+    assert.equal(result.ok, false);
+    assert.equal(diagnostic?.path, "world.ir.json/entities/1/components/PhysicsJoint/motor/maxForce");
+    assert.match(diagnostic?.message ?? "", /Hinge motors use maxTorque, not maxForce/);
+    assert.match(diagnostic?.suggestion ?? "", /Rename maxForce to maxTorque/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should reject mismatched mass metadata and warn on suspect character capsule center", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-physics-body-capsule-invalid-"));
   try {

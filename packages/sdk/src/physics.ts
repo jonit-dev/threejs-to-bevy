@@ -4,6 +4,7 @@ import type { Vector3Tuple } from "./math/Vector3.js";
 export type PhysicsBodyKind = "dynamic" | "kinematic" | "static";
 export type PhysicsColliderKind = "box" | "capsule" | "mesh" | "sphere";
 export type Boolean3Tuple = readonly [boolean, boolean, boolean];
+export type QuaternionTuple = readonly [number, number, number, number];
 
 export interface IPhysicsFilterOptions {
   contact?: IContactFilterDeclaration;
@@ -97,13 +98,27 @@ export interface IColliderDeclaration {
 export interface IPhysicsJointDeclaration {
   anchor?: Vector3Tuple;
   axis?: Vector3Tuple;
+  breakForce?: number;
+  breakTorque?: number;
+  connectedAnchor?: Vector3Tuple;
   connectedEntity: string;
+  connectedRotation?: QuaternionTuple;
   damping?: number;
-  kind: "hinge" | "slider" | "suspension";
+  kind: "ball" | "fixed" | "hinge" | "rope" | "slider" | "suspension";
+  length?: number;
   limits?: {
     max: number;
     min: number;
   };
+  motor?: {
+    damping?: number;
+    maxForce?: number;
+    maxTorque?: number;
+    mode: "position" | "velocity";
+    stiffness?: number;
+    target: number;
+  };
+  rotation?: QuaternionTuple;
   stiffness?: number;
   travel?: number;
 }
@@ -466,14 +481,19 @@ function assertBounded(value: number, min: number, max: number, code: string, la
 }
 
 export function physicsJoint(kind: IPhysicsJointDeclaration["kind"], connectedEntity: string, options: Omit<IPhysicsJointDeclaration, "connectedEntity" | "kind"> = {}): IPhysicsJointDeclaration {
-  if (!["hinge", "slider", "suspension"].includes(kind)) {
-    throw new SdkError("TN_SDK_PHYSICS_JOINT_UNSUPPORTED", "Physics joint kind must be hinge, slider, or suspension.");
+  if (!["ball", "fixed", "hinge", "rope", "slider", "suspension"].includes(kind)) {
+    throw new SdkError("TN_SDK_PHYSICS_JOINT_UNSUPPORTED", "Physics joint kind must be ball, fixed, hinge, rope, slider, or suspension.");
   }
   if (connectedEntity.trim() === "") {
     throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "Physics joint connectedEntity must be a non-empty entity id.");
   }
   options.anchor?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.anchor[${index}]`));
   options.axis?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.axis[${index}]`));
+  options.connectedAnchor?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.connectedAnchor[${index}]`));
+  options.rotation?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.rotation[${index}]`));
+  options.connectedRotation?.forEach((value, index) => assertFiniteNumber(value, "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.connectedRotation[${index}]`));
+  if (options.rotation !== undefined && Math.hypot(...options.rotation) < 0.000001) throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.rotation must be a non-zero quaternion.");
+  if (options.connectedRotation !== undefined && Math.hypot(...options.connectedRotation) < 0.000001) throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.connectedRotation must be a non-zero quaternion.");
   if (options.damping !== undefined) {
     assertNonNegativeNumber(options.damping, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.damping");
   }
@@ -483,6 +503,9 @@ export function physicsJoint(kind: IPhysicsJointDeclaration["kind"], connectedEn
   if (options.travel !== undefined) {
     assertNonNegativeNumber(options.travel, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.travel");
   }
+  if (options.length !== undefined) assertPositiveNumber(options.length, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.length");
+  if (options.breakForce !== undefined) assertPositiveNumber(options.breakForce, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.breakForce");
+  if (options.breakTorque !== undefined) assertPositiveNumber(options.breakTorque, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.breakTorque");
   if (options.limits !== undefined) {
     assertFiniteNumber(options.limits.min, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.min");
     assertFiniteNumber(options.limits.max, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.max");
@@ -490,6 +513,22 @@ export function physicsJoint(kind: IPhysicsJointDeclaration["kind"], connectedEn
       throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.limits.min must be less than or equal to limits.max.");
     }
   }
+  if (options.motor !== undefined) {
+    if (!["hinge", "slider", "suspension"].includes(kind)) throw new SdkError("TN_SDK_PHYSICS_JOINT_MOTOR_UNSUPPORTED", `PhysicsJoint.motor is unsupported by '${kind}'; use hinge, slider, or suspension.`);
+    assertFiniteNumber(options.motor.target, "TN_SDK_PHYSICS_JOINT_INVALID", "PhysicsJoint.motor.target");
+    for (const key of ["damping", "maxForce", "maxTorque", "stiffness"] as const) if (options.motor[key] !== undefined) assertNonNegativeNumber(options.motor[key], "TN_SDK_PHYSICS_JOINT_INVALID", `PhysicsJoint.motor.${key}`);
+    if (kind === "hinge" && options.motor.maxForce !== undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED", "Hinge motors use maxTorque, not maxForce.");
+    if ((kind === "slider" || kind === "suspension") && options.motor.maxTorque !== undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED", `${kind} motors use maxForce, not maxTorque.`);
+    if (kind === "hinge" && options.motor.maxTorque === undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_MOTOR_BOUND_REQUIRED", "Hinge motors require maxTorque so effort is bounded.");
+    if ((kind === "slider" || kind === "suspension") && options.motor.maxForce === undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_MOTOR_BOUND_REQUIRED", `${kind} motors require maxForce so effort is bounded.`);
+  }
+  if (kind === "rope" && (options.length === undefined || options.length <= 0)) throw new SdkError("TN_SDK_PHYSICS_JOINT_INVALID", "Rope joints require a positive PhysicsJoint.length.");
+  if (kind !== "rope" && options.length !== undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_FIELD_UNSUPPORTED", `PhysicsJoint.length is unsupported by '${kind}'.`);
+  if (["hinge", "slider", "suspension"].includes(kind) && options.axis === undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_AXIS_REQUIRED", `PhysicsJoint.axis is required for '${kind}'.`);
+  if (["ball", "fixed", "rope"].includes(kind) && options.axis !== undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_FIELD_UNSUPPORTED", `PhysicsJoint.axis is unsupported by '${kind}'.`);
+  if (!["hinge", "slider", "suspension"].includes(kind) && options.limits !== undefined) throw new SdkError("TN_SDK_PHYSICS_JOINT_FIELD_UNSUPPORTED", `PhysicsJoint.limits is unsupported by '${kind}'.`);
+  if (kind !== "suspension" && (options.travel !== undefined || options.stiffness !== undefined || options.damping !== undefined)) throw new SdkError("TN_SDK_PHYSICS_JOINT_FIELD_UNSUPPORTED", `Suspension compatibility fields are unsupported by '${kind}'.`);
+  if (kind !== "fixed" && (options.rotation !== undefined || options.connectedRotation !== undefined)) throw new SdkError("TN_SDK_PHYSICS_JOINT_FIELD_UNSUPPORTED", `PhysicsJoint rotation frames are unsupported by '${kind}'.`);
   return { connectedEntity, kind, ...options };
 }
 

@@ -3,7 +3,7 @@ import test from "node:test";
 
 import * as sdk from "./index.js";
 import { SdkError } from "./errors.js";
-import { aerodynamicBody, aerodynamicSurface, boxCollider, capsuleCollider, meshCollider, physicsSurface, rigidBody, sphereCollider, thruster, tireModel, wheelAssembly, wheelControlInput, windVolume, type PhysicsColliderKind } from "./physics.js";
+import { aerodynamicBody, aerodynamicSurface, boxCollider, capsuleCollider, meshCollider, physicsJoint, physicsSurface, rigidBody, sphereCollider, thruster, tireModel, wheelAssembly, wheelControlInput, windVolume, type PhysicsColliderKind } from "./physics.js";
 
 type AssertNever<T extends never> = T;
 type UnsupportedPublicColliderKind = AssertNever<Exclude<PhysicsColliderKind, "box" | "capsule" | "mesh" | "sphere">>;
@@ -129,6 +129,20 @@ test("physics should reject invalid primitive solver metadata", () => {
   assertSdkCode(() => boxCollider([1, 1, 1], { friction: -1 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_FRICTION");
   assertSdkCode(() => boxCollider([1, 1, 1], { restitution: 1.5 }), "TN_SDK_PHYSICS_COLLIDER_INVALID_RESTITUTION");
   assertSdkCode(() => capsuleCollider(0.6, 1), "TN_SDK_PHYSICS_COLLIDER_INVALID_HEIGHT");
+});
+
+test("physics should create bounded rich joint declarations", () => {
+  assert.deepEqual(physicsJoint("fixed", "frame", { anchor: [0, 0, 0], breakForce: 500, rotation: [0, 0, 0, 1] }), { anchor: [0, 0, 0], breakForce: 500, connectedEntity: "frame", kind: "fixed", rotation: [0, 0, 0, 1] });
+  assert.deepEqual(physicsJoint("rope", "ceiling", { length: 4 }), { connectedEntity: "ceiling", kind: "rope", length: 4 });
+  assert.deepEqual(physicsJoint("hinge", "base", { axis: [0, 1, 0], limits: { min: -1, max: 1 }, motor: { maxTorque: 20, mode: "velocity", target: 2 } }).motor?.maxTorque, 20);
+});
+
+test("physics should reject motor fields unsupported by the joint kind", () => {
+  assertSdkCode(() => physicsJoint("fixed", "base", { motor: { mode: "position", target: 0 } }), "TN_SDK_PHYSICS_JOINT_MOTOR_UNSUPPORTED");
+  assertSdkCode(() => physicsJoint("rope", "base", { length: 0 }), "TN_SDK_PHYSICS_JOINT_INVALID");
+  assertSdkCode(() => physicsJoint("hinge", "base", { axis: [0, 1, 0], motor: { maxForce: 10, mode: "velocity", target: 1 } }), "TN_SDK_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED");
+  assertSdkCode(() => physicsJoint("slider", "base", { axis: [1, 0, 0], motor: { maxTorque: 10, mode: "velocity", target: 1 } }), "TN_SDK_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED");
+  assertSdkCode(() => physicsJoint("hinge", "base", { axis: [0, 1, 0], motor: { mode: "velocity", target: 1 } }), "TN_SDK_PHYSICS_JOINT_MOTOR_BOUND_REQUIRED");
 });
 
 test("physics should create bounded aerodynamic declarations", () => {

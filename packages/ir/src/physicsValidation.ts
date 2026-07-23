@@ -886,13 +886,14 @@ function validateCcd(value: unknown, path: string, diagnostics: IIrDiagnostic[])
 }
 
 function validatePhysicsJoint(joint: Record<string, unknown>, path: string, entityId: string, entityIds: Set<string>, rigidBodyEntityIds: Set<string>, diagnostics: IIrDiagnostic[]): void {
+  const kind = joint.kind as string;
   for (const key of Object.keys(joint)) {
-    if (!["anchor", "axis", "connectedEntity", "damping", "kind", "limits", "stiffness", "travel"].includes(key)) {
+    if (!["anchor", "axis", "breakForce", "breakTorque", "connectedAnchor", "connectedEntity", "connectedRotation", "damping", "kind", "length", "limits", "motor", "rotation", "stiffness", "travel"].includes(key)) {
       diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_FIELD_UNSUPPORTED", message: `PhysicsJoint uses unsupported field '${key}'.`, path: `${path}/${key}`, severity: "error" });
     }
   }
-  if (!["hinge", "slider", "suspension"].includes(joint.kind as string)) {
-    diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_UNSUPPORTED", message: "PhysicsJoint.kind must be hinge, slider, or suspension.", path: `${path}/kind`, severity: "error" });
+  if (!["ball", "fixed", "hinge", "rope", "slider", "suspension"].includes(kind)) {
+    diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_UNSUPPORTED", message: "PhysicsJoint.kind must be ball, fixed, hinge, rope, slider, or suspension.", path: `${path}/kind`, severity: "error" });
   }
   if (typeof joint.connectedEntity !== "string" || joint.connectedEntity.trim() === "" || joint.connectedEntity === entityId || !entityIds.has(joint.connectedEntity)) {
     diagnostics.push({
@@ -900,7 +901,7 @@ function validatePhysicsJoint(joint: Record<string, unknown>, path: string, enti
       message: "PhysicsJoint.connectedEntity must reference a different existing entity.",
       path: `${path}/connectedEntity`,
       severity: "error",
-      suggestion: "Connect suspension, hinge, or slider joints to another rigid-body entity in the same world.",
+      suggestion: "Connect the joint to another rigid-body entity in the same world.",
     });
   } else if (!rigidBodyEntityIds.has(joint.connectedEntity)) {
     diagnostics.push({
@@ -914,20 +915,57 @@ function validatePhysicsJoint(joint: Record<string, unknown>, path: string, enti
   if (joint.anchor !== undefined) {
     validateFiniteVec3(joint.anchor, `${path}/anchor`, "TN_IR_PHYSICS_JOINT_INVALID", diagnostics);
   }
+  if (joint.connectedAnchor !== undefined) validateFiniteVec3(joint.connectedAnchor, `${path}/connectedAnchor`, "TN_IR_PHYSICS_JOINT_INVALID", diagnostics);
   if (joint.axis !== undefined) {
     validateFiniteVec3(joint.axis, `${path}/axis`, "TN_IR_PHYSICS_JOINT_INVALID", diagnostics);
+    if (Array.isArray(joint.axis) && joint.axis.length === 3 && joint.axis.every((value) => typeof value === "number") && Math.hypot(...joint.axis as number[]) < 0.000001) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_AXIS_INVALID", message: "PhysicsJoint.axis must be non-zero.", path: `${path}/axis`, severity: "error", suggestion: "Use a normalized local axis such as [1,0,0]." });
   }
-  for (const key of ["damping", "stiffness", "travel"]) {
+  for (const key of ["breakForce", "breakTorque", "length"]) {
     const value = joint[key];
-    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value < 0)) {
-      diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_INVALID", message: `PhysicsJoint.${key} must be a non-negative finite number.`, path: `${path}/${key}`, severity: "error" });
+    if (value !== undefined && (typeof value !== "number" || !Number.isFinite(value) || value <= 0)) {
+      diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_INVALID", message: `PhysicsJoint.${key} must be a positive finite number.`, path: `${path}/${key}`, severity: "error" });
     }
+  }
+  for (const key of ["damping", "stiffness", "travel"]) if (joint[key] !== undefined && (typeof joint[key] !== "number" || !Number.isFinite(joint[key]) || joint[key] < 0)) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_INVALID", message: `PhysicsJoint.${key} must be a non-negative finite number.`, path: `${path}/${key}`, severity: "error" });
+  for (const key of ["rotation", "connectedRotation"] as const) {
+    const value = joint[key];
+    if (value === undefined) continue;
+    if (!Array.isArray(value) || value.length !== 4 || !value.every((item) => typeof item === "number" && Number.isFinite(item)) || Math.hypot(...value as number[]) < 0.000001) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_FRAME_INVALID", message: `PhysicsJoint.${key} must be a finite non-zero quaternion [x,y,z,w].`, path: `${path}/${key}`, severity: "error", suggestion: "Use an identity frame [0,0,0,1] when no local rotation offset is needed." });
   }
   if (joint.limits !== undefined) {
     if (!isRecord(joint.limits) || typeof joint.limits.min !== "number" || typeof joint.limits.max !== "number" || !Number.isFinite(joint.limits.min) || !Number.isFinite(joint.limits.max) || joint.limits.min > joint.limits.max) {
       diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_LIMITS_INVALID", message: "PhysicsJoint.limits must have finite min <= max.", path: `${path}/limits`, severity: "error" });
     }
   }
+  if (["hinge", "slider", "suspension"].includes(kind) && joint.axis === undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_AXIS_REQUIRED", message: `PhysicsJoint.axis is required for '${kind}'.`, path: `${path}/axis`, severity: "error", suggestion: "Add a non-zero local joint axis." });
+  if (["ball", "fixed", "rope"].includes(kind) && joint.axis !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_AXIS_UNSUPPORTED", message: `PhysicsJoint.axis is unsupported by '${kind}'.`, path: `${path}/axis`, severity: "error", suggestion: "Remove axis or use hinge, slider, or suspension." });
+  if (kind === "rope" && joint.length === undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_LENGTH_REQUIRED", message: "Rope joints require a positive length.", path: `${path}/length`, severity: "error", suggestion: "Set PhysicsJoint.length to the maximum anchor separation in meters." });
+  if (kind !== "rope" && joint.length !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_LENGTH_UNSUPPORTED", message: `PhysicsJoint.length is unsupported by '${kind}'.`, path: `${path}/length`, severity: "error", suggestion: "Remove length or use a rope joint." });
+  if (!["hinge", "slider", "suspension"].includes(kind) && joint.motor !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_UNSUPPORTED", message: `PhysicsJoint.motor is unsupported by '${kind}'; motors are supported by hinge, slider, and suspension joints.`, path: `${path}/motor`, severity: "error", suggestion: "Remove motor or change the joint kind to hinge, slider, or suspension." });
+  if (joint.motor !== undefined && isRecord(joint.motor)) {
+    validateObjectFields(joint.motor, new Set(["damping", "maxForce", "maxTorque", "mode", "stiffness", "target"]), `${path}/motor`, "TN_IR_PHYSICS_JOINT_MOTOR_FIELD_UNSUPPORTED", diagnostics);
+    if (!["position", "velocity"].includes(joint.motor.mode as string) || typeof joint.motor.target !== "number" || !Number.isFinite(joint.motor.target)) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_INVALID", message: "PhysicsJoint.motor requires mode position|velocity and a finite target.", path: `${path}/motor`, severity: "error" });
+    for (const key of ["damping", "maxForce", "maxTorque", "stiffness"] as const) if (joint.motor[key] !== undefined && (typeof joint.motor[key] !== "number" || !Number.isFinite(joint.motor[key]) || joint.motor[key] < 0)) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_INVALID", message: `PhysicsJoint.motor.${key} must be a non-negative finite number.`, path: `${path}/motor/${key}`, severity: "error" });
+    if (kind === "hinge" && joint.motor.maxForce !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED", message: "Hinge motors use maxTorque, not maxForce.", path: `${path}/motor/maxForce`, severity: "error", suggestion: "Rename maxForce to maxTorque for a hinge motor." });
+    if (["slider", "suspension"].includes(kind) && joint.motor.maxTorque !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_LIMIT_UNSUPPORTED", message: `${kind} motors use maxForce, not maxTorque.`, path: `${path}/motor/maxTorque`, severity: "error", suggestion: "Rename maxTorque to maxForce for a linear motor." });
+    if (kind === "hinge" && joint.motor.maxTorque === undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_BOUND_REQUIRED", message: "Hinge motors require maxTorque so solver effort remains portable and bounded.", path: `${path}/motor/maxTorque`, severity: "error", suggestion: "Set maxTorque to the motor's positive torque limit in newton-meters." });
+    if (["slider", "suspension"].includes(kind) && joint.motor.maxForce === undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_BOUND_REQUIRED", message: `${kind} motors require maxForce so solver effort remains portable and bounded.`, path: `${path}/motor/maxForce`, severity: "error", suggestion: "Set maxForce to the motor's positive force limit in newtons." });
+  } else if (joint.motor !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_MOTOR_INVALID", message: "PhysicsJoint.motor must be an object.", path: `${path}/motor`, severity: "error" });
+  if (!["hinge", "slider", "suspension"].includes(kind) && joint.limits !== undefined) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_LIMITS_UNSUPPORTED", message: `PhysicsJoint.limits is unsupported by '${kind}'.`, path: `${path}/limits`, severity: "error", suggestion: "Remove limits or use hinge, slider, or suspension." });
+  if (kind !== "suspension" && [joint.travel, joint.stiffness, joint.damping].some((value) => value !== undefined)) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_SUSPENSION_FIELD_UNSUPPORTED", message: `travel, stiffness, and damping are suspension-only compatibility fields, not supported by '${kind}'.`, path, severity: "error", suggestion: "Remove suspension-only fields or use PhysicsJoint.motor on a compatible kind." });
+  if (kind !== "fixed" && (joint.rotation !== undefined || joint.connectedRotation !== undefined)) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_FRAME_UNSUPPORTED", message: `PhysicsJoint rotation frames are supported only by fixed joints, not '${kind}'.`, path, severity: "error", suggestion: "Remove rotation frames or use a fixed joint." });
+}
+
+export function validatePhysicsJointGraph(world: IWorldIr, path: string, diagnostics: IIrDiagnostic[]): void {
+  const joints = world.entities.filter((entity) => entity.components.PhysicsJoint !== undefined);
+  if (joints.length > PHYSICS_CAPABILITY_LIMITS.jointsPerWorld) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_WORLD_BUDGET_EXCEEDED", message: `Physics world declares ${joints.length} joints; the portable limit is ${PHYSICS_CAPABILITY_LIMITS.jointsPerWorld}.`, path: `${path}/entities`, severity: "error", suggestion: "Split the mechanism across scenes or reduce authored joints." });
+  const degrees = new Map<string, number>();
+  for (const entity of joints) {
+    degrees.set(entity.id, (degrees.get(entity.id) ?? 0) + 1);
+    const connected = entity.components.PhysicsJoint?.connectedEntity;
+    if (connected !== undefined) degrees.set(connected, (degrees.get(connected) ?? 0) + 1);
+  }
+  for (const [entity, degree] of [...degrees].sort(([left], [right]) => left.localeCompare(right))) if (degree > PHYSICS_CAPABILITY_LIMITS.jointsPerBody) diagnostics.push({ code: "TN_IR_PHYSICS_JOINT_BODY_BUDGET_EXCEEDED", message: `Rigid body '${entity}' participates in ${degree} joints; the portable limit is ${PHYSICS_CAPABILITY_LIMITS.jointsPerBody}.`, path: `${path}/entities`, severity: "error", suggestion: "Reduce the joint fan-out or introduce intermediate rigid bodies." });
 }
 
 function validatePhysicsSensor(value: unknown, colliderKind: unknown, path: string, diagnostics: IIrDiagnostic[]): void {

@@ -770,13 +770,27 @@ export interface IPhysicsQueryHitObservation {
 export interface IPhysicsJointComponent {
   anchor?: Vec3;
   axis?: Vec3;
+  breakForce?: number;
+  breakTorque?: number;
+  connectedAnchor?: Vec3;
   connectedEntity: string;
+  connectedRotation?: Quat;
   damping?: number;
-  kind: "hinge" | "slider" | "suspension";
+  kind: "ball" | "fixed" | "hinge" | "rope" | "slider" | "suspension";
+  length?: number;
   limits?: {
     max: number;
     min: number;
   };
+  motor?: {
+    damping?: number;
+    maxForce?: number;
+    maxTorque?: number;
+    mode: "position" | "velocity";
+    stiffness?: number;
+    target: number;
+  };
+  rotation?: Quat;
   stiffness?: number;
   travel?: number;
 }

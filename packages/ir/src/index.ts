@@ -1,5 +1,5 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
-export { validateAerodynamicBody, validatePhysicsComponents, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
+export { validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
 export {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,

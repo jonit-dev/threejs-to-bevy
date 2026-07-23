@@ -1285,10 +1285,17 @@ pub struct ColliderSlopeComponent {
 pub struct PhysicsJointComponent {
     pub anchor: Option<[f32; 3]>,
     pub axis: Option<[f32; 3]>,
+    pub break_force: Option<f32>,
+    pub break_torque: Option<f32>,
+    pub connected_anchor: Option<[f32; 3]>,
     pub connected_entity: String,
+    pub connected_rotation: Option<[f32; 4]>,
     pub damping: Option<f32>,
     pub kind: String,
+    pub length: Option<f32>,
     pub limits: Option<PhysicsJointLimitsComponent>,
+    pub motor: Option<PhysicsJointMotorComponent>,
+    pub rotation: Option<[f32; 4]>,
     pub stiffness: Option<f32>,
     pub travel: Option<f32>,
 }
@@ -1297,6 +1304,17 @@ pub struct PhysicsJointComponent {
 pub struct PhysicsJointLimitsComponent {
     pub max: f32,
     pub min: f32,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PhysicsJointMotorComponent {
+    pub damping: Option<f32>,
+    pub max_force: Option<f32>,
+    pub max_torque: Option<f32>,
+    pub mode: String,
+    pub stiffness: Option<f32>,
+    pub target: f32,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]

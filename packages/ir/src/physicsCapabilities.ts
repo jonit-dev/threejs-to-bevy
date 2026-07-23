@@ -11,6 +11,8 @@ export const PHYSICS_CAPABILITY_LIMITS = Object.freeze({
   aerodynamicThrustersPerBody: 16,
   compoundColliderChildren: 32,
   convexHullVertices: 64,
+  jointsPerBody: 16,
+  jointsPerWorld: 256,
   slipCurvePoints: 16,
   vehicleForwardGears: 12,
   // Debounce one suspension contact sample before switching drivetrain coupling to raw airborne wheel speed.

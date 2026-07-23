@@ -486,6 +486,7 @@ export {
   type IPhysicsSlipCurvePointDeclaration,
   type IPhysicsSurfaceDeclaration,
   type IPhysicsJointDeclaration,
+  type QuaternionTuple,
   type ITireModelDeclaration,
   type IThrusterDeclaration,
   type IVehicleControllerDeclaration,
