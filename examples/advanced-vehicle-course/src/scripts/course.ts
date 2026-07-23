@@ -104,7 +104,8 @@ export function updateVehicleCourse(context: ScriptContext): void {
     origin: [transform.position[0] + 0.65, transform.position[1] + 0.5, transform.position[2]],
   });
   const mixedSurface = Boolean(current.mixedSurface)
-    || leftSurface.hit && rightSurface.hit
+    || context.input.getButton("throttle")
+      && leftSurface.hit && rightSurface.hit
       && leftSurface.entity === "ground-split-left-ice"
       && rightSurface.entity === "ground-split-right-asphalt";
   const jumpLaunched = Boolean(current.jumpLaunched) || transform.position[2] <= 30;

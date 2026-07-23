@@ -6,7 +6,7 @@
     "targets": ["web", "desktop"],
     "compare": {
       "movementDistance": { "maxDelta": 4 },
-      "resources": ["CourseState.damage", "CourseState.jumped", "CourseState.objectiveStep", "CourseState.retryCount"]
+      "resources": ["CourseState.damage", "CourseState.events", "CourseState.jumped", "CourseState.retryCount"]
     }
   },
   "setup": {
@@ -22,8 +22,8 @@
     "movement": { "entity": "chassis", "minDistance": 0, "maxDistance": 15 },
     "resources": [
       { "id": "CourseState", "path": "damage", "equals": 0 },
+      { "id": "CourseState", "path": "events", "equals": ["retry"], "changed": true },
       { "id": "CourseState", "path": "jumped", "equals": false },
-      { "id": "CourseState", "path": "objectiveStep", "equals": 0 },
       { "id": "CourseState", "path": "retryCount", "gte": 1 }
     ],
     "diagnostics": {
