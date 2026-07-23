@@ -68,8 +68,9 @@ Current support:
   ground-plane chassis velocity, excluding vertical suspension and landing
   velocity. Paired traces, browser review, and real web/graphical-desktop
   playtests pass. The Phase 8 vehicle forcing function adds mixed surfaces,
-  ordered checkpoints, collision damage, finish, and fresh retry; current web
-  proof passes and the matching desktop proof remains open.
+  ordered checkpoints, collision damage, finish, and fresh retry; its
+  plan-first reimplementation has matching current web/desktop objective and
+  no-throttle causal proof.
 - Phase 4 implements bounded aerodynamics on both adapters:
   quadratic body drag, lift/drag curves, control surfaces and stall, force and
   torque thrusters with fuel hooks, deterministic box/sphere wind volumes,
@@ -127,11 +128,12 @@ Current support:
   exact compound-child query identity, stable script-host order, and provenance.
 - Phase 8 owns the descriptor-derived
   `verify:advanced-physics-major-games` gate and three structured-source
-  vehicle, flight, and destruction examples. Web objective evidence is
-  passing, while current-source desktop objective proof, the exact real
-  60-second workload, production-plan/artifact review, and the independent
-  checkpoint remain open. The gate is not release-enrolled until those
-  requirements pass together.
+  vehicle, flight, and destruction examples. Their plan-first reimplementations
+  have five current matching web/desktop proof pairs, a hash-bound manual
+  playability and visual review, and the exact 60-second dense workload on both
+  adapters. The release-enrolled gate passes automated and manual checkpoints;
+  the retained report records complete source, bundle, adapter, environment,
+  timing, and artifact hashes.
 - Soft bodies, fluids, runtime mesh cutting, ragdolls, dynamic triangle
   compound children, arbitrary triangle narrow phase, and public backend
   handles remain explicit unsupported boundaries.

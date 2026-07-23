@@ -1,6 +1,7 @@
 # Advanced Vehicle Course Production Plan
 
-Status: planned reimplementation, awaiting fresh implementation and proof.
+Status: reimplemented after the recorded plan boundary and proof-complete on
+2026-07-23.
 
 Historical timing note: the required machine-readable plan was mistakenly left
 as a blank starter while the first implementation was authored. That prototype

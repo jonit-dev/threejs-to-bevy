@@ -1,7 +1,7 @@
 # PRD: Advanced Animation and Physics Depth
 
 > **Physics planning note (2026-07-22):** Phase 2 is superseded by
-> [`../../PRD-advanced-physics-major-games-2026-07-22.md`](../../PRD-advanced-physics-major-games-2026-07-22.md).
+> [`../done/PRD-advanced-physics-major-games-2026-07-22.md`](../done/PRD-advanced-physics-major-games-2026-07-22.md).
 > This PRD remains the active owner of the advanced animation scope in Phase 1.
 
 Complexity: 12 -> HIGH mode

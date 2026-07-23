@@ -7,9 +7,7 @@ complex fixed-step state and solver interaction, +2 spans SDK/IR/compiler/web/
 Bevy/authoring/verification, +2 requires deterministic cross-runtime evidence,
 +1 adds generated fracture assets, and +1 affects release gates.
 
-Status: Active proposal. No capability claim in this document is implemented
-until its phase evidence passes. This PRD supersedes only Phase 2 (advanced
-physics) of
+Status: Complete. This PRD supersedes only Phase 2 (advanced physics) of
 `proof-first-engine-loop-2026-07-05/PRD-016-advanced-animation-physics-depth.md`;
 that document remains the owner of advanced animation planning.
 
@@ -630,7 +628,7 @@ and desktop scenarios, conformance, and measured performance budgets.
 
 **Implementation:**
 
-- [ ] Create production plans before source mutation and use catalog/authored
+- [x] Create production plans before source mutation and use catalog/authored
   assets for hero vehicles, craft, destructibles, and dominant environment.
 - [x] Add recorded-input scenarios with objective, progression, fail/retry,
   feedback, collision/damage, and stable semantic assertions; primitives alone
@@ -722,7 +720,7 @@ checkpoint. Manual checkpoints are additional for Phases 2, 3, 4, 6, 7, and 8.
 
 ## 8. Acceptance Criteria
 
-- [ ] All eight phases are complete and every checkpoint review reports PASS.
+- [x] All eight phases are complete and every checkpoint review reports PASS.
 - [x] Compound colliders and force/impulse-at-point work through portable source,
   scripts, retained Rapier, live queries, and paired evidence.
 - [x] Wheel, tire, surface, suspension, drivetrain, steering, braking, and assist
@@ -989,30 +987,44 @@ the final evidence.
   advanced-aerodynamics and destruction authoring entries derived from the
   public operation descriptors.
 
-### Phase 8 evidence (automated and manual checkpoints PASS)
+### Phase 8 evidence (automated, manual, and independent checkpoints PASS)
+
+- The initial prototypes predated valid production plans and are retained
+  honestly at checkpoint `3ae94543`. Commit `67ec38c8` then establishes three
+  fresh machine plans before any further implementation mutation, with
+  plan-artifact SHA-256 values
+  `48c6970fb06c0ac948b45d6ed8b34a645ca8322a10038aa255d6a9ede6908825`
+  (vehicle),
+  `87f2221c7cbb0fae4aae897d1e9eb076c49f31d22b954f3ed4dd7bad3e8053a1`
+  (flight), and
+  `8de4b4b6c0b0fdebc109c0cd5814d8ec7f692e91961c5772bc1a7342df15ffbd`
+  (destruction). `tn authoring inspect` resolved the actual durable owners;
+  mismatched starter recipes were not applied. Commits `cfc72c51`,
+  `c8f8f7a5`, and `8f92d433` then reimplement the objective owners and causal
+  controls after that chronological boundary.
 
 - `pnpm verify:focused verify:advanced-physics-major-games` passes its
   release-enrolled descriptor with zero diagnostics. The aggregate report at
   `tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json`
   has SHA-256
-  `ca4c7039771ecaa8e4aca68ab9a967b2f0a5693caf77e96aafdbbdee0935d386`,
+  `6b4d7fc4d4d419f7810acd179ed24e50e77fa86188be6ecfd4bddef7b0099a82`,
   schema `0.1.0`, tolerance registry `0.4.0`, and both automated and manual
   checkpoint status `PASS`.
 - Five current proof pairs pass from exact matching source/bundle hashes:
   vehicle objective and no-throttle causal control, flight objective, and
   destruction threshold plus retry. The report hash-binds all ten summaries.
   Current source hashes are
-  `7983246a8e6c4766ff9f6b08b0c1f087173fa5f695933c13ad6a361265ef2d70`
+  `ad824c59c8ecde9bd337083e5eef3fa4b16bceeb3071cef45ff3f904d4b4b585`
   for vehicle,
-  `733deded78f3bfd22f8e5784064c82988f07c90ee800bd43c4058a44e8540392`
+  `08ffb5fab9eca6862def6dcc82528d4da92ace069ffc2eb30ab885a9ab73a733`
   for flight, and
-  `e1878a0d8cb07e353ec082539ca16dc627ec6f16b560ac052e283bc48f2cbc55`
+  `a24475ea08ef8160e2e35e7a3eae7874e4c8feebaeb02c6faf6e6b4a2dbf9ba2`
   for destruction.
 - The exact workload runs 3,600 fixed samples over 60 seconds with 16
   four-wheel vehicles, 128 debris bodies, 256 compound children, and 64
   projectiles. Web records p50/p95/max
-  `8.772/10.099/16.276 ms`; desktop records
-  `0.551/0.700/1.127 ms`. Both remain within the Section 2.3 budgets and
+  `8.685/9.887/14.299 ms`; desktop records
+  `0.541/0.703/1.112 ms`. Both remain within the Section 2.3 budgets and
   record body, contact, query, allocation, system, hardware, browser,
   dependency, platform, and release-profile metadata.
 - Manual review is bound to the current finish, landed, and settled screenshots
@@ -1030,3 +1042,8 @@ the final evidence.
   evidence; validates exact workload and telemetry counts; recursively
   discovers scenario summaries below descriptive artifact folders; and records
   complete Section 6.3 aggregate metadata and artifact hashes.
+- Final independent closure review reports **PASS** after auditing the full
+  prototype -> plan -> reimplementation history, all current proof hashes, the
+  release-enrolled example registry, the feature-matched CEF gameplay result
+  (15/15 assertions, zero diagnostics, 46.974 seconds), status truth, and every
+  explicit unsupported boundary.

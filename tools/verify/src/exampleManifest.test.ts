@@ -14,6 +14,9 @@ test("example manifest should classify every current example", async () => {
   assert.notEqual(manifest, undefined);
   assert.deepEqual(await exampleManifestDiagnostics(repoRoot), []);
   assert.deepEqual(await examplePathsByClassification(repoRoot, "release-enrolled"), [
+    "examples/advanced-vehicle-course",
+    "examples/aerodynamics-flight-course",
+    "examples/destruction-range",
     "examples/humanoid-physics-course",
     "examples/metro-surfer-heist",
   ]);

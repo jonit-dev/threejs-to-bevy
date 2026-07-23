@@ -1,6 +1,7 @@
 # Destruction Range Production Plan
 
-Status: planned reimplementation, awaiting fresh implementation and proof.
+Status: reimplemented after the recorded plan boundary and proof-complete on
+2026-07-23.
 
 Historical timing note: the first source implementation predated a valid
 machine plan, and the earlier task graph reported

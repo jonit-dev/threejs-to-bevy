@@ -1,6 +1,7 @@
 # Aerodynamics Flight Course Production Plan
 
-Status: planned reimplementation, awaiting fresh implementation and proof.
+Status: reimplemented after the recorded plan boundary and proof-complete on
+2026-07-23.
 
 Historical timing note: the initial implementation was created while this file
 was still a blank starter. That prototype is retained at checkpoint

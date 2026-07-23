@@ -18,14 +18,14 @@
       "reason": "Fixture-backed Phase 1 compound-collider, force-at-point, and mass-property evidence owner; it is not an independently buildable source project."
     },
     {
-      "classification": "fixture-only",
+      "classification": "release-enrolled",
       "path": "examples/advanced-vehicle-course",
-      "reason": "Phase 8 vehicle forcing function with passing web objective and negative-control evidence; desktop parity, production review, and aggregate release enrollment remain pending."
+      "reason": "Plan-first Phase 8 vehicle forcing function with current paired web/desktop objective and no-throttle proof, production review, and aggregate major-games gate enrollment."
     },
     {
-      "classification": "fixture-only",
+      "classification": "release-enrolled",
       "path": "examples/aerodynamics-flight-course",
-      "reason": "Phase 8 sourced-aircraft forcing function with retained flight objective evidence; production review and aggregate release enrollment remain pending."
+      "reason": "Plan-first Phase 8 sourced-aircraft forcing function with current paired web/desktop maneuver proof, production review, and aggregate major-games gate enrollment."
     },
     {
       "classification": "build-only",
@@ -43,9 +43,9 @@
       "reason": "Maintained efficient-scale fixture for dense-scene and performance-proof gates."
     },
     {
-      "classification": "fixture-only",
+      "classification": "release-enrolled",
       "path": "examples/destruction-range",
-      "reason": "Fixture-backed Phase 6 projectile threshold, fracture visibility, debris lifecycle, and web/native playtest wrapper; Phase 8 production art and release enrollment remain pending."
+      "reason": "Plan-first Phase 8 destruction forcing function with current paired web/desktop threshold and retry proof, production review, and aggregate major-games gate enrollment."
     },
     {
       "classification": "release-enrolled",

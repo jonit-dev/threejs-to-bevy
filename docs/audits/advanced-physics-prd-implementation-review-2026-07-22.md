@@ -1,7 +1,7 @@
 # Advanced Physics PRD Implementation Review — 2026-07-22
 
 Scope: commits `3a876450..23c085ab` implementing
-`docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md` (Phases 1–6:
+`docs/PRDs/done/PRD-advanced-physics-major-games-2026-07-22.md` (Phases 1–6:
 compound colliders / at-point forces / queries, wheels/tires/surfaces,
 drivetrain, aerodynamics, rich joints, fracture/destruction), plus the
 uncommitted Phase 7 work-in-progress (physics debugging/telemetry and public

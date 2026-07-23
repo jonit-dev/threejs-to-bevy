@@ -6,16 +6,6 @@ milestone batches. For current implementation status, read
 
 ## Active Initiatives
 
-### Advanced Physics for Major Games (2026-07-22)
-
-The [active advanced physics PRD](PRD-advanced-physics-major-games-2026-07-22.md)
-defines a staged portable contract for compound bodies, force-at-point,
-raycast wheels, tires and surfaces, production vehicle drivetrains,
-aerodynamics and wind, richer breakable joints, build-time pre-fractured
-destruction, physics debugging, and measurable web/Bevy forcing-function gates.
-It supersedes only the physics phase of the older combined advanced
-animation/physics plan.
-
 ### Off-Recipe Authoring Efficiency (2026-07-15)
 
 The [active off-recipe authoring efficiency PRD](PRD-off-recipe-authoring-efficiency-2026-07-15.md)
@@ -27,6 +17,16 @@ iterate completion, and an 18-session equal-proof rerun against compliant
 vanilla Three.js.
 
 ## Completed Initiatives
+
+### Advanced Physics for Major Games (2026-07-22)
+
+The [completed advanced physics PRD](done/PRD-advanced-physics-major-games-2026-07-22.md)
+defines the shipped portable contract for compound bodies, force-at-point,
+raycast wheels, tires and surfaces, production vehicle drivetrains,
+aerodynamics and wind, richer breakable joints, build-time pre-fractured
+destruction, physics debugging, and measurable web/Bevy forcing-function gates.
+It supersedes only the physics phase of the older combined advanced
+animation/physics plan.
 
 ### Systems Code Quality Remediation (2026-07-14)
 
