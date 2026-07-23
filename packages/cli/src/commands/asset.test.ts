@@ -574,7 +574,7 @@ test("should record run inspect and register through asset generate", async () =
       "generate", "robot", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--overwrite-policy", "replace", "--project", root, "--json",
     ], {
       blenderDependencies: {
-        inspect: async (path) => ({ code: "TN_ASSET_INSPECT_OK", counts: { animations: 1, materials: 0, meshes: 1, triangles: 12 }, diagnostics: [], file: { byteSize: 3, path } }),
+        inspect: async (path) => ({ animationClips: [{ channels: 1, name: "wave", samplers: 1 }], code: "TN_ASSET_INSPECT_OK", counts: { animations: 1, materials: 0, meshes: 1, triangles: 12 }, diagnostics: [], file: { byteSize: 3, path } }),
         runnerPath: resolve(import.meta.dirname, "../blender/runner.py"),
         toolStatus: async () => ({
           artifact: { archive: "tar.xz", archiveFile: "blender.tar.xz", executablePath: "blender", expectedBytes: 1, host: "linux-x64", sha256: "0".repeat(64), url: "https://download.blender.org/blender.tar.xz" },

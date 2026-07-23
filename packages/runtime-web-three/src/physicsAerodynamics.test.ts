@@ -38,6 +38,18 @@ test("should preserve explicit aerodynamic inputs over declarative binding polli
   assert.ok(stepPhysicsAerodynamics(world, 1, 0)[0]!.surfaces[0]!.controlDeflection > 0);
 });
 
+test("should read positive angle of attack when sinking so lift restores altitude", () => {
+  const level = stepPhysicsAerodynamics(aerodynamicWorld([0, 0, -20]), FIXED_DELTA, 0)[0]!.surfaces[0]!;
+  const sinking = stepPhysicsAerodynamics(aerodynamicWorld([0, -2, -20]), FIXED_DELTA, 0)[0]!.surfaces[0]!;
+  const climbing = stepPhysicsAerodynamics(aerodynamicWorld([0, 2, -20]), FIXED_DELTA, 0)[0]!.surfaces[0]!;
+
+  assert.equal(level.angleOfAttack, 0);
+  assert.ok(sinking.angleOfAttack > 0);
+  assert.ok(climbing.angleOfAttack < 0);
+  assert.ok(sinking.lift[1] > level.lift[1]);
+  assert.ok(climbing.lift[1] < level.lift[1]);
+});
+
 test("should enter and leave stall under a recorded maneuver", () => {
   const world = aerodynamicWorld([0, 10, -10]);
   assert.equal(stepPhysicsAerodynamics(world, FIXED_DELTA, 0)[0]!.surfaces[0]!.stalled, true);

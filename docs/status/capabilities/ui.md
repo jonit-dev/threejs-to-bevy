@@ -19,6 +19,11 @@ Current support:
   deduplication, typed send/subscribe calls, visibility, and runtime input-mode
   changes. Dotted game event names remain temporarily routable with
   `TN_OVERLAY_NAME_DEPRECATED`.
+- Web overlay frames in `none` or `pointer` input mode forward keyboard events
+  to the game window, so a focused fullscreen pointer overlay (for example a
+  viewport-layout flight deck) no longer swallows game keyboard controls;
+  `keyboard`, `pointer-and-keyboard`, and `modal` modes keep the keyboard in
+  the overlay.
 - Overlay payload schemas use shared web/native conformance vectors and a 16 KB
   UTF-8 JSON limit in both directions. Compiler drift validation rejects
   colon-namespaced system event reads/writes absent from the overlay manifest.

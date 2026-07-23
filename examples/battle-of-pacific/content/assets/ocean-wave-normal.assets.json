@@ -1,0 +1,16 @@
+{
+  "assets": [
+    {
+      "id": "ocean-wave-normal",
+      "path": "assets/generated/ocean-wave-normal.png",
+      "repeat": [420, 420],
+      "source": "procedural:layered-sine-wave-normal (seamless, seed 7)",
+      "type": "texture",
+      "wrapS": "repeat",
+      "wrapT": "repeat"
+    }
+  ],
+  "id": "ocean-wave-normal",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

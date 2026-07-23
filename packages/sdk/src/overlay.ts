@@ -20,7 +20,7 @@ export interface IOverlayMountOptions {
   entry: string;
   id: string;
   input?: OverlayInputMode;
-  layout?: IOverlayLayoutRect;
+  layout?: IOverlayLayout;
   messages?: {
     gameToOverlay?: readonly IOverlayMessageDeclaration[];
     overlayToGame?: readonly IOverlayMessageDeclaration[];
@@ -31,13 +31,15 @@ export interface IOverlayMountOptions {
 }
 
 export interface IOverlayLayoutRect { height: number; width: number; x: number; y: number }
+export interface IOverlayViewportLayout { mode: "viewport" }
+export type IOverlayLayout = IOverlayLayoutRect | IOverlayViewportLayout;
 
 export interface IOverlayDeclaration {
   assets: readonly string[];
   entry: string;
   id: string;
   input: OverlayInputMode;
-  layout?: IOverlayLayoutRect;
+  layout?: IOverlayLayout;
   messages: {
     gameToOverlay: readonly IOverlayMessageDeclaration[];
     overlayToGame: readonly IOverlayMessageDeclaration[];

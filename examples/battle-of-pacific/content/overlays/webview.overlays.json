@@ -1,0 +1,65 @@
+{
+  "schema": "threenative.overlays",
+  "version": "0.2.0",
+  "overlays": [
+    {
+      "entry": "overlay/flight-deck/dist/index.html",
+      "id": "flight-deck",
+      "input": "pointer",
+      "layout": {
+        "mode": "viewport"
+      },
+      "messages": {
+        "gameToOverlay": [
+          {
+            "name": "flight:telemetry",
+            "schema": {
+              "fields": {
+                "airspeed": "string",
+                "altitude": "string",
+                "flaps": "string",
+                "objective": "string",
+                "phase": "string",
+                "progress": "number",
+                "stall": "boolean",
+                "throttle": "string"
+              },
+              "kind": "object",
+              "required": [
+                "airspeed",
+                "altitude",
+                "flaps",
+                "objective",
+                "phase",
+                "progress",
+                "stall",
+                "throttle"
+              ]
+            }
+          }
+        ],
+        "overlayToGame": [
+          {
+            "name": "flight:restart",
+            "schema": {
+              "fields": {},
+              "kind": "object",
+              "required": []
+            }
+          },
+          {
+            "name": "flight:toggle-flaps",
+            "schema": {
+              "fields": {},
+              "kind": "object",
+              "required": []
+            }
+          }
+        ]
+      },
+      "targetProfiles": ["web", "desktop"],
+      "transparent": true,
+      "zIndex": 20
+    }
+  ]
+}

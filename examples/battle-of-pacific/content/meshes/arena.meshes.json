@@ -1,0 +1,12 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "pacific-meshes",
+  "meshes": [
+    {
+      "id": "mesh.ocean",
+      "kind": "primitive",
+      "primitive": "plane"
+    }
+  ]
+}

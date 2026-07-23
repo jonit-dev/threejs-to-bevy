@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "objective-progress",
+  "name": "acceptance-objective-progress",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "hold patrol attitude",
+      "waitTicks": 180,
+      "screenshot": "01-patrol-progress"
+    }
+  ],
+  "assert": {
+    "animation": [
+      {
+        "entity": "aircraft.visual",
+        "clip": "flight.cruise",
+        "entered": true,
+        "advancedFrames": 30
+      }
+    ],
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 20,
+      "maxDistance": 500,
+      "minVelocity": 1
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "progress",
+        "gte": 0.05,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "phase",
+        "equals": "CRUISE"
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      {
+        "entityVisible": {
+          "entity": "aircraft.visual",
+          "minProjectedPixels": 500,
+          "throughoutFrames": true
+        }
+      }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

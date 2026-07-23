@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "input-caused-action",
+  "name": "acceptance-input-caused-action",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "deploy powered dive flaps",
+      "press": "KeyF",
+      "holdFrames": 2,
+      "release": true,
+      "screenshot": "01-flaps-command"
+    },
+    {
+      "label": "observe powered flap animation",
+      "waitFrames": 20,
+      "screenshot": "02-flaps-moving"
+    }
+  ],
+  "assert": {
+    "animation": [
+      {
+        "entity": "aircraft.visual",
+        "clip": "flight.flaps",
+        "entered": true,
+        "advancedFrames": 5
+      }
+    ],
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 1,
+      "minVelocity": 1
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "flaps",
+        "equals": "DOWN",
+        "changed": true
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      {
+        "entityVisible": {
+          "entity": "aircraft.visual",
+          "minProjectedPixels": 500
+        }
+      }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

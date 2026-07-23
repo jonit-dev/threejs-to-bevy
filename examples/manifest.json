@@ -28,6 +28,11 @@
       "reason": "Plan-first Phase 8 sourced-aircraft forcing function with current paired web/desktop maneuver proof, production review, and aggregate major-games gate enrollment."
     },
     {
+      "classification": "experimental",
+      "path": "examples/battle-of-pacific",
+      "reason": "Focused playable SBD-3 ocean-flight slice with example-local Blender provenance, portable aerodynamics, powered control-surface clips, and a React webview flight deck; not enrolled in release gates."
+    },
+    {
       "classification": "build-only",
       "path": "examples/coin-patrol",
       "reason": "Golden-path authoring acceptance fixture for top-down pickup, lives, HUD/resource mutation, and native parity follow-up."

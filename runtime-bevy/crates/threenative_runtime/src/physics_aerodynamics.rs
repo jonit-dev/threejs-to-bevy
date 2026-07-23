@@ -376,7 +376,7 @@ fn compute_body(
         let angle = if speed < EPSILON {
             0.0
         } else {
-            local.y.atan2((-local.z).max(EPSILON))
+            (-local.y).atan2((-local.z).max(EPSILON))
         };
         let effective = angle + deflection;
         let was_stalled = runtime.stalls.contains(&surface.id);
@@ -615,6 +615,32 @@ mod tests {
             (vec(fast.surfaces[0].drag).length() / vec(slow.surfaces[0].drag).length() - 4.0).abs()
                 < 0.0001
         );
+    }
+
+    #[test]
+    fn sinking_flight_reads_positive_angle_of_attack() {
+        let declaration = body();
+        let mut run = |velocity: Vec3| {
+            let mut state = BodyState::default();
+            compute_body(
+                "craft",
+                &declaration,
+                Vec3::ZERO,
+                rapier3d::math::Rotation::IDENTITY,
+                velocity,
+                (Vec3::ZERO, DEFAULT_AIR_DENSITY),
+                None,
+                &mut state,
+                1.0 / 60.0,
+            )
+            .0
+        };
+        let level = run(Vec3::new(0.0, 0.0, -20.0));
+        let sinking = run(Vec3::new(0.0, -2.0, -20.0));
+        let climbing = run(Vec3::new(0.0, 2.0, -20.0));
+        assert_eq!(level.surfaces[0].angle_of_attack, 0.0);
+        assert!(sinking.surfaces[0].angle_of_attack > 0.0);
+        assert!(climbing.surfaces[0].angle_of_attack < 0.0);
     }
 
     #[test]

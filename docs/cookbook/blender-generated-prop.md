@@ -58,3 +58,39 @@ the cross-host recipe set with `pnpm verify:blender-host`. The runtime-aware
 `--verify` step compares inspected material intent with observed loaded glTF
 materials and rejects fallback-only white evidence; the turntable remains an
 isolated asset proof rather than a final-scene composition claim.
+
+## Existing GLB animation variant
+
+To animate a model rather than generate primitives, first import it so the
+source is self-contained and its node names are normalized, then inspect those
+names:
+
+```bash
+tn asset import aircraft.glb --id aircraft.source --license user-provided --project . --json
+tn asset inspect assets/imported/aircraft.source.glb --json
+tn asset generate aircraft.animated --provider blender --recipe '{"schema":"threenative.blender-recipe","version":"0.1.0","id":"aircraft.animated","source":"assets/imported/aircraft.source.glb","animations":[{"id":"propeller.spin","duration":1,"loop":true,"tracks":[{"node":"Propeller","property":"rotation","keyframes":[{"time":0,"value":[0,0,0]},{"time":0.25,"value":[0,0,90]},{"time":0.5,"value":[0,0,180]},{"time":0.75,"value":[0,0,270]},{"time":1,"value":[0,0,360]}]}]}],"budgets":{"maxOutputBytes":50000000,"maxPolygons":200000}}' --overwrite-policy replace --project . --json
+tn asset inspect assets/generated/aircraft.animated.glb --json
+tn model-test assets/generated/aircraft.animated.glb --angles 0,90,180,270 --json
+```
+
+Source-backed tracks use exact unique node names. Position and rotation values
+are local offsets from the imported pose; scale values multiply imported scale.
+For detached surfaces whose imported origins do not sit on the hinge, a
+rotation track may add `"pivot":[x,y,z]` in the source model's authored Y-up
+coordinates. Blender creates an exported parent pivot while preserving the
+surface's rest pose. Pivots are source-rotation-only and one node must use the
+same pivot across clips. The provider rejects external GLB dependencies,
+missing or duplicate targets, conflicting pivots, clip-name collisions, and
+mixtures of `source` with generated materials/parts/operations.
+
+The retained Douglas SBD-3 example uses this contract for rigid wing-flap
+deployment, paired elevator pitch, and rudder yaw, while the propeller rotates
+on a measured shaft pivot. Treat mesh nodes split only by material as one rigid
+assembly and target their shared parent; do not infer independent mechanisms
+from overlapping bounds:
+
+```bash
+tn generator run aircraft.douglas-sbd3 --project . --json
+tn asset inspect assets/generated/aircraft.douglas-sbd3.glb --json
+tn model-test assets/generated/aircraft.douglas-sbd3.glb --angles 0,45,90,180,270 --json
+```

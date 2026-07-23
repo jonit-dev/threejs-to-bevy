@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "pacific-flight-systems",
+  "systems": [
+    {
+      "id": "pacific-flight",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/flight.ts",
+        "export": "updatePacificFlight"
+      },
+      "source": "behavior-metadata"
+    }
+  ]
+}

@@ -4,7 +4,7 @@ import { join } from "node:path";
 import test from "node:test";
 import assert from "node:assert/strict";
 
-import { materializeCookbookFixtureManifest, runCookbookGate, validateCookbookFixtureReviewMetadata } from "./cookbookGate.js";
+import { materializeCookbookFixtureManifest, runCookbookGate, validateCookbookCommand, validateCookbookFixtureReviewMetadata, validatePhysicsCookbookReferences } from "./cookbookGate.js";
 
 test("should materialize bounded fixture manifests with ordered hash references", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-cookbook-fixture-root-"));
@@ -109,6 +109,12 @@ test("should pass when all entries apply and build", async () => {
   assert.equal(report.ok, true);
   assert.equal(report.entries.length >= 16, true);
   assert.equal(report.entries.some((entry) => entry.entryId === "player-move-wasd"), true);
+});
+
+test("should reject drift from descriptor-owned advanced physics cookbook references", () => {
+  const diagnostics = validatePhysicsCookbookReferences(new Set(["advanced-physics-aerodynamics"]), "docs/cookbook");
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_COOKBOOK_GATE_PHYSICS_DESCRIPTOR_DRIFT" && diagnostic.message.includes("advanced-physics-destruction")), true);
+  assert.deepEqual(validateCookbookCommand("advanced-physics-destruction", "tn physics destructible validate arena wall --project . --json"), []);
 });
 
 test("should fail with entry id when a command is invalid", async () => {

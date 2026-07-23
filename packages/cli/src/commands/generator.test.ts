@@ -273,6 +273,54 @@ test("generator run invokes hardened Blender and atomically registers sorted ani
   }
 });
 
+test("generator run passes a contained source GLB to Blender and hashes its bytes", async () => {
+  const root = await createBlenderGeneratorProject();
+  const invocations: Array<{ sourcePath?: string }> = [];
+  try {
+    await mkdir(join(root, "assets", "source"), { recursive: true });
+    const sourcePath = join(root, "assets", "source", "aircraft.glb");
+    await writeFile(sourcePath, "source-glb-v1", "utf8");
+    const recipePath = join(root, "content", "generators", "robot.recipe.json");
+    const recipe = JSON.parse(await readFile(recipePath, "utf8")) as Record<string, unknown>;
+    delete recipe.materials;
+    delete recipe.parts;
+    delete recipe.operations;
+    recipe.source = "assets/source/aircraft.glb";
+    recipe.animations = [{
+      id: "propeller.spin",
+      duration: 1,
+      loop: true,
+      tracks: [{ node: "Propeller", property: "rotation", keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0, 360] }] }],
+    }];
+    await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`, "utf8");
+    const dependencies = successfulBlenderDependencies([]);
+    dependencies.inspect = async (path) => path === sourcePath
+      ? { ...validInspection(path), animationClips: [], dependencies: [{ embedded: true, exists: true, kind: "buffer" }], namedNodes: ["Propeller"] }
+      : { ...validInspection(path), animationClips: [{ channels: 1, name: "propeller.spin", samplers: 1 }] };
+    dependencies.runProcess = async (_executable, args) => {
+      const jobPath = args.at(-1)!;
+      const job = JSON.parse(await readFile(jobPath, "utf8")) as { outputPath: string; resultPath: string; sourcePath?: string };
+      invocations.push({ sourcePath: job.sourcePath });
+      await writeFile(job.outputPath, "deterministic-glb", "utf8");
+      await writeFile(job.resultPath, `${JSON.stringify({ animations: ["propeller.spin"], nodes: ["Propeller"], ok: true })}\n`, "utf8");
+      return { exitCode: 0, stderr: "", stdout: "THREENATIVE_RESULT", timedOut: false };
+    };
+
+    const first = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    await writeFile(sourcePath, "source-glb-v2", "utf8");
+    const second = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    const firstPayload = JSON.parse(first.stdout) as { inputHash: string };
+    const secondPayload = JSON.parse(second.stdout) as { inputHash: string };
+
+    assert.equal(first.exitCode, 0, first.stdout);
+    assert.equal(second.exitCode, 0, second.stdout);
+    assert.deepEqual(invocations, [{ sourcePath }, { sourcePath }]);
+    assert.notEqual(secondPayload.inputHash, firstPayload.inputHash);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("generator run preserves prior output and provenance when Blender exits non-zero", async () => {
   const root = await createBlenderGeneratorProject();
   try {
@@ -611,6 +659,7 @@ function successfulBlenderDependencies(invocations: Array<{ args: readonly strin
 
 function validInspection(path: string, counts: { triangles?: number } = {}) {
   return {
+    animationClips: [{ channels: 1, name: "idle", samplers: 1 }, { channels: 1, name: "wave", samplers: 1 }],
     code: "TN_ASSET_INSPECT_OK" as const,
     counts: { animations: 2, materials: 1, meshes: 2, triangles: counts.triangles ?? 48 },
     diagnostics: [], file: { byteSize: 17, path },

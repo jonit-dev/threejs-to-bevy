@@ -1,0 +1,73 @@
+{
+  "schema": "threenative.environment-scene",
+  "version": "0.1.0",
+  "id": "pacific-environment",
+  "atmosphere": {
+    "active": true,
+    "id": "atmosphere.pacific",
+    "sun": {
+      "id": "sun.pacific",
+      "color": "#fff1d0",
+      "direction": [-0.48, -0.72, -0.5],
+      "intensity": 4.2,
+      "castsShadow": true
+    },
+    "ambient": {
+      "color": "#b9cbd5",
+      "intensity": 0.55,
+      "mode": "constant"
+    },
+    "fog": {
+      "enabled": true,
+      "mode": "exponential",
+      "color": "#b9c8cf",
+      "density": 0.00016
+    },
+    "sky": {
+      "color": "#9db5c2",
+      "horizonColor": "#d5dde0"
+    },
+    "colorManagement": {
+      "exposure": 1.12,
+      "outputColorSpace": "srgb",
+      "textureColorSpace": "srgb",
+      "toneMapping": "aces"
+    },
+    "shadows": {
+      "enabled": true,
+      "mapSize": 2048,
+      "bias": -0.0002,
+      "normalBias": 0.025,
+      "cascadeCount": 1,
+      "maxDistance": 180,
+      "receiverPolicy": "all"
+    }
+  },
+  "skybox": {
+    "mode": "equirect",
+    "asset": "pacific-sky",
+    "intensity": 0.9,
+    "assetRefs": [
+      {
+        "id": "pacific-sky",
+        "kind": "texture",
+        "format": "png",
+        "path": "assets/imported/polyhaven/pacific-sky/environment.png"
+      }
+    ]
+  },
+  "environmentMap": {
+    "mode": "equirect",
+    "asset": "pacific-sky",
+    "intent": "reflection-and-irradiance",
+    "intensity": 1.0,
+    "assetRefs": [
+      {
+        "id": "pacific-sky",
+        "kind": "texture",
+        "format": "png",
+        "path": "assets/imported/polyhaven/pacific-sky/environment.png"
+      }
+    ]
+  }
+}

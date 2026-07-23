@@ -48,7 +48,7 @@ export function analyzeGameScaleEntities(input: readonly IGameScaleEntityInput[]
 
   for (const player of players) {
     for (const vehicle of vehicles) {
-      if (vehicle.height <= 0) {
+      if (vehicle.height <= 0 || vehicle.id === player.id) {
         continue;
       }
       const ratio = round(player.height / vehicle.height);
@@ -78,10 +78,10 @@ export function analyzeGameScaleEntities(input: readonly IGameScaleEntityInput[]
     }
   }
 
-  if (players.length === 0) {
+  if (players.length === 0 && vehicles.length === 0) {
     diagnostics.push({
       code: "TN_GAME_SCALE_PLAYER_MISSING",
-      message: "No visible player/runner/hero entity was found in runtime bounds.",
+      message: "No visible player/runner/hero or vehicle-hero entity was found in runtime bounds.",
       severity: "warning",
       suggestedFix: "Use stable entity IDs or metadata that identify the player/hero surface so scale QA can compare it.",
     });
@@ -128,7 +128,7 @@ function inferScaleRoles(id: string): string[] {
   if (/\b(player|runner|hero|avatar|character)\b/.test(normalized) || normalized.includes("runner")) {
     roles.push("player");
   }
-  if (/\b(train|metro|truck|bus|car|vehicle|van|tram)\b/.test(normalized) || normalized.includes("train")) {
+  if (/\b(train|metro|truck|bus|car|vehicle|van|tram|aircraft|plane|airplane|jet|helicopter|ship|boat|tank)\b/.test(normalized) || normalized.includes("train")) {
     roles.push("vehicle");
   }
   return roles;

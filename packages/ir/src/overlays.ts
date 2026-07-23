@@ -24,7 +24,7 @@ export interface IOverlayIr {
   entry: string;
   id: string;
   input: OverlayInputMode;
-  layout?: IOverlayLayoutRect;
+  layout?: IOverlayLayout;
   messages: IOverlayBridgeMessages;
   targetProfiles: OverlayTargetProfile[];
   transparent: boolean;
@@ -32,6 +32,8 @@ export interface IOverlayIr {
 }
 
 export interface IOverlayLayoutRect { height: number; width: number; x: number; y: number }
+export interface IOverlayViewportLayout { mode: "viewport" }
+export type IOverlayLayout = IOverlayLayoutRect | IOverlayViewportLayout;
 
 export interface IOverlaysIr {
   overlays: IOverlayIr[];
@@ -160,7 +162,7 @@ export function validateOverlaysIr(value: unknown, path = "overlays.ir.json"): I
     }
     validateTargetProfiles(overlay.targetProfiles, `${overlayPath}/targetProfiles`, diagnostics);
     if (overlay.layout !== undefined && !isValidOverlayLayout(overlay.layout)) {
-      diagnostics.push({ code: "TN_IR_OVERLAY_LAYOUT_INVALID", message: "Overlay layout must be a non-negative finite x/y rectangle with positive width and height.", path: `${overlayPath}/layout`, severity: "error" });
+      diagnostics.push({ code: "TN_IR_OVERLAY_LAYOUT_INVALID", message: "Overlay layout must be { mode: 'viewport' } or a non-negative finite x/y rectangle with positive width and height.", path: `${overlayPath}/layout`, severity: "error" });
     }
     validateOverlayMessages(overlay.messages, `${overlayPath}/messages`, diagnostics);
   });
@@ -302,8 +304,11 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isValidOverlayLayout(value: unknown): value is IOverlayLayoutRect {
+function isValidOverlayLayout(value: unknown): value is IOverlayLayout {
   if (!isRecord(value)) return false;
+  if (value.mode === "viewport") {
+    return Object.keys(value).every((key) => key === "mode");
+  }
   const fields = [value.height, value.width, value.x, value.y];
   return fields.every((field) => typeof field === "number" && Number.isFinite(field) && field >= 0)
     && (value.height as number) > 0

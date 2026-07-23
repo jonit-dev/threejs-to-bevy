@@ -11,7 +11,7 @@
       "installAcknowledged": true,
       "sha256": "05ed7bd41bf3e61ae4f4a7cdc364c43088bf8b3fed702c2269c018fdf63a2188",
       "sourceUrl": "https://download.blender.org/release/Blender4.5/blender-4.5.11-linux-x64.tar.xz",
-      "runnerSha256": "55be4753397b872c44ac8e6b91cae10b67c792649d6f914e62ee2f8320fc1409",
+      "runnerSha256": "084235afb49bf32a95000bed5508e7296fd80724c729a26a0f5f98aa89ca589d",
       "hardenedArgv": ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python", "<owned-runner>", "--", "--job", "<owned-job>"],
       "cleanup": { "noLocks": true, "noProcesses": true, "noStaging": true },
       "recipes": [

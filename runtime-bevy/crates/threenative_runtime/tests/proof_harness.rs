@@ -5,7 +5,7 @@ use threenative_components::ThreeNativeId;
 use threenative_runtime::proof_harness::{
     NativeProofHarnessCommand, NativeProofHarnessCommandStream, NativeProofHarnessState,
     apply_native_proof_harness_commands, load_native_proof_harness_stream,
-    native_proof_harness_transform_samples,
+    native_proof_harness_animation_samples, native_proof_harness_transform_samples,
 };
 
 #[test]
@@ -354,6 +354,28 @@ fn should_snapshot_transform_positions_for_readiness() {
     assert_eq!(samples.len(), 1);
     assert_eq!(samples[0].entity, "player");
     assert_eq!(samples[0].position, [1.123457, 2.0, 3.765432]);
+}
+
+#[test]
+fn should_snapshot_animation_playback_for_readiness() {
+    let aircraft = ThreeNativeId("aircraft.visual".to_owned());
+    let playback = threenative_runtime::map_world::NativeAnimationPlayback {
+        active_state: Some("cruise".to_owned()),
+        asset: "aircraft.douglas-sbd3".to_owned(),
+        clip: "flight.cruise".to_owned(),
+        loop_: true,
+        source_clip: "flight.cruise".to_owned(),
+        speed: 1.0,
+        time_seconds: 2.5,
+    };
+    let samples = native_proof_harness_animation_samples([(&aircraft, &playback)]);
+
+    assert_eq!(samples.len(), 1);
+    assert_eq!(samples[0].entity, "aircraft.visual");
+    assert_eq!(samples[0].clip, "flight.cruise");
+    assert_eq!(samples[0].source_clip, "flight.cruise");
+    assert!(samples[0].playing);
+    assert_eq!(samples[0].time_seconds, 2.5);
 }
 
 fn temp_dir(name: &str) -> std::path::PathBuf {

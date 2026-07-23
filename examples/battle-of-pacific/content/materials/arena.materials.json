@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "pacific-materials",
+  "materials": [
+    {
+      "id": "mat.ocean",
+      "color": "#1d5d76",
+      "emissive": "#0d3d50",
+      "emissiveIntensity": 0.06,
+      "metalness": 0.08,
+      "normalTexture": "ocean-wave-normal",
+      "roughness": 0.16
+    }
+  ]
+}

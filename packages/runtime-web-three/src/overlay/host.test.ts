@@ -70,6 +70,24 @@ test("publishes game snapshots to a loaded overlay", () => {
   assert.deepEqual(windowBridge.snapshot("inventory:snapshot")?.payload, { gold: 12 });
 });
 
+test("forwards keyboard events from pointer overlays to the game window", () => {
+  const documentRef = new FakeDocument();
+  const host = createWebOverlayHost(makeOverlays("pointer"), "/bundle", documentRef as unknown as Document);
+  const frame = host.frames[0] as unknown as FakeElement;
+  frame.listeners.get("load")?.[0]?.();
+
+  const keydownListeners = frame.contentWindow.document.listeners.get("keydown") ?? [];
+  assert.equal(keydownListeners.length, 1);
+  keydownListeners[0]?.({ altKey: false, code: "KeyW", ctrlKey: false, key: "w", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
+  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
+  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.code, "KeyW");
+  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.type, "keydown");
+
+  host.setInput("inventory", "pointer-and-keyboard");
+  keydownListeners[0]?.({ altKey: false, code: "KeyS", ctrlKey: false, key: "s", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
+  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
+});
+
 test("mounts a representative built React entry and publishes bridge readiness", () => {
   const documentRef = new FakeDocument();
   const overlays = makeOverlays("pointer-and-keyboard");
@@ -151,7 +169,36 @@ function makeOverlays(input: "keyboard" | "modal" | "none" | "pointer" | "pointe
   };
 }
 
+class FakeKeyboardEvent {
+  readonly altKey: boolean;
+  readonly code: string;
+  readonly ctrlKey: boolean;
+  readonly key: string;
+  readonly metaKey: boolean;
+  readonly repeat: boolean;
+  readonly shiftKey: boolean;
+
+  constructor(readonly type: string, init: KeyboardEventInit = {}) {
+    this.altKey = init.altKey ?? false;
+    this.code = init.code ?? "";
+    this.ctrlKey = init.ctrlKey ?? false;
+    this.key = init.key ?? "";
+    this.metaKey = init.metaKey ?? false;
+    this.repeat = init.repeat ?? false;
+    this.shiftKey = init.shiftKey ?? false;
+  }
+}
+
 class FakeDocument {
+  readonly defaultView = {
+    KeyboardEvent: FakeKeyboardEvent,
+    dispatchedKeyboardEvents: [] as FakeKeyboardEvent[],
+    dispatchEvent(event: FakeKeyboardEvent): boolean {
+      this.dispatchedKeyboardEvents.push(event);
+      return true;
+    },
+  };
+
   createElement(tagName: string): HTMLElement {
     return new FakeElement(tagName) as unknown as HTMLElement;
   }
@@ -159,6 +206,7 @@ class FakeDocument {
 
 class FakeElement {
   blurred = false;
+  readonly contentDocumentListeners = new Map<string, Array<(event: unknown) => void>>();
   readonly attributes = new Map<string, string>();
   readonly children: FakeElement[] = [];
   readonly classList = {
@@ -181,6 +229,10 @@ class FakeElement {
         type: undefined as string | undefined,
         initEvent(type: string) { this.type = type; },
       }),
+      listeners: this.contentDocumentListeners,
+      addEventListener: (type: string, listener: (event: unknown) => void) => {
+        this.contentDocumentListeners.set(type, [...(this.contentDocumentListeners.get(type) ?? []), listener]);
+      },
     },
   };
 

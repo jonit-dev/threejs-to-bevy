@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "probe-roll",
+  "name": "probe-roll",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "cruise",
+      "waitTicks": 60
+    },
+    {
+      "label": "holdD0",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "holdD1",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "holdD2",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "after",
+      "waitTicks": 60
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 1,
+      "maxDistance": 100000
+    }
+  },
+  "artifacts": {
+    "screenshots": "none",
+    "console": false,
+    "network": false,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

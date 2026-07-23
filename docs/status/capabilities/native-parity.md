@@ -13,6 +13,17 @@ Current support:
   an explicit capability gap; this waiver is not native visual proof.
 - Native proof harness readiness reports, desktop playtests, screenshots,
   frame samples, and conformance fixtures.
+- Native readiness samples include per-entity animation playback
+  (`animations[]` with clip, sourceClip, playing, and advancing time), and the
+  CLI converts advancing samples into effect-log animation evidence, so
+  desktop playtest `assert.animation` rows are proved natively instead of
+  failing with `TN_PLAYTEST_ANIMATION_NOT_OBSERVED`. The runtime advances
+  `NativeAnimationPlayback` time in `Update` for scripted and static bundles.
+- Desktop playtests reuse a prebuilt `threenative_runtime` binary when its
+  `--capabilities` probe reports the required cargo features; the probe and
+  spawn export `LD_LIBRARY_PATH` to the binary's target directory (libcef),
+  and the bundled `dist/runtime-bevy` root is probed before the repo root, so
+  `cargo run` compilation stays out of the fixed native-harness timeout.
 - The 2026-07-07 native P0 closure proof runs the structured-source starter
   through `tn playtest --target desktop` with native screenshots. Raw evidence:
   `runtime-bevy/artifacts/native-playtest-p0/structured-source-starter/summary.json`

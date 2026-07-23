@@ -93,7 +93,11 @@ export function overlayFrameStyle(overlay: IOverlayIr): Partial<CSSStyleDeclarat
     };
   }
   if (overlay.layout !== undefined) {
-    return { ...base, height: `${overlay.layout.height}px`, left: `${overlay.layout.x}px`, top: `${overlay.layout.y}px`, width: `${overlay.layout.width}px` };
+    const layout = overlay.layout;
+    if (!("height" in layout)) {
+      return { ...base, height: "100%", inset: "0", width: "100%" };
+    }
+    return { ...base, height: `${layout.height}px`, left: `${layout.x}px`, top: `${layout.y}px`, width: `${layout.width}px` };
   }
   return {
     ...base,
@@ -104,9 +108,19 @@ export function overlayFrameStyle(overlay: IOverlayIr): Partial<CSSStyleDeclarat
   };
 }
 
+export function overlayKeepsGameKeyboard(input: OverlayInputMode): boolean {
+  return input === "none" || input === "pointer";
+}
+
 function mountOverlayFrame(overlay: IOverlayIr, bridge: IOverlayBridge, source: string, documentRef: Document): HTMLIFrameElement {
   const frame = documentRef.createElement("iframe");
   frame.dataset.threenativeOverlayId = overlay.id;
+  frame.dataset.threenativeOverlayInput = overlay.input;
+  frame.dataset.threenativeOverlayLayout = overlay.layout !== undefined && "mode" in overlay.layout
+    ? overlay.layout.mode
+    : overlay.layout === undefined
+      ? "default"
+      : "rect";
   frame.setAttribute("allowtransparency", overlay.transparent ? "true" : "false");
   frame.setAttribute("sandbox", "allow-scripts allow-forms allow-same-origin");
   frame.setAttribute("src", `${source.replace(/\/$/, "")}/${overlay.entry}`);
@@ -143,6 +157,25 @@ function mountOverlayFrame(overlay: IOverlayIr, bridge: IOverlayBridge, source: 
         },
       };
       snapshotListeners.set(contentWindow.threenativeOverlayBridge, listeners);
+      const forwardKeyboardEvent: EventListener = (event) => {
+        const mode = frame.dataset.threenativeOverlayInput as OverlayInputMode | undefined;
+        if (mode !== undefined && !overlayKeepsGameKeyboard(mode)) return;
+        const parentWindow = documentRef.defaultView;
+        const keyboardEventCtor = (parentWindow as unknown as { KeyboardEvent?: typeof KeyboardEvent } | null)?.KeyboardEvent;
+        if (parentWindow === null || keyboardEventCtor === undefined) return;
+        const keyboardEvent = event as KeyboardEvent;
+        parentWindow.dispatchEvent(new keyboardEventCtor(keyboardEvent.type, {
+          altKey: keyboardEvent.altKey,
+          code: keyboardEvent.code,
+          ctrlKey: keyboardEvent.ctrlKey,
+          key: keyboardEvent.key,
+          metaKey: keyboardEvent.metaKey,
+          repeat: keyboardEvent.repeat,
+          shiftKey: keyboardEvent.shiftKey,
+        }));
+      };
+      contentWindow.document.addEventListener("keydown", forwardKeyboardEvent);
+      contentWindow.document.addEventListener("keyup", forwardKeyboardEvent);
       const readyEvent = contentWindow.document.createEvent("Event");
       readyEvent.initEvent("threenative:bridge-ready", false, false);
       contentWindow.dispatchEvent(readyEvent);
@@ -155,6 +188,7 @@ const snapshotListeners = new WeakMap<IOverlayWindowBridge, Set<OverlaySnapshotL
 const INPUT_MODES = new Set<OverlayInputMode>(["keyboard", "modal", "none", "pointer", "pointer-and-keyboard"]);
 
 function applyOverlayInputMode(frame: HTMLIFrameElement, overlay: IOverlayIr, input: OverlayInputMode): void {
+  frame.dataset.threenativeOverlayInput = input;
   for (const property of ["bottom", "height", "inset", "left", "right", "top", "width"] as const) frame.style[property] = "";
   const presentationInput = input === "modal" || overlay.input === "modal" ? "modal" : overlay.input;
   Object.assign(frame.style, overlayFrameStyle({ ...overlay, input: presentationInput }), {

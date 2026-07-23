@@ -699,6 +699,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const physicsDebug = readinessSamples.at(-1)?.physicsDebug;
   const physicsDebugSeries = nativePhysicsDebugSeries(readinessSamples, options.scenario, captureTicks.beforeTick);
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
+  effectLog.entries.push(...nativeAnimationEffectLogEntries(readinessSamples));
   const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
   const writeAudit = options.auditWrites ? nativeRuntimeWriteAudit(readinessSamples) : undefined;
   diagnostics.push(...resourceObservationDiagnostics(diagnostics, runtimeDiagnostics));
@@ -945,6 +946,44 @@ export function nativeSceneQueryEffectLog(samples: readonly Record<string, unkno
     }
   }
   return { entries: [...entries.values()] };
+}
+
+export function nativeAnimationEffectLogEntries(samples: readonly Record<string, unknown>[]): unknown[] {
+  const observed = new Map<string, { entity: string; clip: string; sourceClip?: string; playing: boolean; minTime: number; maxTime: number }>();
+  for (const sample of samples) {
+    if (!Array.isArray(sample.animations)) continue;
+    for (const animation of sample.animations) {
+      if (!isRecord(animation) || typeof animation.entity !== "string" || typeof animation.clip !== "string" || typeof animation.timeSeconds !== "number") continue;
+      const key = `${animation.entity} ${animation.clip}`;
+      const current = observed.get(key);
+      if (current === undefined) {
+        observed.set(key, {
+          clip: animation.clip,
+          entity: animation.entity,
+          maxTime: animation.timeSeconds,
+          minTime: animation.timeSeconds,
+          playing: animation.playing === true,
+          ...(typeof animation.sourceClip === "string" ? { sourceClip: animation.sourceClip } : {}),
+        });
+      } else {
+        current.maxTime = Math.max(current.maxTime, animation.timeSeconds);
+        current.minTime = Math.min(current.minTime, animation.timeSeconds);
+        current.playing = current.playing || animation.playing === true;
+      }
+    }
+  }
+  return [...observed.values()]
+    .filter((animation) => animation.playing && animation.maxTime > animation.minTime)
+    .map((animation) => ({
+      kind: "animation",
+      payload: {
+        advancedSeconds: animation.maxTime - animation.minTime,
+        clip: animation.clip,
+        entered: true,
+        entity: animation.entity,
+        ...(animation.sourceClip === undefined ? {} : { sourceClip: animation.sourceClip }),
+      },
+    }));
 }
 
 function nativeRecordingPlan(artifactDirectory: string, scenario: IPlaytestScenario): IPlaytestNativeRecording {

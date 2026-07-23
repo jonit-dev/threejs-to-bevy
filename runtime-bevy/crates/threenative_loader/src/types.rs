@@ -357,11 +357,17 @@ pub struct OverlayIr {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct OverlayLayoutIr {
-    pub height: f32,
-    pub width: f32,
-    pub x: f32,
-    pub y: f32,
+#[serde(untagged)]
+pub enum OverlayLayoutIr {
+    Rect {
+        height: f32,
+        width: f32,
+        x: f32,
+        y: f32,
+    },
+    Viewport {
+        mode: String,
+    },
 }
 
 #[derive(Clone, Debug, Default, Deserialize)]

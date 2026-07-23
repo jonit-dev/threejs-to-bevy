@@ -1,0 +1,538 @@
+{
+  "schema": "threenative.scene",
+  "version": "0.1.0",
+  "id": "pacific-flight",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "active": true,
+          "clear": {
+            "mode": "default"
+          },
+          "far": 12000,
+          "fovY": 52,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Hierarchy": {
+          "parent": "aircraft"
+        },
+        "Transform": {
+          "position": [
+            0,
+            4.6,
+            16
+          ],
+          "rotation": [
+            -0.130526,
+            0,
+            0,
+            0.991445
+          ]
+        }
+      }
+    },
+    {
+      "id": "light.ambient",
+      "components": {
+        "Light": {
+          "color": "#bcd1da",
+          "intensity": 2.6,
+          "kind": "ambient"
+        }
+      }
+    },
+    {
+      "id": "light.sun",
+      "components": {
+        "Light": {
+          "color": "#fff1c7",
+          "intensity": 5.5,
+          "kind": "directional",
+          "shadowBias": -0.0002,
+          "shadowNormalBias": 0.025
+        },
+        "Transform": {
+          "position": [
+            -120,
+            240,
+            80
+          ],
+          "rotation": [
+            -0.42,
+            -0.18,
+            0.08,
+            0.886
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean.visual",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.ocean",
+          "mesh": "mesh.ocean",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            -3500
+          ],
+          "rotation": [
+            -0.707107,
+            0,
+            0,
+            0.707107
+          ],
+          "scale": [
+            8000,
+            8000,
+            8000
+          ]
+        }
+      }
+    },
+    {
+      "id": "ocean.collider",
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            16000,
+            2,
+            16000
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "VisualProvenance": {
+          "status": "non-rendered physics boundary",
+          "notes": "The visible ocean is owned by ocean.visual; this collider must not synthesize fallback geometry."
+        },
+        "Transform": {
+          "position": [
+            0,
+            -1.05,
+            -3500
+          ]
+        }
+      }
+    },
+    {
+      "id": "pacific.wind",
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            500,
+            -3500
+          ]
+        },
+        "WindVolume": {
+          "airDensity": 1.18,
+          "gust": {
+            "amplitude": [
+              2.5,
+              0.8,
+              0.4
+            ],
+            "frequency": 0.16,
+            "seed": 1942
+          },
+          "shape": "box",
+          "size": [
+            16000,
+            2000,
+            16000
+          ],
+          "velocity": [
+            3,
+            0,
+            0
+          ]
+        },
+        "VisualProvenance": {
+          "status": "non-rendered environmental volume",
+          "notes": "Wind is simulation-only and must not synthesize fallback geometry."
+        }
+      }
+    },
+    {
+      "id": "aircraft",
+      "components": {
+        "AerodynamicBody": {
+          "dragArea": [
+            3.2,
+            5.5,
+            2.2
+          ],
+          "maxForce": 220000,
+          "surfaces": [
+            {
+              "area": 30.2,
+              "aspectRatio": 5.2,
+              "centerOfPressure": [
+                0,
+                0,
+                0
+              ],
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.24
+                },
+                {
+                  "angle": -0.25,
+                  "coefficient": 0.06
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.035
+                },
+                {
+                  "angle": 0.25,
+                  "coefficient": 0.08
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.3
+                }
+              ],
+              "id": "main-wing",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.8
+                },
+                {
+                  "angle": -0.25,
+                  "coefficient": -0.1
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.58
+                },
+                {
+                  "angle": 0.25,
+                  "coefficient": 1.35
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.2
+                }
+              ],
+              "recoveryAngle": 0.34,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 4.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                0,
+                0,
+                4.2
+              ],
+              "control": {
+                "binding": "Pitch",
+                "input": 0,
+                "maxDeflection": 0.16,
+                "response": 2.8
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.16
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.035
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.16
+                }
+              ],
+              "id": "elevator",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.9
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.3,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 2.2,
+              "aspectRatio": 4,
+              "centerOfPressure": [
+                -4.2,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.1,
+                "response": 4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.025
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.left",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.8
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.8
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.45
+            },
+            {
+              "area": 2.2,
+              "aspectRatio": 4,
+              "centerOfPressure": [
+                4.2,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.1,
+                "response": 4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.025
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.right",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.8
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.8
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.45
+            },
+            {
+              "area": 7.5,
+              "aspectRatio": 3.2,
+              "centerOfPressure": [
+                0,
+                0,
+                0.7
+              ],
+              "control": {
+                "binding": "Flaps",
+                "input": 0,
+                "maxDeflection": 0.22,
+                "response": 0.35
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.32
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.02
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.38
+                }
+              ],
+              "id": "flaps",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.5
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.27,
+              "stallAngle": 0.38
+            }
+          ],
+          "thrusters": [
+            {
+              "binding": "Throttle",
+              "direction": [
+                0,
+                0,
+                -1
+              ],
+              "fuelHook": "fuel.avgas",
+              "id": "wright-r1820",
+              "maxForce": 21000,
+              "point": [
+                0,
+                0,
+                -4.4
+              ],
+              "response": 0.55,
+              "throttle": 0.82
+            }
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            12.7,
+            3.9,
+            10.1
+          ]
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "maxSubsteps": 4,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.004,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 4200,
+          "velocity": [
+            0,
+            0,
+            -72
+          ]
+        },
+        "VisualProvenance": {
+          "status": "model-backed physics parent",
+          "notes": "Rendering is owned by aircraft.visual; the physics parent must not synthesize a blue fallback mesh."
+        },
+        "Transform": {
+          "position": [
+            0,
+            90,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ]
+        }
+      }
+    },
+    {
+      "id": "aircraft.visual",
+      "prefab": "prefab.aircraft",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ],
+          "scale": [
+            6.325,
+            6.325,
+            6.325
+          ]
+        }
+      }
+    }
+  ],
+  "prefabs": [
+    {
+      "asset": "assets/generated/aircraft.douglas-sbd3.glb",
+      "id": "prefab.aircraft"
+    }
+  ],
+  "instances": [],
+  "resources": [
+    {
+      "id": "FlightState",
+      "value": {
+        "airspeedKnots": 140,
+        "altitudeFeet": 295,
+        "flaps": "UP",
+        "objective": "Hold controlled flight for 45 seconds",
+        "phase": "CRUISE",
+        "progress": 0,
+        "retryCount": 0,
+        "stall": false,
+        "throttlePercent": 82
+      }
+    }
+  ],
+  "systems": [],
+  "ui": {
+    "nodes": [],
+    "bindings": []
+  }
+}

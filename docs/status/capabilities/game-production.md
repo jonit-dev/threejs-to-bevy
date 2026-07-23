@@ -93,6 +93,14 @@ Current support:
 - Top-down collector plans now route movement to the `top-down-collector`
   recipe, collectible proof uses pickup assertions, and the emitted-command
   gate checks proof semantics in addition to command exit status.
+- Score/QA honor explicit scope blockers: a `threenative.game-scope-blockers`
+  JSON artifact under `artifacts/game-production/` waives named asset/audio
+  surfaces and UI states as `waived-scope` with a
+  `TN_GAME_SCOPE_BLOCKER_RECORDED` warning instead of a blocking error,
+  keeping out-of-scope genre requirements visible but non-fatal for focused
+  slices. Runtime scale QA also infers a `vehicle` role for
+  aircraft/watercraft ids and accepts a vehicle hero without a humanoid
+  player.
 - Generated-game score/QA rejects registered empty gameplay exports and
   requires a playtest resource or HUD mutation assertion. `examples/coin-patrol`
   is enrolled as a build-only forcing-function example with committed pickup,

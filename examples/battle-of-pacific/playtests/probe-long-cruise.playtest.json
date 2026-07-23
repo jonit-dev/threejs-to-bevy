@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "probe-long-cruise",
+  "name": "probe-long-cruise",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 10,
+  "steps": [
+    { "label": "cruise 5s", "waitTicks": 300 },
+    { "label": "cruise 10s", "waitTicks": 300 },
+    { "label": "cruise 15s", "waitTicks": 300 },
+    { "label": "cruise 20s", "waitTicks": 300 },
+    { "label": "cruise 25s", "waitTicks": 300 },
+    { "label": "cruise 30s", "waitTicks": 300 }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 100,
+      "maxDistance": 100000
+    },
+    "resources": [
+      { "id": "FlightState", "path": "phase", "equals": "CRUISE" },
+      { "id": "FlightState", "path": "altitudeFeet", "gte": 200 }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "none",
+    "console": false,
+    "network": false,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

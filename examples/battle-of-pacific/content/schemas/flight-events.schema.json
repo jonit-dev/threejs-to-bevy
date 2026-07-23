@@ -1,0 +1,33 @@
+{
+  "schema": "threenative.schema",
+  "version": "0.1.0",
+  "id": "flight-events",
+  "kind": "event",
+  "schemas": [
+    {
+      "id": "flight:telemetry",
+      "fields": {
+        "airspeed": { "kind": "string" },
+        "altitude": { "kind": "string" },
+        "flaps": { "kind": "string" },
+        "objective": { "kind": "string" },
+        "phase": { "kind": "string" },
+        "progress": { "kind": "number" },
+        "stall": { "kind": "boolean" },
+        "throttle": { "kind": "string" }
+      }
+    },
+    {
+      "id": "flight:restart",
+      "fields": {
+        "source": { "kind": "string", "required": false, "default": "overlay" }
+      }
+    },
+    {
+      "id": "flight:toggle-flaps",
+      "fields": {
+        "source": { "kind": "string", "required": false, "default": "overlay" }
+      }
+    }
+  ]
+}

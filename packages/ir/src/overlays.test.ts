@@ -42,7 +42,9 @@ test("rejects invalid overlay bridge schemas", () => {
 
 test("validates optional overlay layout rectangles in version 0.2.0", () => {
   assert.deepEqual(validateOverlaysIr({ ...validOverlaysIr({ layout: { height: 180, width: 320, x: 12, y: 16 } }), version: "0.2.0" }), []);
+  assert.deepEqual(validateOverlaysIr({ ...validOverlaysIr({ layout: { mode: "viewport" } }), version: "0.2.0" }), []);
   assert.equal(validateOverlaysIr({ ...validOverlaysIr({ layout: { height: 0, width: 320, x: 12, y: 16 } }), version: "0.2.0" })[0]?.code, "TN_IR_OVERLAY_LAYOUT_INVALID");
+  assert.equal(validateOverlaysIr({ ...validOverlaysIr({ layout: { mode: "viewport", width: 320 } }), version: "0.2.0" })[0]?.code, "TN_IR_OVERLAY_LAYOUT_INVALID");
 });
 
 test("should reject payload over 16KB when direction is gameToOverlay", () => {

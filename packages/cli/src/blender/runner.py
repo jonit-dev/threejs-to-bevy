@@ -11,7 +11,7 @@ import sys
 import traceback
 
 import bpy
-from mathutils import Euler, Matrix
+from mathutils import Euler, Matrix, Vector
 
 
 RESULT_PREFIX = "THREENATIVE_RESULT "
@@ -145,21 +145,107 @@ def apply_operations(recipe, objects):
             raise ValueError("unsupported operation: " + str(row["kind"]))
 
 
-def add_animations(recipe, objects):
+def relative_transform(data_path, value, baseline):
+    if data_path == "location":
+        return Vector(baseline) + Vector(position_to_blender(value))
+    if data_path == "rotation_euler":
+        offset = rotation_to_blender(value).to_quaternion()
+        return (baseline @ offset).to_euler("XYZ")
+    authored_scale = scale_to_blender(value)
+    return tuple(float(baseline[index]) * authored_scale[index] for index in range(3))
+
+
+def prepare_source_animation_pivots(recipe, objects):
+    pivots = {}
+    pivot_values = {}
+    for clip in sorted(recipe.get("animations", []), key=lambda row: row["id"]):
+        for track in sorted(clip["tracks"], key=lambda row: (row["node"], row["property"])):
+            if "pivot" not in track:
+                continue
+            if track["property"] != "rotation":
+                raise ValueError("source animation pivots require rotation tracks")
+            node = track["node"]
+            value = vec3(track["pivot"], [0.0, 0.0, 0.0])
+            if node in pivot_values:
+                if any(abs(left - right) > 1e-9 for left, right in zip(pivot_values[node], value)):
+                    raise ValueError("source animation node uses conflicting pivots: " + node)
+                continue
+            target = objects[node]
+            pivot_name = node + ".ThreeNativePivot"
+            if bpy.data.objects.get(pivot_name) is not None:
+                raise ValueError("source animation pivot name collides with imported node: " + pivot_name)
+            target_world = target.matrix_world.copy()
+            original_parent = target.parent
+            pivot = bpy.data.objects.new(pivot_name, None)
+            bpy.context.scene.collection.objects.link(pivot)
+            pivot.rotation_mode = "XYZ"
+            pivot.parent = original_parent
+            pivot.matrix_world = Matrix.Translation(Vector(position_to_blender(value)))
+            target.parent = pivot
+            target.matrix_world = target_world
+            pivots[node] = pivot
+            pivot_values[node] = value
+    return pivots
+
+
+def unwrap_euler(value, previous):
+    if previous is None:
+        return value
+    unwrapped = list(value)
+    for index in range(3):
+        while unwrapped[index] - previous[index] > math.pi:
+            unwrapped[index] -= math.tau
+        while unwrapped[index] - previous[index] < -math.pi:
+            unwrapped[index] += math.tau
+    return Euler(tuple(unwrapped), "XYZ")
+
+
+def action_fcurves(action):
+    curves = []
+    seen = set()
+    for curve in action.fcurves:
+        if curve.as_pointer() not in seen:
+            seen.add(curve.as_pointer())
+            curves.append(curve)
+    for layer in getattr(action, "layers", []):
+        for strip in getattr(layer, "strips", []):
+            for channelbag in getattr(strip, "channelbags", []):
+                for curve in channelbag.fcurves:
+                    if curve.as_pointer() not in seen:
+                        seen.add(curve.as_pointer())
+                        curves.append(curve)
+    return curves
+
+
+def add_animations(recipe, objects, relative=False):
     scene = bpy.context.scene
     scene.render.fps = 30
+    pivots = prepare_source_animation_pivots(recipe, objects) if relative else {}
+    animated_objects = {**objects, **pivots}
+    baselines = {
+        name: {
+            "location": obj.location.copy(),
+            "rotation_euler": obj.matrix_basis.to_quaternion(),
+            "scale": obj.scale.copy(),
+        }
+        for name, obj in animated_objects.items()
+    }
     for clip in sorted(recipe.get("animations", []), key=lambda row: row["id"]):
         frame_end = max(1, round(float(clip["duration"]) * scene.render.fps))
+        scene.frame_start = 0
         scene.frame_end = max(scene.frame_end, frame_end)
         touched = []
+        action = bpy.data.actions.new(name=clip["id"])
         for track in sorted(clip["tracks"], key=lambda row: (row["node"], row["property"])):
-            obj = objects[track["node"]]
+            obj = pivots.get(track["node"], objects[track["node"]]) if track["property"] == "rotation" else objects[track["node"]]
             touched.append(obj)
+            if track["property"] == "rotation":
+                obj.rotation_mode = "XYZ"
             if obj.animation_data is None:
                 obj.animation_data_create()
-            action = bpy.data.actions.new(name=clip["id"] + "." + track["node"] + "." + track["property"])
             obj.animation_data.action = action
             data_path = {"position": "location", "rotation": "rotation_euler", "scale": "scale"}[track["property"]]
+            previous_rotation = None
             for keyframe in track["keyframes"]:
                 if track["property"] == "position":
                     value = position_to_blender(keyframe["value"])
@@ -167,10 +253,15 @@ def add_animations(recipe, objects):
                     value = rotation_to_blender(keyframe["value"])
                 else:
                     value = scale_to_blender(keyframe["value"])
+                if relative:
+                    value = relative_transform(data_path, keyframe["value"], baselines[track["node"]][data_path])
+                if track["property"] == "rotation":
+                    value = unwrap_euler(value, previous_rotation)
+                    previous_rotation = value.copy()
                 setattr(obj, data_path, value)
                 frame = round(float(keyframe["time"]) * scene.render.fps)
                 obj.keyframe_insert(data_path=data_path, frame=frame, group=clip["id"])
-                for curve in action.fcurves:
+                for curve in action_fcurves(action):
                     for point in curve.keyframe_points:
                         point.interpolation = "CONSTANT" if keyframe.get("interpolation") == "step" else "LINEAR"
             track_data = obj.animation_data.nla_tracks.new()
@@ -182,6 +273,18 @@ def add_animations(recipe, objects):
         for obj in touched:
             if obj.animation_data is not None:
                 obj.animation_data.use_nla = True
+
+
+def import_source(source_path):
+    bpy.ops.import_scene.gltf(filepath=source_path)
+    objects = {}
+    for obj in bpy.context.scene.objects:
+        if obj.name in objects:
+            raise ValueError("ambiguous imported node name: " + obj.name)
+        objects[obj.name] = obj
+    if not objects:
+        raise ValueError("source GLB imported no objects")
+    return objects
 
 
 def run(job_path):
@@ -197,31 +300,36 @@ def run(job_path):
             if datablock.users == 0:
                 datablocks.remove(datablock)
 
-    materials = {row["id"]: create_material(row) for row in sorted(recipe.get("materials", []), key=lambda item: item["id"])}
-    objects = {}
-    for part in sorted(recipe["parts"], key=lambda item: item["id"]):
-        obj = add_primitive(part)
-        if part.get("material") is not None:
-            obj.data.materials.append(materials[part["material"]])
-        objects[part["id"]] = obj
-    for part in sorted(recipe["parts"], key=lambda item: item["id"]):
-        obj = objects[part["id"]]
-        for modifier in part.get("modifiers", []):
-            add_modifier(obj, modifier, objects)
+    source_path = job.get("sourcePath")
+    materials = {}
+    if source_path is not None:
+        objects = import_source(source_path)
+    else:
+        materials = {row["id"]: create_material(row) for row in sorted(recipe.get("materials", []), key=lambda item: item["id"])}
+        objects = {}
+        for part in sorted(recipe["parts"], key=lambda item: item["id"]):
+            obj = add_primitive(part)
+            if part.get("material") is not None:
+                obj.data.materials.append(materials[part["material"]])
+            objects[part["id"]] = obj
+        for part in sorted(recipe["parts"], key=lambda item: item["id"]):
+            obj = objects[part["id"]]
+            for modifier in part.get("modifiers", []):
+                add_modifier(obj, modifier, objects)
+        apply_operations(recipe, objects)
 
-    apply_operations(recipe, objects)
-    add_animations(recipe, objects)
+    add_animations(recipe, objects, relative=source_path is not None)
     bpy.ops.object.select_all(action="SELECT")
     os.makedirs(os.path.dirname(job["outputPath"]), exist_ok=True)
     bpy.ops.export_scene.gltf(
         filepath=job["outputPath"], export_format="GLB", use_selection=True,
         export_yup=True, export_animations=True, export_nla_strips=True,
-        export_animation_mode="NLA_TRACKS",
+        export_animation_mode="ACTIONS", export_merge_animation="ACTION",
         export_apply=False,
     )
     result = {
         "animations": sorted(row["id"] for row in recipe.get("animations", [])),
-        "materials": sorted(materials.keys()),
+        "materials": sorted(material.name for material in bpy.data.materials),
         "nodes": sorted(objects.keys()),
         "ok": True,
         "outputPath": job["outputPath"],

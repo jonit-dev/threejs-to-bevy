@@ -1011,6 +1011,17 @@ pub fn advance_native_animation_playback(world: &mut World, fixed_delta: f32) {
     }
 }
 
+pub fn advance_native_animation_playback_time(
+    time: Res<Time>,
+    mut playback: Query<&mut NativeAnimationPlayback>,
+) {
+    let delta = time.delta_seconds();
+    for mut item in &mut playback {
+        let speed = item.speed;
+        item.time_seconds += delta * speed;
+    }
+}
+
 pub fn trace_native_emissive_bloom(world: &mut World) -> Vec<NativeEmissiveBloomObservation> {
     let entries = {
         let mut query = world.query::<(

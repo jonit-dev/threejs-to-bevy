@@ -25,6 +25,7 @@ use threenative_loader::{AssetsManifest, LoadedBundle, TransformComponent};
 use crate::{
     assets::{NativeRuntimeProbeObservations, native_runtime_probe_observations},
     input::portable_key_code,
+    map_world::NativeAnimationPlayback,
     systems_host::{NativeResourceObservationState, NativeRuntimeWriteAuditState},
 };
 
@@ -157,6 +158,7 @@ pub struct NativeProofHarnessSystem<'w, 's> {
     resource_observations: Option<Res<'w, NativeResourceObservationState>>,
     write_audit: Option<Res<'w, NativeRuntimeWriteAuditState>>,
     proof_resources: NativeProofResourceQueries<'w, 's>,
+    animation_playback: Query<'w, 's, (&'static ThreeNativeId, &'static NativeAnimationPlayback)>,
 }
 
 struct NativeProofHarnessCommandProgress {
@@ -208,7 +210,21 @@ pub struct NativeProofHarnessReadiness {
     pub overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     #[serde(rename = "sceneQueries", skip_serializing_if = "Vec::is_empty")]
     pub scene_queries: Vec<NativeProofHarnessSceneQuerySample>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub animations: Vec<NativeProofHarnessAnimationSample>,
     pub transforms: Vec<NativeProofHarnessTransformSample>,
+}
+
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct NativeProofHarnessAnimationSample {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub active_state: Option<String>,
+    pub clip: String,
+    pub entity: String,
+    pub playing: bool,
+    pub source_clip: String,
+    pub time_seconds: f32,
 }
 
 #[derive(Clone, Debug, Serialize, PartialEq)]
@@ -736,6 +752,7 @@ fn write_native_proof_harness_post_runtime_sample(
     _main_thread: Option<NonSend<crate::ScriptedRuntimeMainThread>>,
     mut state: ResMut<NativeProofHarnessState>,
     transforms: Query<(&ThreeNativeId, &Transform)>,
+    animation_playback: Query<(&ThreeNativeId, &NativeAnimationPlayback)>,
     runtime: Option<Res<crate::ScriptedRuntimeBundle>>,
     game_loop: Option<Res<crate::systems_host::NativeGameLoopState>>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
@@ -765,6 +782,7 @@ fn write_native_proof_harness_post_runtime_sample(
                     &game_loop.script_posed_entities,
                 )
             }),
+            native_proof_harness_animation_samples(animation_playback.iter()),
         );
         return;
     }
@@ -785,6 +803,7 @@ fn write_native_proof_harness_post_runtime_sample(
             gameplay_observations: None,
             physics_debug: None,
             overlay_snapshots: Vec::new(),
+            animations: native_proof_harness_animation_samples(animation_playback.iter()),
         },
     );
 }
@@ -875,6 +894,7 @@ struct NativeProofHarnessSample {
     gameplay_observations: Option<serde_json::Value>,
     physics_debug: Option<crate::physics_debug::PhysicsDebugSnapshot>,
     overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
+    animations: Vec<NativeProofHarnessAnimationSample>,
 }
 
 fn write_current_native_proof_harness_sample(
@@ -909,6 +929,7 @@ fn write_current_native_proof_harness_sample(
             )
         }),
         overlay_snapshots: Vec::new(),
+        animations: native_proof_harness_animation_samples(harness.animation_playback.iter()),
     };
     write_native_proof_harness_sample(
         &mut harness.state,
@@ -934,6 +955,7 @@ fn write_native_proof_harness_sample<'a>(
         gameplay_observations,
         physics_debug,
         overlay_snapshots,
+        animations,
     } = sample;
     let ok = diagnostics
         .iter()
@@ -953,6 +975,7 @@ fn write_native_proof_harness_sample<'a>(
         physics_debug,
         overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
+        animations,
         transforms: native_proof_harness_transform_samples(transforms),
     };
     if let Err(error) = write_native_proof_harness_readiness(
@@ -983,6 +1006,7 @@ fn write_native_proof_harness_bundle_sample(
     overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     bundle: &LoadedBundle,
     physics_debug: Option<crate::physics_debug::PhysicsDebugSnapshot>,
+    animations: Vec<NativeProofHarnessAnimationSample>,
 ) {
     let ok = diagnostics
         .iter()
@@ -1005,6 +1029,7 @@ fn write_native_proof_harness_bundle_sample(
         physics_debug,
         overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
+        animations,
         transforms: native_proof_harness_bundle_transform_samples(bundle),
     };
     if let Err(error) = write_native_proof_harness_readiness(
@@ -1066,6 +1091,28 @@ fn request_native_proof_screenshot(
     screenshots
         .save_screenshot_to_disk(window, output_path)
         .map_err(|error| format!("Failed to request native proof screenshot '{path}': {error}"))
+}
+
+pub fn native_proof_harness_animation_samples<'a>(
+    animations: impl IntoIterator<Item = (&'a ThreeNativeId, &'a NativeAnimationPlayback)>,
+) -> Vec<NativeProofHarnessAnimationSample> {
+    let mut samples = animations
+        .into_iter()
+        .map(|(id, playback)| NativeProofHarnessAnimationSample {
+            active_state: playback.active_state.clone(),
+            clip: playback.clip.clone(),
+            entity: id.0.clone(),
+            playing: playback.speed != 0.0,
+            source_clip: playback.source_clip.clone(),
+            time_seconds: playback.time_seconds,
+        })
+        .collect::<Vec<_>>();
+    samples.sort_by(|left, right| {
+        left.entity
+            .cmp(&right.entity)
+            .then_with(|| left.clip.cmp(&right.clip))
+    });
+    samples
 }
 
 pub fn native_proof_harness_transform_samples<'a>(

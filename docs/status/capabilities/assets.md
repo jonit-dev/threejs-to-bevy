@@ -19,6 +19,18 @@ Current support:
   `array`/`bevel`/`boolean`/`mirror`/`solidify`; `join`/`parent`;
   position/rotation/scale tracks; and linear/step interpolation. Raw Python,
   remote recipe inputs, and unbounded operations are rejected.
+- The same Blender recipe owner supports animation-only re-export of one
+  self-contained project-local source GLB. Tracks use exact unique imported
+  node names and local transform offsets; source rotation tracks may declare an
+  authored Y-up hinge pivot. Source bytes participate in the input hash,
+  existing clips are retained, and external dependencies, generated/source
+  mode mixtures, missing or ambiguous targets, conflicting pivots, clip
+  collisions, symlink escape, and missing staged clips fail closed. The
+  Douglas SBD-3 acceptance asset retains 22 meshes, 10,416 triangles, and
+  authored materials while adding independently inspected `propeller.spin`,
+  rigid hinged `flaps.deploy`, paired `elevator.pitch`, and `rudder.yaw`
+  clips. User visual review caught and corrected an initial false assumption
+  that two overlapping flap material components were independent panels.
 - Reviewed project-local img2threejs factories can generate one named,
   textured `THREE.Group` through `tn asset generate <id> --provider
   img2threejs`; the recorded provider provenance can be rerun through `tn
@@ -102,6 +114,7 @@ Verification:
 - `tn asset provider search poly-haven --query crate --type models --live --json`
 - `tn asset provider preview sketchfab <model-uid> --json`
 - `tn asset generate robot.guardian --provider blender --recipe content/generators/robot.guardian.recipe.json --json`
+- `tn asset generate aircraft.animated --provider blender --recipe content/generators/aircraft.animated.recipe.json --json`
 - `tn asset generate prop.radio --provider img2threejs --recipe content/generators/prop.radio.img2threejs.json --json`
 - MCP `asset.generate_img2threejs` with the same project-local reviewed recipe
 - `tn generator run prop.radio --json`
@@ -125,10 +138,11 @@ Verification:
   executables, and cache paths while requiring the owned runner)
 
 Promotion boundary: Linux x64 has a real pinned-install and checked host smoke
-for three bounded generated props, including exact mesh/material/triangle/bounds
-baselines, actual owned-runner argv, output hashes, authoring/build success, and
-cleanup. Humanoid animation and native visual work remains experimental rather
-than part of this release gate. macOS x64/arm64 and Windows x64 remain
+for three bounded generated props plus project-local source-GLB animation
+evidence, including exact mesh/material/triangle/bounds baselines, actual
+owned-runner argv, output hashes, authoring/build success, and cleanup.
+Humanoid/rig animation and native visual work remain experimental rather than
+part of this release gate. macOS x64/arm64 and Windows x64 remain
 explicitly unproven rather than inferred from manifest URLs.
 
 The fixed BlenderMCP outcome inventory retains 22 rows: 19 have full,
@@ -141,6 +155,14 @@ Evidence and owning gates:
 
 - [retained lifecycle, coverage, and provider evidence](../../../tools/verify/evidence/blender-tool.json)
 - [three checked recipe inputs](../../../tools/verify/evidence/blender-recipes)
+- [Douglas SBD-3 source-animation recipe](../../../content/generators/aircraft.douglas-sbd3.recipe.json),
+  [hash-bound verification report](../../../tools/verify/artifacts/blender-source-animation/verification-report.json),
+  [five-angle model-test manifest](../../../tools/verify/artifacts/blender-source-animation/model-test-corrected/artifacts/turntable/manifest.json),
+  and short runtime recordings for
+  [propeller](../../../tools/verify/artifacts/blender-source-animation/videos/propeller-spin.mp4),
+  [wing flap](../../../tools/verify/artifacts/blender-source-animation/videos/flaps-deploy.mp4),
+  [elevators](../../../tools/verify/artifacts/blender-source-animation/videos/elevator-pitch.mp4),
+  and [rudder](../../../tools/verify/artifacts/blender-source-animation/videos/rudder-yaw.mp4)
 - [promotion gate](../../../tools/verify/src/blenderToolGate.ts) and
   [real host collector](../../../tools/verify/src/blenderHostSmoke.ts)
 - [package-content enforcement](../../../tools/verify/src/blenderPackageContents.ts)

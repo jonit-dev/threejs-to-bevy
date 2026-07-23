@@ -100,7 +100,7 @@ export function stepPhysicsAerodynamics(world: IWorldIr, fixedDelta: number, tic
       const control = approach(previousControl, requestedControl, (surface.control?.response ?? 1) * fixedDelta);
       runtime.controls.set(`applied:${surface.id}`, control);
       const deflection = control * (surface.control?.maxDeflection ?? 0);
-      const angleOfAttack = speed < EPSILON ? 0 : Math.atan2(localAirVelocity[1], Math.max(EPSILON, -localAirVelocity[2]));
+      const angleOfAttack = speed < EPSILON ? 0 : Math.atan2(-localAirVelocity[1], Math.max(EPSILON, -localAirVelocity[2]));
       const effectiveAngle = angleOfAttack + deflection;
       const wasStalled = runtime.stalls.has(surface.id);
       const stalled = wasStalled ? Math.abs(effectiveAngle) > surface.recoveryAngle : Math.abs(effectiveAngle) >= surface.stallAngle;

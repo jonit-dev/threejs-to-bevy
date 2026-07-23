@@ -1,9 +1,16 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
+import { readFileSync } from "node:fs";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
 
 import { blenderMcpOutcomeCoverage, EXTERNAL_TOOL_REGISTRY } from "@threenative/cli";
 
 import { validateBlenderToolEvidence, type IBlenderToolGateEvidence } from "./blenderToolGate.js";
+
+const runnerSha256 = createHash("sha256")
+  .update(readFileSync(fileURLToPath(new URL("../../../packages/cli/src/blender/runner.py", import.meta.url))))
+  .digest("hex");
 
 test("should pass complete pinned host evidence", () => {
   const result = validateBlenderToolEvidence(validEvidence());
@@ -71,7 +78,7 @@ function validEvidence(): IBlenderToolGateEvidence {
       {
         archiveBytes: 377_898_640, cleanup: { noLocks: true, noProcesses: true, noStaging: true }, disposition: "promoted", durationMs: 1,
         cacheBytes: artifact.expectedBytes + 1, executableVersion: "4.5.11", hardenedArgv: ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python", "<owned-runner>", "--", "--job", "<owned-job>"],
-        host: "linux-x64", installAcknowledged: true, recipes: [recipe("prop.barrier"), recipe("prop.crate"), recipe("prop.pickup")], runnerSha256: "55be4753397b872c44ac8e6b91cae10b67c792649d6f914e62ee2f8320fc1409", sha256: artifact.sha256, sourceUrl: artifact.url,
+        host: "linux-x64", installAcknowledged: true, recipes: [recipe("prop.barrier"), recipe("prop.crate"), recipe("prop.pickup")], runnerSha256, sha256: artifact.sha256, sourceUrl: artifact.url,
       },
       ...(["macos-x64", "macos-arm64", "windows-x64"] as const).map((host) => ({ cleanup: { noLocks: true, noProcesses: true, noStaging: true }, disposition: "rejected" as const, host, rejection: { code: "TN_EXTERNAL_TOOL_HOST_UNPROVEN", message: "Real execution proof is not yet available for this host." } })),
     ],

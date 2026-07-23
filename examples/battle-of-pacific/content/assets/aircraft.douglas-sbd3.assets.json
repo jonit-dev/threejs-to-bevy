@@ -1,0 +1,110 @@
+{
+  "assets": [
+    {
+      "animationGraph": {
+        "initialState": "flight.cruise",
+        "states": [
+          {
+            "clip": "propeller.spin",
+            "id": "propeller.spin"
+          },
+          {
+            "clip": "flaps.deploy",
+            "id": "flaps.deploy"
+          },
+          {
+            "clip": "flight.cruise",
+            "id": "flight.cruise"
+          },
+          {
+            "clip": "flight.flaps",
+            "id": "flight.flaps"
+          },
+          {
+            "clip": "flight.flaps-down",
+            "id": "flight.flaps-down"
+          },
+          {
+            "clip": "flight.flaps-retract",
+            "id": "flight.flaps-retract"
+          },
+          {
+            "clip": "flight.pitch-up",
+            "id": "flight.pitch-up"
+          },
+          {
+            "clip": "flight.pitch-down",
+            "id": "flight.pitch-down"
+          },
+          {
+            "clip": "flight.rudder-left",
+            "id": "flight.rudder-left"
+          },
+          {
+            "clip": "flight.rudder-right",
+            "id": "flight.rudder-right"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "id": "propeller.spin",
+          "loop": true,
+          "sourceClip": "propeller.spin"
+        },
+        {
+          "id": "flaps.deploy",
+          "loop": false,
+          "sourceClip": "flaps.deploy"
+        },
+        {
+          "id": "flight.cruise",
+          "loop": true,
+          "sourceClip": "flight.cruise"
+        },
+        {
+          "id": "flight.flaps",
+          "loop": false,
+          "sourceClip": "flight.flaps"
+        },
+        {
+          "id": "flight.flaps-down",
+          "loop": true,
+          "sourceClip": "flight.flaps-down"
+        },
+        {
+          "id": "flight.flaps-retract",
+          "loop": false,
+          "sourceClip": "flight.flaps-retract"
+        },
+        {
+          "id": "flight.pitch-up",
+          "loop": true,
+          "sourceClip": "flight.pitch-up"
+        },
+        {
+          "id": "flight.pitch-down",
+          "loop": true,
+          "sourceClip": "flight.pitch-down"
+        },
+        {
+          "id": "flight.rudder-left",
+          "loop": true,
+          "sourceClip": "flight.rudder-left"
+        },
+        {
+          "id": "flight.rudder-right",
+          "loop": true,
+          "sourceClip": "flight.rudder-right"
+        }
+      ],
+      "id": "aircraft.douglas-sbd3",
+      "path": "assets/generated/aircraft.douglas-sbd3.glb",
+      "source": "generator:aircraft.douglas-sbd3",
+      "type": "model"
+    }
+  ],
+  "id": "aircraft.douglas-sbd3",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

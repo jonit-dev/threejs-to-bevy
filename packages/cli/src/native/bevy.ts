@@ -117,20 +117,33 @@ export function bevyRuntimeArgs(
   return args;
 }
 
+function runtimeBinaryEnv(binaryPath: string): NodeJS.ProcessEnv {
+  const libDir = dirname(binaryPath);
+  const existing = process.env.LD_LIBRARY_PATH;
+  return {
+    ...process.env,
+    LD_LIBRARY_PATH: existing === undefined || existing.trim() === "" ? libDir : `${libDir}:${existing}`,
+  };
+}
+
 export function resolveBevyRuntimeBinaryPath(
   repoRoot: string,
   env: BevyRuntimeEnvironment = process.env,
+  bundledManifestPath?: string,
 ): string | undefined {
-  const runtimeRoot = resolve(repoRoot, "runtime-bevy");
+  const runtimeRoots = [
+    dirname(resolveBevyRuntime(repoRoot, env, bundledManifestPath).manifestPath),
+    resolve(repoRoot, "runtime-bevy"),
+  ].filter((root, index, roots) => roots.indexOf(root) === index);
   const profile = env.TN_NATIVE_PROFILE === "debug" ? "debug" : "release";
   const fallbackProfile = profile === "debug" ? "release" : "debug";
-  const candidates = [
+  const candidates = runtimeRoots.flatMap((runtimeRoot) => [
     join(runtimeRoot, `target/${profile}/threenative_runtime`),
     join(runtimeRoot, `target/${fallbackProfile}/threenative_runtime`),
-  ];
+  ]);
   return candidates.find((candidate) => {
     if (!existsSync(candidate)) return false;
-    const result = spawnSync(candidate, ["--capabilities"], { encoding: "utf8", timeout: 5_000 });
+    const result = spawnSync(candidate, ["--capabilities"], { encoding: "utf8", env: runtimeBinaryEnv(candidate), timeout: 5_000 });
     if (result.status !== 0) return false;
     try {
       const capabilities = JSON.parse(result.stdout) as { cargoFeatures?: unknown };
@@ -170,13 +183,13 @@ export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeP
   const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
   const bundledManifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);
-  const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env);
+  const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env, bundledManifestPath);
   const env = { ...process.env };
   const stdio: StdioOptions = invocation.captureOutput ? ["ignore", "pipe", "pipe"] : "inherit";
   if (binaryPath !== undefined) {
     return spawn(binaryPath, bevyRuntimeBinaryArgs(invocation), {
       cwd: runtime.cwd,
-      env,
+      env: runtimeBinaryEnv(binaryPath),
       stdio,
     });
   }

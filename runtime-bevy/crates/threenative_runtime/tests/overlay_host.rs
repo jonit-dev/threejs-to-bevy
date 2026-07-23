@@ -158,7 +158,7 @@ fn uses_authored_native_overlay_layout_rectangle() {
         entry_path: Path::new("/bundle/overlay/index.html").to_path_buf(),
         id: "inventory".to_owned(),
         input: input_capture_policy("pointer"),
-        layout: Some(OverlayLayoutIr {
+        layout: Some(OverlayLayoutIr::Rect {
             height: 180.0,
             width: 320.0,
             x: 12.0,
@@ -171,6 +171,26 @@ fn uses_authored_native_overlay_layout_rectangle() {
     assert_eq!(
         (bounds.x, bounds.y, bounds.width, bounds.height),
         (12, 16, 320, 180)
+    );
+}
+
+#[test]
+fn viewport_overlay_layout_tracks_parent_size() {
+    let mount = threenative_runtime::overlay_host::NativeOverlayMount {
+        entry_path: Path::new("/bundle/overlay/index.html").to_path_buf(),
+        id: "flight-deck".to_owned(),
+        input: input_capture_policy("pointer-and-keyboard"),
+        layout: Some(OverlayLayoutIr::Viewport {
+            mode: "viewport".to_owned(),
+        }),
+        transparent: true,
+        z_index: 20,
+    };
+
+    let bounds = native_overlay_bounds(&mount, 1912.0, 930.0);
+    assert_eq!(
+        (bounds.x, bounds.y, bounds.width, bounds.height),
+        (0, 0, 1912, 930)
     );
 }
 

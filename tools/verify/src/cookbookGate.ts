@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { CLI_COMMAND_DEFINITIONS } from "@threenative/cli";
 import { OVERLAY_SCAFFOLD_REGISTRY, overlayBuildScript } from "@threenative/cli/overlay-scaffold";
 import { PRESCRIPTIVE_DIAGNOSTIC_CODES } from "@threenative/authoring";
+import { PHYSICS_CAPABILITY_DESCRIPTORS } from "@threenative/ir";
 
 export interface ICookbookGateCommandResult {
   command: string;
@@ -454,6 +455,7 @@ function validateCookbookCrossReferences(
         });
       }
     }
+    diagnostics.push(...validatePhysicsCookbookReferences(cookbookIds, entriesDir));
   }
   for (const entry of parsedEntries) {
     for (const command of entry.commands) {
@@ -466,7 +468,21 @@ function validateCookbookCrossReferences(
   return diagnostics;
 }
 
-function validateCookbookCommand(entryId: string, command: string): Array<{ code: string; message: string; severity: "error" | "warning" }> {
+export function validatePhysicsCookbookReferences(
+  cookbookIds: ReadonlySet<string>,
+  entriesDir: string,
+): Array<{ code: string; message: string; severity: "error" }> {
+  return PHYSICS_CAPABILITY_DESCRIPTORS.flatMap((descriptor) => {
+    if (!("cookbook" in descriptor) || cookbookIds.has(descriptor.cookbook)) return [];
+    return [{
+      code: "TN_COOKBOOK_GATE_PHYSICS_DESCRIPTOR_DRIFT",
+      message: `Physics capability '${descriptor.component}' references missing cookbook entry '${descriptor.cookbook}' in ${entriesDir}.`,
+      severity: "error" as const,
+    }];
+  });
+}
+
+export function validateCookbookCommand(entryId: string, command: string): Array<{ code: string; message: string; severity: "error" | "warning" }> {
   const args = splitCommand(command);
   if (args[0] !== "tn") {
     return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command does not start with 'tn': ${command}`, severity: "error" }];
@@ -478,7 +494,13 @@ function validateCookbookCommand(entryId: string, command: string): Array<{ code
   }
   if (definition.subcommands !== undefined) {
     const subcommand = args[2]?.startsWith("-") === false ? args[2] : undefined;
-    if (subcommand !== undefined && !definition.subcommands.includes(subcommand)) {
+    const descriptorOwnedPhysicsSubcommands = rootCommand === "physics"
+      ? PHYSICS_CAPABILITY_DESCRIPTORS
+        .filter((descriptor) => descriptor.authoringOperation.startsWith("physics."))
+        .map((descriptor) => descriptor.authoringOperation.split(".")[1])
+        .filter((value): value is string => value !== undefined)
+      : [];
+    if (subcommand !== undefined && !definition.subcommands.includes(subcommand) && !descriptorOwnedPhysicsSubcommands.includes(subcommand)) {
       return [{ code: "TN_COOKBOOK_GATE_COMMAND_REGISTRY_INVALID", message: `Entry '${entryId}' command uses unregistered '${rootCommand}' subcommand '${subcommand}': ${command}`, severity: "error" }];
     }
   }

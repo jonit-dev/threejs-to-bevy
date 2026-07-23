@@ -11,7 +11,7 @@ import {
   type IAuthoringOperationResult,
 } from "@threenative/authoring";
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readFile, rename, rm, stat, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,10 +28,13 @@ interface IProcessResult {
 }
 
 interface IInspectionReport {
+  animationClips?: Array<{ name: string }>;
   code: string;
   counts: { animations?: number; materials: number; meshes: number; triangles?: number };
+  dependencies?: Array<{ embedded?: boolean; exists: boolean; kind: string }>;
   diagnostics: Array<{ code: string; message: string; severity: string }>;
   file: { byteSize?: number; path: string };
+  namedNodes?: string[];
 }
 
 export interface IBlenderGeneratorDependencies {
@@ -80,6 +83,7 @@ interface IBlenderRecipe {
   animations?: IBlenderRecipeAnimation[];
   budgets: Record<string, unknown>;
   id: string;
+  source?: string;
 }
 
 const maximumLogBytes = 128 * 1024;
@@ -141,6 +145,27 @@ export async function runBlenderGenerator(
   } catch (error) {
     return failure(options, [diagnostic(generator.recipe, "TN_BLENDER_INPUT_READ_FAILED", `Could not read Blender recipe or owned runner: ${errorMessage(error)}`)]);
   }
+  let sourceAbsolute: string | undefined;
+  let sourceBytes: Buffer | undefined;
+  if (recipe.source !== undefined) {
+    try {
+      const projectRealPath = await realpath(projectPath);
+      sourceAbsolute = await realpath(resolve(projectPath, recipe.source));
+      const sourceRelative = relative(projectRealPath, sourceAbsolute);
+      if (sourceRelative.startsWith("..") || resolve(projectRealPath, sourceRelative) !== sourceAbsolute) throw new Error("source resolves outside the project");
+      sourceBytes = await readFile(sourceAbsolute);
+    } catch (error) {
+      return failure(options, [diagnostic(generator.recipe, "TN_BLENDER_SOURCE_READ_FAILED", `Could not read contained Blender source '${recipe.source}': ${errorMessage(error)}`, "Restore the project-local GLB below assets/ and rerun authoring validation.")]);
+    }
+    let sourceInspection: IInspectionReport;
+    try {
+      sourceInspection = await dependencies.inspect(sourceAbsolute);
+    } catch (error) {
+      return failure(options, [diagnostic(recipe.source, "TN_BLENDER_SOURCE_INSPECTION_FAILED", `Could not inspect Blender source GLB: ${errorMessage(error)}`)]);
+    }
+    const sourceDiagnostics = inspectSourceDiagnostics(recipe, sourceInspection);
+    if (sourceDiagnostics.length > 0) return failure(options, sourceDiagnostics);
+  }
   const outputRelative = generator.outputs[0]!;
   const outputAbsolute = resolve(projectPath, outputRelative);
   const destinationSnapshot = await snapshot(outputAbsolute);
@@ -148,7 +173,8 @@ export async function runBlenderGenerator(
   const assetFile = resolve(projectPath, "content/assets", `${generator.id}.assets.json`);
   const assetSnapshot = await snapshot(assetFile);
   const runnerHash = sha256(runnerBytes);
-  const inputHash = sha256(Buffer.from(`${canonicalJson(recipe)}\0${runnerHash}\0${status.version}`, "utf8"));
+  const sourceHash = sourceBytes === undefined ? "" : sha256(sourceBytes);
+  const inputHash = sha256(Buffer.from(`${canonicalJson(recipe)}\0${sourceHash}\0${runnerHash}\0${status.version}`, "utf8"));
   if (generator.outputHash === undefined && generator.overwritePolicy !== "replace" && destinationSnapshot !== undefined) {
     return failure(options, [diagnostic(generatorFile, "TN_GENERATOR_OUTPUT_CONFLICT", `Generator '${generator.id}' does not own the existing output '${outputRelative}'.`, "Move the manual asset or record overwritePolicy 'replace' after review.")], inputHash);
   }
@@ -165,7 +191,7 @@ export async function runBlenderGenerator(
   let promoted = false;
   try {
     await mkdir(dirname(stagingPath), { recursive: true });
-    await writeFile(jobPath, `${JSON.stringify({ outputPath: stagingPath, recipePath: recipeAbsolute, resultPath }, null, 2)}\n`, "utf8");
+    await writeFile(jobPath, `${JSON.stringify({ outputPath: stagingPath, recipePath: recipeAbsolute, resultPath, ...(sourceAbsolute === undefined ? {} : { sourcePath: sourceAbsolute }) }, null, 2)}\n`, "utf8");
     const args = ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python", dependencies.runnerPath, "--", "--job", jobPath] as const;
     let processResult: IProcessResult;
     try {
@@ -263,6 +289,10 @@ async function inspectBudgetDiagnostics(file: string, recipe: IBlenderRecipe, in
   if ((inspection.counts.animations ?? 0) < expectedAnimations) {
     diagnostics.push(diagnostic(file, "TN_BLENDER_ANIMATION_EXPORT_MISSING", `Generated GLB contains ${inspection.counts.animations ?? 0} animation clips, but the recipe declares ${expectedAnimations}.`));
   }
+  const emittedAnimationNames = new Set((inspection.animationClips ?? []).map((clip) => clip.name));
+  for (const animation of recipe.animations ?? []) {
+    if (!emittedAnimationNames.has(animation.id)) diagnostics.push(diagnostic(file, "TN_BLENDER_ANIMATION_EXPORT_MISSING", `Generated GLB does not contain declared animation clip '${animation.id}'.`));
+  }
   return diagnostics;
 }
 
@@ -278,6 +308,30 @@ async function writeGeneratorRunProvenance(document: IAuthoringDocument, updates
 
 function failure(options: { generatorId: string; projectPath: string }, diagnostics: IAuthoringDiagnostic[], inputHash?: string, inspection?: IInspectionReport): IBlenderGeneratorRunResult {
   return { diagnostics, filesWritten: [], generatorId: options.generatorId, inputHash, inspection, ok: false, projectPath: resolve(options.projectPath) };
+}
+
+function inspectSourceDiagnostics(recipe: IBlenderRecipe, inspection: IInspectionReport): IAuthoringDiagnostic[] {
+  if (inspection.code !== "TN_ASSET_INSPECT_OK") {
+    const errors = inspection.diagnostics.filter((row) => row.severity === "error").map((row) => diagnostic(recipe.source ?? "", row.code, row.message));
+    return errors.length > 0 ? errors : [diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_INSPECTION_FAILED", "Source GLB inspection did not complete successfully.")];
+  }
+  const diagnostics: IAuthoringDiagnostic[] = [];
+  if ((inspection.dependencies ?? []).some((dependency) => dependency.embedded !== true || dependency.exists !== true)) {
+    diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_DEPENDENCY_UNSUPPORTED", "Source-backed Blender recipes require a self-contained GLB with embedded buffers and images.", "Embed every GLB dependency before recording the Blender recipe."));
+  }
+  const nodeCounts = new Map<string, number>();
+  for (const name of inspection.namedNodes ?? []) nodeCounts.set(name, (nodeCounts.get(name) ?? 0) + 1);
+  const clipNames = new Set((inspection.animationClips ?? []).map((clip) => clip.name));
+  for (const clip of recipe.animations ?? []) {
+    if (clipNames.has(clip.id)) diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_ANIMATION_COLLISION", `Animation clip '${clip.id}' already exists in the source GLB.`, "Rename the new recipe clip so retained source clips remain unambiguous."));
+    const tracks = (clip as IBlenderRecipeAnimation & { tracks?: Array<{ node?: string }> }).tracks ?? [];
+    for (const track of tracks) {
+      if (typeof track.node !== "string") continue;
+      const matches = nodeCounts.get(track.node) ?? 0;
+      if (matches !== 1) diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_NODE_UNRESOLVED", `Animation target '${track.node}' resolved to ${matches} source nodes; exactly one is required.`, "Use an exact unique node name reported by 'tn asset inspect <source.glb> --json'."));
+    }
+  }
+  return diagnostics;
 }
 
 function diagnostic(file: string, code: string, message: string, suggestion?: string): IAuthoringDiagnostic {

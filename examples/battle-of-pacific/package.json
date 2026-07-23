@@ -1,0 +1,47 @@
+{
+  "name": "threenative-battle-of-pacific",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "tn": "node bin/tn",
+    "build": "tn build",
+    "dev:web": "tn dev --target web",
+    "iterate": "tn iterate --project . --json",
+    "playtest": "tn playtest --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json",
+    "playtest:input": "tn playtest --scenario playtests/acceptance-input-caused-action.playtest.json --stable-artifacts --json",
+    "playtest:retry": "tn playtest --scenario playtests/acceptance-fail-retry.playtest.json --stable-artifacts --json",
+    "playtest:native": "tn playtest --target desktop --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json",
+    "game:plan": "node bin/tn game plan --project . --json",
+    "game:improve": "tn game improve --apply-plan artifacts/game-production/plan.json --project . --json",
+    "game:score": "tn game score --project . --json",
+    "game:qa": "tn game qa --project . --run-proof --json",
+    "game:release": "tn game release --project . --json",
+    "types": "tn types generate --project . --json",
+    "typecheck": "tn types generate --project . --json && tsc -p tsconfig.json --noEmit",
+    "validate": "tn validate",
+    "validate:authoring": "tn authoring validate --json",
+    "verify": "tn verify --frames 2 --json",
+    "build:overlay:flight-deck": "vite build overlay/flight-deck --config overlay/flight-deck/vite.config.ts"
+  },
+  "dependencies": {
+    "@threenative/ir": "file:../../packages/ir",
+    "@threenative/script-stdlib": "file:../../packages/script-stdlib",
+    "@threenative/sdk": "file:../../packages/sdk",
+    "@threenative/overlay-client": "file:../../packages/overlay-client",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@threenative/cli": "file:.threenative/cli",
+    "@types/node": "^20.19.25",
+    "typescript": "^5.9.3",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "vite": "^7.3.5"
+  },
+  "pnpm": {
+    "overrides": {
+      "@threenative/script-stdlib": "file:../../packages/script-stdlib"
+    }
+  }
+}

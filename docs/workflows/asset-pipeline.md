@@ -109,8 +109,48 @@ Recipes use a closed vocabulary: `cube`, `sphere`, `cylinder`, `cone`, and
 and `solidify` modifiers; `join` and `parent` hierarchy operations;
 position/rotation/scale animation tracks; and linear/step interpolation. Raw
 Python, arbitrary Blender code/add-ons/operators/drivers/modules, remote
-recipes, GUI/Xvfb, arbitrary `.blend` import, rigs, and unbounded providerless
-text-to-3D are not supported. Linux x64 has retained real generation proof. macOS
+recipes, GUI/Xvfb, `.blend` import, rigs, and unbounded providerless text-to-3D
+are not supported.
+
+A source-backed recipe may instead name one self-contained project-local GLB
+below `assets/`. In that mode, generated materials, parts, and operations are
+forbidden; animation tracks target exact unique imported node names reported by
+`tn asset inspect`. Position and rotation values are local offsets from the
+imported pose, while scale values multiply the imported scale. A source-backed
+rotation track may also declare a `pivot` in the model's authored Y-up
+coordinates. The runner creates a bounded parent pivot, preserves the target's
+rest pose, and exports the rotation on that parent so detached control surfaces
+hinge around their real edge rather than the model origin. Pivots are rejected
+on generated recipes and non-rotation tracks. Source bytes are included in the
+generator input hash. Missing or ambiguous targets, conflicting pivots,
+external dependencies, clip-name collisions, traversal/symlinks, missing
+emitted clips, and source/output budget violations fail before promotion:
+
+```json
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "aircraft.animated",
+  "source": "assets/imported/aircraft.source.glb",
+  "animations": [{
+    "id": "propeller.spin",
+    "duration": 1,
+    "loop": true,
+    "tracks": [{
+      "node": "Propeller",
+      "property": "rotation",
+      "pivot": [0, 0, 0.75],
+      "keyframes": [
+        { "time": 0, "value": [0, 0, 0] },
+        { "time": 1, "value": [0, 0, 360] }
+      ]
+    }]
+  }],
+  "budgets": { "maxPolygons": 200000, "maxOutputBytes": 50000000 }
+}
+```
+
+Linux x64 has retained real generation proof. macOS
 x64/arm64 and Windows x64 remain rejected with
 `TN_EXTERNAL_TOOL_HOST_UNPROVEN` until the opt-in matrix retains equivalent
 install, cleanup, generation, and visual evidence.

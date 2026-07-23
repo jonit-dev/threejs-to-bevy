@@ -1,0 +1,142 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/battle-of-pacific.bundle",
+  "production": {
+    "archetype": "flight",
+    "playableLoop": "Keep the Douglas SBD-3 in controlled powered flight over the Pacific for 45 seconds.",
+    "controls": [
+      "keyboard.KeyW",
+      "keyboard.KeyS",
+      "keyboard.KeyA",
+      "keyboard.KeyD",
+      "keyboard.KeyQ",
+      "keyboard.KeyE",
+      "keyboard.ShiftLeft",
+      "keyboard.ControlLeft",
+      "keyboard.KeyF",
+      "keyboard.KeyR"
+    ],
+    "lookProfile": {
+      "camera": "centered third-person chase camera",
+      "movementPlane": "free-flight",
+      "renderLook": "cinematic"
+    },
+    "objective": "Sustain controlled flight for 45 seconds without stalling or ditching.",
+    "progression": "FlightState.progress advances from 0 to 1 while the aircraft remains airborne.",
+    "failRetry": "Altitude loss triggers DITCHED; KeyR or the React HUD retry control restores the cruise pose and velocity.",
+    "feedbackMoments": [
+      "live airspeed, altitude, throttle, flap, objective, and phase telemetry",
+      "stall and ditch warning panel",
+      "powered propeller and control-surface clips",
+      "flap deployment changes both animation and aerodynamic lift/drag",
+      "retry visibly restores the aircraft to patrol altitude"
+    ],
+    "assetPlan": {
+      "playerHero": "Example-local, user-provided Douglas SBD-3 GLB regenerated from a bounded Blender recipe with ten powered flight clips.",
+      "obstacleEnemy": "No enemy or obstacle is included in this intentionally narrowed free-flight slice.",
+      "rewardInteractable": "The sustained-flight timer is the current objective surface.",
+      "worldEnvironment": "Large authored reflective ocean surface, photographic Poly Haven sky and reflection environment, directional sun, ambient fill, and gusting Pacific wind volume.",
+      "uiHud": "React webview flight deck with event-driven telemetry and portable overlay actions.",
+      "audioFeedback": "No audio is required for the current free-flight acceptance target."
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/flight.ts",
+        "export": "updatePacificFlight",
+        "ownsState": ["FlightState", "pacific-flight-control"],
+        "referencedBy": ["content/systems/arena.systems.json"]
+      }
+    ],
+    "agent": {
+      "sourceShape": {
+        "assets": [
+          "content/assets/aircraft.douglas-sbd3.assets.json",
+          "content/assets/aircraft.douglas-sbd3.source.assets.json",
+          "content/assets/pacific-sky.assets.json"
+        ],
+        "generators": [
+          "content/generators/aircraft.douglas-sbd3.recipe.json",
+          "content/generators/aircraft.douglas-sbd3.generator.json"
+        ],
+        "input": ["content/input/arena.input.json"],
+        "materials": ["content/materials/arena.materials.json"],
+        "meshes": ["content/meshes/arena.meshes.json"],
+        "environment": ["content/environment/pacific.environment.json"],
+        "overlays": ["content/overlays/webview.overlays.json"],
+        "runtime": ["content/runtime/default.runtime.json"],
+        "schemas": ["content/schemas/flight-events.schema.json"],
+        "scene": ["content/scenes/arena.scene.json"],
+        "systems": ["content/systems/arena.systems.json"],
+        "ui": ["content/ui/hud.ui.json"],
+        "scripts": ["src/scripts/flight.ts"]
+      },
+      "highValueSurfaces": [
+        {
+          "id": "playerHero",
+          "sourcePath": "content/assets/aircraft.douglas-sbd3.assets.json",
+          "provenanceStatus": "user-provided-bounded-generation",
+          "summary": "Textured SBD-3 model with powered cruise, pitch, rudder, flap deploy, flap hold, and flap retract clips."
+        },
+        {
+          "id": "worldEnvironment",
+          "sourcePath": "content/environment/pacific.environment.json",
+          "provenanceStatus": "catalog-reviewed-cc0",
+          "summary": "Reflective ocean, photographic Poly Haven sky/environment lighting, collision plane, and seeded gusting wind."
+        },
+        {
+          "id": "uiHud",
+          "sourcePath": "overlay/flight-deck/src/App.tsx",
+          "provenanceStatus": "source",
+          "summary": "Responsive 1940s naval-instrument React webview driven by typed overlay events."
+        }
+      ],
+      "scriptModules": [
+        {
+          "module": "src/scripts/flight.ts",
+          "export": "updatePacificFlight",
+          "ownsState": ["FlightState", "pacific-flight-control"],
+          "referencedBy": ["content/systems/arena.systems.json"]
+        }
+      ],
+      "uiStates": [
+        {
+          "id": "gameplay",
+          "sourcePath": "overlay/flight-deck/src/App.tsx",
+          "expectation": "Live patrol instruments, controls, and objective progress."
+        },
+        {
+          "id": "fail-retry",
+          "sourcePath": "overlay/flight-deck/src/App.tsx",
+          "expectation": "DITCHED warning with clickable and keyboard retry paths."
+        },
+        {
+          "id": "win-milestone",
+          "sourcePath": "src/scripts/flight.ts",
+          "expectation": "PATROL COMPLETE appears after 45 controlled seconds."
+        }
+      ],
+      "assetSourcing": [
+        "The user supplied the hero aircraft; its normalized source, bounded recipe, output, and generator provenance are example-local.",
+        "The photographic sky and reflection environment use the repository Poly Haven provider adapter and its CC0 Kloofendal 48d Partly Cloudy (Pure Sky) record."
+      ],
+      "proofCommands": [
+        "tn iterate --project . --json",
+        "tn playtest --project . --scenario playtests/acceptance-input-caused-action.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --scenario playtests/acceptance-fail-retry.playtest.json --stable-artifacts --json",
+        "tn playtest --project . --target desktop --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json"
+      ],
+      "knownBlockers": []
+    },
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn iterate --project . --json",
+      "tn game scale --project . --json",
+      "tn playtest --project . --target desktop --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

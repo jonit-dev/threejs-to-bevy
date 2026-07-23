@@ -202,10 +202,23 @@ pub fn native_overlay_bounds(
             y: 0,
         };
     };
-    NativeOverlayBounds {
-        x: layout.x.max(0.0).round() as u32,
-        y: layout.y.max(0.0).round() as u32,
-        width: layout.width.max(1.0).round() as u32,
-        height: layout.height.max(1.0).round() as u32,
+    match layout {
+        threenative_loader::OverlayLayoutIr::Viewport { .. } => NativeOverlayBounds {
+            height: parent_height,
+            width: parent_width,
+            x: 0,
+            y: 0,
+        },
+        threenative_loader::OverlayLayoutIr::Rect {
+            height,
+            width,
+            x,
+            y,
+        } => NativeOverlayBounds {
+            x: x.max(0.0).round() as u32,
+            y: y.max(0.0).round() as u32,
+            width: width.max(1.0).round() as u32,
+            height: height.max(1.0).round() as u32,
+        },
     }
 }

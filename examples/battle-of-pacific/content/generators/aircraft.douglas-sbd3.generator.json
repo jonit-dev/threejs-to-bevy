@@ -1,0 +1,1416 @@
+{
+  "id": "aircraft.douglas-sbd3",
+  "inputHash": "sha256:4ef849153e4489d9f1231816aa5b5a14834a7672d4fa81096a1cb46371b99c6d",
+  "lastRun": {
+    "completedAt": "2026-07-23T16:54:03.763Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/aircraft.douglas-sbd3.glb",
+      "content/assets/aircraft.douglas-sbd3.assets.json",
+      "content/generators/aircraft.douglas-sbd3.generator.json"
+    ],
+    "inputHash": "sha256:4ef849153e4489d9f1231816aa5b5a14834a7672d4fa81096a1cb46371b99c6d",
+    "inspection": {
+      "animationClips": [
+        {
+          "channels": 2,
+          "name": "flight.rudder-left",
+          "samplers": 2
+        },
+        {
+          "channels": 2,
+          "name": "flight.rudder-right",
+          "samplers": 2
+        },
+        {
+          "channels": 1,
+          "name": "flight.cruise",
+          "samplers": 1
+        },
+        {
+          "channels": 2,
+          "name": "flight.flaps",
+          "samplers": 2
+        },
+        {
+          "channels": 2,
+          "name": "flight.flaps-down",
+          "samplers": 2
+        },
+        {
+          "channels": 2,
+          "name": "flight.flaps-retract",
+          "samplers": 2
+        },
+        {
+          "channels": 3,
+          "name": "flight.pitch-down",
+          "samplers": 3
+        },
+        {
+          "channels": 3,
+          "name": "flight.pitch-up",
+          "samplers": 3
+        },
+        {
+          "channels": 1,
+          "name": "propeller.spin",
+          "samplers": 1
+        },
+        {
+          "channels": 1,
+          "name": "flaps.deploy",
+          "samplers": 1
+        }
+      ],
+      "bounds": {
+        "center": [
+          0,
+          0,
+          0
+        ],
+        "max": [
+          1,
+          0.3096159782648232,
+          0.7916087562336028
+        ],
+        "min": [
+          -1,
+          -0.30961596708895306,
+          -0.7916089350475249
+        ],
+        "size": [
+          2,
+          0.619232,
+          1.583218
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 100,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 3.6
+        },
+        "collider": {
+          "height": 0.619232,
+          "radiusForXZ": 1
+        },
+        "fitScales": {
+          "targetHeight2m": 3.229807,
+          "targetLength4m": 2,
+          "targetWidth1m": 0.5
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "ok",
+          "widthToLaneRatio": 0.571429
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 98,
+        "animations": 10,
+        "buffers": 1,
+        "images": 61,
+        "materials": 21,
+        "meshes": 22,
+        "nodes": 46,
+        "scenes": 1,
+        "textures": 63,
+        "triangles": 10416
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_8"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_6"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_7"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_11"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_36"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_57"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_60"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_58"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_59"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_38"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_37"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_2"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_0"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_1"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_35"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_33"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_34"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_32"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_30"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_31"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_41"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_39"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_40"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_47"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_45"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_46"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_5"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_3"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_4"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_50"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_48"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_49"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_53"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_51"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_52"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_56"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_54"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_55"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_23"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_21"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_22"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_20"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_18"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_19"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_9"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_10"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_14"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_12"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_13"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_17"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_15"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_16"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_29"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_27"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_28"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_26"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_24"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_25"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_44"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_42"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_43"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [],
+      "file": {
+        "byteSize": 11018444,
+        "path": "assets/generated/aircraft.douglas-sbd3.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:aircraft.douglas-sbd3.glb.staging-2867333-1784825642654-78acec5f933f5",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "name": "Sketchfab_model",
+            "path": "/Sketchfab_model",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ]
+            }
+          },
+          {
+            "name": "Collada visual scene group",
+            "parentPath": "/Sketchfab_model",
+            "path": "/Sketchfab_model/Collada visual scene group",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ]
+            }
+          },
+          {
+            "name": "Circle",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.001_Circle.017",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.001_Circle.017",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material"
+            ],
+            "mesh": "mesh:defaultMaterial.020",
+            "name": "defaultMaterial_node_18",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.001_Circle.017",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.001_Circle.017/defaultMaterial_node_18",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_020"
+            ],
+            "mesh": "mesh:defaultMaterial.021",
+            "name": "defaultMaterial_node_19",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.001_Circle.017",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.001_Circle.017/defaultMaterial_node_19",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.002_Circle.025",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.002_Circle.025",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_004"
+            ],
+            "mesh": "mesh:defaultMaterial.013",
+            "name": "defaultMaterial_node_11",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.002_Circle.025",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.002_Circle.025/defaultMaterial_node_11",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.003_Circle.010",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.003_Circle.010",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_013"
+            ],
+            "mesh": "mesh:defaultMaterial",
+            "name": "defaultMaterial",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.003_Circle.010",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.003_Circle.010/defaultMaterial",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.004_Circle.026.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                -0.17364822328090668,
+                0,
+                0.9848078489303589
+              ],
+              "translation": [
+                0,
+                0,
+                -0.6400038003921509
+              ]
+            }
+          },
+          {
+            "name": "Circle.004_Circle.026",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot/Circle.004_Circle.026",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                0,
+                0.6400039792060852
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_007"
+            ],
+            "mesh": "mesh:defaultMaterial.012",
+            "name": "defaultMaterial_node_10",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot/Circle.004_Circle.026",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot/Circle.004_Circle.026/defaultMaterial_node_10",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_006"
+            ],
+            "mesh": "mesh:defaultMaterial.011",
+            "name": "defaultMaterial_node_9",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot/Circle.004_Circle.026",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot/Circle.004_Circle.026/defaultMaterial_node_9",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.005_Circle.027",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.005_Circle.027",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:None"
+            ],
+            "mesh": "mesh:defaultMaterial.014",
+            "name": "defaultMaterial_node_12",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.005_Circle.027",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.005_Circle.027/defaultMaterial_node_12",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.006_Circle.029",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.006_Circle.029",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_011"
+            ],
+            "mesh": "mesh:defaultMaterial.016",
+            "name": "defaultMaterial_node_14",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.006_Circle.029",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.006_Circle.029/defaultMaterial_node_14",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.007_Circle.030",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.007_Circle.030",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_021"
+            ],
+            "mesh": "mesh:defaultMaterial.001",
+            "name": "defaultMaterial_node",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.007_Circle.030",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.007_Circle.030/defaultMaterial_node",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Circle.008_Circle.031.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.04665258899331093,
+                0.7219398021697998
+              ]
+            }
+          },
+          {
+            "name": "Circle.008_Circle.031",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                0.046652600169181824,
+                -0.7219399809837341
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_017"
+            ],
+            "mesh": "mesh:defaultMaterial.017",
+            "name": "defaultMaterial_node_15",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031/defaultMaterial_node_15",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_018"
+            ],
+            "mesh": "mesh:defaultMaterial.018",
+            "name": "defaultMaterial_node_16",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031/defaultMaterial_node_16",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_019"
+            ],
+            "mesh": "mesh:defaultMaterial.019",
+            "name": "defaultMaterial_node_17",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle.008_Circle.031.ThreeNativePivot/Circle.008_Circle.031/defaultMaterial_node_17",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_003"
+            ],
+            "mesh": "mesh:defaultMaterial.002",
+            "name": "defaultMaterial_node_0",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Circle",
+            "path": "/Sketchfab_model/Collada visual scene group/Circle/defaultMaterial_node_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.001_Plane.002",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_009"
+            ],
+            "mesh": "mesh:defaultMaterial.007",
+            "name": "defaultMaterial_node_5",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/defaultMaterial_node_5",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.002_Plane.005",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "defaultMaterial_node_2.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005/defaultMaterial_node_2.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.13052621483802795,
+                0,
+                0,
+                0.9914448857307434
+              ],
+              "translation": [
+                0,
+                0.011329934932291508,
+                -0.6175788640975952
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_008"
+            ],
+            "mesh": "mesh:defaultMaterial.004",
+            "name": "defaultMaterial_node_2",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005/defaultMaterial_node_2.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005/defaultMaterial_node_2.ThreeNativePivot/defaultMaterial_node_2",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.011329932138323784,
+                0.6175790429115295
+              ]
+            }
+          },
+          {
+            "name": "Plane.003_Plane.004.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.30070576071739197,
+                0,
+                0,
+                0.9537169933319092
+              ],
+              "translation": [
+                0,
+                -0.07564198225736618,
+                0.14839597046375275
+              ]
+            }
+          },
+          {
+            "name": "Plane.003_Plane.004",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot/Plane.003_Plane.004",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                0.07564200460910797,
+                -0.14839601516723633
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_014"
+            ],
+            "mesh": "mesh:defaultMaterial.005",
+            "name": "defaultMaterial_node_3",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot/Plane.003_Plane.004",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot/Plane.003_Plane.004/defaultMaterial_node_3",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_015"
+            ],
+            "mesh": "mesh:defaultMaterial.006",
+            "name": "defaultMaterial_node_4",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot/Plane.003_Plane.004",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot/Plane.003_Plane.004/defaultMaterial_node_4",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.004_Plane.006",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.004_Plane.006",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_010"
+            ],
+            "mesh": "mesh:defaultMaterial.010",
+            "name": "defaultMaterial_node_8",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.004_Plane.006",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.004_Plane.006/defaultMaterial_node_8",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.005_Plane.007",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.005_Plane.007",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_016"
+            ],
+            "mesh": "mesh:defaultMaterial.009",
+            "name": "defaultMaterial_node_7",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.005_Plane.007",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.005_Plane.007/defaultMaterial_node_7",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.006_Plane.008",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.006_Plane.008",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Material_012"
+            ],
+            "mesh": "mesh:defaultMaterial.015",
+            "name": "defaultMaterial_node_13",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.006_Plane.008",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.006_Plane.008/defaultMaterial_node_13",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Plane.008_Plane.010",
+            "parentPath": "/Sketchfab_model/Collada visual scene group",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "defaultMaterial_node_1.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010/defaultMaterial_node_1.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.13052621483802795,
+                0,
+                0,
+                0.9914448857307434
+              ],
+              "translation": [
+                0,
+                0.011329934932291508,
+                -0.6175788640975952
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_008"
+            ],
+            "mesh": "mesh:defaultMaterial.003",
+            "name": "defaultMaterial_node_1",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010/defaultMaterial_node_1.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010/defaultMaterial_node_1.ThreeNativePivot/defaultMaterial_node_1",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.011329932138323784,
+                0.6175790429115295
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_002"
+            ],
+            "mesh": "mesh:defaultMaterial.008",
+            "name": "defaultMaterial_node_6",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane/defaultMaterial_node_6",
+            "spawnedHandleEligible": true
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_003",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_020",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_004",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_013",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_007",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_006",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "None",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_011",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_021",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_017",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_018",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_019",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_002",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_009",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_008",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_014",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_015",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_010",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_016",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Material_012",
+          "roughness": 1
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            0,
+            0
+          ],
+          "max": [
+            1,
+            0.7916087562336028
+          ],
+          "min": [
+            -1,
+            -0.7916089350475249
+          ],
+          "size": [
+            2,
+            1.583218
+          ]
+        },
+        "originCorrection": [
+          0,
+          0,
+          0
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          0,
+          0
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            2,
+            1.583218
+          ],
+          "halfExtents": [
+            1,
+            0.791609
+          ],
+          "suggestedCellSize": 2
+        },
+        "y": {
+          "center": 0,
+          "max": 0.3096159782648232,
+          "min": -0.30961596708895306,
+          "size": 0.619232
+        }
+      },
+      "namedNodes": [
+        "Circle",
+        "Circle.001_Circle.017",
+        "Circle.002_Circle.025",
+        "Circle.003_Circle.010",
+        "Circle.004_Circle.026",
+        "Circle.004_Circle.026.ThreeNativePivot",
+        "Circle.005_Circle.027",
+        "Circle.006_Circle.029",
+        "Circle.007_Circle.030",
+        "Circle.008_Circle.031",
+        "Circle.008_Circle.031.ThreeNativePivot",
+        "Collada visual scene group",
+        "Plane",
+        "Plane.001_Plane.002",
+        "Plane.002_Plane.005",
+        "Plane.003_Plane.004",
+        "Plane.003_Plane.004.ThreeNativePivot",
+        "Plane.004_Plane.006",
+        "Plane.005_Plane.007",
+        "Plane.006_Plane.008",
+        "Plane.008_Plane.010",
+        "Sketchfab_model",
+        "defaultMaterial",
+        "defaultMaterial_node",
+        "defaultMaterial_node_0",
+        "defaultMaterial_node_1",
+        "defaultMaterial_node_1.ThreeNativePivot",
+        "defaultMaterial_node_10",
+        "defaultMaterial_node_11",
+        "defaultMaterial_node_12",
+        "defaultMaterial_node_13",
+        "defaultMaterial_node_14",
+        "defaultMaterial_node_15",
+        "defaultMaterial_node_16",
+        "defaultMaterial_node_17",
+        "defaultMaterial_node_18",
+        "defaultMaterial_node_19",
+        "defaultMaterial_node_2",
+        "defaultMaterial_node_2.ThreeNativePivot",
+        "defaultMaterial_node_3",
+        "defaultMaterial_node_4",
+        "defaultMaterial_node_5",
+        "defaultMaterial_node_6",
+        "defaultMaterial_node_7",
+        "defaultMaterial_node_8",
+        "defaultMaterial_node_9"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:b7fb745204ac85ec3562238d2c5407f68a863cd8317e6c6ff969007c47cd1742",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:084235afb49bf32a95000bed5508e7296fd80724c729a26a0f5f98aa89ca589d",
+    "startedAt": "2026-07-23T16:54:02.655Z"
+  },
+  "outputHash": "sha256:b7fb745204ac85ec3562238d2c5407f68a863cd8317e6c6ff969007c47cd1742",
+  "outputs": [
+    "assets/generated/aircraft.douglas-sbd3.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/aircraft.douglas-sbd3.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

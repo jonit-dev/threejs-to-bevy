@@ -145,6 +145,21 @@ test("should only reuse a runtime binary that reports every required cargo featu
   }
 });
 
+test("should probe the bundled runtime root before the repo-root runtime", async () => {
+  const repoRoot = join(tmpdir(), `tn-bevy-runtime-bundled-${process.pid}-${Date.now()}`);
+  const bundledManifest = join(repoRoot, "cli-dist/runtime-bevy/Cargo.toml");
+  const bundledBinary = join(repoRoot, "cli-dist/runtime-bevy/target/release/threenative_runtime");
+  await mkdir(join(repoRoot, "cli-dist/runtime-bevy/target/release"), { recursive: true });
+  await writeFile(bundledManifest, "[package]\n");
+  await writeFile(bundledBinary, `#!/bin/sh\nprintf '%s\\n' '{"schema":"threenative.runtime-capabilities","cargoFeatures":["native-overlay-cef"]}'\n`);
+  await chmod(bundledBinary, 0o755);
+  try {
+    assert.equal(resolveBevyRuntimeBinaryPath(repoRoot, {}, bundledManifest), bundledBinary);
+  } finally {
+    await rm(repoRoot, { force: true, recursive: true });
+  }
+});
+
 test("should resolve Bevy runtime from explicit repo root", () => {
   assert.deepEqual(resolveBevyRuntime("/installed/cli", { THREENATIVE_REPO_ROOT: "/repo" }), {
     cwd: resolve("/repo"),

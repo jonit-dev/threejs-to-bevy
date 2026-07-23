@@ -59,8 +59,24 @@ import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
 import { bakeFractureManifest } from "../bake/fracture.js";
-import { emitBundle, planBundle } from "./bundle.js";
+import { emitBundle, inheritModelAnimationMetadata, planBundle } from "./bundle.js";
 import { writeBundlePlan } from "./bundle-writer.js";
+
+test("should inherit animation metadata for model aliases sharing a source path", () => {
+  const animations = [{ id: "flight.cruise", sourceClip: "flight.cruise" }];
+  const animationGraph = { initialState: "flight.cruise", states: [{ clip: "flight.cruise", id: "flight.cruise" }] };
+  const assets = inheritModelAnimationMetadata([
+    { animationGraph, animations, format: "glb", id: "aircraft", kind: "model", path: "assets/generated/aircraft.glb", sourceMode: "bundle" },
+    { format: "glb", id: "scene.prefab.prefab.aircraft", kind: "model", path: "assets/generated/aircraft.glb", sourceMode: "bundle" },
+    { format: "glb", id: "other-model", kind: "model", path: "assets/generated/other.glb", sourceMode: "bundle" },
+  ] as never);
+
+  const alias = assets.find((asset) => asset.id === "scene.prefab.prefab.aircraft") as { animations?: unknown; animationGraph?: unknown };
+  assert.deepEqual(alias.animations, animations);
+  assert.deepEqual(alias.animationGraph, animationGraph);
+  const other = assets.find((asset) => asset.id === "other-model") as { animations?: unknown };
+  assert.equal(other.animations, undefined);
+});
 
 test("should emit deterministic cube bundle", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-emit-"));

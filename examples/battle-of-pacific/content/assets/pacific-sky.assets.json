@@ -1,0 +1,15 @@
+{
+  "assets": [
+    {
+      "attribution": "Greg Zaal, Jarod Guest",
+      "id": "pacific-sky",
+      "license": "CC0-1.0",
+      "path": "assets/imported/polyhaven/pacific-sky/environment.png",
+      "source": "poly-haven:kloofendal_48d_partly_cloudy_puresky",
+      "type": "texture"
+    }
+  ],
+  "id": "pacific-sky",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

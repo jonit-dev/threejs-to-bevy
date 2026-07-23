@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "fail-retry",
+  "name": "acceptance-fail-retry",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 5,
+  "setup": {
+    "entities": [
+      {
+        "entity": "aircraft",
+        "position": [0, 2, 0],
+        "rotation": [0, 0, 0, 1]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "observe ditch state",
+      "waitFrames": 5,
+      "screenshot": "01-ditched"
+    },
+    {
+      "label": "retry patrol",
+      "press": "KeyR",
+      "holdFrames": 2,
+      "release": true,
+      "screenshot": "02-retry"
+    },
+    {
+      "label": "observe restored flight",
+      "waitFrames": 10,
+      "screenshot": "03-restored"
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 20,
+      "maxDistance": 400
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "retryCount",
+        "gte": 1,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "altitudeFeet",
+        "gte": 250,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "phase",
+        "equals": "CRUISE",
+        "changed": true
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "assets": [
+    {
+      "attribution": "User-provided Douglas SBD-3 model",
+      "id": "aircraft.douglas-sbd3.source",
+      "license": "user-provided",
+      "path": "assets/imported/aircraft.douglas-sbd3.source.glb",
+      "source": "douglas_sbd-3.glb",
+      "type": "model"
+    }
+  ],
+  "id": "aircraft.douglas-sbd3.source",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

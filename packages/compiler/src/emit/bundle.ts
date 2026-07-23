@@ -186,7 +186,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
   const assetsManifest: IAssetsManifest = {
     schema: IR_SCHEMA_IDS.assets,
     version: IR_VERSION,
-    assets: assets.map(stripInternalAssetFields) as IAssetsManifest["assets"],
+    assets: inheritModelAnimationMetadata(assets.map(stripInternalAssetFields) as IAssetsManifest["assets"]),
     groups: assetGroups(assets, bundleRoot.assetGroups),
   };
   const bakedProbeContent = environment === undefined
@@ -1269,6 +1269,31 @@ function audioAssetRefs(audio: IAudioDeclaration | undefined): IAssetReference[]
 function stripInternalAssetFields(asset: IInternalAsset): Record<string, unknown> & { id: string } {
   const { sourcePath: _sourcePath, storage: _storage, ...publicAsset } = asset;
   return publicAsset;
+}
+
+type IAnimatedModelAsset = Extract<IAssetsManifest["assets"][number], { animations?: unknown }>;
+
+export function inheritModelAnimationMetadata(assets: IAssetsManifest["assets"]): IAssetsManifest["assets"] {
+  const ownersByPath = new Map<string, IAnimatedModelAsset>();
+  for (const asset of assets) {
+    if (asset.kind !== "model" || typeof asset.path !== "string") continue;
+    const model = asset as IAnimatedModelAsset;
+    if ((model.animations?.length ?? 0) > 0 && !ownersByPath.has(asset.path)) {
+      ownersByPath.set(asset.path, model);
+    }
+  }
+  return assets.map((asset) => {
+    if (asset.kind !== "model" || typeof asset.path !== "string") return asset;
+    const model = asset as IAnimatedModelAsset;
+    if ((model.animations?.length ?? 0) > 0) return asset;
+    const owner = ownersByPath.get(asset.path);
+    if (owner === undefined) return asset;
+    return {
+      ...model,
+      animations: owner.animations,
+      ...(owner.animationGraph === undefined ? {} : { animationGraph: owner.animationGraph }),
+    };
+  });
 }
 
 function assetGroups(assets: readonly IInternalAsset[], groups: readonly IAssetGroupDeclaration[] | undefined): IAssetsManifest["groups"] {

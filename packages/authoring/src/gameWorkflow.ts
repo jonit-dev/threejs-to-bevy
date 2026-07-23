@@ -48,7 +48,7 @@ export type GameAssetAudioSurfaceId = typeof GAME_ASSET_AUDIO_SURFACE_IDS[number
 export type GameProductionMode = "score" | "qa" | "release";
 export type GameWorkflowPhaseStatus = "pass" | "warning" | "blocked";
 export type GameEvidenceKind = "artifact" | "command" | "source";
-export type GameAssetAudioSourcingStatus = "blocked" | "generated" | "hybrid" | "local-file" | "procedural";
+export type GameAssetAudioSourcingStatus = "blocked" | "generated" | "hybrid" | "local-file" | "procedural" | "waived-scope";
 export type GameProviderProbeStatus = "available" | "missing-credential" | "not-configured";
 export type GameProductionCommandStatus = "available" | "missing-artifact" | "recommended";
 export type GameReleaseRiskSeverity = "error" | "warning" | "info";
@@ -84,6 +84,7 @@ export interface IGameUiStateCoverage {
   evidence: IGameWorkflowEvidence[];
   id: GameUiStateId;
   present: boolean;
+  waivedReason?: string;
 }
 
 export interface IGameAssetAudioLedgerEntry {
@@ -92,6 +93,7 @@ export interface IGameAssetAudioLedgerEntry {
   sourcePath?: string;
   status: GameAssetAudioSourcingStatus;
   surface: GameAssetAudioSurfaceId;
+  waivedReason?: string;
 }
 
 export interface IGameProviderProbe {
@@ -176,6 +178,7 @@ interface IProjectEvidenceSnapshot {
   isGeneratedGame: boolean;
   invalidAudioFiles: string[];
   projectOutDir?: string;
+  scopeBlockers: Record<string, string>;
   sourceEvidence: IGameWorkflowEvidence[];
   sourceSearchText: string;
 }
@@ -262,23 +265,44 @@ export async function createGameQualityReport(options: ICreateGameQualityReportO
 
   const uiStates = buildUiStateCoverage(snapshot);
   for (const state of uiStates.filter((state) => !state.present)) {
+    if (state.waivedReason !== undefined) {
+      diagnostics.push(gameDiagnostic({
+        code: "TN_GAME_SCOPE_BLOCKER_RECORDED",
+        message: `UI state '${state.id}' is waived by a recorded scope blocker: ${state.waivedReason}`,
+        path: `/uiStates/${state.id}`,
+        phase: "ui",
+        severity: "warning",
+        suggestedFix: "Remove the scope blocker record and author the UI state when the scope grows to cover it.",
+      }));
+      continue;
+    }
     diagnostics.push(gameDiagnostic({
       code: "TN_GAME_UI_STATE_MISSING",
       message: `Required UI state '${state.id}' is not represented in structured UI source or artifacts.`,
       path: `/uiStates/${state.id}`,
       phase: "ui",
-      suggestedFix: "Add retained UI source for gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states.",
+      suggestedFix: "Add retained UI source for gameplay, pause, settings, loading, fail/retry, win/milestone, and touch-control states, or record an explicit scope blocker in a threenative.game-scope-blockers artifact.",
     }));
   }
 
   const assetAudioLedger = buildAssetAudioLedger(snapshot);
+  for (const entry of assetAudioLedger.filter((entry) => entry.status === "waived-scope")) {
+    diagnostics.push(gameDiagnostic({
+      code: "TN_GAME_SCOPE_BLOCKER_RECORDED",
+      message: `Asset/audio surface '${entry.surface}' is waived by a recorded scope blocker: ${entry.waivedReason ?? ""}`,
+      path: `/assetAudioLedger/${entry.surface}`,
+      phase: "assets",
+      severity: "warning",
+      suggestedFix: "Remove the scope blocker record and source the surface when the scope grows to cover it.",
+    }));
+  }
   for (const entry of assetAudioLedger.filter((entry) => entry.status === "blocked")) {
     diagnostics.push(gameDiagnostic({
       code: "TN_GAME_ASSET_PROVENANCE_MISSING",
       message: `Asset/audio sourcing provenance for '${entry.surface}' is missing.`,
       path: `/assetAudioLedger/${entry.surface}`,
       phase: "assets",
-      suggestedFix: "Record source assets, procedural status, generated provenance, or an explicit blocker in source/proof artifacts.",
+      suggestedFix: "Record source assets, procedural status, generated provenance, or an explicit scope blocker in a threenative.game-scope-blockers artifact under artifacts/game-production/.",
     }));
   }
   for (const path of snapshot.invalidAudioFiles) {
@@ -349,7 +373,7 @@ export async function createGameQualityReport(options: ICreateGameQualityReportO
       blockers: blockers.length,
       phasesPassed: phaseLedgers.filter((phase) => phase.status === "pass").length,
       totalPhases: GAME_WORKFLOW_PHASE_IDS.length,
-      uiStatesCovered: uiStates.filter((state) => state.present).length,
+      uiStatesCovered: uiStates.filter((state) => state.present || state.waivedReason !== undefined).length,
     },
     uiStates,
     version: GAME_WORKFLOW_REPORT_VERSION,
@@ -474,7 +498,7 @@ function buildPhaseLedgers(
 ): IGameWorkflowPhaseLedger[] {
   const byPhase = (phase: GameWorkflowPhaseId) => diagnostics.filter((diagnostic) => diagnostic.phase === phase);
   const visualScore = round(scorecard.reduce((sum, category) => sum + category.score, 0) / (scorecard.length * 3), 2);
-  const uiScore = round(uiStates.filter((state) => state.present).length / uiStates.length, 2);
+  const uiScore = round(uiStates.filter((state) => state.present || state.waivedReason !== undefined).length / uiStates.length, 2);
   const assetScore = round(assetAudioLedger.filter((entry) => entry.status !== "blocked").length / assetAudioLedger.length, 2);
   const phaseScores: Record<GameWorkflowPhaseId, number> = {
     assets: assetScore,
@@ -583,9 +607,27 @@ async function inspectGameProject(projectPath: string): Promise<IProjectEvidence
     isGeneratedGame: isRecord(projectConfig?.production),
     invalidAudioFiles,
     ...(projectOutDir === undefined ? {} : { projectOutDir }),
+    scopeBlockers: await collectScopeBlockers(projectPath),
     sourceEvidence,
     sourceSearchText,
   };
+}
+
+async function collectScopeBlockers(projectPath: string): Promise<Record<string, string>> {
+  const root = resolve(projectPath, "artifacts/game-production");
+  const blockers: Record<string, string> = {};
+  for (const file of (await listFiles(root)).filter((file) => file.endsWith(".json"))) {
+    const document = await readOptionalJson(file);
+    if (document?.schema !== "threenative.game-scope-blockers" || !Array.isArray(document.blockers)) {
+      continue;
+    }
+    for (const entry of document.blockers) {
+      if (isRecord(entry) && typeof entry.surface === "string" && typeof entry.reason === "string") {
+        blockers[entry.surface] = entry.reason;
+      }
+    }
+  }
+  return blockers;
 }
 
 async function readWorldProofStatus(projectPath: string): Promise<"fail" | "missing" | "pass"> {
@@ -731,10 +773,12 @@ function buildUiStateCoverage(snapshot: IProjectEvidenceSnapshot): IGameUiStateC
   return GAME_UI_STATE_IDS.map((id) => {
     const terms = uiStateTerms(id);
     const evidence = [...snapshot.sourceEvidence, ...snapshot.artifactEvidence].filter((item) => includesAny(item, terms));
+    const waivedReason = evidence.length === 0 ? snapshot.scopeBlockers[id] : undefined;
     return {
       evidence: evidence.sort(compareEvidence),
       id,
       present: evidence.length > 0,
+      ...(waivedReason === undefined ? {} : { waivedReason }),
     };
   });
 }
@@ -744,12 +788,14 @@ function buildAssetAudioLedger(snapshot: IProjectEvidenceSnapshot): IGameAssetAu
     const terms = assetSurfaceTerms(surface);
     const evidence = [...snapshot.sourceEvidence, ...snapshot.artifactEvidence].filter((item) => includesAny(item, terms));
     const provider = inferProvider(evidence);
+    const waivedReason = snapshot.scopeBlockers[surface];
     return {
       evidence: evidence.sort(compareEvidence),
       ...(provider === undefined ? {} : { provider }),
       sourcePath: evidence[0]?.path,
-      status: evidence.length > 0 ? inferSourcingStatus(evidence) : "blocked",
+      status: waivedReason !== undefined ? "waived-scope" : evidence.length > 0 ? inferSourcingStatus(evidence) : "blocked",
       surface,
+      ...(waivedReason === undefined ? {} : { waivedReason }),
     };
   });
 }

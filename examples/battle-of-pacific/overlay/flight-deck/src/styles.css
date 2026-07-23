@@ -1,0 +1,226 @@
+:root {
+  color: #f4e8c7;
+  font-family: "Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif;
+  font-synthesis: none;
+  --ink: #101b1d;
+  --navy: #172c35;
+  --paper: #f4e8c7;
+  --signal: #d85b40;
+  --verdigris: #83a89f;
+}
+
+* { box-sizing: border-box; }
+html, body, #root { width: 100%; min-height: 100%; margin: 0; background: transparent; }
+button, kbd { font: inherit; }
+
+.flight-deck {
+  min-height: 100dvh;
+  position: relative;
+  overflow: hidden;
+  padding: max(18px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(20px, env(safe-area-inset-left));
+  pointer-events: none;
+  text-shadow: 0 2px 4px #000a;
+}
+
+.flight-deck::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, #0810124d 0, transparent 26%, transparent 70%, #08101257 100%),
+    radial-gradient(circle at 50% 42%, transparent 35%, #0610123d 100%);
+  mix-blend-mode: multiply;
+}
+
+.mission-strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(210px, .7fr) minmax(320px, 1.4fr) minmax(170px, .55fr);
+  gap: 1px;
+  max-width: 1120px;
+  margin: 0 auto;
+  border: 1px solid #d8c8955e;
+  background: #080e10d9;
+  box-shadow: 0 14px 34px #0008, inset 0 1px #fff1b526;
+  clip-path: polygon(0 0, 98% 0, 100% 22%, 100% 100%, 2% 100%, 0 76%);
+}
+
+.mission-strip > div { padding: 12px 18px; }
+.mission-strip__identity { display: flex; align-items: center; gap: 13px; background: #172c35e8; }
+.wing-mark { display: grid; place-items: center; width: 42px; height: 42px; border: 2px solid #f1e4c0; border-radius: 50%; font-size: 23px; }
+.mission-strip p { margin: 0; }
+.mission-strip__identity p, .mission-strip__objective > span {
+  color: #9bb7b4;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .22em;
+}
+.mission-strip__identity strong { display: block; margin-top: 3px; font-family: Georgia, serif; font-size: 15px; letter-spacing: .08em; }
+.mission-strip__objective { position: relative; border-inline: 1px solid #d8c89526; }
+.mission-strip__objective p { margin-top: 5px; font-family: Georgia, serif; font-size: 14px; }
+.mission-strip__objective i { position: absolute; left: 18px; right: 18px; bottom: 0; height: 3px; background: linear-gradient(90deg, #d7c58d calc(var(--progress) * 100%), #d7c58d24 0); }
+.phase-flag { display: flex; align-items: center; justify-content: center; gap: 9px; color: #d9cfaf; font-size: 12px; font-weight: 900; letter-spacing: .14em; }
+.phase-flag__lamp { width: 9px; height: 9px; border-radius: 50%; background: #72b48c; box-shadow: 0 0 12px #72b48c; }
+.flight-deck--warning .phase-flag__lamp { background: var(--signal); box-shadow: 0 0 16px var(--signal); animation: pulse .75s steps(2) infinite; }
+
+.instrument-stack {
+  position: absolute;
+  top: 112px;
+  right: max(22px, env(safe-area-inset-right));
+  display: grid;
+  grid-template-columns: repeat(2, 142px);
+  gap: 12px;
+}
+
+.gauge {
+  position: relative;
+  display: grid;
+  place-content: center;
+  width: 142px;
+  aspect-ratio: 1;
+  border: 8px solid #151b1b;
+  border-radius: 50%;
+  background: radial-gradient(circle, #263436 0 46%, #0c1213 47% 66%, #85836e 67% 69%, #151b1b 70%);
+  box-shadow: 0 9px 22px #0009, inset 0 0 20px #000;
+  text-align: center;
+}
+.gauge::before, .gauge::after { content: ""; position: absolute; inset: 12px 50%; width: 1px; background: #e4dcbf69; transform: rotate(38deg); }
+.gauge::after { transform: rotate(-62deg); }
+.gauge__label { color: #a5b6af; font-size: 9px; font-weight: 900; letter-spacing: .18em; }
+.gauge strong { margin: 4px 0; font-family: "Courier New", monospace; font-size: 22px; letter-spacing: -.06em; }
+.gauge small { color: #7f9690; font-size: 8px; letter-spacing: .15em; }
+
+.engine-card {
+  grid-column: span 2;
+  display: grid;
+  grid-template-columns: 1fr 16px 48px;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 14px;
+  border: 1px solid #c8bd9063;
+  background: linear-gradient(135deg, #172527ef, #080e0fef);
+  box-shadow: 0 8px 18px #0008;
+}
+.engine-card span { display: block; color: #8ba49e; font-size: 9px; font-weight: 900; letter-spacing: .18em; }
+.engine-card strong { font-family: Georgia, serif; font-size: 15px; }
+.engine-card b { font-family: "Courier New", monospace; font-size: 17px; }
+.engine-card__throttle { position: relative; height: 37px; border: 1px solid #b9af8842; background: #030707; }
+.engine-card__throttle span { position: absolute; left: 2px; right: 2px; bottom: 2px; max-height: calc(100% - 4px); background: linear-gradient(#d6c47f, #698b80); }
+
+.reticle {
+  position: absolute;
+  left: 50%;
+  top: 52%;
+  width: 190px;
+  height: 80px;
+  transform: translate(-50%, -50%);
+  opacity: .78;
+  filter: drop-shadow(0 1px 2px #000);
+}
+.reticle__wing { position: absolute; top: 38px; width: 72px; height: 2px; background: #efe4b6; }
+.reticle__wing::after { content: ""; position: absolute; top: -9px; width: 2px; height: 10px; background: #efe4b6; }
+.reticle__wing--left { left: 0; transform: rotate(7deg); transform-origin: right; }
+.reticle__wing--left::after { left: 0; }
+.reticle__wing--right { right: 0; transform: rotate(-7deg); transform-origin: left; }
+.reticle__wing--right::after { right: 0; }
+.reticle__dot { position: absolute; left: 50%; top: 31px; width: 15px; height: 15px; transform: translateX(-50%); border: 2px solid #efe4b6; border-radius: 50%; }
+.reticle__drop { position: absolute; left: 50%; top: 47px; width: 2px; height: 27px; background: #efe4b6; transform: translateX(-50%); }
+
+.warning-panel {
+  position: absolute;
+  left: 50%;
+  top: 92px;
+  display: none;
+  align-items: center;
+  gap: 12px;
+  transform: translateX(-50%);
+  padding: 10px 18px;
+  border: 2px solid #f0b28e;
+  background: #7b251ce8;
+  box-shadow: 0 0 25px #e9472c66;
+}
+.flight-deck--warning .warning-panel { display: flex; animation: warning-in .18s ease-out; }
+.warning-panel > span { font-size: 24px; }
+.warning-panel strong, .warning-panel small { display: block; }
+.warning-panel strong { font-family: Georgia, serif; letter-spacing: .1em; }
+.warning-panel small { margin-top: 2px; font-size: 9px; letter-spacing: .16em; }
+
+.control-rack {
+  position: absolute;
+  left: max(20px, env(safe-area-inset-left));
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(18px, env(safe-area-inset-bottom));
+  display: flex;
+  align-items: end;
+  gap: 8px;
+}
+.control-rack__keys {
+  display: flex;
+  gap: 15px;
+  margin-right: auto;
+  padding: 10px 14px;
+  border-left: 3px solid #c9bc8b;
+  background: #091012bd;
+  color: #9eafa8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .11em;
+}
+.control-rack__keys span { display: flex; align-items: center; gap: 3px; }
+kbd {
+  min-width: 20px;
+  padding: 3px 5px;
+  border: 1px solid #d9cca75e;
+  border-bottom-width: 2px;
+  border-radius: 2px;
+  color: #eee2bd;
+  background: #1c292b;
+  text-align: center;
+}
+.control-rack button {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 43px;
+  padding: 7px 14px;
+  border: 1px solid #c8bb8a6b;
+  border-radius: 0;
+  color: #e9dfbf;
+  background: #142326eb;
+  box-shadow: 0 7px 18px #0008, inset 0 1px #ffffff12;
+  cursor: pointer;
+  pointer-events: auto;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+.control-rack button span { display: grid; place-items: center; width: 27px; height: 27px; border: 1px solid #d8c99575; color: #d8c995; }
+.control-rack button:hover, .control-rack button:focus-visible { border-color: #eee0af; background: #22383b; outline: none; transform: translateY(-1px); }
+.control-rack button.is-active { background: #554725eb; }
+.control-rack button.retry { border-color: #b9684e91; }
+
+@keyframes pulse { 50% { opacity: .3; } }
+@keyframes warning-in { from { transform: translate(-50%, -8px); opacity: 0; } }
+
+@media (max-width: 850px), (max-height: 610px) {
+  .flight-deck { padding: 8px; }
+  .mission-strip { grid-template-columns: 1fr auto; }
+  .mission-strip__objective { grid-row: 2; grid-column: 1 / -1; }
+  .mission-strip > div { padding: 8px 11px; }
+  .instrument-stack { top: 88px; right: 8px; grid-template-columns: repeat(2, 104px); gap: 6px; }
+  .gauge { width: 104px; border-width: 5px; }
+  .gauge strong { font-size: 17px; }
+  .engine-card { padding: 7px 9px; }
+  .control-rack { left: 8px; right: 8px; bottom: 8px; }
+  .control-rack__keys { display: none; }
+  .control-rack button:first-of-type { margin-left: auto; }
+  .warning-panel { top: 78px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

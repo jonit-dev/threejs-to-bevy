@@ -1,0 +1,884 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "aircraft.douglas-sbd3",
+  "source": "assets/imported/aircraft.douglas-sbd3.source.glb",
+  "animations": [
+    {
+      "id": "propeller.spin",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flaps.deploy",
+      "duration": 3,
+      "loop": false,
+      "tracks": [
+        {
+          "node": "Plane.003_Plane.004",
+          "pivot": [
+            0,
+            -0.075642,
+            0.148396
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 3,
+              "value": [
+                35,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.cruise",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.flaps",
+      "duration": 3,
+      "loop": false,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.5,
+              "value": [
+                0,
+                0,
+                540
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 2.25,
+              "value": [
+                0,
+                0,
+                810
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 3,
+              "value": [
+                0,
+                0,
+                1080
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "Plane.003_Plane.004",
+          "pivot": [
+            0,
+            -0.075642,
+            0.148396
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 3,
+              "value": [
+                35,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.flaps-down",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "Plane.003_Plane.004",
+          "pivot": [
+            0,
+            -0.075642,
+            0.148396
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                35,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                35,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.flaps-retract",
+      "duration": 3,
+      "loop": false,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.5,
+              "value": [
+                0,
+                0,
+                540
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 2.25,
+              "value": [
+                0,
+                0,
+                810
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 3,
+              "value": [
+                0,
+                0,
+                1080
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "Plane.003_Plane.004",
+          "pivot": [
+            0,
+            -0.075642,
+            0.148396
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                35,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 3,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.pitch-up",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.0,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "defaultMaterial_node_1",
+          "pivot": [
+            0,
+            0.011329937373693722,
+            -0.6175789827426276
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "defaultMaterial_node_2",
+          "pivot": [
+            0,
+            0.011329937373693722,
+            -0.6175789827426276
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.pitch-down",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.0,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "defaultMaterial_node_1",
+          "pivot": [
+            0,
+            0.011329937373693722,
+            -0.6175789827426276
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                -15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                -15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "defaultMaterial_node_2",
+          "pivot": [
+            0,
+            0.011329937373693722,
+            -0.6175789827426276
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                -15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                -15,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.rudder-left",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.0,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "Circle.004_Circle.026",
+          "pivot": [
+            0,
+            0,
+            -0.6400039729096779
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                20,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                20,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "flight.rudder-right",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Circle.008_Circle.031",
+          "pivot": [
+            0,
+            -0.0466526,
+            0.72194
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0.0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1.0,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        },
+        {
+          "node": "Circle.004_Circle.026",
+          "pivot": [
+            0,
+            0,
+            -0.6400039729096779
+          ],
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                -20,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                -20,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "budgets": {
+    "maxAnimations": 10,
+    "maxKeyframesPerTrack": 16,
+    "maxMaterials": 64,
+    "maxModifiersPerPart": 4,
+    "maxOperations": 16,
+    "maxOutputBytes": 20000000,
+    "maxParts": 128,
+    "maxPolygons": 20000,
+    "maxSegments": 32,
+    "maxTracksPerAnimation": 16
+  }
+}

@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 
 import { NativeHeadlessUnsupportedError } from "../native/bevy.js";
 
-import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeAnimationEffectLogEntries, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
 
 test("web playtest exact stepping delegates N ticks without unpausing", async () => {
   const pauses: boolean[] = [];
@@ -87,6 +87,28 @@ test("native playtest should route occlusion assertions through rendered scene q
       service: "render.sceneRayQuery",
     }],
   });
+});
+
+test("native playtest should convert advancing animation samples into effect-log evidence", () => {
+  const entries = nativeAnimationEffectLogEntries([
+    { animations: [{ clip: "flight.cruise", entity: "aircraft.visual", playing: true, sourceClip: "flight.cruise", timeSeconds: 0.25 }] },
+    { animations: [
+      { clip: "flight.cruise", entity: "aircraft.visual", playing: true, sourceClip: "flight.cruise", timeSeconds: 1.25 },
+      { clip: "idle", entity: "buoy", playing: true, timeSeconds: 0.5 },
+    ] },
+    { animations: [{ clip: "idle", entity: "buoy", playing: true, timeSeconds: 0.5 }] },
+  ]);
+
+  assert.deepEqual(entries, [{
+    kind: "animation",
+    payload: {
+      advancedSeconds: 1,
+      clip: "flight.cruise",
+      entered: true,
+      entity: "aircraft.visual",
+      sourceClip: "flight.cruise",
+    },
+  }]);
 });
 
 test("native playtest should route typed overlay messages through the proof harness", () => {

@@ -421,6 +421,7 @@ fn install_native_runtime_systems(
                 audio::apply_native_audio_controls,
                 reconcile_scripted_runtime_world,
                 map_world::apply_native_animation_service_effects,
+                map_world::advance_native_animation_playback_time,
                 cameras::update_native_camera_helpers,
             )
                 .chain(),
@@ -431,6 +432,7 @@ fn install_native_runtime_systems(
             (
                 audio::play_new_native_audio_events,
                 audio::apply_native_audio_controls,
+                map_world::advance_native_animation_playback_time,
                 cameras::update_native_camera_helpers,
             )
                 .chain(),

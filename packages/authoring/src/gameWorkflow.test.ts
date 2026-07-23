@@ -92,6 +92,48 @@ test("recognizes themed obstacle enemy provenance", async () => {
   }
 });
 
+test("waives missing surfaces and ui states with a recorded scope blocker", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-report-scope-blockers-"));
+  try {
+    await writeMinimalProject(root);
+    await writeFile(join(root, "content/ui/hud.ui.json"), `${JSON.stringify({
+      schema: "threenative.ui",
+      id: "hud",
+      nodes: [
+        { id: "gameplay-hud", text: "Score" },
+        { id: "pause-menu", text: "Pause" },
+        { id: "settings-menu", text: "Settings" },
+        { id: "loading-screen", text: "Loading" },
+        { id: "fail-retry", text: "Retry" },
+        { id: "win-milestone", text: "Win" },
+      ],
+    }, null, 2)}\n`);
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "artifacts/game-production/scope-blockers.json"), `${JSON.stringify({
+      schema: "threenative.game-scope-blockers",
+      version: "0.1.0",
+      blockers: [
+        { surface: "audio-feedback", reason: "No audio ships in this slice." },
+        { surface: "touch-controls", reason: "Keyboard-only desktop and web targets." },
+      ],
+    }, null, 2)}\n`);
+
+    const report = await createGameQualityReport({ projectPath: root });
+    const audioEntry = report.assetAudioLedger.find((entry) => entry.surface === "audio-feedback");
+    const touchState = report.uiStates.find((state) => state.id === "touch-controls");
+
+    assert.equal(audioEntry?.status, "waived-scope");
+    assert.equal(audioEntry?.waivedReason, "No audio ships in this slice.");
+    assert.equal(touchState?.present, false);
+    assert.equal(touchState?.waivedReason, "Keyboard-only desktop and web targets.");
+    assert.equal(report.blockers.some((diagnostic) => diagnostic.path === "/assetAudioLedger/audio-feedback"), false);
+    assert.equal(report.blockers.some((diagnostic) => diagnostic.path === "/uiStates/touch-controls"), false);
+    assert.equal(report.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAME_SCOPE_BLOCKER_RECORDED" && diagnostic.severity === "warning"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("production command build proof uses discovered bundle manifest path", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-report-build-command-"));
   try {
