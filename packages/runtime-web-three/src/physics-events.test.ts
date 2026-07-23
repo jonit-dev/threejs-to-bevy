@@ -5,6 +5,7 @@ import type { ISystemsIr, IWorldIr } from "@threenative/ir";
 
 import { mapWorld } from "./mapWorld.js";
 import { runGameFrame } from "./gameLoop.js";
+import { collectPhysicsDebugCore } from "./physicsDebug.js";
 
 test("physics should damage entity on collision event", async () => {
   const world: IWorldIr = {
@@ -77,6 +78,7 @@ test("physics should damage entity on collision event", async () => {
 
   assert.deepEqual(world.events?.CollisionEvent, [{ a: "enemy", b: "player", phase: "enter" }]);
   assert.deepEqual(world.entities[0]?.components.Health, { value: 9 });
+  assert.deepEqual(collectPhysicsDebugCore(world, { fixedDt: 1 / 60, tick: 0 }).telemetry.timings.map((timing) => timing.system), ["aerodynamics", "physics", "vehicle"]);
 });
 
 function emptyBundle(world: Parameters<typeof mapWorld>[0]["world"]): Parameters<typeof mapWorld>[0] {

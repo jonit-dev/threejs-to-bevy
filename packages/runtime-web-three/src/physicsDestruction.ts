@@ -176,16 +176,19 @@ function contactBond(assembly: IAssemblyState, world: IWorldIr, point: readonly 
 function addPosition(left: readonly number[], right: readonly number[]): readonly number[] { return [(left[0] ?? 0) + (right[0] ?? 0), (left[1] ?? 0) + (right[1] ?? 0), (left[2] ?? 0) + (right[2] ?? 0)]; }
 function squaredDistance(left: readonly number[], right: readonly number[]): number { return ((left[0] ?? 0) - (right[0] ?? 0)) ** 2 + ((left[1] ?? 0) - (right[1] ?? 0)) ** 2 + ((left[2] ?? 0) - (right[2] ?? 0)) ** 2; }
 function destructionSourceSignature(component: IPhysicsDestructibleComponent, manifest: IFractureManifest): string { return JSON.stringify([component, manifest]); }
+function effectiveAssemblyBudget(runtime: IPhysicsDestructionRuntime, assembly: IAssemblyState): number { return Math.min(runtime.maxActivePieces, assembly.manifest.budgets.maxActivePieces, assembly.component.activationBudget ?? Number.POSITIVE_INFINITY); }
 
 export function observePhysicsDestruction(runtime: IPhysicsDestructionRuntime): {
   assemblies: Array<{ broken: boolean; id: string }>;
-  bonds: Array<{ assembly: string; broken: boolean; health: number; id: string }>;
-  pieces: Array<{ activationDepth: number; assembly: string; id: string; lifecycle: PieceLifecycle }>;
+  bonds: Array<{ assembly: string; broken: boolean; health: number; id: string; pieces: readonly [string, string] }>;
+  budgets: Array<{ activePieces: number; assembly: string; maximumActivePieces: number; policy: IFractureManifest["budgets"]["overflowPolicy"] }>;
+  pieces: Array<{ activationDepth: number; assembly: string; collider: IFractureManifest["pieces"][number]["collider"]; id: string; lifecycle: PieceLifecycle }>;
 } {
   return {
     assemblies: [...runtime.assemblies].map(([id, assembly]) => ({ broken: assembly.assemblyBroken, id })).sort((left, right) => left.id.localeCompare(right.id)),
-    bonds: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.bonds].map(([id, bond]) => ({ assembly, broken: bond.broken, health: round(bond.health), id }))).sort(compareOwned),
-    pieces: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.pieces].map(([id, piece]) => ({ activationDepth: piece.source.activationDepth, assembly, id, lifecycle: piece.lifecycle }))).sort(compareOwned),
+    bonds: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.bonds].map(([id, bond]) => ({ assembly, broken: bond.broken, health: round(bond.health), id, pieces: bond.source.pieces }))).sort(compareOwned),
+    budgets: [...runtime.assemblies].map(([assembly, state]) => ({ activePieces: [...state.pieces.values()].filter((piece) => piece.lifecycle === "active" || piece.lifecycle === "sleeping").length, assembly, maximumActivePieces: effectiveAssemblyBudget(runtime, state), policy: state.manifest.budgets.overflowPolicy })).sort((left, right) => left.assembly.localeCompare(right.assembly)),
+    pieces: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.pieces].map(([id, piece]) => ({ activationDepth: piece.source.activationDepth, assembly, collider: piece.source.collider, id, lifecycle: piece.lifecycle }))).sort(compareOwned),
   };
 }
 

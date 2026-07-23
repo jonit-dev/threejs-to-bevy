@@ -9,6 +9,7 @@ import { stepStateMachines } from "./stateMachines.js";
 import { stepCountdowns } from "./countdowns.js";
 import { preparePhysicsRuntime, stepPhysics } from "./physics.js";
 import { stepPhysicsDestruction, type IPhysicsDestructionRuntime } from "./physicsDestruction.js";
+import { beginPhysicsTelemetryTick, recordPhysicsSystemTiming } from "./physicsDebug.js";
 import { applyPhysicsVehicleBindings, setPhysicsVehicleControllerInputs, stepPhysicsVehicles, updatePhysicsVehicleVisuals } from "./physicsVehicle.js";
 import { applyPhysicsAerodynamicBindings, stepPhysicsAerodynamics } from "./physicsAerodynamics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
@@ -116,6 +117,7 @@ export async function runGameFrame(options: {
       }
       while (state.accumulator >= fixedDelta) {
         runtimeState.writeLedger.beginTick(state.tick);
+        beginPhysicsTelemetryTick(options.world);
         const beforeFixed = snapshotWorldTransforms(options.world);
         stepKinematicMovers(options.world, state.elapsed);
         stepPatrols(options.world, fixedDelta);
@@ -125,10 +127,10 @@ export async function runGameFrame(options: {
         applyVehicleGearEdges = false;
         collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: fixedDelta, elapsed: state.elapsed, fixedDelta, frame: state.frame, paused: schedulePaused, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: state.tick }));
         for (const [entity, input] of options.vehicleControllerInputs ?? []) setPhysicsVehicleControllerInputs(options.world, entity, input);
-        stepPhysicsVehicles(options.world, fixedDelta);
-        stepPhysicsAerodynamics(options.world, fixedDelta, state.tick);
-        stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: state.tick, writeLedger: runtimeState.writeLedger });
-        if (options.destructionRuntime !== undefined) stepPhysicsDestruction(options.destructionRuntime, options.world, state.tick, fixedDelta);
+        timePhysicsSystem(options.world, "vehicle", () => stepPhysicsVehicles(options.world, fixedDelta));
+        timePhysicsSystem(options.world, "aerodynamics", () => stepPhysicsAerodynamics(options.world, fixedDelta, state.tick));
+        timePhysicsSystem(options.world, "physics", () => stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: state.tick, writeLedger: runtimeState.writeLedger }));
+        if (options.destructionRuntime !== undefined) timePhysicsSystem(options.world, "destruction", () => stepPhysicsDestruction(options.destructionRuntime!, options.world, state.tick, fixedDelta));
         stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
         const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         stepStateMachines(options.world, state.tick, sensorEvents);
@@ -151,6 +153,7 @@ export async function runGameFrame(options: {
   } else {
     options.input?.beginFrame();
     runtimeState.writeLedger.beginTick(0);
+    beginPhysicsTelemetryTick(options.world);
     runtimeState.sensors.advance(options.world, { fixedDelta, phase: "startup", tick: 0 });
     collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, delta: 0, fixedDelta, frame: 0, runtimeState, schedule: "startup", tick: 0 }));
     stepKinematicMovers(options.world, fixedDelta);
@@ -160,10 +163,10 @@ export async function runGameFrame(options: {
     if (options.input !== undefined) applyPhysicsAerodynamicBindings(options.world, options.input);
     collectSystemResult(options.mapped, await runSchedule({ ...frameOptions, fixedDelta, frame: 0, runtimeState, schedule: "fixedUpdate", systemFilter: isPrePhysicsSystem, tick: 0 }));
     for (const [entity, input] of options.vehicleControllerInputs ?? []) setPhysicsVehicleControllerInputs(options.world, entity, input);
-    stepPhysicsVehicles(options.world, fixedDelta);
-    stepPhysicsAerodynamics(options.world, fixedDelta, 0);
-    stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: 0, writeLedger: runtimeState.writeLedger });
-    if (options.destructionRuntime !== undefined) stepPhysicsDestruction(options.destructionRuntime, options.world, 0, fixedDelta);
+    timePhysicsSystem(options.world, "vehicle", () => stepPhysicsVehicles(options.world, fixedDelta));
+    timePhysicsSystem(options.world, "aerodynamics", () => stepPhysicsAerodynamics(options.world, fixedDelta, 0));
+    timePhysicsSystem(options.world, "physics", () => stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: 0, writeLedger: runtimeState.writeLedger }));
+    if (options.destructionRuntime !== undefined) timePhysicsSystem(options.world, "destruction", () => stepPhysicsDestruction(options.destructionRuntime!, options.world, 0, fixedDelta));
     stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
     const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     stepStateMachines(options.world, 0, sensorEvents);
@@ -220,6 +223,12 @@ function isPrePhysicsSystem(system: ISystemsIr["systems"][number]): boolean {
   return system.writes.includes("RigidBody")
     || system.writes.includes("Transform")
     || system.services.some((service) => PRE_PHYSICS_BODY_SERVICES.has(service));
+}
+
+function timePhysicsSystem<T>(world: IWorldIr, system: string, operation: () => T): T {
+  const startedAt = performance.now();
+  try { return operation(); }
+  finally { recordPhysicsSystemTiming(world, system, performance.now() - startedAt); }
 }
 
 function recordFixedTransformStep(

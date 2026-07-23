@@ -1,8 +1,9 @@
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::time::Instant;
 
 use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
 use rapier3d::parry::query::ShapeCastOptions;
@@ -13,6 +14,10 @@ use threenative_loader::{
     WorldEntity,
 };
 
+use crate::physics_debug::{
+    PhysicsDebugBodies, PhysicsDebugPrimitive, PhysicsDebugSnapshot, PhysicsDebugTelemetry,
+    PhysicsDebugTiming,
+};
 use crate::physics_destruction::{
     DestructionDamage, DestructionEvent, DestructionPhysicsObservation, NativeDestructionState,
 };
@@ -287,6 +292,19 @@ pub fn inspect_cached_physics_destruction(
         let caches = caches.borrow();
         let runtime = caches.get(&runtime_id)?;
         Some(runtime.destruction_state.observation(&runtime.world))
+    })
+}
+
+pub fn inspect_cached_physics_debug(
+    bundle: &LoadedBundle,
+    script_posed_entities: &BTreeSet<String>,
+) -> Option<PhysicsDebugSnapshot> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        let caches = caches.borrow();
+        caches
+            .get(&runtime_id)
+            .map(|runtime| runtime.debug_snapshot(bundle, runtime_id))
     })
 }
 
@@ -987,10 +1005,13 @@ fn step_rapier_bodies(
             .get(&runtime_id)
             .is_none_or(|cache| cache.signature != signature)
         {
-            caches.insert(
-                runtime_id,
-                PersistentRapierWorld::new(bundle, entities, gravity, signature),
-            );
+            let rebuilds = caches
+                .get(&runtime_id)
+                .map_or(1, |runtime| runtime.rebuilds + 1);
+            let mut runtime = PersistentRapierWorld::new(bundle, entities, gravity, signature);
+            runtime.rebuilds = rebuilds;
+            runtime.debug_telemetry.rebuilds = rebuilds;
+            caches.insert(runtime_id, runtime);
         }
         caches
             .get_mut(&runtime_id)
@@ -1030,6 +1051,10 @@ struct PersistentRapierWorld {
     joint_state: PhysicsJointRuntimeState,
     aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState,
     destruction_state: NativeDestructionState,
+    debug_queries: Cell<usize>,
+    debug_telemetry: PhysicsDebugTelemetry,
+    debug_tick: u64,
+    rebuilds: u64,
     vehicle_state: crate::physics_vehicle::VehicleRuntimeState,
 }
 
@@ -1046,6 +1071,7 @@ impl PersistentRapierWorld {
         service: &str,
         request: serde_json::Value,
     ) -> Result<serde_json::Value, String> {
+        self.debug_queries.set(self.debug_queries.get() + 1);
         match service {
             "physics.raycast" => {
                 self.raycast(serde_json::from_value(request).map_err(|source| {
@@ -1465,6 +1491,23 @@ impl PersistentRapierWorld {
             joint_state,
             aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState::default(),
             destruction_state,
+            debug_queries: Cell::new(0),
+            debug_telemetry: PhysicsDebugTelemetry {
+                allocated_pieces: 0,
+                bodies: PhysicsDebugBodies {
+                    active: 0,
+                    sleeping: 0,
+                },
+                contacts: 0,
+                fixed_dt: 0.0,
+                queries: 0,
+                rebuilds: 1,
+                solver_iterations: 12,
+                tick: 0,
+                timings: Vec::new(),
+            },
+            debug_tick: 0,
+            rebuilds: 1,
             vehicle_state: crate::physics_vehicle::VehicleRuntimeState::default(),
         }
     }
@@ -1482,6 +1525,7 @@ impl PersistentRapierWorld {
         Vec<PhysicsJointBreakEvent>,
         Vec<DestructionEvent>,
     ) {
+        let mut debug_timings = Vec::new();
         let substeps = physics_substeps(fixed_delta);
         self.world.integration_parameters.dt = fixed_delta / substeps as f32;
         reconcile_physics_joints(
@@ -1584,14 +1628,17 @@ impl PersistentRapierWorld {
             }
         }
 
+        let destruction_started = Instant::now();
         let destruction_events = self.destruction_state.step(
             &mut self.world,
             &mut self.handles,
             &mut self.collider_owners,
             fixed_delta,
         );
+        debug_timings.push(debug_timing("destruction", destruction_started));
 
         let initial_query_broad_phase = self.initial_query_broad_phase.take();
+        let aerodynamics_started = Instant::now();
         crate::physics_aerodynamics::step_physics_aerodynamics(
             runtime_id,
             bundle,
@@ -1600,6 +1647,8 @@ impl PersistentRapierWorld {
             &mut self.aerodynamic_state,
             fixed_delta,
         );
+        debug_timings.push(debug_timing("aerodynamics", aerodynamics_started));
+        let vehicle_started = Instant::now();
         crate::physics_vehicle::step_physics_vehicles(
             runtime_id,
             bundle,
@@ -1610,7 +1659,9 @@ impl PersistentRapierWorld {
             fixed_delta,
             initial_query_broad_phase.as_ref(),
         );
+        debug_timings.push(debug_timing("vehicle", vehicle_started));
         let mut joint_break_events = Vec::new();
+        let solver_started = Instant::now();
         for _ in 0..substeps {
             self.world.step();
             joint_break_events.extend(observe_joint_loads_and_schedule_breaks(
@@ -1619,6 +1670,7 @@ impl PersistentRapierWorld {
                 fixed_delta / substeps as f32,
             ));
         }
+        debug_timings.push(debug_timing("solver", solver_started));
         self.destruction_state
             .queue_contact_damage(&self.world, &self.collider_owners);
 
@@ -1648,7 +1700,262 @@ impl PersistentRapierWorld {
         let current_pairs = self.live_pairs();
         let events = physics_events_for_pair_delta(&current_pairs, &self.previous_pairs);
         self.previous_pairs = current_pairs;
+        self.debug_tick += 1;
+        let sleeping = self
+            .world
+            .bodies
+            .iter()
+            .filter(|(_, body)| body.is_enabled() && body.is_sleeping())
+            .count();
+        let active = self
+            .world
+            .bodies
+            .iter()
+            .filter(|(_, body)| body.is_enabled() && !body.is_sleeping())
+            .count();
+        self.debug_telemetry = PhysicsDebugTelemetry {
+            allocated_pieces: self.destruction_state.allocated_piece_count(),
+            bodies: PhysicsDebugBodies { active, sleeping },
+            contacts: self.previous_pairs.len(),
+            fixed_dt: fixed_delta,
+            queries: self.debug_queries.replace(0),
+            rebuilds: self.rebuilds,
+            solver_iterations: self.world.integration_parameters.num_solver_iterations,
+            tick: self.debug_tick,
+            timings: debug_timings,
+        };
         (events, joint_break_events, destruction_events)
+    }
+
+    fn debug_snapshot(&self, bundle: &LoadedBundle, runtime_id: usize) -> PhysicsDebugSnapshot {
+        let mut primitives = Vec::new();
+        let body_position = |entity: &str| {
+            self.handles
+                .get(entity)
+                .and_then(|handle| self.world.bodies.get(*handle))
+                .map(|body| <[f32; 3]>::from(body.translation()))
+        };
+
+        let mut entities = bundle.world.entities.iter().collect::<Vec<_>>();
+        entities.sort_by(|left, right| left.id.cmp(&right.id));
+        for entity in entities {
+            let position = body_position(&entity.id)
+                .or_else(|| entity.components.transform.as_ref()?.position)
+                .unwrap_or([0.0; 3]);
+            if let Some(handle) = self.handles.get(&entity.id)
+                && let Some(body) = self.world.bodies.get(*handle)
+            {
+                primitives.push(debug_point(
+                    format!("center-of-mass:{}", entity.id),
+                    "center-of-mass",
+                    &entity.id,
+                    body.center_of_mass().into(),
+                    None,
+                ));
+                primitives.push(debug_point(
+                    format!("sleep:{}", entity.id),
+                    "sleep",
+                    &entity.id,
+                    position,
+                    Some(if body.is_sleeping() { 1.0 } else { 0.0 }),
+                ));
+            }
+            if let Some(collider) = &entity.components.collider {
+                primitives.push(debug_collider_primitive(
+                    &entity.id,
+                    position,
+                    collider.center.unwrap_or([0.0; 3]),
+                    collider,
+                ));
+            }
+            if let Some(compound) = &entity.components.compound_collider {
+                for child in &compound.children {
+                    primitives.push(debug_compound_collider_primitive(
+                        &format!("{}/{}", entity.id, child.id),
+                        position,
+                        child.local_pose.position,
+                        &child.shape,
+                    ));
+                }
+            }
+        }
+
+        let mut contacts = self
+            .world
+            .contact_pairs()
+            .filter(|pair| pair.has_any_active_contact())
+            .filter_map(|pair| {
+                let left = self.owner_for_collider(pair.collider1)?;
+                let right = self.owner_for_collider(pair.collider2)?;
+                let (a, b) = if left.entity <= right.entity {
+                    (&left.entity, &right.entity)
+                } else {
+                    (&right.entity, &left.entity)
+                };
+                let position = pair
+                    .manifolds
+                    .iter()
+                    .flat_map(|manifold| &manifold.data.solver_contacts)
+                    .next()
+                    .map_or_else(
+                        || debug_midpoint(body_position(a), body_position(b)),
+                        |contact| contact.point.into(),
+                    );
+                Some((
+                    a.clone(),
+                    b.clone(),
+                    position,
+                    pair.total_impulse_magnitude(),
+                ))
+            })
+            .collect::<Vec<_>>();
+        contacts.sort_by(|left, right| left.0.cmp(&right.0).then(left.1.cmp(&right.1)));
+        for (index, (a, b, position, impulse)) in contacts.into_iter().enumerate() {
+            primitives.push(debug_point(
+                format!("contact:{a}:{b}:{index}"),
+                "contact",
+                &a,
+                position,
+                Some(impulse),
+            ));
+        }
+        for wheel in crate::physics_vehicle::inspect_physics_vehicle_debug_telemetry(runtime_id) {
+            let wheel_id = &wheel.observation.wheel_id;
+            let radius = bundle
+                .world
+                .entities
+                .iter()
+                .find(|entity| entity.id == wheel.entity)
+                .and_then(|entity| entity.components.wheel_assembly.as_ref())
+                .and_then(|assembly| assembly.wheels.iter().find(|source| source.id == *wheel_id))
+                .map_or(0.0, |source| source.radius);
+            let end = wheel
+                .observation
+                .contact
+                .as_ref()
+                .map_or(wheel.cast_end, |contact| contact.point);
+            primitives.push(PhysicsDebugPrimitive {
+                category: "wheel".to_owned(),
+                entity: Some(wheel.entity.clone()),
+                from: None,
+                id: format!("wheel:{}:{wheel_id}", wheel.entity),
+                kind: "sphere".to_owned(),
+                position: Some(end),
+                size: Some([radius * 2.0; 3]),
+                to: None,
+                value: Some(wheel.observation.angular_speed),
+            });
+            primitives.push(debug_line(
+                format!("suspension:{}:{wheel_id}", wheel.entity),
+                "suspension",
+                &wheel.entity,
+                wheel.cast_start,
+                end,
+                Some(wheel.observation.compression),
+            ));
+            primitives.push(debug_vector(
+                format!("slip:{}:{wheel_id}", wheel.entity),
+                "slip",
+                &wheel.entity,
+                end,
+                [
+                    wheel.observation.lateral_slip,
+                    0.0,
+                    wheel.observation.longitudinal_slip,
+                ],
+            ));
+            let normal = wheel
+                .observation
+                .contact
+                .as_ref()
+                .map_or([0.0, 1.0, 0.0], |contact| contact.normal);
+            primitives.push(debug_vector(
+                format!("force:{}:{wheel_id}", wheel.entity),
+                "force",
+                &wheel.entity,
+                end,
+                debug_scale(normal, wheel.observation.normal_load),
+            ));
+        }
+        for aero in crate::physics_aerodynamics::observe_physics_aerodynamics(runtime_id) {
+            for surface in aero.surfaces {
+                primitives.push(debug_vector(
+                    format!("aero:{}:surface:{}:lift", aero.entity, surface.id),
+                    "aero",
+                    &aero.entity,
+                    surface.force_point,
+                    surface.lift,
+                ));
+                primitives.push(debug_vector(
+                    format!("aero:{}:surface:{}:drag", aero.entity, surface.id),
+                    "aero",
+                    &aero.entity,
+                    surface.force_point,
+                    surface.drag,
+                ));
+            }
+            for thruster in aero.thrusters {
+                primitives.push(debug_vector(
+                    format!("aero:{}:thruster:{}", aero.entity, thruster.id),
+                    "aero",
+                    &aero.entity,
+                    thruster.point,
+                    thruster.force,
+                ));
+            }
+        }
+        for joint in self.joint_state.observations() {
+            let from = body_position(&joint.entity).unwrap_or([0.0; 3]);
+            let to = body_position(&joint.connected_entity).unwrap_or(from);
+            primitives.push(debug_line(
+                format!("joint-load:{}", joint.entity),
+                "joint-load",
+                &joint.entity,
+                from,
+                to,
+                Some(joint.force.hypot(joint.torque)),
+            ));
+        }
+        for bond in self.destruction_state.bond_debug_observations(&self.world) {
+            primitives.push(debug_line(
+                format!("bond:{}:{}", bond.assembly, bond.bond),
+                "bond",
+                &bond.assembly,
+                bond.from,
+                bond.to,
+                Some(if bond.broken { 0.0 } else { 1.0 }),
+            ));
+        }
+        for budget in self.destruction_state.budget_debug_observations() {
+            primitives.push(debug_point(
+                format!("budget:{}", budget.assembly),
+                "budget",
+                &budget.assembly,
+                body_position(&budget.assembly).unwrap_or([0.0; 3]),
+                Some(budget.active as f32 / budget.maximum.max(1) as f32),
+            ));
+        }
+        for piece in self.destruction_state.piece_debug_observations(&self.world) {
+            let value = match piece.lifecycle {
+                crate::physics_destruction::PieceLifecycle::Bound => 0.0,
+                crate::physics_destruction::PieceLifecycle::Active => 1.0,
+                crate::physics_destruction::PieceLifecycle::Sleeping => 2.0,
+                crate::physics_destruction::PieceLifecycle::Pooled => 3.0,
+                crate::physics_destruction::PieceLifecycle::Despawned => 4.0,
+            };
+            primitives.push(PhysicsDebugPrimitive {
+                category: "piece".to_owned(),
+                entity: Some(piece.assembly.clone()),
+                from: None,
+                id: format!("piece:{}:{}", piece.assembly, piece.piece),
+                kind: piece.kind.to_owned(),
+                position: Some(piece.position),
+                size: piece.size,
+                to: None,
+                value: Some(value),
+            });
+        }
+        PhysicsDebugSnapshot::bounded(primitives, self.debug_telemetry.clone())
     }
 
     fn live_pairs(&self) -> BTreeMap<String, DetectedPair> {
@@ -1711,6 +2018,221 @@ impl PersistentRapierWorld {
 
 fn query_direction(direction: [f64; 3]) -> Option<RapierVec3> {
     to_rapier_vec3(direction).try_normalize()
+}
+
+fn debug_timing(system: &str, started: Instant) -> PhysicsDebugTiming {
+    PhysicsDebugTiming {
+        milliseconds: started.elapsed().as_secs_f32() * 1_000.0,
+        system: system.to_owned(),
+    }
+}
+
+fn debug_point(
+    id: String,
+    category: &str,
+    entity: &str,
+    position: [f32; 3],
+    value: Option<f32>,
+) -> PhysicsDebugPrimitive {
+    PhysicsDebugPrimitive {
+        category: category.to_owned(),
+        entity: Some(entity.to_owned()),
+        from: None,
+        id,
+        kind: "point".to_owned(),
+        position: Some(position),
+        size: None,
+        to: None,
+        value,
+    }
+}
+
+fn debug_line(
+    id: String,
+    category: &str,
+    entity: &str,
+    from: [f32; 3],
+    to: [f32; 3],
+    value: Option<f32>,
+) -> PhysicsDebugPrimitive {
+    PhysicsDebugPrimitive {
+        category: category.to_owned(),
+        entity: Some(entity.to_owned()),
+        from: Some(from),
+        id,
+        kind: "line".to_owned(),
+        position: None,
+        size: None,
+        to: Some(to),
+        value,
+    }
+}
+
+fn debug_vector(
+    id: String,
+    category: &str,
+    entity: &str,
+    from: [f32; 3],
+    vector: [f32; 3],
+) -> PhysicsDebugPrimitive {
+    debug_line(
+        id,
+        category,
+        entity,
+        from,
+        debug_add(from, vector),
+        Some(debug_length(vector)),
+    )
+    .with_kind("vector")
+}
+
+trait DebugPrimitiveKind {
+    fn with_kind(self, kind: &str) -> Self;
+}
+
+impl DebugPrimitiveKind for PhysicsDebugPrimitive {
+    fn with_kind(mut self, kind: &str) -> Self {
+        self.kind = kind.to_owned();
+        self
+    }
+}
+
+fn debug_collider_primitive(
+    entity: &str,
+    origin: [f32; 3],
+    offset: [f32; 3],
+    collider: &ColliderComponent,
+) -> PhysicsDebugPrimitive {
+    let position = debug_add(origin, offset);
+    match collider.kind.as_str() {
+        "sphere" => PhysicsDebugPrimitive {
+            category: "collider".to_owned(),
+            entity: Some(entity.to_owned()),
+            from: None,
+            id: format!("collider:{entity}"),
+            kind: "sphere".to_owned(),
+            position: Some(position),
+            size: Some([collider.radius.unwrap_or(0.0) * 2.0; 3]),
+            to: None,
+            value: None,
+        },
+        "capsule" => debug_line(
+            format!("collider:{entity}"),
+            "collider",
+            entity,
+            debug_add(position, [0.0, -collider.height.unwrap_or(0.0) / 2.0, 0.0]),
+            debug_add(position, [0.0, collider.height.unwrap_or(0.0) / 2.0, 0.0]),
+            Some(collider.radius.unwrap_or(0.0)),
+        ),
+        _ => PhysicsDebugPrimitive {
+            category: "collider".to_owned(),
+            entity: Some(entity.to_owned()),
+            from: None,
+            id: format!("collider:{entity}"),
+            kind: "box".to_owned(),
+            position: Some(position),
+            size: Some(
+                collider
+                    .size
+                    .or_else(|| collider.mesh.as_ref().map(|mesh| mesh.bounds.size))
+                    .unwrap_or([0.0; 3]),
+            ),
+            to: None,
+            value: None,
+        },
+    }
+}
+
+fn debug_compound_collider_primitive(
+    entity: &str,
+    origin: [f32; 3],
+    offset: [f32; 3],
+    shape: &CompoundColliderShape,
+) -> PhysicsDebugPrimitive {
+    let position = debug_add(origin, offset);
+    match shape {
+        CompoundColliderShape::Box { size } => PhysicsDebugPrimitive {
+            category: "collider".to_owned(),
+            entity: Some(entity.to_owned()),
+            from: None,
+            id: format!("collider:{entity}"),
+            kind: "box".to_owned(),
+            position: Some(position),
+            size: Some(*size),
+            to: None,
+            value: None,
+        },
+        CompoundColliderShape::Sphere { radius } => PhysicsDebugPrimitive {
+            category: "collider".to_owned(),
+            entity: Some(entity.to_owned()),
+            from: None,
+            id: format!("collider:{entity}"),
+            kind: "sphere".to_owned(),
+            position: Some(position),
+            size: Some([radius * 2.0; 3]),
+            to: None,
+            value: None,
+        },
+        CompoundColliderShape::Capsule { height, radius } => debug_line(
+            format!("collider:{entity}"),
+            "collider",
+            entity,
+            debug_add(position, [0.0, -*height / 2.0, 0.0]),
+            debug_add(position, [0.0, *height / 2.0, 0.0]),
+            Some(*radius),
+        ),
+        CompoundColliderShape::ConvexHull { points } => {
+            let size = debug_points_size(points);
+            PhysicsDebugPrimitive {
+                category: "collider".to_owned(),
+                entity: Some(entity.to_owned()),
+                from: None,
+                id: format!("collider:{entity}"),
+                kind: "box".to_owned(),
+                position: Some(position),
+                size: Some(size),
+                to: None,
+                value: None,
+            }
+        }
+    }
+}
+
+fn debug_add(left: [f32; 3], right: [f32; 3]) -> [f32; 3] {
+    [left[0] + right[0], left[1] + right[1], left[2] + right[2]]
+}
+
+fn debug_scale(value: [f32; 3], factor: f32) -> [f32; 3] {
+    [value[0] * factor, value[1] * factor, value[2] * factor]
+}
+
+fn debug_length(value: [f32; 3]) -> f32 {
+    value[0].hypot(value[1]).hypot(value[2])
+}
+
+fn debug_midpoint(left: Option<[f32; 3]>, right: Option<[f32; 3]>) -> [f32; 3] {
+    let left = left.unwrap_or([0.0; 3]);
+    let right = right.unwrap_or(left);
+    debug_scale(debug_add(left, right), 0.5)
+}
+
+fn debug_points_size(points: &[[f32; 3]]) -> [f32; 3] {
+    if points.is_empty() {
+        return [0.0; 3];
+    }
+    let mut minimum = points[0];
+    let mut maximum = points[0];
+    for point in &points[1..] {
+        for axis in 0..3 {
+            minimum[axis] = minimum[axis].min(point[axis]);
+            maximum[axis] = maximum[axis].max(point[axis]);
+        }
+    }
+    [
+        maximum[0] - minimum[0],
+        maximum[1] - minimum[1],
+        maximum[2] - minimum[2],
+    ]
 }
 
 fn to_rapier_vec3(value: [f64; 3]) -> RapierVec3 {

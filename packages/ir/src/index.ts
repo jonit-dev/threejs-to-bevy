@@ -12,6 +12,19 @@ export {
   type IFracturePiece,
   type IFracturePieceCollider,
 } from "./fractureManifest.js";
+export {
+  PHYSICS_DEBUG_CATEGORIES,
+  PHYSICS_DEBUG_LIMITS,
+  PHYSICS_DEBUG_PRIMITIVE_KINDS,
+  PHYSICS_DEBUG_SCHEMA,
+  PHYSICS_DEBUG_VERSION,
+  type IPhysicsDebugCore,
+  type IPhysicsDebugPrimitive,
+  type IPhysicsDebugSnapshot,
+  type IPhysicsDebugTelemetry,
+  type PhysicsDebugCategory,
+  type PhysicsDebugPrimitiveKind,
+} from "./physicsDebug.js";
 export { validateAerodynamicBody, validateDestructible, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
 export {
   DISTRIBUTION_ARCHITECTURES,

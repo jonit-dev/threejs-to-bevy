@@ -271,6 +271,29 @@ pub struct DestructionPhysicsObservation {
     pub pieces: Vec<DestructionPieceBodyObservation>,
 }
 
+pub(crate) struct DestructionBondDebugObservation {
+    pub assembly: String,
+    pub bond: String,
+    pub broken: bool,
+    pub from: [f32; 3],
+    pub to: [f32; 3],
+}
+
+pub(crate) struct DestructionPieceDebugObservation {
+    pub assembly: String,
+    pub kind: &'static str,
+    pub lifecycle: PieceLifecycle,
+    pub piece: String,
+    pub position: [f32; 3],
+    pub size: Option<[f32; 3]>,
+}
+
+pub(crate) struct DestructionBudgetDebugObservation {
+    pub active: usize,
+    pub assembly: String,
+    pub maximum: usize,
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DestructionEvent {
@@ -1027,6 +1050,98 @@ impl NativeDestructionState {
                 })
                 .collect(),
         }
+    }
+
+    pub(crate) fn allocated_piece_count(&self) -> usize {
+        self.pieces.len()
+    }
+
+    pub(crate) fn budget_debug_observations(&self) -> Vec<DestructionBudgetDebugObservation> {
+        self.runtime
+            .assemblies
+            .iter()
+            .map(|(assembly, state)| DestructionBudgetDebugObservation {
+                active: state
+                    .pieces
+                    .values()
+                    .filter(|piece| {
+                        matches!(
+                            piece.lifecycle,
+                            PieceLifecycle::Active | PieceLifecycle::Sleeping
+                        )
+                    })
+                    .count(),
+                assembly: assembly.clone(),
+                maximum: state.max_active_pieces,
+            })
+            .collect()
+    }
+
+    pub(crate) fn bond_debug_observations(
+        &self,
+        world: &PhysicsWorld,
+    ) -> Vec<DestructionBondDebugObservation> {
+        let mut observations = Vec::new();
+        for (assembly_id, assembly) in &self.runtime.assemblies {
+            for (bond_id, bond) in &assembly.bonds {
+                let endpoints = bond.source.pieces.iter().filter_map(|piece| {
+                    let native = self.pieces.get(&(assembly_id.clone(), piece.clone()))?;
+                    let body = world.bodies.get(native.handle)?;
+                    Some(<[f32; 3]>::from(body.translation()))
+                });
+                let endpoints = endpoints.collect::<Vec<_>>();
+                if let [from, to] = endpoints.as_slice() {
+                    observations.push(DestructionBondDebugObservation {
+                        assembly: assembly_id.clone(),
+                        bond: bond_id.clone(),
+                        broken: bond.broken,
+                        from: *from,
+                        to: *to,
+                    });
+                }
+            }
+        }
+        observations.sort_by(|left, right| {
+            left.assembly
+                .cmp(&right.assembly)
+                .then(left.bond.cmp(&right.bond))
+        });
+        observations
+    }
+
+    pub(crate) fn piece_debug_observations(
+        &self,
+        world: &PhysicsWorld,
+    ) -> Vec<DestructionPieceDebugObservation> {
+        let semantic = self.runtime.observe();
+        semantic
+            .pieces
+            .into_iter()
+            .filter_map(|piece| {
+                let state = self.runtime.assemblies.get(&piece.assembly)?;
+                let source = state.pieces.get(&piece.id)?;
+                let native = self
+                    .pieces
+                    .get(&(piece.assembly.clone(), piece.id.clone()))?;
+                let body = world.bodies.get(native.handle)?;
+                let (kind, size) = match &source.source.collider {
+                    FracturePieceCollider::Box { half_extents } => (
+                        "box",
+                        Some(half_extents.map(|half_extent| half_extent * 2.0)),
+                    ),
+                    FracturePieceCollider::Sphere { radius } => ("sphere", Some([radius * 2.0; 3])),
+                    _ => ("point", None),
+                };
+                Some(DestructionPieceDebugObservation {
+                    assembly: piece.assembly,
+                    kind,
+                    lifecycle: piece.lifecycle,
+                    piece: piece.id,
+                    position: body.translation().into(),
+                    size,
+                })
+            })
+            .collect()
     }
 
     fn sync_piece_bodies(

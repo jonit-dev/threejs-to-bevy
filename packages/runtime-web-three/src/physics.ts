@@ -66,6 +66,9 @@ const scriptAuthoredTransformsByWorld = new WeakMap<IWorldIr, Set<string>>();
 const rapierWorlds = new WeakMap<IWorldIr, IRapierRuntime>();
 const rapierRebuilds = new WeakMap<IWorldIr, number>();
 const pendingPointCommands = new WeakMap<IWorldIr, IPointPhysicsCommand[]>();
+const pendingPhysicsQueries = new WeakMap<IWorldIr, number>();
+const lastPhysicsQueries = new WeakMap<IWorldIr, number>();
+const lastPhysicsStepMilliseconds = new WeakMap<IWorldIr, number>();
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -98,6 +101,7 @@ function prepareRetainedPhysicsRuntime(cacheKey: IWorldIr, physicsWorld: IWorldI
 }
 
 export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentScene?: IEnvironmentSceneIr, options: { gravity?: Vec3; tick?: number; writeLedger?: IRuntimeWriteLedger } = {}): IPhysicsEventPayload[] {
+  const startedAt = performance.now();
   const scriptAuthoredTransforms = scriptAuthoredTransformsByWorld.get(world) ?? new Set<string>();
   scriptAuthoredTransformsByWorld.delete(world);
   const beforeTransforms = options.writeLedger === undefined ? undefined : snapshotPhysicsTransforms(world);
@@ -125,6 +129,9 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
   writeEventQueue(world, "TriggerEvent", triggers);
   world.events ??= {};
   world.events.JointBreakEvent = jointBreaks;
+  lastPhysicsQueries.set(world, pendingPhysicsQueries.get(world) ?? 0);
+  pendingPhysicsQueries.set(world, 0);
+  lastPhysicsStepMilliseconds.set(world, Math.max(0, performance.now() - startedAt));
   return [...collisions, ...triggers];
 }
 
@@ -223,6 +230,30 @@ export function disposePhysicsRuntime(world: IWorldIr): void {
   previousPairsByWorld.delete(world);
   scriptAuthoredTransformsByWorld.delete(world);
   pendingPointCommands.delete(world);
+  pendingPhysicsQueries.delete(world);
+  lastPhysicsQueries.delete(world);
+  lastPhysicsStepMilliseconds.delete(world);
+}
+
+export function observePhysicsTelemetryStats(world: IWorldIr): {
+  activeBodies: number;
+  contacts: number;
+  physicsMilliseconds: number;
+  queries: number;
+  sleepingBodies: number;
+  solverIterations: number;
+} {
+  const runtime = rapierWorlds.get(world);
+  const bodies = runtime === undefined ? [] : [...runtime.bodies.values()].filter((body) => body.isDynamic());
+  const contacts = [...(previousPairsByWorld.get(world)?.values() ?? [])].filter((pair) => pair.event === "CollisionEvent").length;
+  return {
+    activeBodies: bodies.filter((body) => !body.isSleeping()).length,
+    contacts,
+    physicsMilliseconds: finiteNonnegative(lastPhysicsStepMilliseconds.get(world)),
+    queries: Math.max(0, Math.floor(lastPhysicsQueries.get(world) ?? pendingPhysicsQueries.get(world) ?? 0)),
+    sleepingBodies: bodies.filter((body) => body.isSleeping()).length,
+    solverIterations: Math.max(1, ...world.entities.map((entity) => entity.components.RigidBody?.solverIterations ?? 1)),
+  };
 }
 
 export function physicsRuntimeStats(world: IWorldIr): { rebuilds: number; jointCreations?: number; jointRemovals?: number } {
@@ -686,6 +717,7 @@ export function observeLivePhysicsBodies(world: IWorldIr, step: number): IPhysic
 }
 
 export function raycastLive(world: IWorldIr, request: IScriptPhysicsRaycastRequest): IScriptPhysicsRaycastResult {
+  recordPhysicsQuery(world);
   const runtime = liveRuntime(world);
   if (runtime === undefined) return { hit: false };
   const direction = normalizeVec3(request.direction);
@@ -703,6 +735,7 @@ export function raycastLive(world: IWorldIr, request: IScriptPhysicsRaycastReque
 }
 
 export function shapeCastLive(world: IWorldIr, request: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult {
+  recordPhysicsQuery(world);
   const runtime = liveRuntime(world);
   if (runtime === undefined) return { hit: false };
   const direction = normalizeVec3(request.direction);
@@ -754,6 +787,7 @@ export function applyLivePhysicsAtPoint(world: IWorldIr, entityId: string, value
 }
 
 export function overlapLive(world: IWorldIr, request: IScriptPhysicsOverlapRequest): IScriptPhysicsOverlapResult {
+  recordPhysicsQuery(world);
   const runtime = liveRuntime(world);
   if (runtime === undefined) return { entities: [] };
   const shape = request.shape.kind === "sphere" ? new RAPIER.Ball(request.shape.radius) : new RAPIER.Cuboid(...request.shape.halfExtents);
@@ -1306,3 +1340,6 @@ function mutableRoundedVec3(value: Vec3): [number, number, number] {
 function roundNumber(value: number): number {
   return Number(value.toFixed(6));
 }
+
+function recordPhysicsQuery(world: IWorldIr): void { pendingPhysicsQueries.set(world, (pendingPhysicsQueries.get(world) ?? 0) + 1); }
+function finiteNonnegative(value: number | undefined): number { return value === undefined || !Number.isFinite(value) || value < 0 ? 0 : value; }

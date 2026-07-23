@@ -92,6 +92,17 @@ Current support:
   regions, retire intact collision, inherit motion, and prove mass/momentum,
   contact routing, and paired event/budget parity. Web/desktop projectile
   playtests and manual contact-sheet review remain before the checkpoint passes.
+- Phase 7 exposes descriptor-backed add/set/remove/inspect/validate operations
+  for compound colliders, wheel assemblies, vehicle controllers, aerodynamic
+  bodies, physics joints, and destructibles. The same operation cards derive
+  CLI, editor/API, MCP, and generated-client surfaces, while staged batch plans
+  provide byte-preserving dry runs and atomic apply.
+- Web and native runtime observations now emit the same normalized, stable-ID
+  collider, center-of-mass, contact, wheel, suspension, slip, force, aero,
+  joint-load, bond, piece, sleep, and budget primitives. Bounded summaries keep
+  terminal output compact while deeper artifacts retain timing and body,
+  contact, query, solver, rebuild, and allocated-piece telemetry. Cross-adapter
+  evidence and the manual editor/debug usability review remain pending.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
