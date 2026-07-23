@@ -753,6 +753,10 @@ struct ScriptedRuntimeWorldParams<'w, 's> {
     ui_binding_targets: Option<Res<'w, ui::NativeUiBindingTargets>>,
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the Bevy frame bridge keeps fixed-step, script, effect, and presentation ordering explicit in one system"
+)]
 fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
     let ScriptedRuntimeWorldParams {
         mut animation_queue,

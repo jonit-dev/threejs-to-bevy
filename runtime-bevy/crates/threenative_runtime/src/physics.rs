@@ -1250,6 +1250,11 @@ impl PersistentRapierWorld {
             .find_map(|(candidate, owner)| (*candidate == handle).then_some(owner))
     }
 
+    #[allow(
+        clippy::excessive_nesting,
+        clippy::too_many_lines,
+        reason = "retained Rapier construction keeps collider/body ownership and initial query seeding in one ordered transaction"
+    )]
     fn new(
         bundle: &LoadedBundle,
         entities: &[SimulatedEntity],
@@ -1514,6 +1519,10 @@ impl PersistentRapierWorld {
         }
     }
 
+    #[allow(
+        clippy::too_many_lines,
+        reason = "the retained fixed-step orchestrator keeps adapter system order explicit and auditable"
+    )]
     fn step(
         &mut self,
         runtime_id: usize,
@@ -1734,6 +1743,10 @@ impl PersistentRapierWorld {
         (events, joint_break_events, destruction_events)
     }
 
+    #[allow(
+        clippy::too_many_lines,
+        reason = "one normalized snapshot builder preserves deterministic cross-category ordering"
+    )]
     fn debug_snapshot(&self, bundle: &LoadedBundle, runtime_id: usize) -> PhysicsDebugSnapshot {
         let mut primitives = Vec::new();
         let body_position = |entity: &str| {

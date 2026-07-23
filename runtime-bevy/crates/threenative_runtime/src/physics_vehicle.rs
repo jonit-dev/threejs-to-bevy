@@ -468,6 +468,10 @@ struct ControllerStep {
     steering: f32,
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the drivetrain state transition and its torque-path observation must remain one deterministic calculation"
+)]
 fn step_vehicle_controller(
     entity_id: &str,
     controller: &VehicleControllerComponent,
@@ -495,13 +499,12 @@ fn step_vehicle_controller(
     runtime.shift_cooldown = (runtime.shift_cooldown - fixed_delta).max(0.0);
     if controller.transmission.shift_policy == "manual"
         && runtime.shift_phase == VehicleShiftPhase::Engaged
+        && let Some(requested) = input.gear
     {
-        if let Some(requested) = input.gear {
-            let requested = requested.clamp(-1, maximum_gear);
-            if requested != runtime.gear {
-                runtime.pending_gear = Some(requested);
-                runtime.shift_phase = VehicleShiftPhase::Disengaging;
-            }
+        let requested = requested.clamp(-1, maximum_gear);
+        if requested != runtime.gear {
+            runtime.pending_gear = Some(requested);
+            runtime.shift_phase = VehicleShiftPhase::Disengaging;
         }
     }
 
@@ -719,6 +722,10 @@ fn step_vehicle_controller(
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the wheel fixed-step keeps casts, tire forces, feedback, and visual state in explicit adapter order"
+)]
 pub(crate) fn step_physics_vehicles(
     runtime_id: usize,
     bundle: &LoadedBundle,
@@ -845,7 +852,7 @@ pub(crate) fn step_physics_vehicles(
             let wheel_brake_force = controller_step
                 .as_ref()
                 .and_then(|controller| controller.brake_force.get(&wheel.id).copied())
-                .unwrap_or_else(|| {
+                .unwrap_or({
                     if wheel.braked {
                         control.brake * assembly.max_tire_force
                     } else {
@@ -1504,6 +1511,29 @@ fn normalize_angle(angle: f32) -> f32 {
     (angle + std::f32::consts::PI).rem_euclid(std::f32::consts::TAU) - std::f32::consts::PI
 }
 
+pub fn combined_tire_surface_value(left: f32, surface: Option<(f32, &str)>) -> f32 {
+    surface.map_or(left, |(right, rule)| {
+        combined_surface_value(left, "average", right, rule)
+    })
+}
+
+fn combine_priority(rule: &str) -> u8 {
+    match rule {
+        "minimum" => 1,
+        "multiply" => 2,
+        "maximum" => 3,
+        _ => 0,
+    }
+}
+
+fn round(value: f32) -> f32 {
+    (value * 10_000.0).round() / 10_000.0
+}
+
+fn round_vec3(value: Vec3) -> [f32; 3] {
+    [round(value.x), round(value.y), round(value.z)]
+}
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -1845,27 +1875,4 @@ mod tests {
         }))
         .expect("vehicle controller should deserialize")
     }
-}
-
-pub fn combined_tire_surface_value(left: f32, surface: Option<(f32, &str)>) -> f32 {
-    surface.map_or(left, |(right, rule)| {
-        combined_surface_value(left, "average", right, rule)
-    })
-}
-
-fn combine_priority(rule: &str) -> u8 {
-    match rule {
-        "minimum" => 1,
-        "multiply" => 2,
-        "maximum" => 3,
-        _ => 0,
-    }
-}
-
-fn round(value: f32) -> f32 {
-    (value * 10_000.0).round() / 10_000.0
-}
-
-fn round_vec3(value: Vec3) -> [f32; 3] {
-    [round(value.x), round(value.y), round(value.z)]
 }

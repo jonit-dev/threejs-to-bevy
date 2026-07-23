@@ -511,7 +511,7 @@ vehicle parts, and machines with observable motors and break thresholds.
 | --- | --- |
 | `should reject motor fields unsupported by the joint kind` | Diagnostic names field, kind, and supported alternative. |
 | `should hold a fixed joint within tolerance under load` | Relative pose stays bounded across both adapters. |
-| `should break once when accumulated load crosses threshold` | One event occurs and the joint is absent next safe tick. |
+| `should break once when accumulated load crosses threshold` | One event occurs and the joint is absent before remaining fixed-tick substeps. |
 | `should preserve unrelated body handles when a joint changes` | Rebuild/lifecycle counter remains bounded. |
 
 **Verification plan:** per-kind fixtures; load ramp; patch/reconciliation
@@ -893,7 +893,8 @@ the final evidence.
   `sha256-9964502803b8194cd28b5ada5c447a19cc6b3cce53f19420fde84d7df3c15787`.
 - Both retained Rapier adapters create ball, fixed, hinge, rope, slider, and
   suspension joints. The canonical load ramp records 0, 200, 400, and 650 N,
-  emits one fixed-joint break at tick 4, and removes it on the next safe tick.
+  emits one fixed-joint break at tick 4, and removes it before the tick's
+  remaining solver substeps.
 - Patch, despawn, and spawn evidence records zero body rebuilds, two joint-only
   rebuilds, monotonic lifecycle observations, and preserved unrelated handles.
   Bounded motor effort, fixed-joint load holding, actionable invalid-motor
@@ -923,7 +924,8 @@ the final evidence.
 - Both adapters now map stable fracture pieces into their existing retained
   Rapier world, retire intact collision, preserve unrelated regional pieces,
   conserve authored assembly mass and inherited momentum, retain stable body
-  handles, and translate solver contact impulses into next-tick bond damage.
+  handles, and translate solver contact impulses into same-tick bond damage
+  with stable contact IDs and nearest-region bond selection.
   The production web host loads fracture manifests through its existing bundle
   reader and automatically registers/reconciles authored Destructible entities.
 - `pnpm verify:focused verify:advanced-physics-destruction` passes with zero
@@ -932,8 +934,14 @@ the final evidence.
   and momentum tolerances, overflow policy/events, paired provenance, and stale
   or weakened evidence controls. The report and normalized traces are under
   `tools/verify/artifacts/advanced-physics/phase-6-destruction/`.
-- Web runtime tests pass 536/536. Native destruction integration tests pass
-  9/9 and native library tests pass 83/83. The focused verifier tests pass 4/4,
-  descriptor/dispatcher tests pass 22/22, and IR conformance tests pass 11/11.
+- The implementation-review remediation in
+  `docs/audits/advanced-physics-prd-implementation-review-2026-07-22.md`
+  closes every reported destruction, contract, and debug-semantic finding.
+  Adapter traces now load and hash their own fixture bytes, referenced
+  manifests and canonical source hashes fail closed, and descriptor-owned
+  field consumers guard both adapters.
+- Web runtime tests pass 543/543. Native destruction integration tests pass
+  12/12 and native debug integration tests pass 5/5. The IR suite passes
+  416/416, authoring passes 142/142, and compiler passes 293/293.
 - The Phase 6 checkpoint remains open only for the required web/desktop
   projectile playtests and manual destruction contact-sheet review.

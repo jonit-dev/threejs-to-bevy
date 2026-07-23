@@ -50,6 +50,10 @@ use threenative_runtime::{
 
 #[derive(Serialize)]
 #[serde(untagged)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "the CLI serializes exactly one phase trace and keeping typed variants avoids an unvalidated JSON intermediary"
+)]
 enum PhysicsSelfVerificationTrace {
     Aerodynamics(AerodynamicsTraceReport),
     Advanced(AdvancedTraceReport),
@@ -581,6 +585,10 @@ fn main() {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the closed scene-id dispatcher keeps every self-verification trace explicit and fail-closed"
+)]
 fn run() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = env::args().skip(1);
     let bundle_path = args.next().ok_or("missing bundle path")?;
@@ -1347,6 +1355,10 @@ mod advanced_joint_trace_tests {
     }
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "the canonical wheel maneuver records one ordered retained-runtime evidence trace"
+)]
 fn trace_advanced_physics_wheels(
     bundle: threenative_loader::LoadedBundle,
 ) -> Result<WheelTraceReport, Box<dyn std::error::Error>> {
@@ -2115,16 +2127,18 @@ fn wheel_assembly_observation(
         .ok_or_else(|| "advanced wheel observation is missing".into())
 }
 
+type PhysicsBodyPose = ([f32; 3], [f32; 4], [f32; 3], [f32; 3]);
+
 fn chassis_pose(
     bundle: &threenative_loader::LoadedBundle,
-) -> Result<([f32; 3], [f32; 4], [f32; 3], [f32; 3]), Box<dyn std::error::Error>> {
+) -> Result<PhysicsBodyPose, Box<dyn std::error::Error>> {
     entity_pose(bundle, "chassis")
 }
 
 fn entity_pose(
     bundle: &threenative_loader::LoadedBundle,
     entity_id: &str,
-) -> Result<([f32; 3], [f32; 4], [f32; 3], [f32; 3]), Box<dyn std::error::Error>> {
+) -> Result<PhysicsBodyPose, Box<dyn std::error::Error>> {
     let chassis = bundle
         .world
         .entities

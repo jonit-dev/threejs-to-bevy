@@ -293,11 +293,11 @@ fn build_rapier_joint(
             FixedJointBuilder::new()
                 .contacts_enabled(false)
                 .local_frame1(Pose::from_parts(
-                    connected_anchor.into(),
+                    connected_anchor,
                     normalized_rotation(joint.connected_rotation),
                 ))
                 .local_frame2(Pose::from_parts(
-                    local_anchor.into(),
+                    local_anchor,
                     normalized_rotation(joint.rotation),
                 ))
                 .build()

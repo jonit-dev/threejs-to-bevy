@@ -1212,6 +1212,10 @@ fn apply_resource(bundle: &mut LoadedBundle, resource: &NativeSystemResourceEffe
         .insert(resource.resource.clone(), resource.value.clone());
 }
 
+#[allow(
+    clippy::too_many_lines,
+    reason = "one closed service dispatcher keeps all portable physics body mutations fail-closed at the native boundary"
+)]
 fn apply_physics_body_service(bundle: &mut LoadedBundle, service: &NativeSystemServiceEffect) {
     if service.service == "physics.aerodynamics.setInputs" {
         let Some(request) = service.payload.get("request") else {

@@ -758,6 +758,10 @@ impl DestructionRuntime {
         });
     }
 
+    #[allow(
+        clippy::excessive_nesting,
+        reason = "cleanup policy and lifecycle transitions are kept together to preserve exact authored boundary ordering"
+    )]
     fn cleanup(&mut self, delta: f32) {
         for assembly in self.assemblies.values_mut() {
             let mut pooled = assembly
@@ -1141,6 +1145,10 @@ impl NativeDestructionState {
             .collect()
     }
 
+    #[allow(
+        clippy::excessive_nesting,
+        reason = "bond endpoint fallback must resolve retained bodies and manifest positions in stable nested ownership order"
+    )]
     pub(crate) fn bond_debug_observations(
         &self,
         world: &PhysicsWorld,
@@ -1219,6 +1227,10 @@ impl NativeDestructionState {
             .collect()
     }
 
+    #[allow(
+        clippy::excessive_nesting,
+        reason = "piece lifecycle reconciliation keeps body type and handle changes atomic per piece"
+    )]
     fn sync_piece_bodies(
         &mut self,
         world: &mut PhysicsWorld,

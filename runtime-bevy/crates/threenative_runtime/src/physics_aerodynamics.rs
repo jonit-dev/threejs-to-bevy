@@ -302,6 +302,11 @@ fn scale_observation_to_force_budget(
     force_scale
 }
 
+#[allow(
+    clippy::too_many_arguments,
+    clippy::too_many_lines,
+    reason = "the aerodynamic force kernel consumes one explicit fixed-step state vector and emits one bounded observation"
+)]
 fn compute_body(
     entity: &str,
     declaration: &AerodynamicBodyComponent,

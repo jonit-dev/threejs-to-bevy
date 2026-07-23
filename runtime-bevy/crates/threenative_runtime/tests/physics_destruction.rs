@@ -184,18 +184,26 @@ fn retained_contact_impulse_should_apply_normalized_damage_in_the_contact_tick()
     let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
     let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "projectile")
+        .and_then(|entity| entity.components.transform.as_mut())
+        .expect("fixture projectile should have a transform")
+        .position = Some([-1.0, 3.0, 3.0]);
     let runtime = BTreeSet::new();
-    let mut damaged = false;
+    let mut damaged = None;
 
-    for _ in 0..90 {
+    for tick in 1..=90 {
         step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
-        damaged |= bundle
+        damaged = bundle
             .world
             .events
             .get("DestructionEvent")
             .and_then(serde_json::Value::as_array)
-            .is_some_and(|events| {
-                events.iter().any(|event| {
+            .and_then(|events| {
+                events.iter().find(|event| {
                     event.get("type").and_then(serde_json::Value::as_str) == Some("damaged")
                         && event
                             .get("cause")
@@ -203,16 +211,19 @@ fn retained_contact_impulse_should_apply_normalized_damage_in_the_contact_tick()
                             .and_then(serde_json::Value::as_str)
                             == Some("contact")
                 })
-            });
-        if damaged {
+            })
+            .cloned()
+            .map(|event| (tick, event));
+        if damaged.is_some() {
             break;
         }
     }
 
-    assert!(
-        damaged,
-        "retained solver contact should route into bond damage"
-    );
+    let (solver_tick, damaged) =
+        damaged.expect("retained solver contact should route into bond damage");
+    assert_eq!(damaged["tick"], solver_tick);
+    assert_eq!(damaged["bond"], "bond.north");
+    assert_eq!(damaged["cause"]["contact"], "rapier:projectile:wall");
     dispose_native_physics_runtime(&runtime);
 }
 

@@ -79,7 +79,7 @@ Current support:
 - Phase 5 implements the bounded pre-release rich-joint contract on both
   adapters: ball, fixed, hinge, rope, slider, and suspension constraints;
   force/torque-capped motors; stable load observations; one-shot breaks with
-  next-tick solver removal; and joint-only patch/despawn/spawn reconciliation.
+  same-tick pre-substep solver removal; and joint-only patch/despawn/spawn reconciliation.
   Paired retained-Rapier traces prove the declared load threshold, exact break
   identity/order, lifecycle bounds, zero body rebuilds, and preserved unrelated
   handles. Release enrollment remains deferred to the final PRD phase.
@@ -90,7 +90,8 @@ Current support:
   ordered bond/piece events, overflow policies, cleanup, and pooling. Both
   retained Rapier adapters materialize stable physical pieces, preserve bound
   regions, retire intact collision, inherit motion, and prove mass/momentum,
-  contact routing, and paired event/budget parity. Web/desktop projectile
+  same-tick contact routing with stable contact/bond identity, and paired
+  event/budget/debug parity from independently loaded fixture bytes. Web/desktop projectile
   playtests and manual contact-sheet review remain before the checkpoint passes.
 - Phase 7 exposes descriptor-backed add/set/remove/inspect/validate operations
   for compound colliders, wheel assemblies, vehicle controllers, aerodynamic
@@ -102,7 +103,10 @@ Current support:
   joint-load, bond, piece, sleep, and budget primitives. Bounded summaries keep
   terminal output compact while deeper artifacts retain timing and body,
   contact, query, solver, rebuild, and allocated-piece telemetry. Cross-adapter
-  evidence and the manual editor/debug usability review remain pending.
+  evidence passes; the manual editor/debug usability review remains pending.
+- Descriptor-owned field consumers now guard every public top-level advanced-
+  physics field in both adapters. Native controller bindings consume the same
+  action/axis vocabulary as web, including bounded single-edge manual shifts.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
