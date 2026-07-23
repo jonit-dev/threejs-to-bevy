@@ -69,7 +69,7 @@ export function updateVehicleCourse(context: ScriptContext): void {
 
   const current = context.resources.get("CourseState", initialState());
   if (current.status === "finished") {
-    const finishPosition = [0, 0.9, 112] as const;
+    const finishPosition = [0, 0.9, -32] as const;
     chassis.patch("Transform", { position: [...finishPosition], rotation: [...startRotation] });
     context.physics.setLinearVelocity("chassis", [0, 0, 0]);
     context.physics.setAngularVelocity("chassis", [0, 0, 0]);
@@ -113,14 +113,14 @@ export function updateVehicleCourse(context: ScriptContext): void {
     || leftSurface.hit && rightSurface.hit
       && leftSurface.entity === "ground-split-left-ice"
       && rightSurface.entity === "ground-split-right-asphalt";
-  const jumpLaunched = Boolean(current.jumpLaunched) || transform.position[2] >= 65;
+  const jumpLaunched = Boolean(current.jumpLaunched) || transform.position[2] <= 30;
   if (!current.jumpLaunched && jumpLaunched) {
     chassis.patch("Transform", { position: [transform.position[0], 2.5, transform.position[2]] });
-    context.physics.setLinearVelocity("chassis", [0, 4, 20]);
+    context.physics.setLinearVelocity("chassis", [0, 4, -20]);
   }
   const jumped = Boolean(current.jumped) || transform.position[1] >= 1.35;
   const obstacle = context.physics.raycast({
-    direction: [0, 0, 1],
+    direction: [0, 0, -1],
     ignore: ["chassis"],
     maxDistance: 2.5,
     origin: transform.position,
@@ -130,8 +130,8 @@ export function updateVehicleCourse(context: ScriptContext): void {
       ? "damage-barrier"
       : "";
   const damage = collisionEntity === "damage-barrier" ? 25 : 0;
-  const finished = mixedSurface && jumped && damage > 0 && transform.position[2] >= 110;
-  const checkpoint = finished ? 3 : damage > 0 ? 2 : mixedSurface && transform.position[2] >= 50 ? 1 : 0;
+  const finished = mixedSurface && jumped && damage > 0 && transform.position[2] <= -30;
+  const checkpoint = finished ? 3 : damage > 0 ? 2 : mixedSurface && transform.position[2] <= 30 ? 1 : 0;
   const events = orderedEvents(current.events, { collision: damage > 0, finish: finished, jump: jumped, mixed: mixedSurface });
   const status = finished
     ? "finished"
