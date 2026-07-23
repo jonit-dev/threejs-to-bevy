@@ -1,13 +1,22 @@
 # Destruction Range Production Plan
 
-Status: implemented and proof-complete on 2026-07-23.
+Status: planned reimplementation, awaiting fresh implementation and proof.
 
-Timing note: this retained plan was regenerated after the first source
-implementation. The earlier task graph was invalid and reported
-`TN_GAME_TASK_SOURCE_MISSING`; the current task graph is `ok: true` and hashes
-the actual system/script ownership. The planner emitted
-`TN_GAME_PLAN_OFF_RECIPE`, and inspection confirmed the custom projectile and
-fracture loop, so no generic character recipe was applied.
+Historical timing note: the first source implementation predated a valid
+machine plan, and the earlier task graph reported
+`TN_GAME_TASK_SOURCE_MISSING`. That prototype is retained at checkpoint
+`3ae94543`; it is not represented as plan-first work.
+
+Reimplementation boundary: on 2026-07-23, after checkpointing the inspected
+prototype and before any further implementation mutation, `tn game plan` wrote
+`artifacts/game-production/plan.json` with SHA-256
+`8de4b4b6c0b0fdebc109c0cd5814d8ec7f692e91961c5772bc1a7342df15ffbd`.
+`tn authoring inspect --plan artifacts/game-production/plan.json` then
+confirmed the actual projectile, fracture, scene, script, and proof owners.
+The planner's generic five-target command was not applied because it does not
+cover regional fracture activation, debris budgeting, or settling. The final
+implementation must re-author the owners below after this boundary and obtain
+fresh proof.
 
 ## Playable Loop
 
@@ -21,6 +30,21 @@ fracture loop, so no generic character recipe was applied.
 The positive scenario is `playtests/projectile-threshold.playtest.json`; the
 retry control is `playtests/retry.playtest.json`. Both require web and desktop
 proof.
+
+## Reimplementation Owners
+
+- `src/scripts/range.ts`: express causal impact, regional activation, debris
+  budget, settling, completion, and retry as a plan-driven objective loop.
+- `content/scenes/arena.scene.json`,
+  `content/fractures/wall.fracture.json`, and
+  `content/systems/arena.systems.json`: retain the authored target and portable
+  collision contract while exposing bounded state ownership.
+- `playtests/projectile-threshold.playtest.json` and
+  `playtests/retry.playtest.json`: enroll positive and retry behavior against
+  fresh web and desktop source and bundle hashes.
+- Generator/asset source, `docs/asset-provenance.md`, and this plan: retain
+  deterministic target generation, no-clip rationale, provenance, and scale
+  checks.
 
 ## High-value Surfaces
 

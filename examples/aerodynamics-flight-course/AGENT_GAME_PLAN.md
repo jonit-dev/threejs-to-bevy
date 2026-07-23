@@ -1,13 +1,21 @@
 # Aerodynamics Flight Course Production Plan
 
-Status: implemented and proof-complete on 2026-07-23.
+Status: planned reimplementation, awaiting fresh implementation and proof.
 
-Timing note: the initial implementation was created while this file was still a
-blank starter. The retained `artifacts/game-production/plan.json` is a
-post-implementation reconstruction. The planner correctly emitted
-`TN_GAME_PLAN_OFF_RECIPE`; `tn authoring inspect` confirmed that the custom
-flight loop belongs to existing structured source and
-`src/scripts/flight.ts`, so no unrelated lane-runner recipe was applied.
+Historical timing note: the initial implementation was created while this file
+was still a blank starter. That prototype is retained at checkpoint
+`3ae94543`; it is not represented as plan-first work.
+
+Reimplementation boundary: on 2026-07-23, after checkpointing the inspected
+prototype and before any further implementation mutation, `tn game plan` wrote
+`artifacts/game-production/plan.json` with SHA-256
+`87f2221c7cbb0fae4aae897d1e9eb076c49f31d22b954f3ed4dd7bad3e8053a1`.
+The planner emitted `TN_GAME_PLAN_OFF_RECIPE`, and
+`tn authoring inspect --plan artifacts/game-production/plan.json` confirmed
+that the custom flight loop belongs to the existing structured source and
+`src/scripts/flight.ts`. No unrelated recipe was applied. The final
+implementation must re-author these owners after this boundary and obtain
+fresh proof.
 
 ## Playable Loop
 
@@ -24,6 +32,18 @@ flight loop belongs to existing structured source and
 `playtests/flight-course.playtest.json` is the objective proof and must pass
 with exact takeoff, stall, recovery, landing, and retry semantics on web and
 desktop.
+
+## Reimplementation Owners
+
+- `src/scripts/flight.ts`: express takeoff, gust, stall, recovery, landing, and
+  retry as an explicit plan-driven flight sequence.
+- `content/scenes/arena.scene.json` and
+  `content/systems/arena.systems.json`: retain portable aerodynamic ownership,
+  authored wind, and the catalog aircraft while exposing the objective state.
+- `playtests/flight-course.playtest.json`: enroll the complete maneuver loop
+  against fresh web and desktop source and bundle hashes.
+- `content/assets/arena.assets.json`, `docs/asset-provenance.md`, and this
+  plan: retain clip wiring, provenance, inspection, and relative-scale checks.
 
 ## High-value Surfaces
 
