@@ -123,6 +123,18 @@ test("should include capability tags for each conformance fixture", async () => 
     assert.deepEqual(fixture.capabilityTags, [...fixture.capabilityTags].sort(), fixture.name);
   }
 
+  assertFixtureCapabilities(byName, "advanced-physics-joints", [
+    "physics:joint.ball",
+    "physics:joint.breakable",
+    "physics:joint.fixed",
+    "physics:joint.hinge",
+    "physics:joint.motor",
+    "physics:joint.patch-reconcile",
+    "physics:joint.rope",
+    "physics:joint.slider",
+    "physics:joint.suspension",
+  ]);
+
   assertFixtureCapabilities(byName, "basic-scene", [
     "rendering:mesh.primitive.box",
     "rendering:mesh.primitive.capsule",

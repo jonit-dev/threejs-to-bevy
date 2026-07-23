@@ -127,6 +127,36 @@
       }
     },
     {
+      "canonicalId": "advanced-physics-joints",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:focused verify:advanced-physics-joints",
+      "canonicalArtifactGate": "advanced-physics-joints",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:advanced-physics-joints",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-joints/game.bundle",
+      "promotedCapabilities": [],
+      "reportArtifacts": [
+        "tools/verify/artifacts/advanced-physics/phase-5-joints/verification-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-5-joints/web-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-5-joints/native-trace.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/advancedPhysicsJoints.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Paired web/native per-kind, load-ramp, break-event, and patch-reconciliation joint evidence gate.",
+        "owner": "packages/ir advanced-physics-joints fixture and tools/verify joint evidence gate",
+        "profile": "focused",
+        "protects": "Stable authored joint order, bounded motors and limits, normalized load observations, one-shot break events, safe deferred removal, and unrelated body-handle preservation during patches.",
+        "reason": "A catalog-owned paired normalized trace prevents joint support from advancing on metadata-only or single-adapter evidence.",
+        "release": { "enrolled": false, "name": "verify advanced physics joints", "timingCategory": "focused-gate" }
+      }
+    },
+    {
       "canonicalId": "procedural-mesh",
       "owner": "ir-contract",
       "sourceExample": "procedural-mesh",

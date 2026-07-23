@@ -1,0 +1,90 @@
+{
+  "schema": "threenative.advanced-physics-joints-expected",
+  "version": "0.1.0",
+  "fixture": "advanced-physics-joints",
+  "traceSchema": "threenative.advanced-physics-joints-trace",
+  "traceVersion": "0.1.0",
+  "toleranceRegistryVersion": "0.4.0",
+  "perKind": {
+    "maximumRelativePositionError": 0.05,
+    "maximumRelativeRotationError": 0.05,
+    "ordered": [
+      {
+        "entity": "joint.ball",
+        "kind": "ball",
+        "connectedEntity": "anchor.ball"
+      },
+      {
+        "entity": "joint.fixed",
+        "kind": "fixed",
+        "connectedEntity": "anchor.fixed"
+      },
+      {
+        "entity": "joint.hinge",
+        "kind": "hinge",
+        "connectedEntity": "anchor.hinge",
+        "motor": {
+          "mode": "velocity",
+          "target": 0.75
+        }
+      },
+      {
+        "entity": "joint.rope",
+        "kind": "rope",
+        "connectedEntity": "anchor.rope"
+      },
+      {
+        "entity": "joint.slider",
+        "kind": "slider",
+        "connectedEntity": "anchor.slider",
+        "motor": {
+          "mode": "position",
+          "target": 0.5
+        }
+      },
+      {
+        "entity": "joint.suspension",
+        "kind": "suspension",
+        "connectedEntity": "anchor.suspension",
+        "motor": {
+          "mode": "position",
+          "target": 0
+        }
+      }
+    ]
+  },
+  "loadRamp": {
+    "joint": "joint.fixed",
+    "breakForce": 600,
+    "appliedForces": [
+      0,
+      200,
+      400,
+      650,
+      800
+    ],
+    "breakEvent": "break",
+    "breakEventCount": 1,
+    "removalDelayTicks": 1,
+    "maximumBreakTickDelta": 0,
+    "forceTolerance": {
+      "absolute": 5,
+      "relative": 0.02
+    },
+    "torqueTolerance": {
+      "absolute": 2,
+      "relative": 0.02
+    }
+  },
+  "patchReconcile": {
+    "actions": [
+      "initial",
+      "patch",
+      "despawn",
+      "spawn"
+    ],
+    "maximumBodyRebuilds": 0,
+    "maximumJointRebuilds": 3,
+    "requireUnrelatedBodyHandlesPreserved": true
+  }
+}

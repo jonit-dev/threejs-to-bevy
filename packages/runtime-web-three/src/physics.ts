@@ -1,6 +1,7 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
 import type { IColliderComponent, ICompoundColliderComponent, ICompoundColliderShape, IEnvironmentSceneIr, IPhysicsBodyObservation, IPhysicsQueryHitObservation, IScriptPhysicsOverlapRequest, IScriptPhysicsOverlapResult, IScriptPhysicsRaycastRequest, IScriptPhysicsRaycastResult, IScriptPhysicsShapeCastRequest, IScriptPhysicsShapeCastResult, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import { beginPhysicsJointTick, collectBrokenPhysicsJoints, createPhysicsJointRuntime, observePhysicsJointLoads as observeJointLoads, preparePhysicsJointStep, reconcilePhysicsJoints, recordPhysicsJointCommandLoad, type IPhysicsJointBreakEvent, type IPhysicsJointLoadObservation, type IPhysicsJointRuntime } from "./physicsJoints.js";
 import type { IRuntimeWriteLedger } from "./systems/writeAudit.js";
 
 export interface IPhysicsEventPayload {
@@ -86,7 +87,11 @@ export function preparePhysicsRuntime(world: IWorldIr, environmentScene?: IEnvir
 function prepareRetainedPhysicsRuntime(cacheKey: IWorldIr, physicsWorld: IWorldIr, gravity: Vec3): void {
   const signature = rapierTopologySignature(physicsWorld, gravity);
   const runtime = rapierWorlds.get(cacheKey);
-  if (runtime?.signature === signature) return;
+  if (runtime?.signature === signature) {
+    runtime.physicsWorld = physicsWorld;
+    reconcilePhysicsJoints(runtime.joints, physicsWorld, runtime.world, runtime.bodies);
+    return;
+  }
   runtime?.world.free();
   rapierWorlds.set(cacheKey, createRapierRuntime(physicsWorld, gravity, signature));
   rapierRebuilds.set(cacheKey, (rapierRebuilds.get(cacheKey) ?? 0) + 1);
@@ -98,8 +103,9 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
   const beforeTransforms = options.writeLedger === undefined ? undefined : snapshotPhysicsTransforms(world);
   const physicsWorld = worldWithEnvironmentTerrain(world, environmentScene);
   const gravity = options.gravity ?? [0, -9.81, 0];
+  let jointBreaks: IPhysicsJointBreakEvent[] = [];
   if (rapierInitialized) {
-    stepRapierBodies(world, physicsWorld, fixedDelta, gravity, scriptAuthoredTransforms);
+    jointBreaks = stepRapierBodies(world, physicsWorld, fixedDelta, gravity, scriptAuthoredTransforms);
   } else {
     stepPrimitiveBodies(physicsWorld, fixedDelta, gravity, scriptAuthoredTransforms);
   }
@@ -117,6 +123,8 @@ export function stepPhysics(world: IWorldIr, fixedDelta = 1 / 60, environmentSce
   previousPairsByWorld.set(world, currentPairs);
   writeEventQueue(world, "CollisionEvent", collisions);
   writeEventQueue(world, "TriggerEvent", triggers);
+  world.events ??= {};
+  world.events.JointBreakEvent = jointBreaks;
   return [...collisions, ...triggers];
 }
 
@@ -179,6 +187,7 @@ export function markScriptAuthoredTransform(world: IWorldIr, entity: string): vo
 interface IRapierRuntime {
   bodies: Map<string, RAPIER.RigidBody>;
   colliders: Map<number, { child?: string; entity: string }>;
+  joints: IPhysicsJointRuntime;
   physicsWorld: IWorldIr;
   signature: string;
   world: RAPIER.World;
@@ -200,8 +209,12 @@ export function disposePhysicsRuntime(world: IWorldIr): void {
   pendingPointCommands.delete(world);
 }
 
-export function physicsRuntimeStats(world: IWorldIr): { rebuilds: number } {
-  return { rebuilds: rapierRebuilds.get(world) ?? 0 };
+export function physicsRuntimeStats(world: IWorldIr): { rebuilds: number; jointCreations?: number; jointRemovals?: number } {
+  const joints = rapierWorlds.get(world)?.joints;
+  return {
+    rebuilds: rapierRebuilds.get(world) ?? 0,
+    ...(joints === undefined || (joints.creations === 0 && joints.removals === 0) ? {} : { jointCreations: joints.creations, jointRemovals: joints.removals }),
+  };
 }
 
 export function physicsBodyMass(world: IWorldIr, entity: string): number | undefined {
@@ -216,10 +229,10 @@ export function physicsRuntimeCcdSubsteps(world: IWorldIr): number | undefined {
   return rapierWorlds.get(world)?.world.maxCcdSubsteps;
 }
 
-function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): void {
+function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): IPhysicsJointBreakEvent[] {
   prepareRetainedPhysicsRuntime(cacheKey, world, gravity);
   const runtime = rapierWorlds.get(cacheKey);
-  if (runtime === undefined) return;
+  if (runtime === undefined) return [];
   const rapierWorld = runtime.world;
   const substeps = physicsSubsteps(fixedDelta);
   rapierWorld.integrationParameters.dt = fixedDelta / substeps;
@@ -256,9 +269,13 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
 
   const pointCommands = pendingPointCommands.get(cacheKey) ?? [];
   pendingPointCommands.delete(cacheKey);
+  const jointBreaks: IPhysicsJointBreakEvent[] = [];
+  beginPhysicsJointTick(runtime.joints);
   for (let step = 0; step < substeps; step += 1) {
     applyPointPhysicsCommands(runtime, pointCommands, step === 0, fixedDelta);
+    preparePhysicsJointStep(runtime.joints, fixedDelta / substeps);
     rapierWorld.step();
+    jointBreaks.push(...collectBrokenPhysicsJoints(runtime.joints));
   }
 
   for (const entity of world.entities) {
@@ -284,6 +301,7 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
       velocity: [linvel.x, linvel.y, linvel.z],
     };
   }
+  return jointBreaks;
 }
 
 function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string): IRapierRuntime {
@@ -355,41 +373,9 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
     bodies.set(entity.id, rapierBody);
   }
 
-  for (const entity of [...world.entities].sort((left, right) => left.id.localeCompare(right.id))) {
-    const joint = entity.components.PhysicsJoint;
-    const body = bodies.get(entity.id);
-    const connectedBody = joint === undefined ? undefined : bodies.get(joint.connectedEntity);
-    if (joint === undefined || body === undefined || connectedBody === undefined) {
-      continue;
-    }
-    const selfPosition = entity.components.Transform?.position ?? [0, 0, 0];
-    const selfRotation = entity.components.Transform?.rotation ?? [0, 0, 0, 1];
-    const connected = world.entities.find((candidate) => candidate.id === joint.connectedEntity);
-    const connectedPosition = connected?.components.Transform?.position ?? [0, 0, 0];
-    const connectedRotation = connected?.components.Transform?.rotation ?? [0, 0, 0, 1];
-    const localAnchor = joint.anchor ?? [0, 0, 0];
-    const worldAnchor = addVec3(selfPosition, rotateVec3(localAnchor, selfRotation));
-    const connectedAnchor = inverseRotateVec3(subtractVec3(worldAnchor, connectedPosition), connectedRotation);
-    const localAxis = normalizeVec3(joint.axis ?? [1, 0, 0]);
-    const worldAxis = rotateVec3(localAxis, selfRotation);
-    const connectedAxis = normalizeVec3(inverseRotateVec3(worldAxis, connectedRotation));
-    let data = joint.kind === "hinge"
-      ? RAPIER.JointData.revolute(rapierVector(connectedAnchor), rapierVector(localAnchor), rapierVector(connectedAxis))
-      : RAPIER.JointData.prismatic(rapierVector(connectedAnchor), rapierVector(localAnchor), rapierVector(connectedAxis));
-    const limits = joint.limits ?? (joint.kind === "suspension" && joint.travel !== undefined
-      ? { max: joint.travel, min: -joint.travel }
-      : undefined);
-    if (limits !== undefined) {
-      data.limitsEnabled = true;
-      data.limits = [limits.min, limits.max];
-    }
-    const liveJoint = rapierWorld.createImpulseJoint(data, connectedBody, body, true);
-    if (joint.kind === "suspension" && "configureMotorPosition" in liveJoint) {
-      liveJoint.configureMotorPosition(0, joint.stiffness ?? 0, joint.damping ?? 0);
-    }
-  }
-
-  return { bodies, colliders, physicsWorld: world, signature, world: rapierWorld };
+  const joints = createPhysicsJointRuntime();
+  reconcilePhysicsJoints(joints, world, rapierWorld, bodies);
+  return { bodies, colliders, joints, physicsWorld: world, signature, world: rapierWorld };
 }
 
 function applyPointPhysicsCommands(runtime: IRapierRuntime, commands: readonly IPointPhysicsCommand[], includeImpulses: boolean, forceDelta: number): void {
@@ -399,6 +385,8 @@ function applyPointPhysicsCommands(runtime: IRapierRuntime, commands: readonly I
     if (!includeImpulses) continue;
     const value = command.kind === "force" ? scaleVec3(command.value, forceDelta) : command.value;
     body.applyImpulseAtPoint(rapierVector(value), rapierVector(command.point), true);
+    const force = command.kind === "force" ? command.value : scaleVec3(command.value, 1 / forceDelta);
+    recordPhysicsJointCommandLoad(runtime.joints, body, command.entity, force, command.point);
   }
 }
 
@@ -408,7 +396,6 @@ function rapierTopologySignature(world: IWorldIr, gravity: Vec3): string {
     entities: world.entities.map((entity) => ({
       Collider: entity.components.Collider,
       CompoundCollider: entity.components.CompoundCollider,
-      PhysicsJoint: entity.components.PhysicsJoint,
       RigidBody: entity.components.RigidBody === undefined ? undefined : {
         ...entity.components.RigidBody,
         angularVelocity: undefined,
@@ -769,6 +756,11 @@ export function tracePhysicsJoints(world: IWorldIr): IPhysicsJointObservation[] 
       ];
     })
     .sort((left, right) => left.entity.localeCompare(right.entity));
+}
+
+export function observePhysicsJointLoads(world: IWorldIr): IPhysicsJointLoadObservation[] {
+  const runtime = rapierWorlds.get(world);
+  return runtime === undefined ? [] : observeJointLoads(runtime.joints);
 }
 
 export function detectPhysicsEvents(world: IWorldIr): IPhysicsEventObservation[] {

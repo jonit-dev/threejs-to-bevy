@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
 use rapier3d::parry::query::ShapeCastOptions;
@@ -9,12 +10,20 @@ use rapier3d::prelude::*;
 use serde::{Deserialize, Serialize};
 use threenative_loader::{
     AssetIr, ColliderComponent, CompoundColliderComponent, CompoundColliderShape, LoadedBundle,
-    PhysicsJointComponent, WorldEntity,
+    WorldEntity,
+};
+
+use crate::physics_joints::{
+    PhysicsJointBreakEvent, PhysicsJointLoadObservation, PhysicsJointRuntimeState,
+    begin_joint_load_frame, observe_joint_loads_and_schedule_breaks, reconcile_physics_joints,
+    record_external_joint_load,
 };
 
 thread_local! {
     static RAPIER_CACHES: RefCell<BTreeMap<usize, PersistentRapierWorld>> = const { RefCell::new(BTreeMap::new()) };
 }
+
+static NEXT_PHYSICS_WORLD_GENERATION: AtomicU64 = AtomicU64::new(1);
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct PhysicsEvent {
@@ -199,6 +208,7 @@ pub fn step_bundle_physics(bundle: &mut LoadedBundle, fixed_delta: f32) {
 pub fn inspect_physics_body_mass(bundle: &LoadedBundle, entity_id: &str) -> Option<f32> {
     let entities = simulated_rapier_entities(bundle);
     let runtime = PersistentRapierWorld::new(
+        bundle,
         &entities,
         [0.0, -9.81, 0.0],
         rapier_world_signature(&entities, [0.0, -9.81, 0.0]),
@@ -216,6 +226,7 @@ pub fn inspect_physics_body_mass_properties(
 ) -> Option<PhysicsMassPropertiesObservation> {
     let entities = simulated_rapier_entities(bundle);
     let runtime = PersistentRapierWorld::new(
+        bundle,
         &entities,
         [0.0, -9.81, 0.0],
         rapier_world_signature(&entities, [0.0, -9.81, 0.0]),
@@ -261,6 +272,57 @@ pub fn inspect_cached_physics_ccd_substeps(
             .borrow()
             .get(&runtime_id)
             .map(|runtime| runtime.world.integration_parameters.max_ccd_substeps)
+    })
+}
+
+pub fn inspect_cached_physics_joint(
+    script_posed_entities: &BTreeSet<String>,
+    entity_id: &str,
+) -> Option<PhysicsJointLoadObservation> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow()
+            .get(&runtime_id)?
+            .joint_state
+            .observation(entity_id)
+    })
+}
+
+pub fn inspect_cached_physics_joints(
+    script_posed_entities: &BTreeSet<String>,
+) -> Vec<PhysicsJointLoadObservation> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow()
+            .get(&runtime_id)
+            .map(|runtime| runtime.joint_state.observations())
+            .unwrap_or_default()
+    })
+}
+
+pub fn inspect_cached_physics_joint_creation_count(
+    script_posed_entities: &BTreeSet<String>,
+) -> Option<u64> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow()
+            .get(&runtime_id)
+            .map(|runtime| runtime.joint_state.creation_count())
+    })
+}
+
+pub fn inspect_cached_physics_world_generation(
+    script_posed_entities: &BTreeSet<String>,
+) -> Option<u64> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow()
+            .get(&runtime_id)
+            .map(|runtime| runtime.generation)
     })
 }
 
@@ -338,7 +400,7 @@ pub fn ensure_native_physics_runtime(
         {
             caches.insert(
                 runtime_id,
-                PersistentRapierWorld::new(&entities, gravity, signature),
+                PersistentRapierWorld::new(bundle, &entities, gravity, signature),
             );
         }
     });
@@ -362,7 +424,7 @@ pub fn step_bundle_physics_with_script_poses(
         .and_then(|config| config.physics.as_ref())
         .map(|physics| physics.gravity)
         .unwrap_or([0.0, -9.81, 0.0]);
-    let events = step_rapier_bodies(
+    let (events, joint_break_events) = step_rapier_bodies(
         bundle,
         &mut entities,
         fixed_delta,
@@ -392,6 +454,7 @@ pub fn step_bundle_physics_with_script_poses(
         }
     }
     write_live_event_queues(bundle, &events);
+    write_joint_break_event_queue(bundle, &joint_break_events);
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -427,6 +490,13 @@ fn write_live_event_queues(bundle: &mut LoadedBundle, events: &[PhysicsEvent]) {
             .events
             .insert(event_name.to_owned(), serde_json::Value::Array(payloads));
     }
+}
+
+fn write_joint_break_event_queue(bundle: &mut LoadedBundle, events: &[PhysicsJointBreakEvent]) {
+    bundle.world.events.insert(
+        "JointBreakEvent".to_owned(),
+        serde_json::to_value(events).unwrap_or_else(|_| serde_json::Value::Array(Vec::new())),
+    );
 }
 
 fn physics_events_for_pairs(current_pairs: BTreeMap<String, DetectedPair>) -> Vec<PhysicsEvent> {
@@ -691,7 +761,6 @@ struct SimulatedEntity {
     layer: Option<String>,
     mask: Vec<String>,
     mass: Option<f32>,
-    joint: Option<PhysicsJointComponent>,
     radius: Option<f32>,
     restitution: f32,
     rotation: [f32; 4],
@@ -768,7 +837,6 @@ fn simulated_heightfield_terrain(bundle: &LoadedBundle) -> Option<SimulatedEntit
         layer: Some("world".to_owned()),
         mask: Vec::new(),
         mass: None,
-        joint: None,
         radius: None,
         restitution: 0.0,
         rotation: [0.0, 0.0, 0.0, 1.0],
@@ -853,7 +921,7 @@ fn step_rapier_bodies(
     gravity: [f32; 3],
     script_posed_entities: &BTreeSet<String>,
     at_point_commands: &[PhysicsAtPointCommand],
-) -> Vec<PhysicsEvent> {
+) -> (Vec<PhysicsEvent>, Vec<PhysicsJointBreakEvent>) {
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
         let mut caches = caches.borrow_mut();
@@ -864,7 +932,7 @@ fn step_rapier_bodies(
         {
             caches.insert(
                 runtime_id,
-                PersistentRapierWorld::new(entities, gravity, signature),
+                PersistentRapierWorld::new(bundle, entities, gravity, signature),
             );
         }
         caches
@@ -897,10 +965,12 @@ pub fn native_physics_runtime_id(script_posed_entities: &BTreeSet<String>) -> us
 struct PersistentRapierWorld {
     collider_owners: Vec<(ColliderHandle, ColliderOwner)>,
     handles: BTreeMap<String, RigidBodyHandle>,
+    generation: u64,
     initial_query_broad_phase: Option<BroadPhaseBvh>,
     previous_pairs: BTreeMap<String, DetectedPair>,
     signature: u64,
     world: PhysicsWorld,
+    joint_state: PhysicsJointRuntimeState,
     aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState,
     vehicle_state: crate::physics_vehicle::VehicleRuntimeState,
 }
@@ -1096,7 +1166,12 @@ impl PersistentRapierWorld {
             .find_map(|(candidate, owner)| (*candidate == handle).then_some(owner))
     }
 
-    fn new(entities: &[SimulatedEntity], gravity: [f32; 3], signature: u64) -> Self {
+    fn new(
+        bundle: &LoadedBundle,
+        entities: &[SimulatedEntity],
+        gravity: [f32; 3],
+        signature: u64,
+    ) -> Self {
         let mut world = PhysicsWorld::new();
         world.gravity = vector![gravity[0], gravity[1], gravity[2]].into();
         world.integration_parameters.num_solver_iterations = 12;
@@ -1298,26 +1373,8 @@ impl PersistentRapierWorld {
             }
         }
 
-        for entity in entities {
-            let Some(joint) = entity.joint.as_ref() else {
-                continue;
-            };
-            let (Some(connected_handle), Some(body_handle)) = (
-                handles.get(&joint.connected_entity).copied(),
-                handles.get(&entity.id).copied(),
-            ) else {
-                continue;
-            };
-            let Some(connected) = entities
-                .iter()
-                .find(|candidate| candidate.id == joint.connected_entity)
-            else {
-                continue;
-            };
-            if let Some(data) = rapier_joint(entity, connected, joint) {
-                world.insert_impulse_joint(connected_handle, body_handle, data);
-            }
-        }
+        let mut joint_state = PhysicsJointRuntimeState::default();
+        reconcile_physics_joints(bundle, &mut world, &handles, &mut joint_state);
 
         // Seed a query-only broad-phase before the first fixed step so
         // retained-world queries (including wheel suspension casts) observe
@@ -1340,10 +1397,12 @@ impl PersistentRapierWorld {
         Self {
             collider_owners,
             handles,
+            generation: NEXT_PHYSICS_WORLD_GENERATION.fetch_add(1, Ordering::Relaxed),
             initial_query_broad_phase: Some(initial_query_broad_phase),
             previous_pairs: BTreeMap::new(),
             signature,
             world,
+            joint_state,
             aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState::default(),
             vehicle_state: crate::physics_vehicle::VehicleRuntimeState::default(),
         }
@@ -1357,9 +1416,16 @@ impl PersistentRapierWorld {
         fixed_delta: f32,
         script_posed_entities: &BTreeSet<String>,
         at_point_commands: &[PhysicsAtPointCommand],
-    ) -> Vec<PhysicsEvent> {
+    ) -> (Vec<PhysicsEvent>, Vec<PhysicsJointBreakEvent>) {
         let substeps = physics_substeps(fixed_delta);
         self.world.integration_parameters.dt = fixed_delta / substeps as f32;
+        reconcile_physics_joints(
+            bundle,
+            &mut self.world,
+            &self.handles,
+            &mut self.joint_state,
+        );
+        begin_joint_load_frame(&mut self.joint_state);
 
         for entity in entities.iter() {
             let Some(handle) = self.handles.get(&entity.id).copied() else {
@@ -1435,6 +1501,16 @@ impl PersistentRapierWorld {
             };
             let value = vector![command.value[0], command.value[1], command.value[2]].into();
             let point = vector![command.point[0], command.point[1], command.point[2]].into();
+            let impulse = command.kind == "physics.applyImpulseAtPoint";
+            record_external_joint_load(
+                &mut self.joint_state,
+                &command.entity,
+                point,
+                value,
+                body.center_of_mass(),
+                impulse,
+                fixed_delta,
+            );
             if command.kind == "physics.addForceAtPoint" {
                 body.add_force_at_point(value, point, true);
             } else if command.kind == "physics.applyImpulseAtPoint" {
@@ -1461,8 +1537,14 @@ impl PersistentRapierWorld {
             fixed_delta,
             initial_query_broad_phase.as_ref(),
         );
+        let mut joint_break_events = Vec::new();
         for _ in 0..substeps {
             self.world.step();
+            joint_break_events.extend(observe_joint_loads_and_schedule_breaks(
+                &self.world,
+                &mut self.joint_state,
+                fixed_delta / substeps as f32,
+            ));
         }
 
         for entity in entities.iter_mut() {
@@ -1491,7 +1573,7 @@ impl PersistentRapierWorld {
         let current_pairs = self.live_pairs();
         let events = physics_events_for_pair_delta(&current_pairs, &self.previous_pairs);
         self.previous_pairs = current_pairs;
-        events
+        (events, joint_break_events)
     }
 
     fn live_pairs(&self) -> BTreeMap<String, DetectedPair> {
@@ -1656,25 +1738,6 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u6
         entity.layer.hash(&mut signature);
         entity.mask.hash(&mut signature);
         entity.mass.map(f32::to_bits).hash(&mut signature);
-        if let Some(joint) = entity.joint.as_ref() {
-            joint.kind.hash(&mut signature);
-            joint.connected_entity.hash(&mut signature);
-            joint
-                .anchor
-                .map(|value| value.map(f32::to_bits))
-                .hash(&mut signature);
-            joint
-                .axis
-                .map(|value| value.map(f32::to_bits))
-                .hash(&mut signature);
-            joint.damping.map(f32::to_bits).hash(&mut signature);
-            joint.stiffness.map(f32::to_bits).hash(&mut signature);
-            joint.travel.map(f32::to_bits).hash(&mut signature);
-            if let Some(limits) = joint.limits.as_ref() {
-                limits.min.to_bits().hash(&mut signature);
-                limits.max.to_bits().hash(&mut signature);
-            }
-        }
         entity.radius.map(f32::to_bits).hash(&mut signature);
         entity.restitution.to_bits().hash(&mut signature);
         entity.solver_iterations.hash(&mut signature);
@@ -1689,65 +1752,6 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u6
 
 fn physics_substeps(fixed_delta: f32) -> usize {
     (fixed_delta / (1.0 / 120.0)).ceil().max(1.0) as usize
-}
-
-fn rapier_joint(
-    entity: &SimulatedEntity,
-    connected: &SimulatedEntity,
-    joint: &PhysicsJointComponent,
-) -> Option<GenericJoint> {
-    let local_anchor = RapierVec3::from_array(joint.anchor.unwrap_or([0.0, 0.0, 0.0]));
-    let entity_rotation = RapierQuat::from_array(entity.rotation).normalize();
-    let connected_rotation = RapierQuat::from_array(connected.rotation).normalize();
-    let world_anchor = RapierVec3::from_array(entity.center) + entity_rotation * local_anchor;
-    let connected_anchor =
-        connected_rotation.inverse() * (world_anchor - RapierVec3::from_array(connected.center));
-    let local_axis = RapierVec3::from_array(joint.axis.unwrap_or([1.0, 0.0, 0.0]));
-    let local_axis = local_axis.try_normalize().unwrap_or(RapierVec3::X);
-    let world_axis = entity_rotation * local_axis;
-    let connected_axis = (connected_rotation.inverse() * world_axis)
-        .try_normalize()
-        .unwrap_or(RapierVec3::X);
-
-    match joint.kind.as_str() {
-        "hinge" => {
-            let mut builder = GenericJointBuilder::new(JointAxesMask::LOCKED_REVOLUTE_AXES)
-                .local_anchor1(connected_anchor)
-                .local_anchor2(local_anchor)
-                .local_axis1(connected_axis)
-                .local_axis2(local_axis);
-            if let Some(limits) = joint.limits.as_ref() {
-                builder = builder.limits(JointAxis::AngX, [limits.min, limits.max]);
-            }
-            Some(builder.build())
-        }
-        "slider" | "suspension" => {
-            let mut builder = GenericJointBuilder::new(JointAxesMask::LOCKED_PRISMATIC_AXES)
-                .local_anchor1(connected_anchor)
-                .local_anchor2(local_anchor)
-                .local_axis1(connected_axis)
-                .local_axis2(local_axis);
-            if let Some(limits) = joint.limits.as_ref() {
-                builder = builder.limits(JointAxis::LinX, [limits.min, limits.max]);
-            } else if joint.kind == "suspension"
-                && let Some(travel) = joint.travel
-            {
-                builder = builder.limits(JointAxis::LinX, [-travel, travel]);
-            }
-            if joint.kind == "suspension" {
-                builder = builder
-                    .motor_model(JointAxis::LinX, MotorModel::ForceBased)
-                    .motor_position(
-                        JointAxis::LinX,
-                        0.0,
-                        joint.stiffness.unwrap_or(0.0),
-                        joint.damping.unwrap_or(0.0),
-                    );
-            }
-            Some(builder.build())
-        }
-        _ => None,
-    }
 }
 
 fn layer_bits_for_entities(entities: &[SimulatedEntity]) -> BTreeMap<String, u32> {
@@ -1936,7 +1940,6 @@ fn simulated_entity(entity: &WorldEntity) -> Option<SimulatedEntity> {
                     .map(|inverse_mass| 1.0 / inverse_mass)
             })
         }),
-        joint: entity.components.physics_joint.clone(),
         radius: collider.and_then(|collider| collider.radius),
         restitution: collider
             .and_then(|collider| collider.restitution)

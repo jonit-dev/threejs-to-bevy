@@ -1,5 +1,6 @@
 use std::{collections::BTreeSet, env, fs, path::PathBuf, process};
 
+use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use threenative_loader::{SystemIr, SystemQueryIr, load_bundle};
@@ -7,7 +8,9 @@ use threenative_runtime::{
     character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
     physics::{
         PhysicsJointObservation, RigidBodyTraceObservation, dispose_native_physics_runtime,
-        ensure_native_physics_runtime, native_physics_runtime_id,
+        ensure_native_physics_runtime, inspect_cached_physics_joint,
+        inspect_cached_physics_joint_creation_count, inspect_cached_physics_joints,
+        inspect_cached_physics_world_generation, native_physics_runtime_id,
         step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
     },
     physics_aerodynamics::{
@@ -15,6 +18,7 @@ use threenative_runtime::{
         dispose_physics_aerodynamics, observe_physics_aerodynamics, set_physics_aerodynamic_inputs,
         trace_physics_aerodynamics,
     },
+    physics_joints::PhysicsJointLoadObservation,
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
     physics_vehicle::{
         VehicleControlInput, VehicleControllerObservation, WheelAssemblyObservation,
@@ -39,6 +43,7 @@ use threenative_runtime::{
 enum PhysicsSelfVerificationTrace {
     Aerodynamics(AerodynamicsTraceReport),
     Advanced(AdvancedTraceReport),
+    AdvancedJoints(AdvancedJointsTraceReport),
     Character(CharacterTraceReport),
     Joint(JointTraceReport),
     Query(QueryTraceReport),
@@ -297,6 +302,171 @@ struct JointTraceReport {
     runtime: &'static str,
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsTraceReport {
+    bundle_hash: String,
+    fixture: &'static str,
+    fixed_dt: f32,
+    load_ramp: AdvancedJointsLoadRampTrace,
+    patch_reconcile: AdvancedJointsPatchTrace,
+    per_kind: Vec<AdvancedJointsIdentityObservation>,
+    runtime: &'static str,
+    schema: &'static str,
+    source_hash: String,
+    version: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsLoadRampTrace {
+    events: Vec<AdvancedJointsBreakTrace>,
+    removed_at_tick: usize,
+    samples: Vec<AdvancedJointsLoadSampleTrace>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsLoadSampleTrace {
+    applied_force: f32,
+    observation: PhysicsJointLoadObservation,
+    relative_position_error: f32,
+    relative_rotation_error: f32,
+    tick: usize,
+}
+
+#[derive(Serialize)]
+struct AdvancedJointsBreakTrace {
+    observation: Value,
+    tick: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsPatchTrace {
+    body_rebuilds: u64,
+    joint_rebuilds: u64,
+    steps: Vec<AdvancedJointsPatchStepTrace>,
+    unrelated_body_handles_preserved: bool,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsPatchStepTrace {
+    action: String,
+    observations: Vec<AdvancedJointsIdentityObservation>,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsIdentityObservation {
+    active: bool,
+    connected_entity: String,
+    entity: String,
+    kind: String,
+    lifecycle: u64,
+}
+
+impl From<&PhysicsJointLoadObservation> for AdvancedJointsIdentityObservation {
+    fn from(observation: &PhysicsJointLoadObservation) -> Self {
+        Self {
+            active: observation.active,
+            connected_entity: observation.connected_entity.clone(),
+            entity: observation.entity.clone(),
+            kind: observation.kind.clone(),
+            lifecycle: observation.lifecycle,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct PoseSample {
+    position: RapierVec3,
+    rotation: RapierQuat,
+}
+
+impl PoseSample {
+    fn new(position: [f32; 3], rotation: [f32; 4]) -> Self {
+        let rotation = RapierQuat::from_array(rotation);
+        Self {
+            position: RapierVec3::from_array(position),
+            rotation: if rotation.length_squared() > f32::EPSILON {
+                rotation.normalize()
+            } else {
+                RapierQuat::IDENTITY
+            },
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct RelativePose {
+    position: RapierVec3,
+    rotation: RapierQuat,
+}
+
+impl RelativePose {
+    fn between(connected: PoseSample, body: PoseSample) -> Self {
+        let connected_inverse = connected.rotation.inverse();
+        Self {
+            position: connected_inverse * (body.position - connected.position),
+            rotation: (connected_inverse * body.rotation).normalize(),
+        }
+    }
+
+    fn error_from(self, baseline: Self) -> (f32, f32) {
+        let position_error = (self.position - baseline.position).length();
+        let rotation_dot = self.rotation.dot(baseline.rotation).abs().clamp(0.0, 1.0);
+        (position_error, 2.0 * rotation_dot.acos())
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsScenarioManifest {
+    fixed_dt: f32,
+    load_ramp: AdvancedJointsLoadRampScenario,
+    patch_reconcile: AdvancedJointsPatchScenario,
+    per_kind: AdvancedJointsPerKindScenario,
+    schema: String,
+    version: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsLoadRampScenario {
+    force_point: [f32; 3],
+    joint: String,
+    samples: Vec<AdvancedJointsLoadSample>,
+}
+
+#[derive(Deserialize)]
+struct AdvancedJointsLoadSample {
+    force: [f32; 3],
+    steps: usize,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsPatchScenario {
+    joint: String,
+    steps: Vec<AdvancedJointsPatchStep>,
+    unrelated_bodies: Vec<String>,
+}
+
+#[derive(Deserialize)]
+struct AdvancedJointsPatchStep {
+    action: String,
+    patch: Option<Value>,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedJointsPerKindScenario {
+    joint_ids: Vec<String>,
+    settle_steps: usize,
+}
+
 fn main() {
     if let Err(error) = run() {
         eprintln!("{error}");
@@ -332,6 +502,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 bundle,
                 source_hash.ok_or("missing aerodynamics source hash")?,
                 bundle_hash.ok_or("missing aerodynamics bundle hash")?,
+            )?)
+        }
+        "advanced-physics-joints" => {
+            PhysicsSelfVerificationTrace::AdvancedJoints(trace_advanced_physics_joints(
+                &bundle_path,
+                source_hash.ok_or("missing joints source hash")?,
+                bundle_hash.ok_or("missing joints bundle hash")?,
             )?)
         }
         "physics-character-obstacles" => {
@@ -427,6 +604,340 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         format!("{}\n", serde_json::to_string_pretty(&trace)?),
     )?;
     Ok(())
+}
+
+fn trace_advanced_physics_joints(
+    bundle_path: &str,
+    source_hash: String,
+    bundle_hash: String,
+) -> Result<AdvancedJointsTraceReport, Box<dyn std::error::Error>> {
+    let scenario_path = PathBuf::from(bundle_path).join("joints.scenarios.json");
+    let scenarios: AdvancedJointsScenarioManifest =
+        serde_json::from_str(&fs::read_to_string(scenario_path)?)?;
+    if scenarios.schema != "threenative.advanced-physics-joints-scenarios"
+        || scenarios.version != "0.1.0"
+    {
+        return Err("invalid advanced physics joints scenario manifest".into());
+    }
+
+    let mut per_kind_bundle = load_bundle(bundle_path)?;
+    let per_kind_runtime = BTreeSet::new();
+    for _ in 0..scenarios.per_kind.settle_steps {
+        step_bundle_physics_with_script_poses(
+            &mut per_kind_bundle,
+            scenarios.fixed_dt,
+            &per_kind_runtime,
+        );
+    }
+    let per_kind_observations = inspect_cached_physics_joints(&per_kind_runtime);
+    let per_kind = scenarios
+        .per_kind
+        .joint_ids
+        .iter()
+        .filter_map(|entity| {
+            per_kind_observations
+                .iter()
+                .find(|observation| &observation.entity == entity)
+                .map(AdvancedJointsIdentityObservation::from)
+        })
+        .collect();
+    dispose_native_physics_runtime(&per_kind_runtime);
+
+    let load_ramp = trace_advanced_joints_load_ramp(bundle_path, &scenarios)?;
+    let patch_reconcile = trace_advanced_joints_patch_reconcile(bundle_path, &scenarios)?;
+    Ok(AdvancedJointsTraceReport {
+        bundle_hash,
+        fixture: "advanced-physics-joints",
+        fixed_dt: scenarios.fixed_dt,
+        load_ramp,
+        patch_reconcile,
+        per_kind,
+        runtime: "bevy",
+        schema: "threenative.advanced-physics-joints-trace",
+        source_hash,
+        version: "0.1.0",
+    })
+}
+
+fn trace_advanced_joints_load_ramp(
+    bundle_path: &str,
+    scenarios: &AdvancedJointsScenarioManifest,
+) -> Result<AdvancedJointsLoadRampTrace, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    set_zero_gravity(&mut bundle)?;
+    let connected_entity = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == scenarios.load_ramp.joint)
+        .and_then(|entity| entity.components.physics_joint.as_ref())
+        .map(|joint| joint.connected_entity.clone())
+        .ok_or("load-ramp fixed joint is missing")?;
+    let baseline_relative_pose = RelativePose::between(
+        pose_sample(&bundle, &connected_entity)?,
+        pose_sample(&bundle, &scenarios.load_ramp.joint)?,
+    );
+    let runtime = BTreeSet::new();
+    let mut tick = 0;
+    let mut removed_at_tick = None;
+    let mut events = Vec::new();
+    let mut samples = Vec::new();
+    for sample in &scenarios.load_ramp.samples {
+        queue_joint_force(
+            &mut bundle,
+            &scenarios.load_ramp.joint,
+            scenarios.load_ramp.force_point,
+            sample.force,
+        );
+        for _ in 0..sample.steps {
+            tick += 1;
+            step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+            if inspect_cached_physics_joint(&runtime, &scenarios.load_ramp.joint)
+                .is_some_and(|observation| !observation.active)
+                && removed_at_tick.is_none()
+            {
+                removed_at_tick = Some(tick);
+            }
+            for event in bundle
+                .world
+                .events
+                .get("JointBreakEvent")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+            {
+                events.push(AdvancedJointsBreakTrace {
+                    observation: event.clone(),
+                    tick,
+                });
+            }
+        }
+        let observation = inspect_cached_physics_joint(&runtime, &scenarios.load_ramp.joint)
+            .ok_or("load-ramp joint observation is missing")?;
+        let current_relative_pose = RelativePose::between(
+            pose_sample(&bundle, &connected_entity)?,
+            pose_sample(&bundle, &scenarios.load_ramp.joint)?,
+        );
+        let (relative_position_error, relative_rotation_error) =
+            current_relative_pose.error_from(baseline_relative_pose);
+        samples.push(AdvancedJointsLoadSampleTrace {
+            applied_force: vector_magnitude(sample.force),
+            observation,
+            relative_position_error,
+            relative_rotation_error,
+            tick,
+        });
+    }
+    if removed_at_tick.is_none() && !events.is_empty() {
+        tick += 1;
+        step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+        if inspect_cached_physics_joint(&runtime, &scenarios.load_ramp.joint)
+            .is_some_and(|observation| !observation.active)
+        {
+            removed_at_tick = Some(tick);
+        }
+    }
+    dispose_native_physics_runtime(&runtime);
+    Ok(AdvancedJointsLoadRampTrace {
+        events,
+        removed_at_tick: removed_at_tick.unwrap_or(0),
+        samples,
+    })
+}
+
+fn trace_advanced_joints_patch_reconcile(
+    bundle_path: &str,
+    scenarios: &AdvancedJointsScenarioManifest,
+) -> Result<AdvancedJointsPatchTrace, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    set_zero_gravity(&mut bundle)?;
+    let runtime = BTreeSet::new();
+    let target_index = bundle
+        .world
+        .entities
+        .iter()
+        .position(|entity| entity.id == scenarios.patch_reconcile.joint)
+        .ok_or("patch-reconcile joint entity is missing")?;
+    let initial = bundle.world.entities[target_index]
+        .components
+        .physics_joint
+        .clone()
+        .ok_or("patch-reconcile joint component is missing")?;
+    let mut steps = Vec::new();
+    let mut baseline_generation = None;
+    let mut baseline_creations = None;
+    for authored_step in &scenarios.patch_reconcile.steps {
+        let target = &mut bundle.world.entities[target_index];
+        match authored_step.action.as_str() {
+            "patch" => {
+                let mut value = serde_json::to_value(
+                    target
+                        .components
+                        .physics_joint
+                        .as_ref()
+                        .ok_or("cannot patch an absent joint")?,
+                )?;
+                let patch = authored_step
+                    .patch
+                    .as_ref()
+                    .and_then(Value::as_object)
+                    .ok_or("joint patch payload must be an object")?;
+                let value_object = value
+                    .as_object_mut()
+                    .ok_or("joint must serialize as object")?;
+                for (key, patch_value) in patch {
+                    value_object.insert(key.clone(), patch_value.clone());
+                }
+                target.components.physics_joint = Some(serde_json::from_value(value)?);
+            }
+            "despawn" => target.components.physics_joint = None,
+            "spawn" => target.components.physics_joint = Some(initial.clone()),
+            "initial" => {}
+            action => return Err(format!("unsupported joint patch action '{action}'").into()),
+        }
+        step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+        let generation = inspect_cached_physics_world_generation(&runtime)
+            .ok_or("retained physics generation is missing")?;
+        let creations = inspect_cached_physics_joint_creation_count(&runtime)
+            .ok_or("joint creation count is missing")?;
+        baseline_generation.get_or_insert(generation);
+        baseline_creations.get_or_insert(creations);
+        steps.push(AdvancedJointsPatchStepTrace {
+            action: authored_step.action.clone(),
+            observations: inspect_cached_physics_joints(&runtime)
+                .iter()
+                .map(AdvancedJointsIdentityObservation::from)
+                .collect(),
+        });
+    }
+    let final_generation = inspect_cached_physics_world_generation(&runtime).unwrap_or(0);
+    let final_creations = inspect_cached_physics_joint_creation_count(&runtime).unwrap_or(0);
+    let initial_generation = baseline_generation.unwrap_or(final_generation);
+    let initial_creations = baseline_creations.unwrap_or(final_creations);
+    let unrelated_present = scenarios
+        .patch_reconcile
+        .unrelated_bodies
+        .iter()
+        .all(|entity| {
+            bundle
+                .world
+                .entities
+                .iter()
+                .any(|candidate| &candidate.id == entity)
+        });
+    dispose_native_physics_runtime(&runtime);
+    Ok(AdvancedJointsPatchTrace {
+        body_rebuilds: u64::from(final_generation != initial_generation),
+        joint_rebuilds: final_creations.saturating_sub(initial_creations),
+        steps,
+        unrelated_body_handles_preserved: unrelated_present
+            && final_generation == initial_generation,
+    })
+}
+
+fn queue_joint_force(
+    bundle: &mut threenative_loader::LoadedBundle,
+    entity: &str,
+    point: [f32; 3],
+    value: [f32; 3],
+) {
+    bundle.world.resources.insert(
+        "__threenativePhysicsAtPointCommands".to_owned(),
+        serde_json::json!([{
+            "entity": entity,
+            "kind": "physics.addForceAtPoint",
+            "point": point,
+            "value": value
+        }]),
+    );
+}
+
+fn set_zero_gravity(
+    bundle: &mut threenative_loader::LoadedBundle,
+) -> Result<(), serde_json::Error> {
+    bundle.runtime_config = Some(serde_json::from_value(serde_json::json!({
+        "schema": "threenative.runtime-config",
+        "version": "0.1.0",
+        "physics": { "gravity": [0, 0, 0] },
+        "time": { "fixedDelta": 0.008333333333333333, "paused": false },
+        "window": { "height": 720, "width": 1280 }
+    }))?);
+    Ok(())
+}
+
+fn vector_magnitude(value: [f32; 3]) -> f32 {
+    (value[0] * value[0] + value[1] * value[1] + value[2] * value[2]).sqrt()
+}
+
+fn pose_sample(
+    bundle: &threenative_loader::LoadedBundle,
+    entity_id: &str,
+) -> Result<PoseSample, Box<dyn std::error::Error>> {
+    let entity = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_id)
+        .ok_or_else(|| format!("joint pose entity '{entity_id}' is missing"))?;
+    let transform = entity
+        .components
+        .transform
+        .as_ref()
+        .ok_or_else(|| format!("joint pose entity '{entity_id}' has no Transform"))?;
+    Ok(PoseSample::new(
+        transform.position.unwrap_or([0.0, 0.0, 0.0]),
+        transform.rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]),
+    ))
+}
+
+#[cfg(test)]
+mod advanced_joint_trace_tests {
+    use super::*;
+
+    #[test]
+    fn fixed_pose_error_should_measure_relative_position_and_rotation_drift() {
+        let baseline = RelativePose::between(
+            PoseSample::new([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]),
+            PoseSample::new([1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]),
+        );
+        let half_angle = (0.1_f32).sin();
+        let current = RelativePose::between(
+            PoseSample::new([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]),
+            PoseSample::new([1.1, 0.0, 0.0], [0.0, half_angle, 0.0, (0.1_f32).cos()]),
+        );
+
+        let (position_error, rotation_error) = current.error_from(baseline);
+
+        assert!((position_error - 0.1).abs() < 0.000_01);
+        assert!((rotation_error - 0.2).abs() < 0.000_01);
+    }
+
+    #[test]
+    fn joint_identity_trace_should_omit_idle_solver_loads() {
+        let observation = PhysicsJointLoadObservation {
+            active: true,
+            connected_entity: "anchor.fixed".to_owned(),
+            entity: "joint.fixed".to_owned(),
+            force: 12.0,
+            kind: "fixed".to_owned(),
+            lifecycle: 2,
+            torque: 3.0,
+        };
+
+        let value = serde_json::to_value(AdvancedJointsIdentityObservation::from(&observation))
+            .expect("identity observation should serialize");
+
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "active": true,
+                "connectedEntity": "anchor.fixed",
+                "entity": "joint.fixed",
+                "kind": "fixed",
+                "lifecycle": 2
+            })
+        );
+    }
 }
 
 fn trace_advanced_physics_wheels(

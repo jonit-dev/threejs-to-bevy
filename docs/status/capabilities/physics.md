@@ -76,6 +76,13 @@ Current support:
   a hash-bound browser review prove takeoff, gust response, stall/recovery,
   landing, force telemetry, and fresh retry. Release enrollment remains
   deferred to the final PRD phase.
+- Phase 5 implements the bounded pre-release rich-joint contract on both
+  adapters: ball, fixed, hinge, rope, slider, and suspension constraints;
+  force/torque-capped motors; stable load observations; one-shot breaks with
+  next-tick solver removal; and joint-only patch/despawn/spawn reconciliation.
+  Paired retained-Rapier traces prove the declared load threshold, exact break
+  identity/order, lifecycle bounds, zero body rebuilds, and preserved unrelated
+  handles. Release enrollment remains deferred to the final PRD phase.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
@@ -88,10 +95,10 @@ Current support:
   bounded rebake, off-mesh-link, and small-crowd evidence. The Phase 1
   `advanced-physics-foundation` row additionally proves at-point causality,
   exact compound-child query identity, stable script-host order, and provenance.
-  Constraints beyond the promoted hinge/slider/suspension slice, release-enrolled
-  drivetrain/controller support, soft bodies, ragdolls, dynamic triangle compound
-  children, arbitrary triangle narrow phase, and public backend handles remain
-  explicit boundaries.
+  Release-enrolled drivetrain/controller, aerodynamics, and rich-joint support;
+  destruction, soft bodies, ragdolls, dynamic triangle compound children,
+  arbitrary triangle narrow phase, and public backend handles remain explicit
+  boundaries.
 
 Verification:
 
@@ -100,11 +107,13 @@ Verification:
 - `pnpm verify:focused verify:advanced-physics-wheels`
 - `pnpm verify:focused verify:advanced-physics-drivetrain`
 - `pnpm verify:focused verify:advanced-physics-aerodynamics`
+- `pnpm verify:focused verify:advanced-physics-joints`
 - `pnpm verify:focused verify:feature-parity-physics-native`
 - `packages/ir/fixtures/conformance/advanced-physics-foundation/`
 - `packages/ir/fixtures/conformance/advanced-physics-wheels/`
 - `packages/ir/fixtures/conformance/advanced-physics-drivetrain/`
 - `packages/ir/fixtures/conformance/advanced-physics-aerodynamics/`
+- `packages/ir/fixtures/conformance/advanced-physics-joints/`
 - `tn playtest --target desktop ...`
 
 Full prior evidence is preserved in

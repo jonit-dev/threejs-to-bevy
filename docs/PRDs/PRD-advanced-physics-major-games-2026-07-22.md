@@ -494,15 +494,15 @@ vehicle parts, and machines with observable motors and break thresholds.
 
 **Implementation:**
 
-- [ ] Add fixed, ball, and rope joints while retaining hinge, slider, and
+- [x] Add fixed, ball, and rope joints while retaining hinge, slider, and
   suspension compatibility.
-- [ ] Add bounded position/velocity motors, maximum force/torque, damping, and
+- [x] Add bounded position/velocity motors, maximum force/torque, damping, and
   limits where meaningful for each joint kind.
-- [ ] Add break force/torque, stable load observations, one-shot break events,
+- [x] Add break force/torque, stable load observations, one-shot break events,
   and safe deferred solver removal.
-- [ ] Validate references, local frames, axes, motor/limit compatibility, and
+- [x] Validate references, local frames, axes, motor/limit compatibility, and
   graph/budget limits before runtime.
-- [ ] Ensure runtime spawn/despawn and component patches reconcile joint state
+- [x] Ensure runtime spawn/despawn and component patches reconcile joint state
   without rebuilding unrelated bodies.
 
 **Tests required:**
@@ -881,3 +881,30 @@ the final evidence.
 - Independent checkpoint review reports PASS after confirming authoring
   ownership, executable cookbook coverage, retained integrated maneuver proof,
   target-specific playtests, and manifest-derived evidence bounds.
+
+### Phase 5 evidence (checkpoint PASS)
+
+- `pnpm verify:focused verify:advanced-physics-joints` passes with zero
+  diagnostics and paired runtime traces under
+  `tools/verify/artifacts/advanced-physics/phase-5-joints/`.
+- The checked source hash is
+  `sha256-c8805323a3bfb0e31a8db951ba4489b393e1a9a6be5de8b5f94d0b568d7a69fe`;
+  the checked bundle hash is
+  `sha256-9964502803b8194cd28b5ada5c447a19cc6b3cce53f19420fde84d7df3c15787`.
+- Both retained Rapier adapters create ball, fixed, hinge, rope, slider, and
+  suspension joints. The canonical load ramp records 0, 200, 400, and 650 N,
+  emits one fixed-joint break at tick 4, and removes it on the next safe tick.
+- Patch, despawn, and spawn evidence records zero body rebuilds, two joint-only
+  rebuilds, monotonic lifecycle observations, and preserved unrelated handles.
+  Bounded motor effort, fixed-joint load holding, actionable invalid-motor
+  diagnostics, graph budgets, exact break identity/order, and tolerance-bounded
+  normalized break loads have focused positive and negative coverage.
+- Web runtime tests pass 526/526. Native runtime library tests pass 83/83 and
+  physics integration tests pass 23/23. The focused verifier comparator passes
+  7/7 and the fixture validates with zero IR diagnostics. The report records
+  adapter and dependency versions, platform, seed, timestamps, and hashes for
+  both retained trace artifacts.
+- Independent checkpoint review reports PASS after confirming manifest-owned
+  fixed-pose bounds, capped suspension motors, honest load-parity scope,
+  one-shot deferred breaking, joint-only reconciliation, descriptor ownership,
+  complete evidence metadata, and matching retained artifact hashes.

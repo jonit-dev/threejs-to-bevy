@@ -1,0 +1,99 @@
+{
+  "schema": "threenative.advanced-physics-joints-scenarios",
+  "version": "0.1.0",
+  "seed": 0,
+  "fixedDt": 0.008333333333333333,
+  "perKind": {
+    "settleSteps": 240,
+    "jointIds": [
+      "joint.ball",
+      "joint.fixed",
+      "joint.hinge",
+      "joint.rope",
+      "joint.slider",
+      "joint.suspension"
+    ]
+  },
+  "loadRamp": {
+    "joint": "joint.fixed",
+    "forcePoint": [
+      -6,
+      3,
+      0.75
+    ],
+    "samples": [
+      {
+        "force": [
+          0,
+          0,
+          0
+        ],
+        "steps": 1
+      },
+      {
+        "force": [
+          0,
+          0,
+          200
+        ],
+        "steps": 1
+      },
+      {
+        "force": [
+          0,
+          0,
+          400
+        ],
+        "steps": 1
+      },
+      {
+        "force": [
+          0,
+          0,
+          650
+        ],
+        "steps": 1
+      },
+      {
+        "force": [
+          0,
+          0,
+          800
+        ],
+        "steps": 1
+      }
+    ]
+  },
+  "patchReconcile": {
+    "joint": "joint.hinge",
+    "unrelatedBodies": [
+      "anchor.ball",
+      "joint.ball",
+      "anchor.rope",
+      "joint.rope"
+    ],
+    "steps": [
+      {
+        "action": "initial"
+      },
+      {
+        "action": "patch",
+        "patch": {
+          "motor": {
+            "damping": 4,
+            "maxTorque": 180,
+            "mode": "position",
+            "stiffness": 40,
+            "target": -0.35
+          }
+        }
+      },
+      {
+        "action": "despawn"
+      },
+      {
+        "action": "spawn"
+      }
+    ]
+  }
+}

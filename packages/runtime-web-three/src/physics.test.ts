@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { IEnvironmentSceneIr, IWorldIr } from "@threenative/ir";
 
-import { applyLivePhysicsAtPoint, disposePhysicsRuntime, initializePhysicsRuntime, markScriptAuthoredTransform, overlapLive, physicsBodyMass, physicsBodySleeping, physicsRuntimeCcdSubsteps, physicsRuntimeStats, queryHitObservation, raycastLive, shapeCastLive, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
+import { applyLivePhysicsAtPoint, disposePhysicsRuntime, initializePhysicsRuntime, markScriptAuthoredTransform, observePhysicsJointLoads, overlapLive, physicsBodyMass, physicsBodySleeping, physicsRuntimeCcdSubsteps, physicsRuntimeStats, preparePhysicsRuntime, queryHitObservation, raycastLive, shapeCastLive, stepPhysics, tracePhysicsJoints, traceRigidBodyPrimitive } from "./physics.js";
 
 test("physics should detect trigger overlap", () => {
   const world = makePhysicsWorld();
@@ -222,6 +222,115 @@ test("physics should solve hinge slider and suspension joints in Rapier", async 
   disposePhysicsRuntime(hinge);
   disposePhysicsRuntime(slider);
   disposePhysicsRuntime(suspension);
+});
+
+test("fixed ball and rope joints should be created through the retained joint runtime", async () => {
+  await initializePhysicsRuntime();
+  const world = makeRichJointWorld();
+
+  for (let step = 0; step < 30; step += 1) stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+
+  assert.deepEqual(observePhysicsJointLoads(world).map(({ entity, kind }) => ({ entity, kind })), [
+    { entity: "ball", kind: "ball" },
+    { entity: "fixed", kind: "fixed" },
+    { entity: "rope", kind: "rope" },
+  ]);
+  const fixedPosition = world.entities.find((entity) => entity.id === "fixed")?.components.Transform?.position;
+  assert.ok(fixedPosition && Math.abs(fixedPosition[0] - 1) < 0.05, `fixed joint drifted to ${String(fixedPosition)}`);
+  disposePhysicsRuntime(world);
+});
+
+test("joint component patches should reconcile without rebuilding unrelated bodies", async () => {
+  await initializePhysicsRuntime();
+  const world = makeRichJointWorld();
+  world.entities = world.entities.filter((entity) => entity.id === "anchor" || entity.id === "fixed");
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+  const fixed = world.entities.find((entity) => entity.id === "fixed");
+  assert.ok(fixed?.components.PhysicsJoint);
+  fixed.components.PhysicsJoint = { connectedEntity: "anchor", kind: "ball" };
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+
+  assert.deepEqual(physicsRuntimeStats(world), { jointCreations: 2, jointRemovals: 1, rebuilds: 1 });
+  delete fixed.components.PhysicsJoint;
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+  assert.deepEqual(physicsRuntimeStats(world), { jointCreations: 2, jointRemovals: 2, rebuilds: 1 });
+  disposePhysicsRuntime(world);
+});
+
+test("joint motors should cap authored force before applying their impulse", async () => {
+  await initializePhysicsRuntime();
+  const world = makeLiveJointWorld("slider");
+  const body = world.entities.find((entity) => entity.id === "body");
+  assert.ok(body?.components.PhysicsJoint && body.components.RigidBody);
+  body.components.RigidBody.velocity = [0, 0, 0];
+  body.components.PhysicsJoint.motor = { damping: 10, maxForce: 2, mode: "velocity", target: 100 };
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+
+  assert.equal(observePhysicsJointLoads(world)[0]?.force, 2);
+  disposePhysicsRuntime(world);
+});
+
+test("explicit suspension motors should replace the uncapped spring motor", async () => {
+  await initializePhysicsRuntime();
+  const world = makeLiveJointWorld("suspension");
+  const body = world.entities.find((entity) => entity.id === "body");
+  assert.ok(body?.components.PhysicsJoint && body.components.RigidBody);
+  body.components.RigidBody.velocity = [0, 0, 0];
+  body.components.PhysicsJoint.motor = { damping: 10, maxForce: 3, mode: "velocity", target: 100 };
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+
+  assert.equal(observePhysicsJointLoads(world)[0]?.force, 3);
+  disposePhysicsRuntime(world);
+});
+
+test("fixed joints should hold their relative pose under a below-threshold load", async () => {
+  await initializePhysicsRuntime();
+  const world = makeRichJointWorld();
+  world.entities = world.entities.filter((entity) => entity.id === "anchor" || entity.id === "fixed");
+  const fixed = world.entities.find((entity) => entity.id === "fixed");
+  const anchor = world.entities.find((entity) => entity.id === "anchor");
+  assert.ok(fixed?.components.PhysicsJoint && fixed.components.RigidBody && fixed.components.Transform?.position && anchor?.components.Transform?.position);
+  fixed.components.RigidBody.velocity = [0, 0, 0];
+  fixed.components.PhysicsJoint.breakForce = 100;
+  const initialRelative = fixed.components.Transform.position.map((value, index) => value - (anchor.components.Transform?.position?.[index] ?? 0));
+  const initialRotation = fixed.components.Transform.rotation ?? [0, 0, 0, 1];
+  preparePhysicsRuntime(world, undefined, [0, 0, 0]);
+  assert.equal(applyLivePhysicsAtPoint(world, "fixed", [50, 0, 0], fixed.components.Transform.position, "force"), true);
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+
+  const position = fixed.components.Transform?.position;
+  const rotation = fixed.components.Transform?.rotation ?? [0, 0, 0, 1];
+  assert.ok(position && anchor.components.Transform?.position);
+  const relative = position.map((value, index) => value - (anchor.components.Transform?.position?.[index] ?? 0));
+  assert.ok(Math.hypot(...relative.map((value, index) => value - (initialRelative[index] ?? 0))) < 0.01);
+  assert.ok(2 * Math.acos(Math.min(1, Math.abs(rotation.reduce((sum, value, index) => sum + value * (initialRotation[index] ?? 0), 0)))) < 0.01);
+  assert.equal(observePhysicsJointLoads(world)[0]?.force, 50);
+  disposePhysicsRuntime(world);
+});
+
+test("break thresholds should emit once and remove the joint on the next safe tick", async () => {
+  await initializePhysicsRuntime();
+  const world = makeRichJointWorld();
+  world.entities = world.entities.filter((entity) => entity.id === "anchor" || entity.id === "fixed");
+  const fixed = world.entities.find((entity) => entity.id === "fixed");
+  assert.ok(fixed?.components.PhysicsJoint);
+  fixed.components.PhysicsJoint.breakForce = 10;
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+  assert.equal(applyLivePhysicsAtPoint(world, "fixed", [1000, 0, 0], [1, 0, 0], "force"), true);
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+  assert.deepEqual((world.events?.JointBreakEvent as Array<{ connectedEntity: string; entity: string; kind: string; phase: string }>).map(({ connectedEntity, entity, kind, phase }) => ({ connectedEntity, entity, kind, phase })), [{ connectedEntity: "anchor", entity: "fixed", kind: "fixed", phase: "break" }]);
+  assert.equal(observePhysicsJointLoads(world)[0]?.active, true);
+
+  stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
+  assert.deepEqual(world.events?.JointBreakEvent, []);
+  assert.deepEqual(observePhysicsJointLoads(world), []);
+  assert.deepEqual(physicsRuntimeStats(world), { jointCreations: 1, jointRemovals: 1, rebuilds: 1 });
+  disposePhysicsRuntime(world);
 });
 
 test("should rotate a body when force is applied off center", async () => {
@@ -502,6 +611,32 @@ test("physics should derive contact velocity from script-posed kinematic motion"
   assert.deepEqual(world.entities[0]?.components.Transform?.position, [0.1, 0, 0]);
   disposePhysicsRuntime(world);
 });
+
+function makeRichJointWorld(): IWorldIr {
+  return {
+    schema: "threenative.world",
+    version: "0.1.0",
+    entities: [
+      {
+        id: "anchor",
+        components: {
+          Collider: { kind: "sphere", radius: 0.1, trigger: true },
+          RigidBody: { kind: "static" },
+          Transform: { position: [0, 0, 0] },
+        },
+      },
+      ...(["fixed", "ball", "rope"] as const).map((kind, index) => ({
+        id: kind,
+        components: {
+          Collider: { kind: "sphere" as const, radius: 0.1 },
+          PhysicsJoint: { connectedEntity: "anchor", kind, ...(kind === "rope" ? { length: 3 } : {}) },
+          RigidBody: { gravityScale: 0, kind: "dynamic" as const, velocity: kind === "fixed" ? [5, 0, 0] as const : [0, 0, 0] as const },
+          Transform: { position: [index + 1, 0, 0] as const },
+        },
+      })),
+    ],
+  };
+}
 
 function makeLiveJointWorld(kind: "hinge" | "slider" | "suspension"): IWorldIr {
   const hinge = kind === "hinge";

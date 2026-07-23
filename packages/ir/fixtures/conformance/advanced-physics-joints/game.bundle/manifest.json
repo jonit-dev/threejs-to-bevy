@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-advanced-physics-joints",
+  "requiredCapabilities": {
+    "physics": [
+      "joint.ball",
+      "joint.breakable",
+      "joint.fixed",
+      "joint.hinge",
+      "joint.motor",
+      "joint.patch-reconcile",
+      "joint.rope",
+      "joint.slider",
+      "joint.suspension"
+    ]
+  },
+  "entry": {
+    "world": "world.ir.json"
+  },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

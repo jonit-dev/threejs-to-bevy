@@ -1,0 +1,169 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "anchor.ball",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.5, 0.5, 0.5] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [-10, 4, 0] }
+      }
+    },
+    {
+      "id": "joint.ball",
+      "components": {
+        "Collider": { "kind": "sphere", "radius": 0.4 },
+        "PhysicsJoint": {
+          "anchor": [0, 1, 0],
+          "connectedEntity": "anchor.ball",
+          "kind": "ball"
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 10 },
+        "Transform": { "position": [-10, 3, 0] }
+      }
+    },
+    {
+      "id": "anchor.fixed",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.5, 0.5, 0.5] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [-6, 3, 0] }
+      }
+    },
+    {
+      "id": "joint.fixed",
+      "components": {
+        "Collider": { "kind": "box", "size": [1.5, 0.4, 1.5] },
+        "PhysicsJoint": {
+          "anchor": [0, 0, 0],
+          "breakForce": 600,
+          "breakTorque": 300,
+          "connectedEntity": "anchor.fixed",
+          "connectedRotation": [0, 0, 0, 1],
+          "kind": "fixed",
+          "rotation": [0, 0, 0, 1]
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 20 },
+        "Transform": { "position": [-6, 3, 0] }
+      }
+    },
+    {
+      "id": "anchor.hinge",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.5, 0.5, 0.5] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [-2, 3, 0] }
+      }
+    },
+    {
+      "id": "joint.hinge",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.4, 0.4, 2] },
+        "PhysicsJoint": {
+          "anchor": [0, 0, 1],
+          "axis": [0, 1, 0],
+          "breakTorque": 500,
+          "connectedEntity": "anchor.hinge",
+          "kind": "hinge",
+          "limits": { "min": -0.75, "max": 0.75 },
+          "motor": {
+            "damping": 3,
+            "maxTorque": 150,
+            "mode": "velocity",
+            "stiffness": 30,
+            "target": 0.75
+          }
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 12 },
+        "Transform": { "position": [-2, 3, -1] }
+      }
+    },
+    {
+      "id": "anchor.rope",
+      "components": {
+        "Collider": { "kind": "sphere", "radius": 0.25 },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [2, 5, 0] }
+      }
+    },
+    {
+      "id": "joint.rope",
+      "components": {
+        "Collider": { "kind": "sphere", "radius": 0.4 },
+        "PhysicsJoint": {
+          "anchor": [0, 0, 0],
+          "breakForce": 900,
+          "connectedEntity": "anchor.rope",
+          "kind": "rope",
+          "length": 2
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 8 },
+        "Transform": { "position": [2, 3, 0] }
+      }
+    },
+    {
+      "id": "anchor.slider",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.5, 0.5, 0.5] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [6, 3, 0] }
+      }
+    },
+    {
+      "id": "joint.slider",
+      "components": {
+        "Collider": { "kind": "box", "size": [1, 0.5, 1] },
+        "PhysicsJoint": {
+          "anchor": [0, 0, 0],
+          "axis": [1, 0, 0],
+          "breakForce": 1000,
+          "connectedEntity": "anchor.slider",
+          "kind": "slider",
+          "limits": { "min": -1, "max": 1 },
+          "motor": {
+            "damping": 5,
+            "maxForce": 250,
+            "mode": "position",
+            "stiffness": 50,
+            "target": 0.5
+          }
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 15 },
+        "Transform": { "position": [6, 3, 0] }
+      }
+    },
+    {
+      "id": "anchor.suspension",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.5, 0.5, 0.5] },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [10, 4, 0] }
+      }
+    },
+    {
+      "id": "joint.suspension",
+      "components": {
+        "Collider": { "kind": "box", "size": [0.8, 0.4, 0.8] },
+        "PhysicsJoint": {
+          "anchor": [0, 0, 0],
+          "axis": [0, 1, 0],
+          "connectedEntity": "anchor.suspension",
+          "damping": 8,
+          "kind": "suspension",
+          "motor": {
+            "damping": 8,
+            "maxForce": 1200,
+            "mode": "position",
+            "stiffness": 120,
+            "target": 0
+          },
+          "stiffness": 120,
+          "travel": 0.6
+        },
+        "RigidBody": { "kind": "dynamic", "mass": 25 },
+        "Transform": { "position": [10, 3.7, 0] }
+      }
+    }
+  ]
+}

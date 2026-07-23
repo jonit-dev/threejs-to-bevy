@@ -8,9 +8,10 @@ use std::{
 use threenative_loader::load_bundle;
 use threenative_runtime::physics::{
     detect_physics_event_trace, detect_physics_events, inspect_cached_physics_body_sleeping,
-    inspect_cached_physics_ccd_substeps, inspect_cached_physics_raycast, inspect_physics_body_mass,
-    inspect_physics_body_mass_properties, step_bundle_physics_with_script_poses,
-    trace_physics_joints, trace_rigid_body_primitives,
+    inspect_cached_physics_ccd_substeps, inspect_cached_physics_joint,
+    inspect_cached_physics_raycast, inspect_cached_physics_world_generation,
+    inspect_physics_body_mass, inspect_physics_body_mass_properties,
+    step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
 };
 
 #[test]
@@ -718,6 +719,197 @@ fn physics_should_solve_hinge_slider_and_suspension_joints_in_rapier() {
 }
 
 #[test]
+fn fixed_joint_should_hold_relative_pose_under_load() {
+    let root = write_falling_box_bundle();
+    let mut bundle = live_joint_bundle(&root, "fixed");
+    let runtime = BTreeSet::new();
+
+    for _ in 0..120 {
+        queue_force_at_point(&mut bundle, [0.0, -20.0, 0.0]);
+        step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime);
+    }
+
+    let position = body_position(&bundle);
+    assert!(
+        position
+            .iter()
+            .map(|value| value * value)
+            .sum::<f32>()
+            .sqrt()
+            < 0.3,
+        "fixed joint drifted under gravity to {position:?}"
+    );
+    let joint = inspect_cached_physics_joint(&runtime, "box").expect("fixed joint observation");
+    assert!(joint.active);
+    assert!(
+        joint.force.is_finite() && joint.force > 0.0,
+        "fixed joint load was {joint:?}"
+    );
+    assert!(joint.torque.is_finite());
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn joint_should_emit_one_break_event_then_remove_at_the_next_safe_tick() {
+    let root = write_falling_box_bundle();
+    let mut bundle = live_joint_bundle(&root, "fixed");
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.physics_joint.as_mut())
+        .expect("fixed joint")
+        .break_force = Some(0.01);
+    let runtime = BTreeSet::new();
+
+    queue_force_at_point(&mut bundle, [0.0, -20.0, 0.0]);
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime);
+    let break_events = bundle
+        .world
+        .events
+        .get("JointBreakEvent")
+        .and_then(serde_json::Value::as_array)
+        .expect("joint break queue");
+    assert_eq!(
+        break_events.len(),
+        1,
+        "joint observation was {:?}",
+        inspect_cached_physics_joint(&runtime, "box")
+    );
+    assert_eq!(break_events[0]["entity"], "box");
+    assert_eq!(break_events[0]["phase"], "break");
+    assert!(
+        inspect_cached_physics_joint(&runtime, "box")
+            .expect("broken joint observation")
+            .active
+    );
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime);
+    assert!(
+        bundle.world.events["JointBreakEvent"]
+            .as_array()
+            .expect("joint break queue")
+            .is_empty()
+    );
+    assert!(
+        !inspect_cached_physics_joint(&runtime, "box")
+            .expect("broken joint state")
+            .active
+    );
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn joint_patch_should_preserve_unrelated_body_handles() {
+    let root = write_falling_box_bundle();
+    let mut bundle = live_joint_bundle(&root, "hinge");
+    let runtime = BTreeSet::new();
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime);
+    let generation = inspect_cached_physics_world_generation(&runtime).expect("retained world");
+    let initial_lifecycle = inspect_cached_physics_joint(&runtime, "box")
+        .expect("hinge observation")
+        .lifecycle;
+    let joint = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.physics_joint.as_mut())
+        .expect("hinge joint");
+    joint.limits = Some(
+        serde_json::from_value(serde_json::json!({ "min": -0.25, "max": 0.25 }))
+            .expect("joint limits"),
+    );
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 60.0, &runtime);
+
+    assert_eq!(
+        inspect_cached_physics_world_generation(&runtime),
+        Some(generation)
+    );
+    let patched = inspect_cached_physics_joint(&runtime, "box").expect("patched hinge");
+    assert!(patched.active);
+    assert_eq!(patched.lifecycle, initial_lifecycle + 1);
+
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn joint_motors_should_respect_authored_force_and_torque_caps() {
+    let hinge_root = write_falling_box_bundle();
+    let slider_root = write_falling_box_bundle();
+    let mut hinge = live_joint_bundle(&hinge_root, "hinge");
+    let mut slider = live_joint_bundle(&slider_root, "slider");
+    let hinge_runtime = BTreeSet::new();
+    let slider_runtime = BTreeSet::new();
+    let hinge_entity = hinge
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .expect("hinge body");
+    hinge_entity
+        .components
+        .rigid_body
+        .as_mut()
+        .expect("hinge rigid body")
+        .gravity_scale = Some(0.0);
+    hinge_entity
+        .components
+        .physics_joint
+        .as_mut()
+        .expect("hinge joint")
+        .motor = Some(
+        serde_json::from_value(serde_json::json!({
+            "damping": 100,
+            "maxTorque": 2,
+            "mode": "velocity",
+            "target": 100
+        }))
+        .expect("hinge motor"),
+    );
+    slider
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "box")
+        .and_then(|entity| entity.components.physics_joint.as_mut())
+        .expect("slider joint")
+        .motor = Some(
+        serde_json::from_value(serde_json::json!({
+            "damping": 10,
+            "maxForce": 3,
+            "mode": "position",
+            "stiffness": 1000,
+            "target": 0.75
+        }))
+        .expect("slider motor"),
+    );
+
+    step_bundle_physics_with_script_poses(&mut hinge, 1.0 / 120.0, &hinge_runtime);
+    step_bundle_physics_with_script_poses(&mut slider, 1.0 / 120.0, &slider_runtime);
+
+    let hinge_load = inspect_cached_physics_joint(&hinge_runtime, "box").expect("hinge load");
+    let slider_load = inspect_cached_physics_joint(&slider_runtime, "box").expect("slider load");
+    assert!(
+        hinge_load.torque > 0.0 && hinge_load.torque <= 2.001,
+        "{hinge_load:?}"
+    );
+    assert!(
+        slider_load.force > 0.0 && slider_load.force <= 3.001,
+        "{slider_load:?}"
+    );
+
+    for root in [hinge_root, slider_root] {
+        fs::remove_dir_all(root).expect("temporary bundle should be removed");
+    }
+}
+
+#[test]
 fn physics_should_apply_configured_gravity_and_ccd_substeps_and_honor_disabled_sleep() {
     let root = write_falling_box_bundle();
     let mut bundle = load_bundle(&root).expect("physics bundle should load");
@@ -907,6 +1099,12 @@ fn live_joint_bundle(root: &Path, kind: &str) -> threenative_loader::LoadedBundl
     });
     body.components.physics_joint = Some(
         serde_json::from_value(match kind {
+            "fixed" => serde_json::json!({
+                "anchor": [0, 0, 0],
+                "breakForce": 1000,
+                "connectedEntity": "anchor",
+                "kind": "fixed"
+            }),
             "hinge" => serde_json::json!({
                 "anchor": [-1, 0, 0],
                 "axis": [0, 0, 1],
@@ -953,6 +1151,18 @@ fn body_position(bundle: &threenative_loader::LoadedBundle) -> [f32; 3] {
         .and_then(|entity| entity.components.transform.as_ref())
         .and_then(|transform| transform.position)
         .expect("body should have a position")
+}
+
+fn queue_force_at_point(bundle: &mut threenative_loader::LoadedBundle, value: [f32; 3]) {
+    bundle.world.resources.insert(
+        "__threenativePhysicsAtPointCommands".to_owned(),
+        serde_json::json!([{
+            "entity": "box",
+            "kind": "physics.addForceAtPoint",
+            "point": [0, 0, 0],
+            "value": value
+        }]),
+    );
 }
 
 fn write_physics_bundle() -> PathBuf {
