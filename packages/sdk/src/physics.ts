@@ -123,6 +123,15 @@ export interface IPhysicsJointDeclaration {
   travel?: number;
 }
 
+export interface IDestructibleDeclaration {
+  activationBudget?: number;
+  bondStrength?: number;
+  cleanupPolicy?: "despawn" | "pool" | "sleep";
+  fractureManifest: string;
+  impactFilter?: { layers?: ReadonlyArray<string>; minImpulse?: number };
+  maxDepth?: number;
+}
+
 export interface IPhysicsSlipCurvePointDeclaration {
   grip: number;
   slip: number;
@@ -185,6 +194,7 @@ export interface IPhysicsDeclaration {
   aerodynamicBody?: IAerodynamicBodyDeclaration;
   body?: IRigidBodyDeclaration;
   collider?: IColliderDeclaration;
+  destructible?: IDestructibleDeclaration;
   joint?: IPhysicsJointDeclaration;
   surface?: IPhysicsSurfaceDeclaration;
   tireModel?: ITireModelDeclaration;
@@ -376,6 +386,17 @@ export function meshCollider(options: { mesh?: IMeshColliderDeclaration; trigger
 
 export function physics(options: IPhysicsDeclaration): IPhysicsDeclaration {
   return options;
+}
+
+export function destructible(options: IDestructibleDeclaration): IDestructibleDeclaration {
+  if (!/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]+\.json$/u.test(options.fractureManifest)) throw new SdkError("TN_SDK_PHYSICS_DESTRUCTIBLE_MANIFEST_INVALID", "Destructible.fractureManifest must be a bundle-relative JSON path.");
+  if (options.bondStrength !== undefined) assertPositiveNumber(options.bondStrength, "TN_SDK_PHYSICS_DESTRUCTIBLE_BOND_STRENGTH_INVALID", "Destructible.bondStrength");
+  if (options.activationBudget !== undefined && (!Number.isInteger(options.activationBudget) || options.activationBudget < 1 || options.activationBudget > 256)) throw new SdkError("TN_SDK_PHYSICS_DESTRUCTIBLE_BUDGET_INVALID", "Destructible.activationBudget must be an integer from 1 to 256.");
+  if (options.maxDepth !== undefined && (!Number.isInteger(options.maxDepth) || options.maxDepth < 0 || options.maxDepth > 8)) throw new SdkError("TN_SDK_PHYSICS_DESTRUCTIBLE_DEPTH_INVALID", "Destructible.maxDepth must be an integer from 0 to 8.");
+  if (options.cleanupPolicy !== undefined && !["despawn", "pool", "sleep"].includes(options.cleanupPolicy)) throw new SdkError("TN_SDK_PHYSICS_DESTRUCTIBLE_CLEANUP_INVALID", "Destructible.cleanupPolicy must be despawn, pool, or sleep.");
+  if (options.impactFilter?.minImpulse !== undefined) assertNonNegativeNumber(options.impactFilter.minImpulse, "TN_SDK_PHYSICS_DESTRUCTIBLE_FILTER_INVALID", "Destructible.impactFilter.minImpulse");
+  if ((options.impactFilter?.layers?.length ?? 0) > 32) throw new SdkError("TN_SDK_PHYSICS_DESTRUCTIBLE_FILTER_INVALID", "Destructible.impactFilter.layers must contain at most 32 entries.");
+  return { ...options, ...(options.impactFilter === undefined ? {} : { impactFilter: { ...options.impactFilter, ...(options.impactFilter.layers === undefined ? {} : { layers: [...options.impactFilter.layers] }) } }) };
 }
 
 export function physicsSurface(options: IPhysicsSurfaceDeclaration): IPhysicsSurfaceDeclaration {

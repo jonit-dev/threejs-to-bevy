@@ -284,7 +284,8 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   physics: {
     description: "Add typed physics components to structured scene source.",
     implemented: true,
-    usage: "tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n              tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]\n              tn physics <vehicle|aerodynamics|wind> <add|inspect|validate> ... [--json]",
+    subcommands: ["add-collider", "add-rigid-body", "aerodynamics", "fracture", "vehicle", "wind"],
+    usage: "tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n              tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]\n              tn physics fracture <generate|inspect|validate> ... [--json]\n              tn physics <vehicle|aerodynamics|wind> <add|inspect|validate> ... [--json]",
   },
   nav: {
     description: "Add typed navigation/character-agent components to structured scene source.",

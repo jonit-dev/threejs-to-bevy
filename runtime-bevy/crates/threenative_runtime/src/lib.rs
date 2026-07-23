@@ -53,6 +53,7 @@ pub mod persistence_reload;
 pub mod persistence_storage;
 pub mod physics;
 pub mod physics_aerodynamics;
+pub mod physics_destruction;
 pub mod physics_joints;
 pub mod physics_sensors;
 pub mod physics_vehicle;

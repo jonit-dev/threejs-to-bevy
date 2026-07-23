@@ -1,5 +1,18 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
-export { validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
+export {
+  FRACTURE_MANIFEST_SCHEMA,
+  FRACTURE_MANIFEST_VERSION,
+  MAX_FRACTURE_DEPTH,
+  MAX_FRACTURE_PIECES,
+  validateFractureManifest,
+  type FractureOverflowPolicy,
+  type FractureSourceKind,
+  type IFractureBond,
+  type IFractureManifest,
+  type IFracturePiece,
+  type IFracturePieceCollider,
+} from "./fractureManifest.js";
+export { validateAerodynamicBody, validateDestructible, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
 export {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,
@@ -494,6 +507,7 @@ export type {
   IStateMachineTransition,
   IStateMachineTrigger,
   IWorldTextComponent,
+  IDestructibleComponent,
   ISpawnerAreaComponent,
   ISpawnerComponent,
   ISpawnerDespawnPolicyComponent,

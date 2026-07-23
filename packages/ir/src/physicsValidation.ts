@@ -32,6 +32,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const aerodynamicBody = entity.components.AerodynamicBody as unknown;
   const collider = entity.components.Collider as unknown;
   const compoundCollider = entity.components.CompoundCollider as unknown;
+  const destructible = entity.components.Destructible as unknown;
   const body = entity.components.RigidBody as unknown;
   const joint = entity.components.PhysicsJoint as unknown;
   const physicsSurface = entity.components.PhysicsSurface as unknown;
@@ -39,7 +40,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const wheelAssembly = entity.components.WheelAssembly as unknown;
   const vehicleController = entity.components.VehicleController as unknown;
   const windVolume = entity.components.WindVolume as unknown;
-  if (aerodynamicBody === undefined && collider === undefined && compoundCollider === undefined && body === undefined && joint === undefined && physicsSurface === undefined && tireModel === undefined && wheelAssembly === undefined && vehicleController === undefined && windVolume === undefined) {
+  if (aerodynamicBody === undefined && collider === undefined && compoundCollider === undefined && destructible === undefined && body === undefined && joint === undefined && physicsSurface === undefined && tireModel === undefined && wheelAssembly === undefined && vehicleController === undefined && windVolume === undefined) {
     return;
   }
   if (collider !== undefined && !isRecord(collider)) {
@@ -71,6 +72,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
   const jointRecord = isRecord(joint) ? joint : undefined;
 
   validateNamedPhysicsComponent(aerodynamicBody, "AerodynamicBody", path, diagnostics, validateAerodynamicBody);
+  validateNamedPhysicsComponent(destructible, "Destructible", path, diagnostics, validateDestructible);
   validateNamedPhysicsComponent(physicsSurface, "PhysicsSurface", path, diagnostics, validatePhysicsSurface);
   validateNamedPhysicsComponent(tireModel, "TireModel", path, diagnostics, validateTireModel);
   validateNamedPhysicsComponent(wheelAssembly, "WheelAssembly", path, diagnostics, (value, componentPath, output) => validateWheelAssembly(value, componentPath, entityIds, tireModelEntityIds, output));
@@ -265,7 +267,7 @@ export function validatePhysicsComponents(entity: IWorldIr["entities"][number], 
 
 function validateNamedPhysicsComponent(
   value: unknown,
-  component: "AerodynamicBody" | "PhysicsSurface" | "TireModel" | "VehicleController" | "WheelAssembly" | "WindVolume",
+  component: "AerodynamicBody" | "Destructible" | "PhysicsSurface" | "TireModel" | "VehicleController" | "WheelAssembly" | "WindVolume",
   entityPath: string,
   diagnostics: IIrDiagnostic[],
   validate: (value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]) => void,
@@ -277,6 +279,23 @@ function validateNamedPhysicsComponent(
     return;
   }
   validate(value, path, diagnostics);
+}
+
+export function validateDestructible(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+  validateObjectFields(value, new Set(["activationBudget", "bondStrength", "cleanupPolicy", "fractureManifest", "impactFilter", "maxDepth"]), path, "TN_IR_PHYSICS_DESTRUCTIBLE_FIELD_UNSUPPORTED", diagnostics);
+  if (typeof value.fractureManifest !== "string" || !/^(?!\/)(?!.*(?:^|\/)\.\.(?:\/|$))[A-Za-z0-9._/-]+\.json$/u.test(value.fractureManifest)) diagnostics.push({ code: "TN_IR_PHYSICS_DESTRUCTIBLE_MANIFEST_INVALID", message: "Destructible.fractureManifest must be a bundle-relative JSON path.", path: `${path}/fractureManifest`, severity: "error", suggestion: "Reference a compiler-generated fracture manifest inside the bundle." });
+  if (value.bondStrength !== undefined) validateFiniteRange(value.bondStrength, Number.MIN_VALUE, 1_000_000, `${path}/bondStrength`, "TN_IR_PHYSICS_DESTRUCTIBLE_BOND_STRENGTH_INVALID", diagnostics);
+  if (value.activationBudget !== undefined) validateIntegerRange(value.activationBudget, 1, 256, `${path}/activationBudget`, "TN_IR_PHYSICS_DESTRUCTIBLE_BUDGET_INVALID", diagnostics);
+  if (value.maxDepth !== undefined) validateIntegerRange(value.maxDepth, 0, 8, `${path}/maxDepth`, "TN_IR_PHYSICS_DESTRUCTIBLE_DEPTH_INVALID", diagnostics);
+  if (value.cleanupPolicy !== undefined && !["despawn", "pool", "sleep"].includes(value.cleanupPolicy as string)) diagnostics.push({ code: "TN_IR_PHYSICS_DESTRUCTIBLE_CLEANUP_INVALID", message: "Destructible.cleanupPolicy must be despawn, pool, or sleep.", path: `${path}/cleanupPolicy`, severity: "error", suggestion: "Choose a portable bounded cleanup policy." });
+  if (value.impactFilter !== undefined) {
+    if (!isRecord(value.impactFilter)) diagnostics.push({ code: "TN_IR_PHYSICS_DESTRUCTIBLE_IMPACT_FILTER_INVALID", message: "Destructible.impactFilter must be an object.", path: `${path}/impactFilter`, severity: "error", suggestion: "Declare finite minImpulse and optional portable layer names." });
+    else {
+      validateObjectFields(value.impactFilter, new Set(["layers", "minImpulse"]), `${path}/impactFilter`, "TN_IR_PHYSICS_DESTRUCTIBLE_IMPACT_FILTER_INVALID", diagnostics);
+      if (value.impactFilter.minImpulse !== undefined) validateFiniteRange(value.impactFilter.minImpulse, 0, 1_000_000_000, `${path}/impactFilter/minImpulse`, "TN_IR_PHYSICS_DESTRUCTIBLE_IMPACT_FILTER_INVALID", diagnostics);
+      if (value.impactFilter.layers !== undefined && (!Array.isArray(value.impactFilter.layers) || value.impactFilter.layers.length > V9_MAX_PHYSICS_FILTER_ENTRIES || !value.impactFilter.layers.every((layer) => typeof layer === "string" && PORTABLE_FILTER_NAME.test(layer)))) diagnostics.push({ code: "TN_IR_PHYSICS_DESTRUCTIBLE_IMPACT_FILTER_INVALID", message: "Destructible impact layers must be bounded portable filter names.", path: `${path}/impactFilter/layers`, severity: "error", suggestion: `Declare at most ${V9_MAX_PHYSICS_FILTER_ENTRIES} valid layer names.` });
+    }
+  }
 }
 
 export function validateAerodynamicBody(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {

@@ -538,16 +538,16 @@ impact or script damage without runtime mesh cutting or unbounded debris.
 
 **Implementation:**
 
-- [ ] Support imported pre-fractured GLB pieces and bounded seeded primitive/
+- [x] Support imported pre-fractured GLB pieces and bounded seeded primitive/
   convex build-time fracture recipes; preserve stable piece and bond IDs.
-- [ ] Compute/validate piece colliders, mass fractions, adjacency bonds, health,
+- [x] Compute/validate piece colliders, mass fractions, adjacency bonds, health,
   impulse/energy thresholds, material response, and hierarchical activation.
 - [ ] Convert normalized contact impulse or explicit portable damage into bond
   damage once per tick, activate pieces in stable order, and conserve authored
   assembly mass within tolerance.
-- [ ] Enforce per-assembly and scene active-piece budgets with declared policy,
+- [x] Enforce per-assembly and scene active-piece budgets with declared policy,
   sleep/despawn cleanup, pooling, and proof-visible overflow events.
-- [ ] Emit `damaged`, `bondBroken`, `pieceActivated`, `assemblyBroken`, and
+- [x] Emit `damaged`, `bondBroken`, `pieceActivated`, `assemblyBroken`, and
   `budgetExceeded` events with cause entity/contact/script and stable ordering.
 
 **Tests required:**
@@ -908,3 +908,22 @@ the final evidence.
   fixed-pose bounds, capped suspension motors, honest load-parity scope,
   one-shot deferred breaking, joint-only reconciliation, descriptor ownership,
   complete evidence metadata, and matching retained artifact hashes.
+
+### Phase 6 core evidence (partial; checkpoint pending)
+
+- Seeded primitive and imported/convex fracture inputs now bake byte-stable
+  manifests with stable piece/bond IDs. The compiler validates and copies every
+  referenced durable `content/fractures/*.json` manifest into its bundle path.
+- IR validation rejects disconnected graphs, invalid collider/pose/threshold
+  values, non-unit mass fractions, unsafe references, excessive hierarchy, and
+  piece/activation/pool budgets with actionable paths and suggestions.
+- `tn physics fracture generate|inspect|validate` owns the reusable CLI path;
+  the focused cookbook entry generates, attaches, validates, and builds a
+  destructible wall successfully.
+- Web runtime tests pass 531/531, including five focused destruction cases.
+  Native destruction integration tests pass 6/6 and native library tests pass
+  83/83. IR passes 414/414, SDK 159/159, and compiler 291/291.
+- The checkpoint remains open: semantic activation is not yet connected to
+  retained Rapier piece bodies, so mass/momentum conservation, paired impact
+  replay, contact-sheet review, and web/desktop projectile playtests are not
+  claimed by this partial slice.

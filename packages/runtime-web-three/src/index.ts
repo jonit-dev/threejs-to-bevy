@@ -15,6 +15,7 @@ export {
 export { loadBundle, validateAndLoadBundle, WebBundleValidationError, type IWebBundle } from "./loadBundle.js";
 export { traceAdvancedPhysicsFoundation, type IAdvancedPhysicsFoundationBodyTrace, type IAdvancedPhysicsFoundationTrace } from "./advancedPhysicsFoundation.js";
 export { traceAdvancedPhysicsJoints, type IAdvancedPhysicsJointScenarios, type IAdvancedPhysicsJointTrace } from "./advancedPhysicsJoints.js";
+export { createPhysicsDestructionRuntime, observePhysicsDestruction, queuePhysicsDestructionDamage, registerPhysicsDestructible, stepPhysicsDestruction, unregisterPhysicsDestructible, type IFractureManifest, type IPhysicsDestructibleComponent, type IPhysicsDestructionCause, type IPhysicsDestructionCleanup, type IPhysicsDestructionDamage, type IPhysicsDestructionEvent, type IPhysicsDestructionRuntime } from "./physicsDestruction.js";
 export { reportWebConformance } from "./conformance.js";
 export { applyEnvironmentBookmark, createEnvironmentRuntime, loadEnvironmentAssetInstances, observeEnvironmentScene, traceEnvironmentContent, type IEnvironmentObservation, type IEnvironmentRuntime } from "./environment.js";
 export { buildInstancingPlan, type IInstancingGroup, type IInstancingPlan } from "./instancing.js";

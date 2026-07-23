@@ -327,6 +327,10 @@ function collectWorldCapabilities(world: IWorldIr | undefined, add: (domain: str
     if (entity.components.PhysicsJoint !== undefined) {
       add("physics", `joint.${entity.components.PhysicsJoint.kind}`);
     }
+    if (entity.components.Destructible !== undefined) {
+      add("physics", "destruction.bounded-fracture");
+      add("physics", `destruction.cleanup.${entity.components.Destructible.cleanupPolicy ?? "manifest"}`);
+    }
     if (entity.components.CharacterController !== undefined) {
       add("character", "controller");
       if (entity.components.CharacterController.blocking === true) {

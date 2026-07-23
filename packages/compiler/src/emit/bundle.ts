@@ -1,9 +1,11 @@
+import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import {
   IR_DOCUMENTS,
   IR_SCHEMA_IDS,
   IR_VERSION,
   normalizeDistribution,
+  validateFractureManifest,
   validateDistribution,
   validateDistributionProjectPaths,
   type IAssetsManifest,
@@ -318,7 +320,7 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       ...(authoringProvenance === undefined ? {} : { authoringProvenance }),
     },
     ...(bakedProbeContent.diagnostics.length === 0 ? {} : { diagnostics: bakedProbeContent.diagnostics }),
-    extraAssetFiles: [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? [])],
+    extraAssetFiles: [...(environment?.extraFiles ?? []), ...(overlays?.extraFiles ?? []), ...await planFractureManifestCopies(config.projectPath, world)],
     generatedMeshPayloads: generatedMeshPayloads.payloads,
     manifest,
   };
@@ -351,6 +353,27 @@ export async function planBundle(config: IProjectConfig, root: unknown, options:
       ...(documentsForEmit.scriptBundle === undefined ? [] : [{ data: documentsForEmit.scriptBundle, kind: "generated-script" as const, path: IR_DOCUMENTS.scripts.fileName }]),
     ];
   }
+}
+
+async function planFractureManifestCopies(projectPath: string, world: IWorldIr | undefined): Promise<IAssetCopy[]> {
+  const references = [...new Set(world?.entities.flatMap((entity) => {
+    const destructible = entity.components.Destructible;
+    return destructible === undefined ? [] : [destructible.fractureManifest];
+  }) ?? [])].sort();
+  const copies: IAssetCopy[] = [];
+  for (const reference of references) {
+    const sourcePath = `content/${reference}`;
+    let parsed: unknown;
+    try { parsed = JSON.parse(await readFile(resolve(projectPath, sourcePath), "utf8")); }
+    catch { throw new Error(`TN_COMPILER_FRACTURE_MANIFEST_MISSING: Destructible references missing or invalid '${sourcePath}'.`); }
+    const diagnostics = validateFractureManifest(parsed, sourcePath);
+    if (diagnostics.length > 0) {
+      const first = diagnostics[0]!;
+      throw new Error(`${first.code}: ${first.message} (${first.path})`);
+    }
+    copies.push({ path: reference, sourcePath });
+  }
+  return copies;
 }
 
 interface IBundleRoot {

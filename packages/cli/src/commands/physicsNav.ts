@@ -2,6 +2,7 @@ import { type ICommandResult } from "../diagnostics.js";
 import { dispatchAuthoringOperation, listAuthoringOperationDescriptors, renderAuthoringOperationCliUsage } from "@threenative/authoring";
 import { sceneCommand } from "./scene.js";
 import { parseJsonObjectFlag, renderSceneResult, resolveProjectPath } from "./sceneShared.js";
+import { physicsFractureCommand } from "./physicsFracture.js";
 
 interface IPhysicsNavCommandOptions {
   cwd?: string;
@@ -13,6 +14,8 @@ export async function physicsCommand(argv: readonly string[], options: IPhysicsN
   const json = normalizedArgv.includes("--json");
   const sceneId = readPositional(normalizedArgv, 1);
   const entityId = readPositional(normalizedArgv, 2);
+
+  if (subcommand === "fracture") return physicsFractureCommand(normalizedArgv.slice(1), options);
 
   if (subcommand === "vehicle" || subcommand === "aerodynamics" || subcommand === "wind") {
     const action = readPositional(normalizedArgv, 1);
@@ -100,7 +103,7 @@ function renderUsage(json: boolean, code: string, usage: string): ICommandResult
 }
 
 function physicsUsage(): string {
-  const legacy = "Usage: tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--enabled-rotations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n       tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]";
+  const legacy = "Usage: tn physics add-rigid-body <scene-id> <entity-id> [--kind <dynamic|kinematic|static>] [--mass <n>] [--damping <n>] [--gravity-scale <n>] [--velocity x,y,z] [--angular-velocity x,y,z] [--enabled-translations x,y,z] [--enabled-rotations x,y,z] [--ccd <true|false>] [--ccd-mode <linear|swept-aabb>] [--project <path>] [--json]\n       tn physics add-collider <scene-id> <entity-id> [--kind <box|sphere|capsule|cylinder|mesh>] [--size x,y,z] [--center x,y,z] [--radius <n>] [--height <n>] [--friction <n>] [--restitution <n>] [--layer <name>] [--mask <layer-a,layer-b>] [--trigger <true|false>] [--project <path>] [--json]\n       tn physics fracture <generate|inspect|validate> ... [--project <path>] [--json]";
   return [legacy, ...physicsOperationNames().map((name) => renderAuthoringOperationCliUsage(name)).filter((value): value is string => value !== undefined)].join("\n       ");
 }
 

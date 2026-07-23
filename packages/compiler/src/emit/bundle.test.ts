@@ -29,6 +29,7 @@ import {
   defineAudio,
   defineInputMap,
   defineRuntimeConfig,
+  destructible,
   defineComponent,
   defineEvent,
   defineQuery,
@@ -57,6 +58,7 @@ import { IR_DOCUMENTS, validateBundle } from "@threenative/ir";
 import { Bar, Button, Column, Image, Text, Ui } from "@threenative/ui";
 
 import { AUTHORING_PROVENANCE_FILE } from "../authoring/provenance.js";
+import { bakeFractureManifest } from "../bake/fracture.js";
 import { emitBundle, planBundle } from "./bundle.js";
 import { writeBundlePlan } from "./bundle-writer.js";
 
@@ -81,6 +83,19 @@ test("should emit deterministic cube bundle", async () => {
   } finally {
     await rm(root, { force: true, recursive: true });
   }
+});
+
+test("should validate and copy referenced fracture manifests into the bundle", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-fracture-bundle-"));
+  try {
+    const baked = bakeFractureManifest({ id: "wall.main", recipe: { bondHealth: 100, cells: [2, 1, 1], dimensions: [2, 1, 1], impulseThreshold: 20, kind: "primitive" }, seed: 4 });
+    await mkdir(join(root, "content/fractures"), { recursive: true });
+    await writeFile(join(root, "content/fractures/wall.main.json"), baked.json);
+    const scene = new Scene({ id: "scene" });
+    scene.add(new Mesh({ geometry: new BoxGeometry(), id: "wall", material: new MeshStandardMaterial(), physics: physics({ destructible: destructible({ fractureManifest: "fractures/wall.main.json" }) }) }));
+    const bundle = await emitBundle({ entry: "src/game.ts", outDir: "dist/game.bundle", projectPath: root, schema: "threenative.project", version: "0.1.0" }, scene);
+    assert.equal(await readFile(join(bundle, "fractures/wall.main.json"), "utf8"), baked.json);
+  } finally { await rm(root, { force: true, recursive: true }); }
 });
 
 test("should emit byte-identical procedural LOD payloads across rebuilds", async () => {

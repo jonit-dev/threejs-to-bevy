@@ -90,19 +90,19 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
   const webServices = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => (descriptor.adapters as readonly string[]).includes("web")).map((descriptor) => descriptor.service);
   const consumers = {
     authoringOperations: ["physics.aerodynamics.add", "physics.wind.add", "scene.set_component", "physics.vehicle.add"],
-    bevyComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    bevyComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     bevyHostServices: bevyServices,
     bevyRuntimeServices: bevyServices,
     bevyVisualComponents: ["WheelAssembly"],
-    compilerComponents: ["AerodynamicBody", "WindVolume", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    compilerComponents: ["AerodynamicBody", "WindVolume", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     fixtures: ["advanced-physics-foundation", "advanced-physics-wheels"],
     gates: ["physics-self-verification", "advanced-physics-wheels"],
-    irComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    irComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     irServices: services,
     sdkServices: services,
-    sdkComponents: ["aerodynamicBody", "aerodynamicSurface", "thruster", "windVolume", "physicsJoint", "physicsSurface", "tireModel", "wheelAssembly", "wheelControlInput", "vehicleController", "vehicleControllerInputs"],
+    sdkComponents: ["aerodynamicBody", "aerodynamicSurface", "thruster", "windVolume", "destructible", "physicsJoint", "physicsSurface", "tireModel", "wheelAssembly", "wheelControlInput", "vehicleController", "vehicleControllerInputs"],
     stdlibContexts: PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.map((descriptor) => descriptor.context),
-    webComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    webComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     webHostServices: webServices,
     webRuntimeServices: webServices,
     webVisualComponents: ["WheelAssembly"],
@@ -126,9 +126,10 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
 });
 
 test("physics descriptors should match checked-in public contract adapter fixture and gate consumers", async () => {
-  const [webPhysics, webJoints, webVehicle, webAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, catalogSource] = await Promise.all([
+  const [webPhysics, webJoints, webDestruction, webVehicle, webAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeDestruction, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, catalogSource] = await Promise.all([
     readFile(resolve(root, "packages/runtime-web-three/src/physics.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsJoints.ts"), "utf8"),
+    readFile(resolve(root, "packages/runtime-web-three/src/physicsDestruction.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsVehicle.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsAerodynamics.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/systems/context.ts"), "utf8"),
@@ -140,6 +141,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     readFile(resolve(root, "runtime-bevy/crates/threenative_loader/src/types.rs"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/physics.rs"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/physics_joints.rs"), "utf8"),
+    readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/physics_destruction.rs"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/physics_vehicle.rs"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/physics_aerodynamics.rs"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/lib.rs"), "utf8"),
@@ -183,6 +185,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
       ...(nativeLoader.includes("pub aerodynamic_body: Option<AerodynamicBodyComponent>") && nativeAerodynamics.includes("aerodynamic_body") ? ["AerodynamicBody"] : []),
       ...(nativeLoader.includes("pub wind_volume: Option<WindVolumeComponent>") && nativeAerodynamics.includes("wind_volume") ? ["WindVolume"] : []),
       ...(nativeLoader.includes("pub compound_collider: Option<CompoundColliderComponent>") && nativePhysics.includes("compound_collider") ? ["CompoundCollider"] : []),
+      ...(nativeDestruction.includes("pub struct Destructible") && nativeDestruction.includes("pub struct DestructionRuntime") ? ["Destructible"] : []),
       ...(nativeLoader.includes("pub physics_joint: Option<PhysicsJointComponent>") && nativeJoints.includes("PhysicsJointComponent") ? ["PhysicsJoint"] : []),
       ...(nativeLoader.includes("pub physics_surface: Option<PhysicsSurfaceComponent>") && nativeVehicle.includes("physics_surface") ? ["PhysicsSurface"] : []),
       ...(nativeLoader.includes("pub tire_model: Option<TireModelComponent>") && nativeVehicle.includes("tire_model") ? ["TireModel"] : []),
@@ -206,6 +209,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
       ...(webAerodynamics.includes("components.AerodynamicBody") ? ["AerodynamicBody"] : []),
       ...(webAerodynamics.includes("components.WindVolume") ? ["WindVolume"] : []),
       ...(webPhysics.includes("const compound = entity.components.CompoundCollider") && webPhysics.includes("compoundColliderDescs(compound)") ? ["CompoundCollider"] : []),
+      ...(webDestruction.includes("IPhysicsDestructibleComponent") && webDestruction.includes("registerPhysicsDestructible") ? ["Destructible"] : []),
       ...(webJoints.includes("entity.components.PhysicsJoint") && webJoints.includes("createImpulseJoint") ? ["PhysicsJoint"] : []),
       ...(webVehicle.includes("components.PhysicsSurface") ? ["PhysicsSurface"] : []),
       ...(webVehicle.includes("components.TireModel") ? ["TireModel"] : []),

@@ -795,6 +795,18 @@ export interface IPhysicsJointComponent {
   travel?: number;
 }
 
+export interface IDestructibleComponent {
+  activationBudget?: number;
+  bondStrength?: number;
+  cleanupPolicy?: "despawn" | "pool" | "sleep";
+  fractureManifest: string;
+  impactFilter?: {
+    layers?: readonly string[];
+    minImpulse?: number;
+  };
+  maxDepth?: number;
+}
+
 export interface ICharacterPushPolicyComponent {
   allowedLayers?: readonly string[];
   blockedWhenTooHeavy?: boolean;
@@ -869,6 +881,7 @@ export interface IWorldEntity {
     StateMachine?: IStateMachineComponent;
     Collider?: IColliderComponent;
     CompoundCollider?: ICompoundColliderComponent;
+    Destructible?: IDestructibleComponent;
     PhysicsSurface?: IPhysicsSurfaceComponent;
     RenderLayers?: IRenderLayersComponent;
     KinematicMover?: IKinematicMoverComponent;

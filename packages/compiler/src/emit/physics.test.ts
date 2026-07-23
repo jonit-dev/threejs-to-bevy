@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boxCollider, BoxGeometry, capsuleCollider, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, physicsSurface, rigidBody, Scene, sphereCollider, tireModel, wheelAssembly } from "@threenative/sdk";
+import { boxCollider, BoxGeometry, capsuleCollider, destructible, meshCollider, Mesh, MeshStandardMaterial, physics, physicsJoint, physicsSurface, rigidBody, Scene, sphereCollider, tireModel, wheelAssembly } from "@threenative/sdk";
 
 import { sceneToWorld } from "./scene-to-world.js";
 import { deriveRequiredCapabilities } from "./capabilities.js";
@@ -25,6 +25,12 @@ test("physics should emit player collider and kinematic body", () => {
 
   assert.deepEqual(entity?.components.RigidBody, { damping: 0.2, gravityScale: 0, kind: "kinematic", velocity: [1, 0, 0] });
   assert.deepEqual(entity?.components.Collider, { friction: 0.6, kind: "box", layer: "player", mask: ["world"], restitution: 0.1, size: [1, 2, 1], slope: { axis: "x", direction: 1, rise: 1, run: 2 } });
+});
+
+test("physics should losslessly emit destructible manifest references", () => {
+  const scene = new Scene({ id: "scene" });
+  scene.add(new Mesh({ geometry: new BoxGeometry(), id: "wall", material: new MeshStandardMaterial(), physics: physics({ destructible: destructible({ activationBudget: 32, cleanupPolicy: "pool", fractureManifest: "fractures/wall.main.json", maxDepth: 3 }) }) }));
+  assert.deepEqual(sceneToWorld(scene).world.entities[0]?.components.Destructible, { activationBudget: 32, cleanupPolicy: "pool", fractureManifest: "fractures/wall.main.json", maxDepth: 3 });
 });
 
 test("physics should losslessly emit wheel references, tire curves, surfaces, and force limits", () => {

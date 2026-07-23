@@ -3,7 +3,7 @@ import test from "node:test";
 
 import * as sdk from "./index.js";
 import { SdkError } from "./errors.js";
-import { aerodynamicBody, aerodynamicSurface, boxCollider, capsuleCollider, meshCollider, physicsJoint, physicsSurface, rigidBody, sphereCollider, thruster, tireModel, wheelAssembly, wheelControlInput, windVolume, type PhysicsColliderKind } from "./physics.js";
+import { aerodynamicBody, aerodynamicSurface, boxCollider, capsuleCollider, destructible, meshCollider, physicsJoint, physicsSurface, rigidBody, sphereCollider, thruster, tireModel, wheelAssembly, wheelControlInput, windVolume, type PhysicsColliderKind } from "./physics.js";
 
 type AssertNever<T extends never> = T;
 type UnsupportedPublicColliderKind = AssertNever<Exclude<PhysicsColliderKind, "box" | "capsule" | "mesh" | "sphere">>;
@@ -45,6 +45,12 @@ test("physics should expose only promoted portable collider helpers", () => {
     ["box", "sphere", "capsule", "mesh"],
   );
   assert.equal("cylinderCollider" in sdk, false);
+});
+
+test("destructible should preserve bounded portable fracture settings", () => {
+  assert.deepEqual(destructible({ activationBudget: 32, cleanupPolicy: "pool", fractureManifest: "fractures/wall.main.json", impactFilter: { layers: ["projectile"], minImpulse: 4 }, maxDepth: 3 }), { activationBudget: 32, cleanupPolicy: "pool", fractureManifest: "fractures/wall.main.json", impactFilter: { layers: ["projectile"], minImpulse: 4 }, maxDepth: 3 });
+  assertSdkCode(() => destructible({ activationBudget: 257, fractureManifest: "fractures/wall.main.json" }), "TN_SDK_PHYSICS_DESTRUCTIBLE_BUDGET_INVALID");
+  assertSdkCode(() => destructible({ fractureManifest: "../wall.json" }), "TN_SDK_PHYSICS_DESTRUCTIBLE_MANIFEST_INVALID");
 });
 
 test("physics should author bounded vehicle contracts without losing stable references", () => {

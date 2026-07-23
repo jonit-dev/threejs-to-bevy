@@ -83,6 +83,14 @@ Current support:
   Paired retained-Rapier traces prove the declared load threshold, exact break
   identity/order, lifecycle bounds, zero body rebuilds, and preserved unrelated
   handles. Release enrollment remains deferred to the final PRD phase.
+- Phase 6 now has a pre-release destruction contract and runtime-core slice:
+  compiler/CLI-owned seeded fracture baking emits byte-stable connected piece
+  and bond manifests; IR validation enforces collider, mass, hierarchy, and
+  activation budgets; and both adapters implement stable once-per-tick damage,
+  ordered bond/piece events, overflow policies, cleanup, and pooling. Live
+  Rapier piece-body activation with mass/momentum proof, the paired destruction
+  fixture, and web/desktop projectile playtests remain required before the
+  Phase 6 checkpoint can pass.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
@@ -96,7 +104,7 @@ Current support:
   `advanced-physics-foundation` row additionally proves at-point causality,
   exact compound-child query identity, stable script-host order, and provenance.
   Release-enrolled drivetrain/controller, aerodynamics, and rich-joint support;
-  destruction, soft bodies, ragdolls, dynamic triangle compound children,
+  physical destruction activation, soft bodies, ragdolls, dynamic triangle compound children,
   arbitrary triangle narrow phase, and public backend handles remain explicit
   boundaries.
 

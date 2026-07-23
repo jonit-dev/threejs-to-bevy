@@ -4,6 +4,7 @@ export function emitPhysics(physics: IPhysicsDeclaration | undefined, components
   if (physics?.aerodynamicBody !== undefined) components.AerodynamicBody = definedFields(physics.aerodynamicBody);
   if (physics?.body !== undefined) components.RigidBody = definedFields(physics.body);
   if (physics?.collider !== undefined) components.Collider = definedFields(physics.collider);
+  if (physics?.destructible !== undefined) components.Destructible = definedFields(physics.destructible);
   if (physics?.joint !== undefined) components.PhysicsJoint = definedFields(physics.joint);
   if (physics?.surface !== undefined) components.PhysicsSurface = definedFields(physics.surface);
   if (physics?.tireModel !== undefined) components.TireModel = definedFields(physics.tireModel);
