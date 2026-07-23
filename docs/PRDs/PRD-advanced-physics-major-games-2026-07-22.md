@@ -584,17 +584,17 @@ physics feature without hand-editing emitted artifacts.
 
 **Implementation:**
 
-- [ ] Provide bounded add/set/remove/inspect/validate operations for compound,
+- [x] Provide bounded add/set/remove/inspect/validate operations for compound,
   wheel, vehicle, aero, joint, and destructible declarations, with dry-run and
   atomic batch support.
-- [ ] Derive CLI help, JSON payloads, MCP/editor operation metadata, generated
+- [x] Derive CLI help, JSON payloads, MCP/editor operation metadata, generated
   types, API cards, and cookbook references from descriptors.
-- [ ] Add toggleable collider, center-of-mass, contact, wheel, suspension,
+- [x] Add toggleable collider, center-of-mass, contact, wheel, suspension,
   slip, force, aero, joint-load, bond, sleep, and budget views.
-- [ ] Add compact per-tick/per-system timing, active/sleeping body counts,
+- [x] Add compact per-tick/per-system timing, active/sleeping body counts,
   contacts, queries, solver iterations, rebuilds, and allocated pieces to
   artifact-backed telemetry; keep stdout summaries bounded.
-- [ ] Add diagnostic fixtures for every unsupported/non-finite/reference/budget
+- [x] Add diagnostic fixtures for every unsupported/non-finite/reference/budget
   boundary and verify structured fixes round-trip through authoring operations.
 
 **Tests required:**
@@ -632,15 +632,15 @@ and desktop scenarios, conformance, and measured performance budgets.
 
 - [ ] Create production plans before source mutation and use catalog/authored
   assets for hero vehicles, craft, destructibles, and dominant environment.
-- [ ] Add recorded-input scenarios with objective, progression, fail/retry,
+- [x] Add recorded-input scenarios with objective, progression, fail/retry,
   feedback, collision/damage, and stable semantic assertions; primitives alone
   cannot qualify the visual forcing functions as finished.
-- [ ] Add exact event/state comparisons, field-owned numeric tolerances,
+- [x] Add exact event/state comparisons, field-owned numeric tolerances,
   negative controls, stale-evidence hashes, and web/desktop artifact pairing.
-- [ ] Add the specified dense workload and 60-second steady-state benchmark,
+- [x] Add the specified dense workload and 60-second steady-state benchmark,
   recording p50/p95/max step, allocations, active/sleeping bodies, contacts,
   queries, piece count, hardware, browser, runtime, and build profile.
-- [ ] Enroll the descriptor-derived gate in focused/release verification only
+- [x] Enroll the descriptor-derived gate in focused/release verification only
   after all P0 cases pass; update `docs/STATUS.md`, Bevy parity evidence, cookbook,
   and code-quality risk notes in the same phase.
 
@@ -723,31 +723,31 @@ checkpoint. Manual checkpoints are additional for Phases 2, 3, 4, 6, 7, and 8.
 ## 8. Acceptance Criteria
 
 - [ ] All eight phases are complete and every checkpoint review reports PASS.
-- [ ] Compound colliders and force/impulse-at-point work through portable source,
+- [x] Compound colliders and force/impulse-at-point work through portable source,
   scripts, retained Rapier, live queries, and paired evidence.
-- [ ] Wheel, tire, surface, suspension, drivetrain, steering, braking, and assist
+- [x] Wheel, tire, surface, suspension, drivetrain, steering, braking, and assist
   behavior completes the vehicle forcing function on web and desktop.
-- [ ] Lift, drag, stall, control surfaces, thrust, wind, and force telemetry
+- [x] Lift, drag, stall, control surfaces, thrust, wind, and force telemetry
   complete the flight forcing function on web and desktop.
-- [ ] Fixed/ball/rope and motorized/breakable joints pass lifecycle, load, patch,
+- [x] Fixed/ball/rope and motorized/breakable joints pass lifecycle, load, patch,
   and cross-runtime evidence.
-- [ ] Build-time pre-fracture, bonds, impact/script damage, deterministic piece
+- [x] Build-time pre-fracture, bonds, impact/script damage, deterministic piece
   activation, debris budgets, cleanup, and events complete the destruction
   forcing function on web and desktop.
-- [ ] CLI, MCP, editor, SDK, generated API card, cookbook, compiler, services,
+- [x] CLI, MCP, editor, SDK, generated API card, cookbook, compiler, services,
   adapters, fixtures, and gates derive from the owner or pass explicit drift
   tests.
-- [ ] Unsupported soft-body/fluid/runtime-cutting/backend-specific behavior
+- [x] Unsupported soft-body/fluid/runtime-cutting/backend-specific behavior
   fails with stable actionable diagnostics and no silent fallback.
-- [ ] Existing physics fixtures and generated games do not regress.
-- [ ] `pnpm verify:conformance`, the focused advanced physics gate,
+- [x] Existing physics fixtures and generated games do not regress.
+- [x] `pnpm verify:conformance`, the focused advanced physics gate,
   `pnpm test:gameplay`, `pnpm verify:gameplay-parity`, `pnpm verify:cookbook`,
   and all three desktop scenarios pass with current-run evidence.
-- [ ] The dense workload meets the web and desktop budgets in Section 2.3 and
+- [x] The dense workload meets the web and desktop budgets in Section 2.3 and
   records reproducible environment metadata.
-- [ ] Capability, `docs/STATUS.md`, Bevy parity, cookbook, and systems quality
+- [x] Capability, `docs/STATUS.md`, Bevy parity, cookbook, and systems quality
   docs are updated only after their corresponding evidence exists.
-- [ ] No raw physics backend handle, generated artifact edit, weakened tolerance,
+- [x] No raw physics backend handle, generated artifact edit, weakened tolerance,
   broad cast, silent fallback, disabled test, or untracked compatibility shim is
   used to claim completion.
 
@@ -961,3 +961,72 @@ the final evidence.
   checkpoint images, every report hash, the raw web/native debug series, both
   `TN_PLAYTEST_OK` summaries, the native sampling owner, and 51 focused
   CLI playtest/artifact/schema tests.
+
+### Phase 7 evidence (checkpoint PASS)
+
+- The retained authoring/debug review at
+  `docs/audits/advanced-physics-phase-7-authoring-review-2026-07-22.md`
+  records the initial independent rejection, bounded remediation, and final
+  PASS. The retained report is
+  `tools/verify/artifacts/advanced-physics/phase-7-authoring-debug/verification-report.json`
+  with SHA-256
+  `b9ecd70f49b5a56d5bed6831174351040ebca750abe48fb0d20bed773904987a`.
+- `packages/authoring/src/advancedPhysicsOperations.test.ts` passes all seven
+  current tests for dry-run/atomic apply, descriptor-derived CLI/editor/API
+  metadata, actionable rejection/fix round trips, scoped validation, generated
+  transform ownership, and compact prefab references.
+- The current editor panel tests pass both registry-category and deterministic
+  toggle/filter cases; the current web debug suite passes four bounded summary,
+  destruction-piece, center-of-mass, and normalized primitive cases; and the
+  paired debug evidence suite passes all four ownership, identity, missing-
+  category, and mismatch controls.
+- The retained manual editor frame has SHA-256
+  `cfa1dd457c0f84965470471503707e3812342156261704b270f6ce890b3595ee`.
+  Its paired web/desktop observations retain identical bad front-left
+  suspension and over-stressed joint-load identities, every descriptor-owned
+  category, and bounded deep telemetry.
+- `pnpm verify:cookbook` passes with zero diagnostics, including executable
+  advanced-aerodynamics and destruction authoring entries derived from the
+  public operation descriptors.
+
+### Phase 8 evidence (automated and manual checkpoints PASS)
+
+- `pnpm verify:focused verify:advanced-physics-major-games` passes its
+  release-enrolled descriptor with zero diagnostics. The aggregate report at
+  `tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json`
+  has SHA-256
+  `ca4c7039771ecaa8e4aca68ab9a967b2f0a5693caf77e96aafdbbdee0935d386`,
+  schema `0.1.0`, tolerance registry `0.4.0`, and both automated and manual
+  checkpoint status `PASS`.
+- Five current proof pairs pass from exact matching source/bundle hashes:
+  vehicle objective and no-throttle causal control, flight objective, and
+  destruction threshold plus retry. The report hash-binds all ten summaries.
+  Current source hashes are
+  `7983246a8e6c4766ff9f6b08b0c1f087173fa5f695933c13ad6a361265ef2d70`
+  for vehicle,
+  `733deded78f3bfd22f8e5784064c82988f07c90ee800bd43c4058a44e8540392`
+  for flight, and
+  `e1878a0d8cb07e353ec082539ca16dc627ec6f16b560ac052e283bc48f2cbc55`
+  for destruction.
+- The exact workload runs 3,600 fixed samples over 60 seconds with 16
+  four-wheel vehicles, 128 debris bodies, 256 compound children, and 64
+  projectiles. Web records p50/p95/max
+  `8.772/10.099/16.276 ms`; desktop records
+  `0.551/0.700/1.127 ms`. Both remain within the Section 2.3 budgets and
+  record body, contact, query, allocation, system, hardware, browser,
+  dependency, platform, and release-profile metadata.
+- Manual review is bound to the current finish, landed, and settled screenshots
+  plus a current contact sheet. Current graphical desktop summaries prove each
+  objective/retry loop with exact semantic-state agreement; desktop screenshots
+  remain an explicit proof-harness limitation and are not mislabeled as web
+  captures.
+- Final verification passes: `pnpm verify:conformance`;
+  `pnpm test:gameplay` under Xvfb with the feature-matched release binary;
+  `pnpm verify:gameplay-parity` full profile; `pnpm verify:cookbook`; and
+  `pnpm check:docs`. Full gameplay parity reports PASS; its three diagnostics
+  are warnings from the explicitly quarantined/calibrating humanoid ramp and
+  stair cases, while every enforced case passes.
+- The registered gate rejects stale, missing, weakened, or single-adapter
+  evidence; validates exact workload and telemetry counts; recursively
+  discovers scenario summaries below descriptive artifact folders; and records
+  complete Section 6.3 aggregate metadata and artifact hashes.

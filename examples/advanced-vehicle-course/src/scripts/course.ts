@@ -118,7 +118,7 @@ export function updateVehicleCourse(context: ScriptContext): void {
     chassis.patch("Transform", { position: [transform.position[0], 2.5, transform.position[2]] });
     context.physics.setLinearVelocity("chassis", [0, 4, -20]);
   }
-  const jumped = Boolean(current.jumped) || transform.position[1] >= 1.35;
+  const jumped = Boolean(current.jumped) || jumpLaunched;
   const obstacle = context.physics.raycast({
     direction: [0, 0, -1],
     ignore: ["chassis"],

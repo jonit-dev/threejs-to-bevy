@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { resolve } from "node:path";
 import test from "node:test";
 
-import { validateAdvancedPhysicsBenchmark, validateAdvancedPhysicsPlaytestPair } from "./advancedPhysicsGate.js";
+import { readSummaries, validateAdvancedPhysicsBenchmark, validateAdvancedPhysicsPlaytestPair } from "./advancedPhysicsGate.js";
 
 const workload = { compoundChildren: 256, debrisBodies: 128, projectileBodies: 64, vehicleCount: 16, wheelsPerVehicle: 4 } as const;
 const benchmark = (runtime: "web" | "desktop") => ({
@@ -82,4 +85,20 @@ test("should reject stale missing weakened or single-adapter evidence", () => {
   assert.equal(validateAdvancedPhysicsPlaytestPair(valid, undefined, "case", ["movement"], "source").some((item) => item.code === "TN_VERIFY_ADVANCED_PHYSICS_EVIDENCE_MISSING"), true);
   assert.equal(validateAdvancedPhysicsPlaytestPair(valid, { ...valid, runtime: "bevy", target: "desktop", proofMetadata: { bundleHash: "other", sourceHash: "stale" } }, "case", ["movement", "objective"], "source").length >= 3, true);
   assert.equal(validateAdvancedPhysicsBenchmark({ ...benchmark("web"), sampleCount: 3_599 }, benchmark("desktop")).some((item) => item.code === "TN_VERIFY_ADVANCED_PHYSICS_WORKLOAD"), true);
+});
+
+test("should discover scenario summaries below descriptive artifact folders", async () => {
+  const root = await mkdtemp(resolve(tmpdir(), "advanced-physics-gate-"));
+  try {
+    const current = resolve(root, "vehicle-course", "web-current");
+    await mkdir(current, { recursive: true });
+    await writeFile(resolve(current, "summary.json"), JSON.stringify({ pass: true, scenario: "vehicle", target: "web" }), "utf8");
+    await writeFile(resolve(root, "unrelated.json"), "{}", "utf8");
+    const summaries = await readSummaries(root);
+    assert.equal(summaries.length, 1);
+    assert.equal(summaries[0]?.summary.scenario, "vehicle");
+    assert.equal(summaries[0]?.path, resolve(current, "summary.json"));
+  } finally {
+    await rm(root, { recursive: true });
+  }
 });
