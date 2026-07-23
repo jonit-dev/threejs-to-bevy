@@ -7,7 +7,7 @@ import { FullScreenQuad, Pass } from "three/examples/jsm/postprocessing/Pass.js"
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { SSRPass } from "three/examples/jsm/postprocessing/SSRPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
-import type { IAerodynamicObservation, IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IVehicleControllerObservation, IWheelAssemblyObservation, IWorldIr, RenderLookProfileName } from "@threenative/ir";
+import type { IAerodynamicObservation, IAssetsManifest, IAtmosphereProfileIr, ICameraClear, IMaterialsIr, IPhysicsDebugSnapshot, IRuntimeConfigIr, ISystemsIr, IVehicleControllerInput, IVehicleControllerObservation, IWheelAssemblyObservation, IWorldIr, RenderLookProfileName } from "@threenative/ir";
 import { serializeRuntimeWriteAudit } from "@threenative/ir/runtimeDiagnostics";
 import { resolveRenderLookProfile, resolveRenderLookShadowProfile } from "@threenative/ir/runtimeConfig";
 import type { IWebBundle } from "./webBundle.js";
@@ -50,6 +50,7 @@ import { colorToThree } from "./worldMapping/colors.js";
 import { forgetMeshLodGeometries, meshLodGeometries, traceWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
 import { observePhysicsVehicleControllers, observePhysicsVehicles } from "./physicsVehicle.js";
 import { observePhysicsAerodynamics, setPhysicsAerodynamicInputs, type IAerodynamicInputs } from "./physicsAerodynamics.js";
+import { collectPhysicsDebugSnapshot, type PhysicsDebugCategory } from "./physicsDebug.js";
 
 export interface IRenderResult {
   captureTransformTrace?: ICaptureTransformTrace;
@@ -63,6 +64,7 @@ export interface IRenderResult {
   entityWorldRotation(id: string): [number, number, number, number] | undefined;
   meshLodSnapshot(): IWebMeshLodSelection[];
   performanceSnapshot(): IWebRuntimePerformanceSnapshot;
+  physicsDebugSnapshot(categories?: readonly PhysicsDebugCategory[]): IPhysicsDebugSnapshot;
   resetPerformanceTrace(): void;
   renderer: THREE.WebGLRenderer;
   resourceSnapshot(id: string): unknown;
@@ -674,6 +676,14 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     renderer,
     performanceSnapshot() {
       return webRuntimePerformanceSnapshot(renderer, performanceTrace);
+    },
+    physicsDebugSnapshot(categories) {
+      return collectPhysicsDebugSnapshot(bundle.world, {
+        categories,
+        destructionRuntime,
+        fixedDt: bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60,
+        tick: loopState.tick,
+      });
     },
     resetPerformanceTrace() {
       resetPerformanceTrace();

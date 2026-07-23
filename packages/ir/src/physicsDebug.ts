@@ -7,6 +7,7 @@ export const PHYSICS_DEBUG_VERSION = physicsDebugRegistry.version as "0.1.0";
 export const PHYSICS_DEBUG_CATEGORIES = Object.freeze(physicsDebugRegistry.categories) as readonly ["aero", "bond", "budget", "center-of-mass", "collider", "contact", "force", "joint-load", "piece", "sleep", "slip", "suspension", "wheel"];
 
 export const PHYSICS_DEBUG_PRIMITIVE_KINDS = Object.freeze(physicsDebugRegistry.primitiveKinds) as readonly ["box", "line", "point", "sphere", "vector"];
+export const PHYSICS_DEBUG_EVIDENCE_OWNERS = Object.freeze(physicsDebugRegistry.evidenceOwners) as Readonly<Record<PhysicsDebugCategory, string>>;
 
 export const PHYSICS_DEBUG_LIMITS = Object.freeze({
   ...physicsDebugRegistry.limits,

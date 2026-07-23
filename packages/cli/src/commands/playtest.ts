@@ -32,6 +32,7 @@ declare global {
     debugColliderCount?: number;
     entityWorldPosition?(id: string): Vec3 | undefined;
     performanceSnapshot?(): unknown;
+    physicsDebugSnapshot?(): unknown;
     resourceSnapshot?(id: string): unknown;
     resetPerformanceTrace?(): void;
     runtimeObservationSnapshot?(): unknown;
@@ -417,7 +418,9 @@ export async function playtestCommand(
       proofMetadata,
     };
     const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, proofMetadata, report: reportWithMetadata, runDirectory, scenario });
-    const stdoutPayload = includeEffectsStdout ? withVerboseEffects(bundle.summary, reportWithMetadata) : bundle.summary;
+    const stdoutPayload = includeEffectsStdout
+      ? withVerboseEffects(bundle.summary, reportWithMetadata)
+      : compactPlaytestSummaryForStdout(bundle.summary);
     const next = reportWithMetadata.pass
       ? "tn iterate --project . --json"
       : `tn playtest report --latest --scenario ${scenario.name} --json`;
@@ -425,7 +428,7 @@ export async function playtestCommand(
     return {
       exitCode: reportWithMetadata.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify(payloadWithNext, null, 2)}\n`
+        ? compactPlaytestJson(payloadWithNext)
         : `${reportWithMetadata.pass ? "Playtest passed" : "Playtest failed"}: ${report.entity} moved ${report.distance.toFixed(4)} units. Artifacts: ${bundle.artifacts.directory}\nNext: ${next}\nNotice: ${ITERATE_NOTICE}\n`,
     };
   } catch (error) {
@@ -463,7 +466,7 @@ export async function playtestCommand(
         target: scenario.target,
       };
       const bundle = await writePlaytestArtifactBundle({ durationMs: Date.now() - started, projectPath, report, runDirectory, scenario });
-      return { exitCode: 0, stdout: json ? `${JSON.stringify(bundle.summary, null, 2)}\n` : `Desktop playtest waived: ${error.message} Artifacts: ${bundle.artifacts.directory}\n` };
+      return { exitCode: 0, stdout: json ? compactPlaytestJson(compactPlaytestSummaryForStdout(bundle.summary)) : `Desktop playtest waived: ${error.message} Artifacts: ${bundle.artifacts.directory}\n` };
     }
     return diagnosticResult(
       {
@@ -507,7 +510,7 @@ async function playtestReportCommand(argv: readonly string[], projectPath: strin
     return {
       exitCode: summary.pass ? 0 : 1,
       stdout: json
-        ? `${JSON.stringify(summary, null, 2)}\n`
+        ? compactPlaytestJson(compactPlaytestSummaryForStdout(summary))
         : `${summary.pass ? "Playtest passed" : "Playtest failed"}: ${summary.scenario}. Summary: ${resolvedSummaryPath}\n`,
     };
   } catch (error) {
@@ -530,6 +533,52 @@ function withVerboseEffects(summary: IPlaytestSummary, report: IPlaytestReport):
     effectLog: report.effectLog,
     observations: report.observations,
   };
+}
+
+function compactPlaytestSummaryForStdout(summary: IPlaytestSummary): Record<string, unknown> {
+  const { artifacts, missingArtifacts, performance, proofMetadata, ...compact } = summary;
+  const artifactNames: Array<keyof IPlaytestArtifactBundle> = [
+    "contactSheet",
+    "directory",
+    "effectLog",
+    "manifest",
+    "nativeFrameSamples",
+    "observations",
+    "runtimeTrace",
+    "summary",
+    "writeAudit",
+  ];
+  return {
+    ...compact,
+    artifacts: Object.fromEntries(artifactNames.flatMap((name) => artifacts[name] === undefined ? [] : [[name, artifacts[name]]])),
+    assertions: summary.assertions.map(({ id, pass }) => ({ id, pass })),
+    ...(missingArtifacts === undefined ? {} : { missingArtifactCount: missingArtifacts.length }),
+    ...(performance === undefined
+      ? {}
+      : {
+          performance: {
+            ...(performance.p95FrameMs === undefined ? {} : { p95FrameMs: performance.p95FrameMs }),
+            sampleCount: performance.sampleCount,
+            source: performance.source,
+            ...(performance.worstFrameMs === undefined ? {} : { worstFrameMs: performance.worstFrameMs }),
+          },
+        }),
+    ...(proofMetadata === undefined
+      ? {}
+      : {
+          proofMetadata: {
+            ...(proofMetadata.bundleHash === undefined ? {} : { bundleHash: proofMetadata.bundleHash }),
+            fileCount: proofMetadata.fileCount,
+            schema: proofMetadata.schema,
+            sourceHash: proofMetadata.sourceHash,
+            version: proofMetadata.version,
+          },
+        }),
+  };
+}
+
+function compactPlaytestJson(value: unknown): string {
+  return `${JSON.stringify(value)}\n`;
 }
 
 function safePlaytestPathPart(value: string): string {
@@ -647,6 +696,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   );
   const runtimeDiagnostics = { nativeFrameSamples, readiness: readinessSamples, resources: nativeRuntimeResources(readinessSamples) };
   const gameplayObservations = readinessSamples.at(-1)?.gameplayObservations;
+  const physicsDebug = readinessSamples.at(-1)?.physicsDebug;
+  const physicsDebugSeries = nativePhysicsDebugSeries(readinessSamples, options.scenario, captureTicks.beforeTick);
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
   const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
   const writeAudit = options.auditWrites ? nativeRuntimeWriteAudit(readinessSamples) : undefined;
@@ -676,6 +727,8 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       effectLog,
       hud: mergeSnapshots(beforeHud, afterHud),
       network: [],
+      ...(physicsDebug === undefined ? {} : { physicsDebug }),
+      ...(physicsDebugSeries.length === 0 ? {} : { physicsDebugSeries }),
       resources: mergeSnapshots(beforeResources, afterResources),
       ...(gameplayObservations === undefined ? {} : { runtimeObservations: { gameplay: gameplayObservations } }),
       runtimeDiagnostics,
@@ -751,6 +804,28 @@ function readinessSampleNearTick(samples: readonly Record<string, unknown>[], ti
     return candidates.filter((sample) => (sample.tick as number) <= tick).at(-1) ?? candidates[0];
   }
   return candidates.find((sample) => (sample.tick as number) >= tick);
+}
+
+function nativePhysicsDebugSeries(
+  samples: readonly Record<string, unknown>[],
+  scenario: IPlaytestScenario,
+  beforeTick: number,
+): Array<{ label: string; snapshot: unknown; tick: number }> {
+  let tick = beforeTick + 1;
+  return scenario.steps.flatMap((step, index) => {
+    if (step.press !== undefined) {
+      tick += playtestStepHoldTicks(step);
+    }
+    tick += playtestStepWaitTicks(step);
+    const sample = readinessSampleNearTick(samples, tick, "after");
+    return sample?.physicsDebug === undefined
+      ? []
+      : [{
+          label: step.label ?? `step-${index + 1}`,
+          snapshot: sample.physicsDebug,
+          tick: typeof sample.tick === "number" ? sample.tick : tick,
+        }];
+  });
 }
 
 export function nativeHarnessCommandStream(scenario: IPlaytestScenario, artifacts: { afterArtifact?: string; beforeArtifact?: string; recordingFrames?: readonly IPlaytestNativeRecordingFrame[]; stepScreenshots?: Readonly<Record<string, string>> }): unknown {
@@ -1204,7 +1279,9 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const followBefore = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
     await page.screenshot({ path: beforeArtifact });
     const runtimeDiagnosticsSeries: unknown[] = [await readRuntimeDiagnostics(page)];
-    for (const step of options.scenario.steps) {
+    const physicsDebugSeries: Array<{ label: string; snapshot: unknown; tick: number }> = [];
+    let completedTicks = 0;
+    for (const [stepIndex, step] of options.scenario.steps.entries()) {
       if (step.overlayMessage !== undefined) {
         const delivered = await dispatchWebOverlayMessage(page, step.overlayMessage);
         if (!delivered) {
@@ -1230,6 +1307,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         if (step.release) {
           await dispatchKeyboardCode(page, "keyup", step.press);
         }
+        completedTicks += holdTicks;
       }
       if (step.waitFrames !== undefined || step.waitTicks !== undefined || step.kind === "wait") {
         const waitTicks = playtestStepWaitTicks(step);
@@ -1241,6 +1319,20 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
             runtimeDiagnosticsSeries.push(await readRuntimeDiagnostics(page));
           });
         }
+        completedTicks += waitTicks;
+      }
+      const stepPhysicsDebug = await readWebPhysicsDebug(page);
+      if (stepPhysicsDebug !== undefined) {
+        physicsDebugSeries.push({
+          label: step.label ?? `step-${stepIndex + 1}`,
+          snapshot: stepPhysicsDebug,
+          tick: completedTicks,
+        });
+      }
+      if (step.screenshot !== undefined) {
+        await page.screenshot({
+          path: resolve(options.artifactDirectory, `${safePlaytestPathPart(step.screenshot)}.png`),
+        });
       }
     }
     const after = await readTransformSample(page, options.entityId);
@@ -1250,6 +1342,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
     const runtimeDiagnostics = await readRuntimeDiagnostics(page);
     const runtimeObservations = await readWebRuntimeObservations(page);
+    const physicsDebug = await readWebPhysicsDebug(page);
     const writeAudit = options.auditWrites === true ? await readWebWriteAudit(page) : undefined;
     const performanceSnapshot = await readWebPerformanceSnapshot(page);
     const performance = webPerformanceReport(performanceSnapshot);
@@ -1259,6 +1352,8 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       effectLog,
       hud: mergeSnapshots(beforeHud, await readHudSnapshots(page, observationIds.hud)),
       network: networkEntries,
+      physicsDebug,
+      ...(physicsDebugSeries.length === 0 ? {} : { physicsDebugSeries }),
       resources: mergeSnapshots(beforeResources, await readResourceSnapshots(page, observationIds.resources)),
       runtimeObservations,
       runtimeDiagnostics: { diagnostics: runtimeDiagnostics, performance: performanceSnapshot },
@@ -1281,7 +1376,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     await writeFile(resolve(options.artifactDirectory, "console.json"), `${JSON.stringify(consoleEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "network.json"), `${JSON.stringify(networkEntries, null, 2)}\n`, "utf8");
     await writeFile(resolve(options.artifactDirectory, "effect-log.json"), `${JSON.stringify(effectLog ?? {}, null, 2)}\n`, "utf8");
-    await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify({ diagnostics: runtimeDiagnostics ?? {}, performance: performanceSnapshot ?? null }, null, 2)}\n`, "utf8");
+    await writeFile(resolve(options.artifactDirectory, "runtime-trace.json"), `${JSON.stringify({ diagnostics: runtimeDiagnostics ?? {}, performance: performanceSnapshot ?? null, physicsDebug: physicsDebug ?? null, physicsDebugSeries }, null, 2)}\n`, "utf8");
     if (writeAudit !== undefined) {
       await writeFile(resolve(options.artifactDirectory, "write-audit.json"), `${JSON.stringify(writeAudit, null, 2)}\n`, "utf8");
     }
@@ -1615,6 +1710,10 @@ async function readRuntimeDiagnostics(page: { evaluate<T>(fn: () => T): Promise<
 
 async function readWebRuntimeObservations(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
   return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.runtimeObservationSnapshot?.() ?? null);
+}
+
+async function readWebPhysicsDebug(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {
+  return page.evaluate(() => globalThis.__THREENATIVE_RUNTIME__?.physicsDebugSnapshot?.() ?? null);
 }
 
 async function readWebWriteAudit(page: { evaluate<T>(fn: () => T): Promise<T> }): Promise<unknown> {

@@ -2,7 +2,7 @@ import { stableSystemEffectLog, type ISystemEffectLog } from "../systems/log.js"
 import { loadBundleUrl } from "../loadBundleUrl.js";
 import { renderLoadedBundle } from "../render.js";
 import { renderDebugOverlay } from "../debugOverlay.js";
-import type { IAerodynamicObservation, IVehicleControllerInput, IVehicleControllerObservation } from "@threenative/ir";
+import type { IAerodynamicObservation, IPhysicsDebugSnapshot, IVehicleControllerInput, IVehicleControllerObservation } from "@threenative/ir";
 import type { IAerodynamicInputs } from "../physicsAerodynamics.js";
 
 declare global {
@@ -25,6 +25,7 @@ declare global {
       entityWorldRotation?(id: string): [number, number, number, number] | undefined;
       meshLodSnapshot?(): unknown;
       performanceSnapshot?(): unknown;
+      physicsDebugSnapshot?(): IPhysicsDebugSnapshot;
       resourceSnapshot?(id: string): unknown;
       resetPerformanceTrace?(): void;
       runtimeObservationSnapshot?(): unknown;
@@ -80,6 +81,7 @@ window.__THREENATIVE_RUNTIME__ = {
   entityWorldRotation: result.entityWorldRotation,
   meshLodSnapshot: result.meshLodSnapshot,
   performanceSnapshot: result.performanceSnapshot,
+  physicsDebugSnapshot: result.physicsDebugSnapshot,
   resourceSnapshot: result.resourceSnapshot,
   resetPerformanceTrace: result.resetPerformanceTrace,
   runtimeObservationSnapshot: result.runtimeObservationSnapshot,

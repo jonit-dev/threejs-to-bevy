@@ -24,6 +24,7 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     "verify:emitted-commands",
     "verify:agent-io",
     "verify:session-cost",
+    "verify:advanced-physics-major-games",
     "verify:webview-package",
     ...fixtureCatalogGateDescriptors().map((descriptor) => descriptor.name),
   ]);
@@ -102,6 +103,7 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
     ["verify:overlay-scaffold", "tools/verify/artifacts/overlay-scaffold/verification-report.json"],
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],
+    ["verify:advanced-physics-major-games", "tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json"],
     ["verify:webview-package", "tools/verify/artifacts/webview-package/verification-report.json"],
     ...fixtureCatalogGateDescriptors()
       .filter((descriptor) => descriptor.release.enrolled)

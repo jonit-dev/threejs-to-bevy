@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "name": "destruction-range-projectile-threshold",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "wall/piece.002",
+  "parity": {
+    "targets": ["web", "desktop"],
+    "compare": { "movementDistance": { "maxDelta": 4 } }
+  },
+  "warmupFrames": 15,
+  "steps": [
+    { "label": "sub-threshold-projectile", "waitTicks": 1, "release": false, "screenshot": "01-sub-threshold-damage-only" },
+    { "label": "over-threshold-projectile", "waitTicks": 16, "release": false, "screenshot": "02-over-threshold-region-activated" },
+    { "label": "bounded-debris-settle", "waitTicks": 80, "release": false, "screenshot": "03-bounded-cleanup" }
+  ],
+  "assert": {
+    "movement": { "entity": "wall/piece.002", "minDistance": 0.01, "maxDistance": 20 },
+    "resources": [
+      { "id": "DestructionState", "path": "impact", "equals": true },
+      { "id": "DestructionState", "path": "regionalBreak", "equals": true },
+      { "id": "DestructionState", "path": "settled", "equals": true }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      { "frameDiff": { "minChangedPixelRatio": 0.002 } },
+      { "region": { "x": 320, "y": 80, "width": 640, "height": 560, "minNonblankPixelRatio": 0.01 } }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "contactSheet": true,
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

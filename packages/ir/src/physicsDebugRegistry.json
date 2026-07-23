@@ -17,6 +17,21 @@
     "wheel"
   ],
   "primitiveKinds": ["box", "line", "point", "sphere", "vector"],
+  "evidenceOwners": {
+    "aero": "advanced-physics-aerodynamics",
+    "bond": "advanced-physics-destruction",
+    "budget": "advanced-physics-destruction",
+    "center-of-mass": "advanced-physics-wheels",
+    "collider": "advanced-physics-wheels",
+    "contact": "advanced-physics-aerodynamics",
+    "force": "advanced-physics-wheels",
+    "joint-load": "advanced-physics-joints",
+    "piece": "advanced-physics-destruction",
+    "sleep": "advanced-physics-wheels",
+    "slip": "advanced-physics-wheels",
+    "suspension": "advanced-physics-wheels",
+    "wheel": "advanced-physics-wheels"
+  },
   "defaults": {
     "artifactPrimitives": 4096,
     "summaryPrimitives": 128,

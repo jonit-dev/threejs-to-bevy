@@ -59,7 +59,7 @@ Current support:
   shortest-arc interpolation observations. Its aggregate report also
   hash-binds the paired traces, debug telemetry, and a reviewed continuous
   asphalt-to-ice browser crossing.
-- Phase 3 implements the bounded pre-release vehicle-controller contract on both adapters: engine and
+- Phase 3 implements the bounded vehicle-controller contract on both adapters: engine and
   gearbox curves, clutch and automatic/manual shifting, open/locked/limited-slip
   differential torque paths, steering, service/hand brakes, engine braking,
   ABS/TCS, declarative bindings, and `physics.vehicle.setInputs`. Normalized
@@ -67,23 +67,26 @@ Current support:
   wheel torque, and assist state. Speed and speed-sensitive steering use Y-up
   ground-plane chassis velocity, excluding vertical suspension and landing
   velocity. Paired traces, browser review, and real web/graphical-desktop
-  playtests pass; release enrollment remains deferred to the final PRD phase.
-- Phase 4 implements bounded pre-release aerodynamics on both adapters:
+  playtests pass. The Phase 8 vehicle forcing function adds mixed surfaces,
+  ordered checkpoints, collision damage, finish, and fresh retry; current web
+  proof passes and the matching desktop proof remains open.
+- Phase 4 implements bounded aerodynamics on both adapters:
   quadratic body drag, lift/drag curves, control surfaces and stall, force and
   torque thrusters with fuel hooks, deterministic box/sphere wind volumes,
   density overrides, and `physics.aerodynamics.setInputs`. Paired traces prove
   analytic behavior and numeric parity; real web/graphical-desktop flights and
   a hash-bound browser review prove takeoff, gust response, stall/recovery,
-  landing, force telemetry, and fresh retry. Release enrollment remains
-  deferred to the final PRD phase.
-- Phase 5 implements the bounded pre-release rich-joint contract on both
+  landing, force telemetry, and fresh retry. The Phase 8 flight forcing
+  function repeats that objective loop with a sourced aircraft on web and
+  desktop.
+- Phase 5 implements the bounded rich-joint contract on both
   adapters: ball, fixed, hinge, rope, slider, and suspension constraints;
   force/torque-capped motors; stable load observations; one-shot breaks with
   same-tick pre-substep solver removal; and joint-only patch/despawn/spawn reconciliation.
   Paired retained-Rapier traces prove the declared load threshold, exact break
   identity/order, lifecycle bounds, zero body rebuilds, and preserved unrelated
-  handles. Release enrollment remains deferred to the final PRD phase.
-- Phase 6 now has a pre-release destruction contract and paired physical slice:
+  handles.
+- Phase 6 has a promoted bounded destruction contract and paired physical slice:
   compiler/CLI-owned seeded fracture baking emits byte-stable connected piece
   and bond manifests; IR validation enforces collider, mass, hierarchy, and
   activation budgets; and both adapters implement stable once-per-tick damage,
@@ -91,19 +94,22 @@ Current support:
   retained Rapier adapters materialize stable physical pieces, preserve bound
   regions, retire intact collision, inherit motion, and prove mass/momentum,
   same-tick contact routing with stable contact/bond identity, and paired
-  event/budget/debug parity from independently loaded fixture bytes. Web/desktop projectile
-  playtests and manual contact-sheet review remain before the checkpoint passes.
+  event/budget/debug parity from independently loaded fixture bytes. The
+  retained web/desktop projectile playtests and reviewed contact sheet prove
+  damage-only, regional activation, settling, bounded allocation, and retry.
 - Phase 7 exposes descriptor-backed add/set/remove/inspect/validate operations
   for compound colliders, wheel assemblies, vehicle controllers, aerodynamic
   bodies, physics joints, and destructibles. The same operation cards derive
   CLI, editor/API, MCP, and generated-client surfaces, while staged batch plans
   provide byte-preserving dry runs and atomic apply.
-- Web and native runtime observations now emit the same normalized, stable-ID
+- Web and native runtime observations emit the same normalized, stable-ID
   collider, center-of-mass, contact, wheel, suspension, slip, force, aero,
   joint-load, bond, piece, sleep, and budget primitives. Bounded summaries keep
   terminal output compact while deeper artifacts retain timing and body,
-  contact, query, solver, rebuild, and allocated-piece telemetry. Cross-adapter
-  evidence passes; the manual editor/debug usability review remains pending.
+  contact, query, solver, rebuild, and allocated-piece telemetry. The reviewed
+  authoring/debug workflow uses the same hash-matched web/desktop observations
+  to identify a bad wheel attachment and an over-stressed joint; the editor
+  exposes category toggles that filter the production snapshot.
 - Descriptor-owned field consumers now guard every public top-level advanced-
   physics field in both adapters. Native controller bindings consume the same
   action/axis vocabulary as web, including bounded single-edge manual shifts.
@@ -119,10 +125,16 @@ Current support:
   bounded rebake, off-mesh-link, and small-crowd evidence. The Phase 1
   `advanced-physics-foundation` row additionally proves at-point causality,
   exact compound-child query identity, stable script-host order, and provenance.
-  Release-enrolled drivetrain/controller, aerodynamics, and rich-joint support;
-  destruction playability/release enrollment, soft bodies, ragdolls, dynamic triangle compound children,
-  arbitrary triangle narrow phase, and public backend handles remain explicit
-  boundaries.
+- Phase 8 owns the descriptor-derived
+  `verify:advanced-physics-major-games` gate and three structured-source
+  vehicle, flight, and destruction examples. Web objective evidence is
+  passing, while current-source desktop objective proof, the exact real
+  60-second workload, production-plan/artifact review, and the independent
+  checkpoint remain open. The gate is not release-enrolled until those
+  requirements pass together.
+- Soft bodies, fluids, runtime mesh cutting, ragdolls, dynamic triangle
+  compound children, arbitrary triangle narrow phase, and public backend
+  handles remain explicit unsupported boundaries.
 
 Verification:
 
@@ -133,6 +145,7 @@ Verification:
 - `pnpm verify:focused verify:advanced-physics-aerodynamics`
 - `pnpm verify:focused verify:advanced-physics-joints`
 - `pnpm verify:focused verify:advanced-physics-destruction`
+- `pnpm verify:focused verify:advanced-physics-major-games`
 - `pnpm verify:focused verify:feature-parity-physics-native`
 - `packages/ir/fixtures/conformance/advanced-physics-foundation/`
 - `packages/ir/fixtures/conformance/advanced-physics-wheels/`
@@ -141,6 +154,7 @@ Verification:
 - `packages/ir/fixtures/conformance/advanced-physics-joints/`
 - `packages/ir/fixtures/conformance/advanced-physics-destruction/`
 - `tn playtest --target desktop ...`
+- `tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json`
 
 Full prior evidence is preserved in
 [full-status-archive.md](full-status-archive.md).

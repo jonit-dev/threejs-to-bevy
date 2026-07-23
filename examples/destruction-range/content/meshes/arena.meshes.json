@@ -1,0 +1,11 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "destruction-range-meshes",
+  "meshes": [
+    { "id": "mesh.ground", "kind": "primitive", "primitive": "box" },
+    { "id": "mesh.wall", "kind": "primitive", "primitive": "box" },
+    { "id": "mesh.wall-piece", "kind": "primitive", "primitive": "box" },
+    { "id": "mesh.projectile", "kind": "primitive", "primitive": "sphere" }
+  ]
+}

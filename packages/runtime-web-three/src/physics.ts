@@ -69,6 +69,8 @@ const pendingPointCommands = new WeakMap<IWorldIr, IPointPhysicsCommand[]>();
 const pendingPhysicsQueries = new WeakMap<IWorldIr, number>();
 const lastPhysicsQueries = new WeakMap<IWorldIr, number>();
 const lastPhysicsStepMilliseconds = new WeakMap<IWorldIr, number>();
+const queryBallShapes = new Map<number, RAPIER.Ball>();
+const queryCuboidShapes = new Map<string, RAPIER.Cuboid>();
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -516,12 +518,21 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
           (transform.position[2] - current.z) / fixedDelta,
         ] as Vec3
       : authoredVelocity;
-    if (!scriptPosedKinematic) {
+    if (!scriptPosedKinematic && !vec3ApproximatelyEqual(transform.position, [current.x, current.y, current.z])) {
       body.setTranslation({ x: transform.position[0], y: transform.position[1], z: transform.position[2] }, false);
     }
-    body.setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] }, false);
-    body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, false);
-    body.setAngvel({ x: angularVelocity[0], y: angularVelocity[1], z: angularVelocity[2] }, false);
+    const currentRotation = body.rotation();
+    if (!quatApproximatelyEqual(rotation, [currentRotation.x, currentRotation.y, currentRotation.z, currentRotation.w])) {
+      body.setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] }, false);
+    }
+    const currentVelocity = body.linvel();
+    if (!vec3ApproximatelyEqual(velocity, [currentVelocity.x, currentVelocity.y, currentVelocity.z])) {
+      body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, false);
+    }
+    const currentAngularVelocity = body.angvel();
+    if (!vec3ApproximatelyEqual(angularVelocity, [currentAngularVelocity.x, currentAngularVelocity.y, currentAngularVelocity.z])) {
+      body.setAngvel({ x: angularVelocity[0], y: angularVelocity[1], z: angularVelocity[2] }, false);
+    }
   }
 
   const pointCommands = pendingPointCommands.get(cacheKey) ?? [];
@@ -568,6 +579,17 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
     };
   }
   return jointBreaks;
+}
+
+function vec3ApproximatelyEqual(left: readonly number[], right: readonly number[]): boolean {
+  return Math.abs((left[0] ?? 0) - (right[0] ?? 0)) <= 1e-9
+    && Math.abs((left[1] ?? 0) - (right[1] ?? 0)) <= 1e-9
+    && Math.abs((left[2] ?? 0) - (right[2] ?? 0)) <= 1e-9;
+}
+
+function quatApproximatelyEqual(left: readonly number[], right: readonly number[]): boolean {
+  return vec3ApproximatelyEqual(left, right)
+    && Math.abs((left[3] ?? 1) - (right[3] ?? 1)) <= 1e-9;
 }
 
 function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string): IRapierRuntime {
@@ -757,17 +779,46 @@ export function shapeCastLive(world: IWorldIr, request: IScriptPhysicsShapeCastR
   const runtime = liveRuntime(world);
   if (runtime === undefined) return { hit: false };
   const direction = normalizeVec3(request.direction);
-  const shape = request.shape.kind === "sphere" ? new RAPIER.Ball(request.shape.radius) : new RAPIER.Cuboid(...request.shape.halfExtents);
-  let best: { collider: RAPIER.Collider; hit: RAPIER.ShapeCastHit } | undefined;
-  runtime.world.forEachCollider((collider: RAPIER.Collider) => {
-    if (!queryColliderMatches(world, runtime, collider.handle, request)) return;
-    const hit = collider.castShape({ x: 0, y: 0, z: 0 }, shape, rapierVector(request.origin), { x: 0, y: 0, z: 0, w: 1 }, rapierVector(direction), 0, request.maxDistance, true);
-    if (hit !== null && (best === undefined || hit.time_of_impact < best.hit.time_of_impact)) best = { collider, hit };
-  });
-  if (best === undefined) return { hit: false };
-  const owner = runtime.colliders.get(best.collider.handle);
+  const shape = retainedQueryShape(request.shape);
+  const origin = { x: request.origin[0], y: request.origin[1], z: request.origin[2] };
+  const velocity = { x: direction[0], y: direction[1], z: direction[2] };
+  const hit = runtime.world.castShape(
+    origin,
+    { x: 0, y: 0, z: 0, w: 1 },
+    velocity,
+    shape,
+    0,
+    request.maxDistance,
+    true,
+    undefined,
+    undefined,
+    undefined,
+    undefined,
+    (collider: RAPIER.Collider) => queryColliderMatches(world, runtime, collider.handle, request),
+  );
+  if (hit === null) return { hit: false };
+  const owner = runtime.colliders.get(hit.collider.handle);
   if (owner === undefined) return { hit: false };
-  return { ...(owner.child === undefined ? {} : { child: owner.child }), distance: roundNumber(best.hit.time_of_impact), entity: owner.entity, hit: true, normal: mutableRoundedVec3([best.hit.normal1.x, best.hit.normal1.y, best.hit.normal1.z]), point: mutableRoundedVec3(colliderLocalPointToWorld(best.collider, best.hit.witness1)) };
+  return {
+    ...(owner.child === undefined ? {} : { child: owner.child }),
+    distance: roundNumber(hit.time_of_impact),
+    entity: owner.entity,
+    hit: true,
+    normal: mutableRoundedVec3([hit.normal2.x, hit.normal2.y, hit.normal2.z]),
+    point: mutableRoundedVec3(colliderLocalPointToWorld(hit.collider, hit.witness2)),
+  };
+}
+
+function retainedQueryShape(shape: IScriptPhysicsShapeCastRequest["shape"]): RAPIER.Shape {
+  if (shape.kind === "sphere") {
+    const retained = queryBallShapes.get(shape.radius) ?? new RAPIER.Ball(shape.radius);
+    queryBallShapes.set(shape.radius, retained);
+    return retained;
+  }
+  const key = shape.halfExtents.join(",");
+  const retained = queryCuboidShapes.get(key) ?? new RAPIER.Cuboid(...shape.halfExtents);
+  queryCuboidShapes.set(key, retained);
+  return retained;
 }
 
 function colliderLocalPointToWorld(collider: RAPIER.Collider, point: RAPIER.Vector): Vec3 {

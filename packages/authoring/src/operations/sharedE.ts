@@ -589,6 +589,24 @@ export function validateEcsId(diagnostics: IAuthoringDiagnostic[], file: string,
   return id;
 }
 
+export function validateEntityId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
+  const id = readString(value);
+  if (id === undefined || !id.split("/").every((segment) => ecsIdPattern.test(segment))) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_ID_INVALID",
+        file,
+        message: "entity id must use ECS id segments separated by optional '/'.",
+        path,
+        value,
+        suggestion: "Use a stable id such as 'kart.player' or the derived child id 'wall/piece.northwest'.",
+      }),
+    );
+    return undefined;
+  }
+  return id;
+}
+
 export function validateEventId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
   const id = readString(value);
   if (id === undefined || !/^[A-Za-z0-9][A-Za-z0-9._-]*(?::[A-Za-z0-9][A-Za-z0-9._-]*)*$/.test(id)) {

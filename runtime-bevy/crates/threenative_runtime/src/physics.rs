@@ -516,9 +516,50 @@ pub fn step_bundle_physics_with_script_poses(
             body.angular_velocity = simulated.angular_velocity;
         }
     }
+    sync_destruction_visual_entities(bundle, script_posed_entities);
     write_live_event_queues(bundle, &events);
     write_joint_break_event_queue(bundle, &joint_break_events);
     write_destruction_event_queue(bundle, &destruction_events);
+}
+
+fn sync_destruction_visual_entities(
+    bundle: &mut LoadedBundle,
+    script_posed_entities: &BTreeSet<String>,
+) {
+    let Some(observation) = inspect_cached_physics_destruction(script_posed_entities) else {
+        return;
+    };
+    let assembly_visibility = observation
+        .assemblies
+        .iter()
+        .map(|assembly| (assembly.assembly.as_str(), assembly.intact_collision_active))
+        .collect::<BTreeMap<_, _>>();
+    let piece_bodies = observation
+        .pieces
+        .iter()
+        .map(|piece| (format!("{}/{}", piece.assembly, piece.piece), piece))
+        .collect::<BTreeMap<_, _>>();
+    for entity in &mut bundle.world.entities {
+        if let Some(visible) = assembly_visibility.get(entity.id.as_str())
+            && let Some(renderer) = entity.components.mesh_renderer.as_mut()
+        {
+            renderer.visible = Some(*visible);
+        }
+        let Some(piece) = piece_bodies.get(&entity.id) else {
+            continue;
+        };
+        let Some(renderer) = entity.components.mesh_renderer.as_mut() else {
+            continue;
+        };
+        renderer.visible = Some(piece.body_handle.is_some());
+        if piece.body_handle.is_none() {
+            continue;
+        }
+        if let Some(transform) = entity.components.transform.as_mut() {
+            transform.position = Some(piece.position);
+            transform.rotation = Some(piece.rotation);
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -1662,6 +1703,7 @@ impl PersistentRapierWorld {
             &mut self.vehicle_state,
             fixed_delta,
             initial_query_broad_phase.as_ref(),
+            &self.debug_queries,
         );
         debug_timings.push(debug_timing("vehicle", vehicle_started));
         let mut joint_break_events = Vec::new();
@@ -1717,13 +1759,13 @@ impl PersistentRapierWorld {
             .world
             .bodies
             .iter()
-            .filter(|(_, body)| body.is_enabled() && body.is_sleeping())
+            .filter(|(_, body)| body.is_enabled() && body.is_dynamic() && body.is_sleeping())
             .count();
         let active = self
             .world
             .bodies
             .iter()
-            .filter(|(_, body)| body.is_enabled() && !body.is_sleeping())
+            .filter(|(_, body)| body.is_enabled() && body.is_dynamic() && !body.is_sleeping())
             .count();
         self.debug_telemetry = PhysicsDebugTelemetry {
             allocated_pieces: self.destruction_state.allocated_piece_count(),
@@ -1762,9 +1804,10 @@ impl PersistentRapierWorld {
             let position = body_position(&entity.id)
                 .or_else(|| entity.components.transform.as_ref()?.position)
                 .unwrap_or([0.0; 3]);
-            if !self
-                .destruction_state
-                .intact_collision_is_retired(&entity.id)
+            if entity.components.rigid_body.is_some()
+                && !self
+                    .destruction_state
+                    .intact_collision_is_retired(&entity.id)
                 && let Some(handle) = self.handles.get(&entity.id)
                 && let Some(body) = self.world.bodies.get(*handle)
             {

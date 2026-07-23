@@ -1,5 +1,12 @@
 export { startWebPreview, type IWebPreviewServer } from "./devServer.js";
 export {
+  ADVANCED_PHYSICS_BENCHMARK_WORKLOAD,
+  createAdvancedPhysicsBenchmarkWorld,
+  createBenchmarkFractureManifest,
+  runAdvancedPhysicsBenchmark,
+  type IAdvancedPhysicsBenchmarkResult,
+} from "./advancedPhysicsBenchmark.js";
+export {
   createWebAudioElementSink,
   createWebAudioRuntime,
   traceWebAudioSupport,

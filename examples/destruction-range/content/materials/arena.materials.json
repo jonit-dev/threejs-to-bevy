@@ -1,0 +1,10 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "destruction-range-materials",
+  "materials": [
+    { "id": "mat.ground", "kind": "standard", "color": "#293241", "metalness": 0, "roughness": 0.92 },
+    { "id": "mat.wall", "kind": "standard", "color": "#d8a15d", "metalness": 0, "roughness": 0.78 },
+    { "id": "mat.projectile", "kind": "standard", "color": "#ff4057", "metalness": 0.35, "roughness": 0.3 }
+  ]
+}

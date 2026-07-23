@@ -312,7 +312,7 @@ test("fixed joints should hold their relative pose under a below-threshold load"
   disposePhysicsRuntime(world);
 });
 
-test("break thresholds should emit once and remove the joint before remaining substeps", async () => {
+test("break thresholds should emit once and retire the joint observation on the next tick", async () => {
   await initializePhysicsRuntime();
   const world = makeRichJointWorld();
   world.entities = world.entities.filter((entity) => entity.id === "anchor" || entity.id === "fixed");
@@ -324,12 +324,12 @@ test("break thresholds should emit once and remove the joint before remaining su
   assert.equal(applyLivePhysicsAtPoint(world, "fixed", [1000, 0, 0], [1, 0, 0], "force"), true);
   stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
   assert.deepEqual((world.events?.JointBreakEvent as Array<{ connectedEntity: string; entity: string; kind: string; phase: string }>).map(({ connectedEntity, entity, kind, phase }) => ({ connectedEntity, entity, kind, phase })), [{ connectedEntity: "anchor", entity: "fixed", kind: "fixed", phase: "break" }]);
-  assert.deepEqual(observePhysicsJointLoads(world), []);
+  assert.deepEqual(observePhysicsJointLoads(world).map(({ active, entity, force }) => ({ active, entity, force })), [{ active: true, entity: "fixed", force: 1000 }]);
   assert.deepEqual(physicsRuntimeStats(world), { jointCreations: 1, jointRemovals: 1, rebuilds: 1 });
 
   stepPhysics(world, 1 / 60, undefined, { gravity: [0, 0, 0] });
   assert.deepEqual(world.events?.JointBreakEvent, []);
-  assert.deepEqual(observePhysicsJointLoads(world), []);
+  assert.deepEqual(observePhysicsJointLoads(world).map(({ active, entity, force }) => ({ active, entity, force })), [{ active: false, entity: "fixed", force: 1000 }]);
   assert.deepEqual(physicsRuntimeStats(world), { jointCreations: 1, jointRemovals: 1, rebuilds: 1 });
   disposePhysicsRuntime(world);
 });

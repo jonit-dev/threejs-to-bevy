@@ -188,7 +188,7 @@ export async function writePlaytestArtifactBundle(options: {
     target: options.scenario.target,
     version: "0.1.0",
   };
-  await writeJson(artifacts.summary, summary);
+  await writeCompactJson(artifacts.summary, summary);
   await writeJson(artifacts.manifest, {
     artifacts: await artifactEntries(options.projectPath, summaryArtifacts),
     code: summary.code,
@@ -573,6 +573,10 @@ async function artifactHashes(projectPath: string, artifacts: IPlaytestArtifactB
 
 async function writeJson(path: string, value: unknown): Promise<void> {
   await writeFile(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
+}
+
+async function writeCompactJson(path: string, value: unknown): Promise<void> {
+  await writeFile(path, `${JSON.stringify(value)}\n`, "utf8");
 }
 
 async function writeJsonIfMissing(path: string, value: unknown): Promise<void> {

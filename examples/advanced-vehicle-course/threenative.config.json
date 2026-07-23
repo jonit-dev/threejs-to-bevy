@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/advanced-vehicle-course.bundle",
+  "production": {
+    "archetype": "racing",
+    "playableLoop": "Drive the retained four-wheel vehicle through mixed surfaces, a jump, collision damage, checkpoints, and the finish.",
+    "controls": ["keyboard.KeyW", "keyboard.KeyA", "keyboard.KeyS", "keyboard.KeyD", "keyboard.KeyR"],
+    "objective": "Reach all three ordered checkpoints with damage below 100.",
+    "progression": "CourseState records mixed-surface, jump, collision-damage, failure, retry, and finished states.",
+    "failRetry": "Leaving the course or accumulating 100 damage fails; KeyR resets pose, velocities, progress, and damage.",
+    "feedbackMoments": ["Surface grip changes", "jump clearance", "collision damage", "finish", "retry"],
+    "assetPlan": {
+      "playerHero": "CC0 Kenney racing vehicle kit asset",
+      "obstacleEnemy": "CC0 Kenney barriers and track bump",
+      "rewardInteractable": "checkpoint and finish markers",
+      "worldEnvironment": "CC0 Kenney track kit plus authored physics surfaces",
+      "uiHud": "CourseState-backed status telemetry",
+      "audioFeedback": "goal-ping source cue"
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/course.ts",
+        "export": "updateVehicleCourse",
+        "ownsState": ["CourseState"],
+        "referencedBy": ["content/systems/arena.systems.json"]
+      }
+    ],
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/vehicle-course.playtest.json --json",
+      "tn playtest --project . --target desktop --scenario playtests/vehicle-course.playtest.json --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

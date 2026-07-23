@@ -670,6 +670,88 @@ test("should enforce operation join animation track and keyframe budgets", async
   }
 });
 
+test("should accept bounded source GLB animation recipes and reject mixed generation fields", async () => {
+  const root = await createRegistryProject();
+  const sourceRecipe = validBlenderRecipe({
+    id: "aircraft",
+    materials: undefined,
+    parts: undefined,
+    source: "assets/source/aircraft.glb",
+    animations: [{
+      id: "propeller.spin",
+      duration: 1,
+      loop: true,
+      tracks: [{
+        node: "Propeller",
+        pivot: [0, 0.1, 0.8],
+        property: "rotation",
+        keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0, 360] }],
+      }],
+    }],
+  });
+  try {
+    await mkdir(join(root, "assets", "source"), { recursive: true });
+    await writeFile(join(root, "assets", "source", "aircraft.glb"), "source-glb");
+    const accepted = await dispatchAuthoringOperation({
+      args: { generatorId: "aircraft", output: "assets/generated/aircraft.glb", recipe: sourceRecipe },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(accepted.ok, true, JSON.stringify(accepted.diagnostics));
+
+    const mixed = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "aircraft.mixed",
+        output: "assets/generated/aircraft.mixed.glb",
+        recipe: { ...sourceRecipe, id: "aircraft.mixed", parts: [{ id: "body", primitive: "cube" }] },
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(mixed.ok, false);
+    assert.equal(mixed.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_SOURCE_MODE_INVALID" && item.path === "/parts"), true);
+
+    const traversal = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "aircraft.escape",
+        output: "assets/generated/aircraft.escape.glb",
+        recipe: { ...sourceRecipe, id: "aircraft.escape", source: "../aircraft.glb" },
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(traversal.ok, false);
+    assert.equal(traversal.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_SOURCE_PATH_INVALID" && item.path === "/source"), true);
+
+    const nonRotationPivot = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "aircraft.bad-pivot",
+        output: "assets/generated/aircraft.bad-pivot.glb",
+        recipe: {
+          ...sourceRecipe,
+          id: "aircraft.bad-pivot",
+          animations: [{
+            id: "bad",
+            duration: 1,
+            tracks: [{
+              node: "Propeller",
+              pivot: [0, 0.1, 0.8],
+              property: "position",
+              keyframes: [{ time: 0, value: [0, 0, 0] }],
+            }],
+          }],
+        },
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(nonRotationPivot.ok, false);
+    assert.equal(nonRotationPivot.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_ANIMATION_PIVOT_INVALID" && item.path === "/animations/0/tracks/0/pivot"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept every bounded Blender primitive and modifier at its boundary", async () => {
   const root = await createRegistryProject();
   const modifiers: Record<string, unknown>[] = [

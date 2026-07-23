@@ -1,0 +1,26 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "flight-course-systems",
+  "systems": [
+    {
+      "id": "flight-course",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/flight.ts",
+        "export": "updateFlightCourse"
+      },
+      "reads": ["AerodynamicBody", "RigidBody"],
+      "writes": ["Transform"],
+      "resourceReads": ["FlightState"],
+      "resourceWrites": ["FlightState"],
+      "services": [
+        "physics.addForce",
+        "physics.addTorque",
+        "physics.aerodynamics.setInputs",
+        "physics.setAngularVelocity",
+        "physics.setLinearVelocity"
+      ]
+    }
+  ]
+}

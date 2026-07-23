@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced-physics-authoring-debug-review",
+  "subject": "chassis",
+  "parity": {
+    "targets": ["web", "desktop"],
+    "compare": {
+      "resources": ["CourseState.status"]
+    }
+  },
+  "steps": [
+    {
+      "label": "bad-wheel-and-joint-load",
+      "press": "KeyW",
+      "holdTicks": 360,
+      "release": true,
+      "screenshot": "01-debug-review"
+    }
+  ],
+  "assert": {
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

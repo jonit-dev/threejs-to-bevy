@@ -1,0 +1,51 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "arena-input",
+  "actions": [
+    {
+      "id": "retry",
+      "bindings": [
+        "keyboard.KeyR"
+      ]
+    },
+    {
+      "id": "move-left",
+      "bindings": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ]
+    },
+    {
+      "id": "move-right",
+      "bindings": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ]
+    }
+  ],
+  "axes": [
+    {
+      "id": "MoveX",
+      "negative": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ],
+      "positive": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ]
+    },
+    {
+      "id": "MoveZ",
+      "negative": [
+        "keyboard.KeyS",
+        "keyboard.ArrowDown"
+      ],
+      "positive": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
+      ]
+    }
+  ]
+}

@@ -113,10 +113,23 @@ test("piece activation should replace the intact body in retained Rapier without
     entities: [{
       components: {
         Collider: { kind: "box", size: [2, 1, 1] },
+        MeshRenderer: { material: "mat.wall", mesh: "mesh.wall" },
         RigidBody: { angularVelocity: [0, 1, 0], gravityScale: 0, kind: "dynamic", mass: 10, velocity: [2, 0, 0] },
         Transform: { position: [0, 2, 0] },
       },
       id: "wall",
+    }, {
+      components: {
+        MeshRenderer: { material: "mat.wall", mesh: "mesh.piece", visible: false },
+        Transform: { position: [-0.5, 2, 0] },
+      },
+      id: "wall/piece.left",
+    }, {
+      components: {
+        MeshRenderer: { material: "mat.wall", mesh: "mesh.piece", visible: false },
+        Transform: { position: [0.5, 2, 0] },
+      },
+      id: "wall/piece.right",
     }],
     schema: "threenative.world",
     version: "0.1.0",
@@ -136,6 +149,13 @@ test("piece activation should replace the intact body in retained Rapier without
   ]);
   assert.ok(Math.abs(observation.pieces.reduce((sum, piece) => sum + piece.mass, 0) - 10) < 0.000001);
   assert.ok(Math.abs(observation.pieces.reduce((sum, piece) => sum + piece.mass * piece.velocity[0], 0) - 20) < 0.000001);
+  assert.equal(world.entities.find((entity) => entity.id === "wall")?.components.MeshRenderer?.visible, false);
+  for (const piece of observation.pieces) {
+    const visual = world.entities.find((entity) => entity.id === piece.id);
+    assert.equal(visual?.components.MeshRenderer?.visible, true);
+    assert.deepEqual(visual?.components.Transform?.position, piece.position);
+    assert.deepEqual(visual?.components.Transform?.rotation, piece.rotation);
+  }
   const handles = observation.pieces.map((piece) => piece.handle);
   assert.deepEqual(stepPhysicsDestruction(runtime, world, 1, 1 / 60), []);
   assert.deepEqual(observePhysicsDestructionBodies(world, "wall").pieces.map((piece) => piece.handle), handles);

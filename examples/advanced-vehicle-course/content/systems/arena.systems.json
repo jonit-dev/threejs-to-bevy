@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "vehicle-course-systems",
+  "systems": [
+    {
+      "id": "vehicle-course",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/course.ts",
+        "export": "updateVehicleCourse"
+      },
+      "reads": ["RigidBody"],
+      "writes": ["Transform"],
+      "resourceReads": ["CourseState"],
+      "resourceWrites": ["CourseState"],
+      "services": [
+        "physics.raycast",
+        "physics.setAngularVelocity",
+        "physics.setLinearVelocity"
+      ]
+    }
+  ]
+}

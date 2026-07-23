@@ -12,6 +12,7 @@ import {
   type AdvancedPhysicsJointScenarios,
   type AdvancedPhysicsJointTrace,
 } from "./advancedPhysicsJoints.js";
+import { expectedPhysicsDebugCategories } from "./advancedPhysicsDebugEvidence.js";
 
 const fixture = new URL("../../../packages/ir/fixtures/conformance/advanced-physics-joints/game.bundle/", import.meta.url);
 
@@ -35,6 +36,7 @@ function trace(runtime: "bevy" | "web", expected: AdvancedPhysicsJointExpectedMa
   }));
   return {
     bundleHash: "sha256-bundle",
+    debugEvidence: expectedPhysicsDebugCategories("advanced-physics-joints").map((category) => ({ category, id: `${category}:joint.fixed`, kind: "line" })),
     fixture: "advanced-physics-joints",
     fixedDt: 1 / 120,
     loadRamp: {

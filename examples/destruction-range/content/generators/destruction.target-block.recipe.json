@@ -1,0 +1,64 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "destruction.target-block",
+  "budgets": {
+    "maxOutputBytes": 4194304,
+    "maxPolygons": 30000
+  },
+  "materials": [
+    {
+      "id": "concrete",
+      "baseColor": [0.34, 0.38, 0.44, 1],
+      "metallic": 0.05,
+      "roughness": 0.78
+    },
+    {
+      "id": "warning",
+      "baseColor": [0.95, 0.3, 0.04, 1],
+      "emissive": [0.3, 0.05, 0],
+      "metallic": 0.1,
+      "roughness": 0.45
+    }
+  ],
+  "parts": [
+    {
+      "id": "block",
+      "primitive": "cube",
+      "material": "concrete",
+      "position": [0, 0, 0],
+      "scale": [1.8, 1.8, 0.72],
+      "modifiers": [
+        {
+          "kind": "bevel",
+          "width": 0.1,
+          "segments": 3
+        }
+      ]
+    },
+    {
+      "id": "stripe.left",
+      "primitive": "cube",
+      "material": "warning",
+      "position": [-0.48, 0, -0.39],
+      "rotation": [0, 0, 35],
+      "scale": [0.22, 2.1, 0.05]
+    },
+    {
+      "id": "stripe.center",
+      "primitive": "cube",
+      "material": "warning",
+      "position": [0, 0, -0.39],
+      "rotation": [0, 0, 35],
+      "scale": [0.22, 2.1, 0.05]
+    },
+    {
+      "id": "stripe.right",
+      "primitive": "cube",
+      "material": "warning",
+      "position": [0.48, 0, -0.39],
+      "rotation": [0, 0, 35],
+      "scale": [0.22, 2.1, 0.05]
+    }
+  ]
+}

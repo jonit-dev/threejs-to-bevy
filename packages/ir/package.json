@@ -32,6 +32,10 @@
       "types": "./dist/physicsCapabilities.d.ts",
       "default": "./dist/physicsCapabilities.js"
     },
+    "./physicsDebug": {
+      "types": "./dist/physicsDebug.d.ts",
+      "default": "./dist/physicsDebug.js"
+    },
     "./runtimeConfig": {
       "types": "./dist/runtimeConfig.d.ts",
       "default": "./dist/runtimeConfig.js"

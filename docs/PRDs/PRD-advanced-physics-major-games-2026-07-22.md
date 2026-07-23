@@ -910,7 +910,7 @@ the final evidence.
   one-shot deferred breaking, joint-only reconciliation, descriptor ownership,
   complete evidence metadata, and matching retained artifact hashes.
 
-### Phase 6 automated evidence (manual checkpoint review pending)
+### Phase 6 evidence (checkpoint PASS)
 
 - Seeded primitive and imported/convex fracture inputs now bake byte-stable
   manifests with stable piece/bond IDs. The compiler validates and copies every
@@ -941,7 +941,23 @@ the final evidence.
   manifests and canonical source hashes fail closed, and descriptor-owned
   field consumers guard both adapters.
 - Web runtime tests pass 543/543. Native destruction integration tests pass
-  12/12 and native debug integration tests pass 5/5. The IR suite passes
+  13/13 and native debug integration tests pass 5/5. The IR suite passes
   416/416, authoring passes 142/142, and compiler passes 293/293.
-- The Phase 6 checkpoint remains open only for the required web/desktop
-  projectile playtests and manual destruction contact-sheet review.
+- The retained `examples/destruction-range` projectile scenario passes on web
+  and graphical desktop. It captures labeled damage-only, east-region-active,
+  and bounded-cleanup frames on each target plus a combined contact sheet at
+  `examples/destruction-range/artifacts/playtest/destruction-range-projectile-threshold/contact-sheet.png`.
+- The hash-bound checkpoint report beside that contact sheet records web
+  telemetry ticks 26/42/122 and desktop ticks 17/33/113. On both targets the
+  first checkpoint reduces only `bond.north` with zero allocated pieces; the
+  second breaks `bond.east` and activates only northeast/southeast; the final
+  checkpoint records those two pieces sleeping under the 2/4 allocation bound.
+- Verification fixed three native proof-boundary defects exposed by the
+  graphical run: physics-only bundles now install the fixed loop, sleeping
+  joint-connected debris no longer violates Rapier island invariants, and the
+  proof harness exits through `AppExit::Success`. Native proof readiness now
+  samples normalized physics debug on the scripted runtime's main thread.
+- Independent remediation review reports **PASS** after checking all six
+  checkpoint images, every report hash, the raw web/native debug series, both
+  `TN_PLAYTEST_OK` summaries, the native sampling owner, and 51 focused
+  CLI playtest/artifact/schema tests.

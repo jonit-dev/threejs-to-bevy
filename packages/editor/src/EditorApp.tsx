@@ -1,6 +1,7 @@
-import { useEffect, useMemo, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Box, Camera, FileCode, FolderOpen, Gamepad2, Image, Lightbulb, MessageSquare, Mountain, PackagePlus, Pause, Play, Save, Settings, Square, Trash2 } from "lucide-react";
 import type { IEditorGamepadViewerSnapshot } from "@threenative/ir";
+import { PHYSICS_DEBUG_CATEGORIES, type PhysicsDebugCategory } from "@threenative/ir/physicsDebug";
 
 import type { IEditorAdapterInput, IEditorAddComponentDefinition, IEditorAssetRow, IEditorModalActionDefinition, IEditorPropertyRow, IEditorShellModel, IEditorUiPreviewDocument, IEditorUiPreviewNode } from "./adapters/editorModel.js";
 import { createEditorShellModel, EDITOR_MODAL_ACTION_DEFINITIONS } from "./adapters/editorModel.js";
@@ -8,6 +9,7 @@ import { PanelShell } from "./components/layout/PanelShell.js";
 import { ChatPanel } from "./components/panels/ChatPanel.js";
 import { HierarchyPanel } from "./components/panels/HierarchyPanel.js";
 import { InspectorPanel } from "./components/panels/InspectorPanel.js";
+import { PhysicsDebugPanel } from "./components/panels/PhysicsDebugPanel.js";
 import { ScriptPanel } from "./components/panels/ScriptPanel.js";
 import { EditorViewport3d, type EditorViewportGizmoMode, type IViewportTransform } from "./preview/EditorViewport3d.js";
 import { defaultEditorScriptSourceState, useEditorStore, type EditorModal, type IEditorScriptSourceState } from "./state/editorStore.js";
@@ -20,6 +22,7 @@ export interface IEditorAppProps {
   onCreateScene?: () => void;
   onEditProperty?: (row: IEditorPropertyRow, value: unknown) => void;
   onMoveRow?: (draggedId: string, targetId: string) => void;
+  onPhysicsDebugCategoriesChange?: (categories: readonly PhysicsDebugCategory[]) => void;
   onSaveScene?: () => void;
   onSelectRow?: (id: string) => void;
   onTransformObject?: (rowId: string, transform: IViewportTransform) => void;
@@ -36,7 +39,7 @@ const PLAYBACK_UNAVAILABLE_REASON = "Playback controls require a promoted previe
 const DELETE_ACTION = modalActionDefinition("delete.selection");
 const SETTINGS_ACTION = modalActionDefinition("settings.editor");
 
-export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
+export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPreview, onCreateScene, onEditProperty, onMoveRow, onPhysicsDebugCategoriesChange, onSaveScene, onSelectRow, onTransformObject, toolbarSlot }: IEditorAppProps) {
   const modal = useEditorStore((state) => state.modal);
   const gizmoMode = useEditorStore((state) => state.gizmoMode);
   const setGizmoMode = useEditorStore((state) => state.setGizmoMode);
@@ -47,6 +50,7 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
   const scriptSource = useEditorStore((state) => state.scriptSource);
   const setScriptSourceBody = useEditorStore((state) => state.setScriptSourceBody);
   const saveScriptSource = useEditorStore((state) => state.saveScriptSource);
+  const [physicsDebugCategories, setPhysicsDebugCategories] = useState<readonly PhysicsDebugCategory[]>(PHYSICS_DEBUG_CATEGORIES);
   const model = useMemo(() => createEditorShellModel(input), [input]);
   const objectCount = countTreeRows(model.hierarchy);
   const statusMessage = model.diagnostics.some((diagnostic) => diagnostic.severity === "error") ? "Needs attention" : "Ready";
@@ -223,6 +227,16 @@ export function EditorApp({ model: input, onAddComponent, onAddObject, onBuildPr
           </PanelShell>
           <PanelShell title="Gamepad" meta={`${gamepadDevices.length}`}>
             <GamepadViewerPanel controls={model.gamepadViewer.controls} devices={gamepadDevices} requiredControls={model.gamepadViewer.requiredControls} />
+          </PanelShell>
+          <PanelShell title="Physics Debug" meta={`${model.physicsDebug?.summary.primitives.length ?? 0}`}>
+            <PhysicsDebugPanel
+              enabledCategories={physicsDebugCategories}
+              onEnabledCategoriesChange={(categories) => {
+                setPhysicsDebugCategories(categories);
+                onPhysicsDebugCategoriesChange?.(categories);
+              }}
+              snapshot={model.physicsDebug}
+            />
           </PanelShell>
         </aside>
       </div>

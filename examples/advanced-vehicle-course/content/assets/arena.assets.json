@@ -1,0 +1,33 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "arena-assets",
+  "assets": [
+    {
+      "id": "asset.goal-ping",
+      "path": "assets/goal-ping.wav",
+      "type": "audio"
+    },
+    {
+      "attribution": "Kenney Racing Kit",
+      "id": "model.vehicle.player",
+      "license": "CC0-1.0",
+      "path": "assets/raceCarRed.glb",
+      "type": "model"
+    },
+    {
+      "attribution": "Kenney Racing Kit",
+      "id": "model.vehicle.barrier",
+      "license": "CC0-1.0",
+      "path": "assets/barrierRed.glb",
+      "type": "model"
+    },
+    {
+      "attribution": "Kenney Racing Kit",
+      "id": "model.vehicle.finish",
+      "license": "CC0-1.0",
+      "path": "assets/flagCheckers.glb",
+      "type": "model"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "id": "arena-assets",
+  "assets": [
+    {
+      "id": "asset.goal-ping",
+      "path": "assets/goal-ping.wav",
+      "type": "audio"
+    },
+    {
+      "attribution": "Douglas SBD-3 source model supplied for this repository",
+      "id": "model.flight.aircraft",
+      "license": "user-provided",
+      "path": "assets/aircraft.douglas-sbd3.glb",
+      "type": "model"
+    }
+  ]
+}

@@ -140,6 +140,7 @@ type NativeProofResourceQueries<'w, 's> = ParamSet<
 
 #[derive(SystemParam)]
 pub struct NativeProofHarnessSystem<'w, 's> {
+    _main_thread: Option<NonSend<'w, crate::ScriptedRuntimeMainThread>>,
     commands: Commands<'w, 's>,
     state: ResMut<'w, NativeProofHarnessState>,
     keyboard: ResMut<'w, ButtonInput<KeyCode>>,
@@ -149,6 +150,7 @@ pub struct NativeProofHarnessSystem<'w, 's> {
     asset_server: Option<Res<'w, AssetServer>>,
     required_models: Option<Res<'w, NativeProofHarnessRequiredModels>>,
     runtime: Option<ResMut<'w, crate::ScriptedRuntimeBundle>>,
+    game_loop: Option<Res<'w, crate::systems_host::NativeGameLoopState>>,
     ui_cameras: Query<'w, 's, (Entity, &'static mut Camera), With<IsDefaultUiCamera>>,
     scene_cameras: Query<'w, 's, (Entity, &'static Camera), Without<IsDefaultUiCamera>>,
     root_ui_nodes: Query<'w, 's, Entity, (With<Node>, Without<Parent>)>,
@@ -200,6 +202,8 @@ pub struct NativeProofHarnessReadiness {
         skip_serializing_if = "Option::is_none"
     )]
     pub gameplay_observations: Option<serde_json::Value>,
+    #[serde(rename = "physicsDebug", skip_serializing_if = "Option::is_none")]
+    pub physics_debug: Option<crate::physics_debug::PhysicsDebugSnapshot>,
     #[serde(rename = "overlaySnapshots", skip_serializing_if = "Vec::is_empty")]
     pub overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     #[serde(rename = "sceneQueries", skip_serializing_if = "Vec::is_empty")]
@@ -487,9 +491,12 @@ fn apply_native_proof_harness_action(
     }
 }
 
-fn exit_native_proof_harness_after_sample(requested: Res<NativeProofHarnessExitRequested>) {
+fn exit_native_proof_harness_after_sample(
+    requested: Res<NativeProofHarnessExitRequested>,
+    mut exits: EventWriter<AppExit>,
+) {
     if requested.0 {
-        std::process::exit(0);
+        exits.send(AppExit::Success);
     }
 }
 
@@ -726,9 +733,11 @@ fn default_bundle_transform() -> TransformComponent {
 }
 
 fn write_native_proof_harness_post_runtime_sample(
+    _main_thread: Option<NonSend<crate::ScriptedRuntimeMainThread>>,
     mut state: ResMut<NativeProofHarnessState>,
     transforms: Query<(&ThreeNativeId, &Transform)>,
     runtime: Option<Res<crate::ScriptedRuntimeBundle>>,
+    game_loop: Option<Res<crate::systems_host::NativeGameLoopState>>,
     resource_observations: Option<Res<NativeResourceObservationState>>,
     write_audit: Option<Res<NativeRuntimeWriteAuditState>>,
     overlay_bridge: Option<Res<crate::overlay_host::NativeOverlayBridgeResource>>,
@@ -750,6 +759,12 @@ fn write_native_proof_harness_post_runtime_sample(
                 bridge.bridge.snapshots().iter().cloned().collect()
             }),
             &runtime.bundle,
+            game_loop.as_deref().and_then(|game_loop| {
+                crate::physics::inspect_cached_physics_debug(
+                    &runtime.bundle,
+                    &game_loop.script_posed_entities,
+                )
+            }),
         );
         return;
     }
@@ -768,6 +783,7 @@ fn write_native_proof_harness_post_runtime_sample(
             resource_snapshots: BTreeMap::new(),
             runtime_observations: None,
             gameplay_observations: None,
+            physics_debug: None,
             overlay_snapshots: Vec::new(),
         },
     );
@@ -857,6 +873,7 @@ struct NativeProofHarnessSample {
     resource_snapshots: BTreeMap<String, serde_json::Value>,
     runtime_observations: Option<NativeRuntimeProbeObservations>,
     gameplay_observations: Option<serde_json::Value>,
+    physics_debug: Option<crate::physics_debug::PhysicsDebugSnapshot>,
     overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
 }
 
@@ -884,6 +901,13 @@ fn write_current_native_proof_harness_sample(
         }),
         gameplay_observations: runtime
             .map(|runtime| crate::systems_host::native_gameplay_observations(&runtime.bundle)),
+        physics_debug: runtime.and_then(|runtime| {
+            let game_loop = harness.game_loop.as_deref()?;
+            crate::physics::inspect_cached_physics_debug(
+                &runtime.bundle,
+                &game_loop.script_posed_entities,
+            )
+        }),
         overlay_snapshots: Vec::new(),
     };
     write_native_proof_harness_sample(
@@ -908,6 +932,7 @@ fn write_native_proof_harness_sample<'a>(
         resource_snapshots,
         runtime_observations,
         gameplay_observations,
+        physics_debug,
         overlay_snapshots,
     } = sample;
     let ok = diagnostics
@@ -925,6 +950,7 @@ fn write_native_proof_harness_sample<'a>(
         resource_snapshots,
         runtime_observations,
         gameplay_observations,
+        physics_debug,
         overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_transform_samples(transforms),
@@ -956,6 +982,7 @@ fn write_native_proof_harness_bundle_sample(
     write_audit: Option<NativeRuntimeWriteAuditState>,
     overlay_snapshots: Vec<crate::overlay::OverlayBridgeEnvelope>,
     bundle: &LoadedBundle,
+    physics_debug: Option<crate::physics_debug::PhysicsDebugSnapshot>,
 ) {
     let ok = diagnostics
         .iter()
@@ -975,6 +1002,7 @@ fn write_native_proof_harness_bundle_sample(
             &bundle.materials,
         )),
         gameplay_observations: Some(crate::systems_host::native_gameplay_observations(bundle)),
+        physics_debug,
         overlay_snapshots,
         scene_queries: state.scene_queries.clone(),
         transforms: native_proof_harness_bundle_transform_samples(bundle),

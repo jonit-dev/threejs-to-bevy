@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell,
+    cell::{Cell, RefCell},
     collections::{BTreeMap, BTreeSet},
 };
 
@@ -735,6 +735,7 @@ pub(crate) fn step_physics_vehicles(
     state: &mut VehicleRuntimeState,
     fixed_delta: f32,
     initial_query_broad_phase: Option<&BroadPhaseBvh>,
+    query_counter: &Cell<usize>,
 ) {
     let controls = VEHICLE_CONTROLS.with(|controls| {
         controls
@@ -823,6 +824,7 @@ pub(crate) fn step_physics_vehicles(
                 compute_impact_geometry_on_penetration: true,
                 ..ShapeCastOptions::default()
             };
+            query_counter.set(query_counter.get() + 1);
             let hit = if let Some(broad_phase) = initial_query_broad_phase {
                 broad_phase
                     .as_query_pipeline(

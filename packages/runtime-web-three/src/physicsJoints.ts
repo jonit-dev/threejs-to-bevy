@@ -70,7 +70,7 @@ export function reconcilePhysicsJoints(
     const joint = authored.get(entity);
     const signature = joint === undefined ? undefined : jointSignature(joint);
     if (signature !== live.signature || bodies.get(entity) === undefined || bodies.get(joint?.connectedEntity ?? "") === undefined) {
-      removeLiveJoint(runtime, world, entity, false);
+      removeLiveJoint(runtime, world, entity, "delete");
     }
   }
 
@@ -153,7 +153,9 @@ export function collectBrokenPhysicsJoints(runtime: IPhysicsJointRuntime): IPhys
 }
 
 export function flushBrokenPhysicsJoints(runtime: IPhysicsJointRuntime, world: RAPIER.World): void {
-  flushPendingRemovals(runtime, world);
+  for (const entity of [...runtime.pendingRemoval].sort()) {
+    removeLiveJoint(runtime, world, entity, "active");
+  }
 }
 
 export function observePhysicsJointLoads(runtime: IPhysicsJointRuntime): IPhysicsJointLoadObservation[] {
@@ -162,19 +164,22 @@ export function observePhysicsJointLoads(runtime: IPhysicsJointRuntime): IPhysic
 }
 
 function flushPendingRemovals(runtime: IPhysicsJointRuntime, world: RAPIER.World): void {
-  for (const entity of [...runtime.pendingRemoval].sort()) removeLiveJoint(runtime, world, entity, false);
+  for (const entity of [...runtime.pendingRemoval].sort()) {
+    removeLiveJoint(runtime, world, entity, "inactive");
+  }
   runtime.pendingRemoval.clear();
 }
 
-function removeLiveJoint(runtime: IPhysicsJointRuntime, world: RAPIER.World, entity: string, retainInactive: boolean): void {
+function removeLiveJoint(runtime: IPhysicsJointRuntime, world: RAPIER.World, entity: string, observation: "active" | "delete" | "inactive"): void {
   const live = runtime.joints.get(entity);
-  if (live === undefined) return;
-  if (live.joint.isValid()) world.removeImpulseJoint(live.joint, true);
-  runtime.joints.delete(entity);
-  const observation = runtime.observations.get(entity);
-  if (retainInactive && observation !== undefined) observation.active = false;
-  else runtime.observations.delete(entity);
-  runtime.removals += 1;
+  if (live !== undefined) {
+    if (live.joint.isValid()) world.removeImpulseJoint(live.joint, true);
+    runtime.joints.delete(entity);
+    runtime.removals += 1;
+  }
+  const retained = runtime.observations.get(entity);
+  if (observation === "inactive" && retained !== undefined) retained.active = false;
+  if (observation === "delete") runtime.observations.delete(entity);
 }
 
 function createJointData(source: IWorldIr, entityId: string, joint: IPhysicsJointComponent): RAPIER.JointData {

@@ -236,6 +236,21 @@ fn native_debug_contract_should_track_the_shared_ir_owner() {
         owner["primitiveKinds"],
         serde_json::json!(PHYSICS_DEBUG_PRIMITIVE_KINDS)
     );
+    let evidence_owners = owner["evidenceOwners"]
+        .as_object()
+        .expect("every debug category should own a focused evidence trace");
+    assert_eq!(
+        evidence_owners.keys().cloned().collect::<BTreeSet<_>>(),
+        PHYSICS_DEBUG_CATEGORIES
+            .iter()
+            .map(|category| (*category).to_owned())
+            .collect()
+    );
+    assert!(evidence_owners.values().all(|value| {
+        value
+            .as_str()
+            .is_some_and(|owner| owner.starts_with("advanced-physics-"))
+    }));
     assert_eq!(
         owner["limits"]["artifactPrimitives"],
         MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES

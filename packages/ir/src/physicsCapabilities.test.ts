@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, readFile } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -97,6 +97,7 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
     bevyRuntimeServices: bevyServices,
     bevyVisualComponents: ["WheelAssembly"],
     compilerComponents: ["AerodynamicBody", "WindVolume", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    cookbookEntries: ["advanced-physics-aerodynamics", "advanced-physics-destruction"],
     fixtures: ["advanced-physics-aerodynamics", "advanced-physics-destruction", "advanced-physics-drivetrain", "advanced-physics-foundation", "advanced-physics-joints", "advanced-physics-wheels"],
     gates: ["advanced-physics-aerodynamics", "advanced-physics-destruction", "advanced-physics-drivetrain", "advanced-physics-joints", "advanced-physics-wheels", "physics-self-verification"],
     irComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
@@ -120,6 +121,11 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
     physicsDescriptorDrift({ ...consumers, bevyFields: consumers.bevyFields.filter((field) => field !== "Destructible.impactFilter") })
       .includes("Destructible missing bevyFields:Destructible.impactFilter"),
     "removing one native public-field consumer must fail descriptor drift",
+  );
+  assert.ok(
+    physicsDescriptorDrift({ ...consumers, cookbookEntries: consumers.cookbookEntries.filter((entry) => entry !== "advanced-physics-destruction") })
+      .includes("Destructible missing cookbookEntries:advanced-physics-destruction"),
+    "removing a descriptor-owned cookbook entry must fail descriptor drift",
   );
   for (const [group, values] of Object.entries(consumers)) {
     for (const value of values) {
@@ -170,6 +176,9 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     readFile(resolve(root, "packages/ir/fixtures/conformance/fixture-catalog.json"), "utf8"),
   ]);
   const catalog = JSON.parse(catalogSource) as { fixtures: Array<{ aggregateGate: string; bundlePath: string; canonicalId: string }> };
+  const cookbookEntries = (await readdir(resolve(root, "docs/cookbook")))
+    .filter((file) => file.endsWith(".md"))
+    .map((file) => file.slice(0, -3));
   for (const descriptor of PHYSICS_CAPABILITY_DESCRIPTORS) {
     if (!("fixture" in descriptor)) continue;
     const fixture = catalog.fixtures.find((candidate) => candidate.canonicalId === descriptor.fixture);
@@ -237,6 +246,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     bevyRuntimeServices: services.filter((service) => mutationServices.has(service) ? nativeEffects.includes(`\"${service}\"`) : nativeContext.includes(`\"${service}\"`)),
     bevyVisualComponents: nativeVehicle.includes("observe_physics_vehicle_visuals") && nativeLib.includes("fn sync_physics_vehicle_visuals(") && nativeVisualSyncCount >= 2 ? ["WheelAssembly"] : [],
     compilerComponents: PHYSICS_CAPABILITY_DESCRIPTORS.filter((descriptor) => "compilerComponent" in descriptor && compilerPhysics.includes(`components.${descriptor.component}`)).map((descriptor) => descriptor.component),
+    cookbookEntries,
     fixtures,
     gates,
     irComponents: PHYSICS_CAPABILITY_DESCRIPTORS.filter((descriptor) => irTypes.includes(`${descriptor.component}?: I`)).map((descriptor) => descriptor.component),

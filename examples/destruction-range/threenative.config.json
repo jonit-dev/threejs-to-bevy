@@ -1,0 +1,41 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/destruction-range.bundle",
+  "production": {
+    "archetype": "destruction",
+    "playableLoop": "Fire a high-speed projectile into a bonded target wall, observe regional breakage, and wait for debris to settle.",
+    "controls": ["automatic projectile launch", "keyboard.KeyR"],
+    "objective": "Cause an impact above the fracture threshold, break only the impacted region, and reach a settled debris state.",
+    "progression": "DestructionState records armed, impact, regional-break, settled, and retry states.",
+    "failRetry": "A missed shot remains armed; KeyR emits a retry request and clears objective state while the scenario runner supplies the fresh physics world.",
+    "feedbackMoments": ["projectile launch", "CCD impact", "bond break", "debris motion", "sleeping settle"],
+    "assetPlan": {
+      "playerHero": "high-speed authored projectile",
+      "obstacleEnemy": "Blender-authored beveled concrete target blocks with warning stripes",
+      "rewardInteractable": "regional fracture result",
+      "worldEnvironment": "authored range floor, lighting, and camera",
+      "uiHud": "DestructionState-backed impact telemetry",
+      "audioFeedback": "goal-ping source cue"
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/range.ts",
+        "export": "updateDestructionRange",
+        "ownsState": ["DestructionState"],
+        "referencedBy": ["content/systems/arena.systems.json"]
+      }
+    ],
+    "proofCommands": [
+      "tn generator run destruction.target-block --project . --json",
+      "tn asset inspect assets/generated/destruction.target-block.glb --json",
+      "tn model-test assets/generated/destruction.target-block.glb --json",
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/projectile-threshold.playtest.json --json",
+      "tn playtest --project . --target desktop --scenario playtests/projectile-threshold.playtest.json --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

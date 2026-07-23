@@ -1,0 +1,38 @@
+{
+  "schema": "threenative.project",
+  "version": "0.1.0",
+  "entry": "content/scenes/arena.scene.json",
+  "outDir": "dist/aerodynamics-flight-course.bundle",
+  "production": {
+    "archetype": "flight",
+    "playableLoop": "Accelerate along the runway, take off through gusts, recover from a commanded stall, and land.",
+    "controls": ["keyboard.KeyW", "keyboard.ArrowUp", "keyboard.ArrowDown", "keyboard.KeyR"],
+    "objective": "Complete takeoff, stall, recovery, and landing in order.",
+    "progression": "FlightState records the four ordered flight phases and retry count.",
+    "failRetry": "A failed recovery can be restarted with KeyR, which resets the craft pose, velocity, and FlightState.",
+    "feedbackMoments": ["runway acceleration", "lift-off", "gust response", "stall", "recovery", "landing"],
+    "assetPlan": {
+      "playerHero": "Repository-supplied Douglas SBD-3 GLB with authored propeller and flap animation clips",
+      "obstacleEnemy": "authored gust volumes and stall envelope",
+      "rewardInteractable": "landing runway",
+      "worldEnvironment": "authored runway, wind markers, lighting, and aerodynamic volumes",
+      "uiHud": "FlightState-backed phase telemetry",
+      "audioFeedback": "goal-ping source cue"
+    },
+    "scriptModules": [
+      {
+        "module": "src/scripts/flight.ts",
+        "export": "updateFlightCourse",
+        "ownsState": ["FlightState"],
+        "referencedBy": ["content/systems/arena.systems.json"]
+      }
+    ],
+    "proofCommands": [
+      "tn authoring validate --project . --json",
+      "tn build --project . --json",
+      "tn playtest --project . --scenario playtests/flight-course.playtest.json --json",
+      "tn playtest --project . --target desktop --scenario playtests/flight-course.playtest.json --json"
+    ]
+  },
+  "template": "structured-source-starter"
+}

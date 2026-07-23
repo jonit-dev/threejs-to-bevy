@@ -1,0 +1,25 @@
+{
+  "schema": "threenative.archetype",
+  "version": "0.1.0",
+  "kind": "game-archetype",
+  "id": "top-down",
+  "label": "Top-down",
+  "summary": "Compact arena or collector games with cardinal movement.",
+  "controls": ["keyboard.KeyA", "keyboard.KeyD", "keyboard.ArrowLeft", "keyboard.ArrowRight"],
+  "script": {
+    "module": "src/scripts/player.ts",
+    "exportName": "movePlayerToGoal",
+    "responsibility": "cardinal player movement and arena camera framing"
+  },
+  "lookProfile": {
+    "camera": "orthographic top-down follow",
+    "movementPlane": "ground-xz",
+    "renderLook": "cinematic"
+  },
+  "probe": {
+    "name": "smoke-movement",
+    "path": "playtests/smoke-movement.playtest.json",
+    "press": "KeyD",
+    "axis": "x"
+  }
+}

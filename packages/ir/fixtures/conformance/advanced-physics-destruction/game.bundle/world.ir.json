@@ -3,27 +3,232 @@
   "version": "0.1.0",
   "entities": [
     {
+      "id": "camera.main",
+      "components": {
+        "Camera": {
+          "kind": "perspective",
+          "fovY": 50,
+          "near": 0.1,
+          "far": 100
+        },
+        "Transform": {
+          "position": [0, 3, 10],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "light.key",
+      "components": {
+        "Light": {
+          "kind": "directional",
+          "color": "#fff4df",
+          "intensity": 2.5
+        },
+        "Transform": {
+          "position": [4, 8, 6],
+          "rotation": [-0.25, 0.35, 0.1, 0.895],
+          "scale": [1, 1, 1]
+        }
+      }
+    },
+    {
+      "id": "ground",
+      "components": {
+        "Transform": {
+          "position": [0, -0.25, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [12, 0.5, 12],
+          "layer": "world",
+          "mask": ["destructible", "projectile"]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.ground",
+          "material": "mat.ground",
+          "receiveShadow": true
+        }
+      }
+    },
+    {
       "id": "wall",
       "components": {
-        "Transform": { "position": [0, 2, 0] },
-        "RigidBody": { "kind": "dynamic", "mass": 80, "gravityScale": 0 },
-        "Collider": { "kind": "box", "size": [4, 4, 0.5], "layer": "destructible", "mask": ["projectile"] },
+        "Transform": {
+          "position": [0, 2, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 80,
+          "gravityScale": 0
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [4, 4, 0.5],
+          "layer": "destructible",
+          "mask": ["projectile"]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.wall",
+          "material": "mat.wall",
+          "castShadow": true,
+          "receiveShadow": true
+        },
         "Destructible": {
           "fractureManifest": "fractures/wall.main.json",
           "activationBudget": 4,
           "maxDepth": 2,
           "cleanupPolicy": "sleep",
-          "impactFilter": { "minImpulse": 5, "layers": ["projectile"] }
+          "impactFilter": {
+            "minImpulse": 5,
+            "layers": ["projectile"]
+          }
+        }
+      }
+    },
+    {
+      "id": "wall/piece.northwest",
+      "components": {
+        "Transform": {
+          "position": [-1, 3, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.wall-piece",
+          "material": "mat.wall",
+          "castShadow": true,
+          "receiveShadow": true,
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "wall/piece.northeast",
+      "components": {
+        "Transform": {
+          "position": [1, 3, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.wall-piece",
+          "material": "mat.wall",
+          "castShadow": true,
+          "receiveShadow": true,
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "wall/piece.southwest",
+      "components": {
+        "Transform": {
+          "position": [-1, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.wall-piece",
+          "material": "mat.wall",
+          "castShadow": true,
+          "receiveShadow": true,
+          "visible": false
+        }
+      }
+    },
+    {
+      "id": "wall/piece.southeast",
+      "components": {
+        "Transform": {
+          "position": [1, 1, 0],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.wall-piece",
+          "material": "mat.wall",
+          "castShadow": true,
+          "receiveShadow": true,
+          "visible": false
         }
       }
     },
     {
       "id": "projectile",
       "components": {
-        "Transform": { "position": [0, 2, 3] },
-        "RigidBody": { "kind": "dynamic", "mass": 2, "gravityScale": 0, "velocity": [0, 0, -10] },
-        "Collider": { "kind": "sphere", "radius": 0.2, "layer": "projectile", "mask": ["destructible"] }
+        "Transform": {
+          "position": [-1, 3, 3],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 2,
+          "gravityScale": 0,
+          "ccd": {
+            "enabled": true,
+            "mode": "linear"
+          },
+          "velocity": [0, 0, -10]
+        },
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.2,
+          "layer": "projectile",
+          "mask": ["destructible"]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.projectile",
+          "material": "mat.projectile",
+          "castShadow": true
+        }
+      }
+    },
+    {
+      "id": "projectile.fast",
+      "components": {
+        "Transform": {
+          "position": [1, 3, 20],
+          "rotation": [0, 0, 0, 1],
+          "scale": [1, 1, 1]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 4,
+          "gravityScale": 0,
+          "ccd": {
+            "enabled": true,
+            "mode": "linear"
+          },
+          "velocity": [0, 0, -40]
+        },
+        "Collider": {
+          "kind": "sphere",
+          "radius": 0.2,
+          "layer": "projectile",
+          "mask": ["destructible"]
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.projectile",
+          "material": "mat.projectile",
+          "castShadow": true
+        }
       }
     }
-  ]
+  ],
+  "events": {},
+  "resources": {
+    "ActiveCamera": {
+      "entity": "camera.main"
+    }
+  }
 }

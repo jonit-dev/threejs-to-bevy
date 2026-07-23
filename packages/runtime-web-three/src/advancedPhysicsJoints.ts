@@ -1,6 +1,7 @@
 import type { IWorldEntity, IWorldIr } from "@threenative/ir";
 
 import { applyLivePhysicsAtPoint, disposePhysicsRuntime, initializePhysicsRuntime, observePhysicsJointLoads, physicsRuntimeStats, preparePhysicsRuntime, stepPhysics } from "./physics.js";
+import { collectPhysicsDebugCore } from "./physicsDebug.js";
 import type { IPhysicsJointBreakEvent, IPhysicsJointLoadObservation } from "./physicsJoints.js";
 
 type JointKind = NonNullable<IWorldEntity["components"]["PhysicsJoint"]>["kind"];
@@ -18,6 +19,7 @@ export interface IAdvancedPhysicsJointTrace {
   bundleHash: string;
   fixture: "advanced-physics-joints";
   fixedDt: number;
+  debugEvidence: Array<{ category: string; id: string; kind: string }>;
   loadRamp: {
     events: Array<{ observation: IPhysicsJointBreakEvent; tick: number }>;
     removedAtTick: number;
@@ -50,6 +52,7 @@ export async function traceAdvancedPhysicsJoints(input: {
   const perKindWorld = structuredClone(input.world);
   for (let step = 0; step < input.scenarios.perKind.settleSteps; step += 1) stepPhysics(perKindWorld, input.scenarios.fixedDt);
   const perKind = observationsFor(perKindWorld, input.scenarios.perKind.jointIds);
+  const debugEvidence = collectPhysicsDebugCore(perKindWorld, { fixedDt: input.scenarios.fixedDt, maxPrimitives: 4096, tick: input.scenarios.perKind.settleSteps }).primitives.map(({ category, id, kind }) => ({ category, id, kind }));
 
   const loadRamp = traceLoadRamp(structuredClone(input.world), input.scenarios);
   const patchReconcile = tracePatchReconcile(structuredClone(input.world), input.scenarios);
@@ -58,6 +61,7 @@ export async function traceAdvancedPhysicsJoints(input: {
     bundleHash: input.bundleHash,
     fixture: "advanced-physics-joints",
     fixedDt: input.scenarios.fixedDt,
+    debugEvidence,
     loadRamp,
     patchReconcile,
     perKind,
@@ -84,8 +88,12 @@ function traceLoadRamp(world: IWorldIr, scenarios: IAdvancedPhysicsJointScenario
       tick += 1;
       stepPhysics(world, scenarios.fixedDt, undefined, { gravity: [0, 0, 0] });
       const observation = observePhysicsJointLoads(world).find((candidate) => candidate.entity === scenarios.loadRamp.joint);
-      if (observation !== undefined) lastObservation = observation;
-      else if (removedAtTick < 0) removedAtTick = tick;
+      if (observation !== undefined) {
+        lastObservation = observation;
+        if (!observation.active && removedAtTick < 0) removedAtTick = tick;
+      } else if (removedAtTick < 0) {
+        removedAtTick = tick;
+      }
       const breaks = world.events?.JointBreakEvent as IPhysicsJointBreakEvent[] | undefined;
       for (const event of breaks ?? []) events.push({ observation: event, tick });
     }

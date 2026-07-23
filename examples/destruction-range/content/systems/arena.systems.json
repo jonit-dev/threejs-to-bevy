@@ -1,0 +1,19 @@
+{
+  "schema": "threenative.systems",
+  "version": "0.1.0",
+  "id": "destruction-range-systems",
+  "systems": [
+    {
+      "id": "destruction-range-objective",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/range.ts",
+        "export": "updateDestructionRange"
+      },
+      "reads": ["RigidBody"],
+      "writes": ["Transform"],
+      "resourceReads": ["DestructionState"],
+      "resourceWrites": ["DestructionState"]
+    }
+  ]
+}

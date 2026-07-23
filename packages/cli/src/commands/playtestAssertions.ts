@@ -184,6 +184,8 @@ export interface IPlaytestObservations {
   effectLog?: unknown;
   hud: Record<string, { after?: unknown; before?: unknown }>;
   network: Array<{ method: string; url: string }>;
+  physicsDebug?: unknown;
+  physicsDebugSeries?: Array<{ label: string; snapshot: unknown; tick: number }>;
   resources: Record<string, { after?: unknown; before?: unknown }>;
   runtimeObservations?: unknown;
   runtimeDiagnostics?: unknown;

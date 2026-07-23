@@ -1286,7 +1286,9 @@ impl NativeDestructionState {
                     if let Some(native) = self.pieces.get(&key)
                         && let Some(body) = world.bodies.get_mut(native.handle)
                     {
-                        body.sleep();
+                        body.set_body_type(RigidBodyType::Fixed, true);
+                        body.set_linvel(vector![0.0, 0.0, 0.0].into(), false);
+                        body.set_angvel(vector![0.0, 0.0, 0.0].into(), false);
                     }
                 }
                 PieceLifecycle::Bound => {}

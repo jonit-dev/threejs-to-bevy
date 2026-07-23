@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -39,6 +39,28 @@ test("validateScene accepts a valid structured scene document", async () => {
 
     assert.equal(result.ok, true);
     assert.equal(result.changed, false);
+    assert.deepEqual(result.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("validateScene accepts runtime-derived hierarchical entity ids", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-hierarchical-id-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "scene.destruction",
+      entities: [
+        { id: "wall" },
+        { id: "wall/piece.northwest", components: { Hierarchy: { parent: "wall" } } },
+      ],
+    });
+
+    const result = await validateScene({ projectPath: root, sceneId: "scene.destruction" });
+
+    assert.equal(result.ok, true);
     assert.deepEqual(result.diagnostics, []);
   } finally {
     await rm(root, { force: true, recursive: true });
@@ -291,6 +313,44 @@ test("scene mutations validate before writing deterministic source", async () =>
     const validation = await validateScene({ projectPath: root, sceneId: "scene.arena" });
     assert.equal(validation.ok, true);
     assert.deepEqual(validation.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("setTransform preserves component-style scenes without duplicate transform schemas", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-scene-component-transform-"));
+  try {
+    await writeScene(root, {
+      schema: "threenative.scene",
+      version: "0.1.0",
+      id: "scene.component-transform",
+      entities: [
+        {
+          id: "player",
+          components: {
+            Transform: { position: [0, 1, 0], rotation: [0, 0, 0, 1] },
+          },
+        },
+        { id: "checkpoint", components: {} },
+      ],
+    });
+
+    const result = await setTransform({
+      projectPath: root,
+      sceneId: "scene.component-transform",
+      entityId: "checkpoint",
+      position: [4, 2, 1],
+    });
+
+    assert.equal(result.ok, true);
+    const scene = JSON.parse(await readFile(join(root, "content", "scenes", "arena.scene.json"), "utf8")) as {
+      entities: Array<{ id: string; transform?: unknown; components?: { Transform?: unknown } }>;
+    };
+    const checkpoint = scene.entities.find((entity) => entity.id === "checkpoint");
+    assert.equal(checkpoint?.transform, undefined);
+    assert.deepEqual(checkpoint?.components?.Transform, { position: [4, 2, 1] });
+    assert.equal((await validateScene({ projectPath: root, sceneId: "scene.component-transform" })).ok, true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

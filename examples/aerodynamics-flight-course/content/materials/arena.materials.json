@@ -1,0 +1,53 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "id": "arena-materials",
+  "materials": [
+    {
+      "id": "mat.floor",
+      "color": "#111827",
+      "emissive": "#0ea5e9",
+      "emissiveIntensity": 0.08,
+      "metalness": 0.08,
+      "roughness": 0.62
+    },
+    {
+      "id": "mat.player",
+      "color": "#22d3ee",
+      "emissive": "#0891b2",
+      "emissiveIntensity": 0.25,
+      "metalness": 0.15,
+      "roughness": 0.38
+    },
+    {
+      "id": "mat.goal",
+      "color": "#facc15",
+      "emissive": "#f97316",
+      "emissiveIntensity": 0.35,
+      "metalness": 0.05,
+      "roughness": 0.42
+    },
+    {
+      "id": "mat.runway",
+      "color": "#334155",
+      "metalness": 0.04,
+      "roughness": 0.9
+    },
+    {
+      "id": "mat.craft",
+      "color": "#f97316",
+      "emissive": "#7c2d12",
+      "emissiveIntensity": 0.1,
+      "metalness": 0.35,
+      "roughness": 0.3
+    },
+    {
+      "id": "mat.wind",
+      "color": "#38bdf8",
+      "emissive": "#0284c7",
+      "emissiveIntensity": 0.3,
+      "metalness": 0,
+      "roughness": 0.4
+    }
+  ]
+}

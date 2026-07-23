@@ -1083,6 +1083,17 @@ export async function validateGeneratorDocument(file: string, data: unknown, pro
       const recipe = JSON.parse(await readFile(recipeRealPath, "utf8")) as unknown;
       diagnostics.push(...validateBlenderRecipe(data.recipe, recipe));
       if (isRecord(recipe) && recipe.id !== data.id) diagnostics.push(blenderRecipeDiagnostic(data.recipe, "/id", "TN_AUTHORING_BLENDER_RECIPE_ID_MISMATCH", "Blender recipe id must match its generator provenance id.", recipe.id, [String(data.id)]));
+      if (isRecord(recipe) && typeof recipe.source === "string" && diagnostics.every((diagnostic) => diagnostic.path !== "/source")) {
+        try {
+          const sourceRealPath = await realpath(resolve(projectPath, recipe.source));
+          const sourceRelativePath = normalizeRelativePath(relative(projectRealPath, sourceRealPath));
+          if (sourceRelativePath.startsWith("../") || sourceRelativePath === "..") {
+            diagnostics.push(blenderRecipeDiagnostic(data.recipe, "/source", "TN_AUTHORING_BLENDER_RECIPE_SOURCE_PATH_INVALID", "Blender recipe source must not escape the project through a symbolic link.", recipe.source, ["project-local GLB below assets/"]));
+          }
+        } catch (error) {
+          diagnostics.push(blenderRecipeDiagnostic(data.recipe, "/source", "TN_AUTHORING_BLENDER_RECIPE_SOURCE_READ_FAILED", `Could not read Blender recipe source '${recipe.source}'.`, error instanceof Error ? error.message : String(error), ["existing project-local GLB below assets/"]));
+        }
+      }
     } catch (error) {
       diagnostics.push(authoringDiagnostic({ code: "TN_AUTHORING_BLENDER_RECIPE_READ_FAILED", file: data.recipe, message: `Could not read Blender recipe '${data.recipe}'.`, value: error instanceof Error ? error.message : String(error), fix: { instruction: "Restore the durable recipe file referenced by generator provenance.", allowed: [data.recipe] } }));
     }
@@ -1202,6 +1213,18 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   }
   validateLogicalId(diagnostics, file, "/id", data.id, "Blender recipe");
   const budgets = isRecord(data.budgets) ? data.budgets : {};
+  const sourceMode = data.source !== undefined;
+  if (sourceMode) {
+    validateBlenderSourcePath(diagnostics, file, "/source", data.source);
+    for (const field of ["materials", "parts", "operations"] as const) {
+      if (data[field] !== undefined) {
+        diagnostics.push(blenderRecipeDiagnostic(file, `/${field}`, "TN_AUTHORING_BLENDER_RECIPE_SOURCE_MODE_INVALID", `Source-backed Blender recipes cannot declare '${field}'.`, data[field], ["source", "animations", "budgets"]));
+      }
+    }
+    if (!Array.isArray(data.animations) || data.animations.length === 0) {
+      diagnostics.push(typeDiagnostic(file, "/animations", "Source-backed Blender recipes must declare at least one animation clip.", data.animations));
+    }
+  }
 
   const materials = Array.isArray(data.materials) ? data.materials : [];
   if (data.materials !== undefined && !Array.isArray(data.materials)) {
@@ -1229,7 +1252,7 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   });
 
   const parts = Array.isArray(data.parts) ? data.parts : [];
-  if (!Array.isArray(data.parts) || data.parts.length === 0) {
+  if (!sourceMode && (!Array.isArray(data.parts) || data.parts.length === 0)) {
     diagnostics.push(typeDiagnostic(file, "/parts", "Blender recipe parts must be a non-empty array.", data.parts));
   }
   const partIds = new Set<string>();
@@ -1267,7 +1290,7 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   if (parts.length > maxParts) diagnostics.push(blenderBudgetDiagnostic(file, "/parts", "parts", parts.length, maxParts));
   if (materials.length > maxMaterials) diagnostics.push(blenderBudgetDiagnostic(file, "/materials", "materials", materials.length, maxMaterials));
 
-  const operationNodes = validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
+  const operationNodes = sourceMode ? undefined : validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
   validateBlenderAnimations(diagnostics, file, data.animations, operationNodes, budgets);
   const estimatedPolygons = estimateBlenderRecipePolygons(parts);
   const maxPolygons = blenderRequestedLimit(budgets, "maxPolygons");
@@ -1382,7 +1405,7 @@ function estimateBlenderRecipePolygons(parts: unknown[]): number {
   return total;
 }
 
-function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string>, budgets: Record<string, unknown>): void {
+function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string> | undefined, budgets: Record<string, unknown>): void {
   if (value === undefined) return;
   if (!Array.isArray(value)) {
     diagnostics.push(typeDiagnostic(file, "/animations", "Blender recipe animations must be an array.", value));
@@ -1410,8 +1433,25 @@ function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: st
       const trackPath = `${path}/tracks/${trackIndex}`;
       if (!isRecord(track)) { diagnostics.push(typeDiagnostic(file, trackPath, "Animation track must be an object.", track)); return; }
       diagnostics.push(...unknownBlenderKeys(file, trackPath, track, blenderRecipeAnimationTrackKeys));
-      if (typeof track.node !== "string" || !partIds.has(track.node)) diagnostics.push(blenderRecipeDiagnostic(file, `${trackPath}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Animation track node must reference a declared part.", track.node, [...partIds]));
+      if (partIds === undefined) {
+        if (typeof track.node !== "string" || track.node.length === 0 || track.node.length > 128 || /[\u0000-\u001f]/u.test(track.node)) diagnostics.push(blenderRecipeDiagnostic(file, `${trackPath}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Source-backed animation track node must be an exact non-empty imported node name of at most 128 characters.", track.node, ["exact imported node name"]));
+      } else if (typeof track.node !== "string" || !partIds.has(track.node)) {
+        diagnostics.push(blenderRecipeDiagnostic(file, `${trackPath}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Animation track node must reference a declared part.", track.node, [...partIds]));
+      }
       validateEnumString(diagnostics, file, `${trackPath}/property`, track.property, supportedBlenderAnimationProperties, "animation property", "Use 'position', 'rotation', or 'scale'.");
+      if (track.pivot !== undefined) {
+        if (partIds !== undefined || track.property !== "rotation") {
+          diagnostics.push(blenderRecipeDiagnostic(
+            file,
+            `${trackPath}/pivot`,
+            "TN_AUTHORING_BLENDER_RECIPE_ANIMATION_PIVOT_INVALID",
+            "Animation pivots are supported only for source-backed rotation tracks.",
+            track.pivot,
+            ["source-backed rotation track pivot"],
+          ));
+        }
+        validateBlenderVec3(diagnostics, file, `${trackPath}/pivot`, track.pivot, true, false);
+      }
       const trackKey = `${String(track.node)}:${String(track.property)}`;
       if (trackKeys.has(trackKey)) diagnostics.push(blenderRecipeDiagnostic(file, trackPath, "TN_AUTHORING_BLENDER_RECIPE_ANIMATION_TRACK_DUPLICATE", "Animation clip may contain only one track per node property.", trackKey, ["unique node/property tracks"]));
       trackKeys.add(trackKey);
@@ -1461,6 +1501,10 @@ function rejectUnsafeBlenderRecipeFields(diagnostics: IAuthoringDiagnostic[], fi
 
 function validateBlenderRecipePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
   if (typeof value !== "string" || !/^content\/generators\/[a-z][a-z0-9._-]*\.recipe\.json$/.test(value) || value.includes("..")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", "Blender recipe path must be contained under content/generators/ and end in .recipe.json.", value, ["content/generators/<generator-id>.recipe.json"]));
+}
+
+function validateBlenderSourcePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (typeof value !== "string" || !/^assets\/(?!generated\/)[A-Za-z0-9._/-]+\.glb$/u.test(value) || value.includes("..") || value.includes("\\")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_SOURCE_PATH_INVALID", "Blender recipe source must be a project-local GLB below assets/ and outside assets/generated/.", value, ["assets/source/<asset>.glb", "assets/imported/<asset>.glb"]));
 }
 
 function validateBlenderOutputPath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {

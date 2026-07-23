@@ -1,0 +1,42 @@
+{
+  "schema": "threenative.meshes",
+  "version": "0.1.0",
+  "id": "arena-meshes",
+  "meshes": [
+    {
+      "id": "mesh.player",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.goal",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.floor",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.runway",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.fuselage",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    },
+    {
+      "id": "mesh.wing",
+      "kind": "primitive",
+      "primitive": "box"
+    },
+    {
+      "id": "mesh.marker",
+      "kind": "primitive",
+      "primitive": "box"
+    }
+  ]
+}

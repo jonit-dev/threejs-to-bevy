@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use threenative_loader::load_bundle;
 use threenative_runtime::physics::{
-    dispose_native_physics_runtime, ensure_native_physics_runtime,
+    dispose_native_physics_runtime, ensure_native_physics_runtime, inspect_cached_physics_debug,
     inspect_cached_physics_destruction, queue_cached_physics_destruction_damage,
     step_bundle_physics_with_script_poses,
 };
@@ -12,6 +12,49 @@ use threenative_runtime::physics_destruction::{
     FractureBudgets, FractureCleanup, FractureManifest, FracturePiece, FracturePieceCollider,
     FractureSource, ImpactFilter, OverflowPolicy, PieceLifecycle,
 };
+use threenative_runtime::systems_host::{
+    NativeGameLoopRunOptions, NativeGameLoopState, run_native_systems_frame_with_input,
+};
+
+#[test]
+fn native_game_loop_should_advance_projectiles_and_fracture_from_contact() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let mut state = NativeGameLoopState::new(false);
+
+    for _ in 0..120 {
+        run_native_systems_frame_with_input(
+            &mut bundle,
+            &mut state,
+            NativeGameLoopRunOptions {
+                delta: 1.0 / 60.0,
+                fixed_delta: 1.0 / 60.0,
+                input: None,
+                paused: false,
+            },
+            step_bundle_physics_with_script_poses,
+        )
+        .expect("native game loop should advance");
+    }
+
+    let projectile = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "projectile")
+        .and_then(|entity| entity.components.transform.as_ref())
+        .and_then(|transform| transform.position)
+        .expect("projectile should retain a transform");
+    assert!(projectile[2] < 3.0, "{projectile:?}");
+    let destruction = inspect_cached_physics_destruction(&state.script_posed_entities)
+        .expect("native game loop should retain destruction state");
+    assert!(destruction.pieces.iter().any(|piece| matches!(
+        piece.lifecycle,
+        PieceLifecycle::Active | PieceLifecycle::Sleeping
+    )));
+    assert!(!destruction.assemblies[0].intact_collision_active);
+}
 
 #[test]
 fn activated_pieces_should_use_retained_bodies_with_conserved_mass_and_stable_handles() {
@@ -95,6 +138,53 @@ fn activated_pieces_should_use_retained_bodies_with_conserved_mass_and_stable_ha
         .map(|piece| piece.mass * piece.linear_velocity[0])
         .sum::<f32>();
     assert!((momentum_x - 160.0).abs() < 0.5);
+    assert_eq!(
+        bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == "wall")
+            .and_then(|entity| entity.components.mesh_renderer.as_ref())
+            .and_then(|renderer| renderer.visible),
+        Some(false)
+    );
+    for piece in &observation.pieces {
+        let visual_id = format!("{}/{}", piece.assembly, piece.piece);
+        let visual = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == visual_id)
+            .expect("canonical fixture should provide a visual entity for every piece");
+        assert_eq!(
+            visual
+                .components
+                .mesh_renderer
+                .as_ref()
+                .and_then(|renderer| renderer.visible),
+            Some(true)
+        );
+        assert_eq!(
+            visual
+                .components
+                .transform
+                .as_ref()
+                .and_then(|transform| transform.position),
+            Some(piece.position)
+        );
+    }
+    let debug = inspect_cached_physics_debug(&bundle, &runtime)
+        .expect("retained destruction debug snapshot should exist");
+    assert!(
+        debug.artifact.primitives.iter().all(|primitive| {
+            !matches!(primitive.category.as_str(), "center-of-mass" | "sleep")
+                || !primitive
+                    .entity
+                    .as_deref()
+                    .is_some_and(|entity| entity.starts_with("wall/piece."))
+        }),
+        "piece bodies must use the dedicated destruction debug category"
+    );
 
     step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
     let next = inspect_cached_physics_destruction(&runtime).expect("observation should persist");
@@ -187,6 +277,10 @@ fn retained_contact_impulse_should_apply_normalized_damage_in_the_contact_tick()
     bundle
         .world
         .entities
+        .retain(|entity| entity.id != "projectile.fast");
+    bundle
+        .world
+        .entities
         .iter_mut()
         .find(|entity| entity.id == "projectile")
         .and_then(|entity| entity.components.transform.as_mut())
@@ -210,6 +304,11 @@ fn retained_contact_impulse_should_apply_normalized_damage_in_the_contact_tick()
                             .and_then(|cause| cause.get("kind"))
                             .and_then(serde_json::Value::as_str)
                             == Some("contact")
+                        && event
+                            .get("cause")
+                            .and_then(|cause| cause.get("entity"))
+                            .and_then(serde_json::Value::as_str)
+                            == Some("projectile")
                 })
             })
             .cloned()

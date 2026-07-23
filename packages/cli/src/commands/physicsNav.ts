@@ -17,24 +17,20 @@ export async function physicsCommand(argv: readonly string[], options: IPhysicsN
 
   if (subcommand === "fracture") return physicsFractureCommand(normalizedArgv.slice(1), options);
 
-  if (subcommand === "vehicle" || subcommand === "aerodynamics" || subcommand === "wind") {
-    const action = readPositional(normalizedArgv, 1);
-    const operationSceneId = readPositional(normalizedArgv, 2);
-    const operationEntityId = readPositional(normalizedArgv, 3);
-    const operationName = nestedPhysicsOperationName(subcommand, action);
-    const payloadFlag = subcommand === "vehicle" ? "--controller" : subcommand === "aerodynamics" ? "--body" : "--volume";
-    const payloadName = payloadFlag.slice(2);
-    const payload = parseJsonObjectFlag(normalizedArgv, payloadFlag, `TN_PHYSICS_${subcommand.toUpperCase()}_PAYLOAD_INVALID`);
-    if (payload.diagnostic !== undefined) return renderUsage(json, payload.diagnostic, `${payloadFlag} must be a JSON object.`);
-    if (operationName === undefined || operationSceneId === undefined || operationEntityId === undefined || (action === "add" && payload.value === undefined)) {
-      return renderUsage(json, `TN_PHYSICS_${subcommand.toUpperCase()}_ARGS_MISSING`, physicsUsage());
+  const nestedOperation = nestedPhysicsOperation(subcommand, readPositional(normalizedArgv, 1));
+  if (nestedOperation !== undefined) {
+    const parsed = parseNestedPhysicsArgs(normalizedArgv, nestedOperation);
+    if (parsed.diagnostic !== undefined) {
+      return renderUsage(json, parsed.diagnostic, renderAuthoringOperationCliUsage(nestedOperation.name) ?? physicsUsage());
     }
     const result = await dispatchAuthoringOperation({
-      args: { sceneId: operationSceneId, entityId: operationEntityId, ...(payload.value === undefined ? {} : { [payloadName]: payload.value }) },
-      name: operationName,
+      args: parsed.args,
+      name: nestedOperation.name,
       projectPath: resolveProjectPath(normalizedArgv, options.cwd),
     });
-    return renderSceneResult(result, json, result.ok ? `${subcommand} '${operationEntityId}' ${action} completed.` : `${subcommand} '${operationEntityId}' ${action} failed.`);
+    const entityId = typeof parsed.args.entityId === "string" ? parsed.args.entityId : "";
+    const action = nestedOperation.adapters?.cli?.path.at(-1) ?? "operation";
+    return renderSceneResult(result, json, result.ok ? `${subcommand} '${entityId}' ${action} completed.` : `${subcommand} '${entityId}' ${action} failed.`);
   }
 
   if (subcommand === "add-rigid-body") {
@@ -108,7 +104,32 @@ function physicsUsage(): string {
 }
 
 function physicsOperationNames(): string[] { return listAuthoringOperationDescriptors().filter((descriptor) => descriptor.adapters?.cli?.path[0] === "physics").map((descriptor) => descriptor.name); }
-function nestedPhysicsOperationName(group: string, action: string | undefined): string | undefined { return listAuthoringOperationDescriptors().find((descriptor) => descriptor.adapters?.cli?.path.join(" ") === `physics ${group} ${action ?? ""}`)?.name; }
+function nestedPhysicsOperation(group: string | undefined, action: string | undefined) {
+  return listAuthoringOperationDescriptors().find((descriptor) => descriptor.adapters?.cli?.path.join(" ") === `physics ${group ?? ""} ${action ?? ""}`);
+}
+
+function parseNestedPhysicsArgs(
+  argv: readonly string[],
+  operation: ReturnType<typeof listAuthoringOperationDescriptors>[number],
+): { args: Record<string, unknown>; diagnostic?: string } {
+  const args: Record<string, unknown> = {};
+  const cli = operation.adapters?.cli;
+  if (cli === undefined) return { args, diagnostic: "TN_PHYSICS_OPERATION_ADAPTER_MISSING" };
+  for (const binding of cli.arguments) {
+    const argument = operation.arguments.find((candidate) => candidate.name === binding.argument);
+    let value: unknown;
+    if (binding.positional !== undefined) {
+      value = readPositional(argv, binding.positional + 2);
+    } else if (binding.flag !== undefined && argument?.type === "json-object") {
+      const parsed = parseJsonObjectFlag(argv, binding.flag, `TN_PHYSICS_${binding.argument.toUpperCase()}_PAYLOAD_INVALID`);
+      if (parsed.diagnostic !== undefined) return { args, diagnostic: parsed.diagnostic };
+      value = parsed.value;
+    }
+    if (value !== undefined) args[binding.argument] = value;
+    else if (argument?.required) return { args, diagnostic: `TN_PHYSICS_${binding.argument.toUpperCase()}_ARGS_MISSING` };
+  }
+  return { args };
+}
 
 function navUsage(): string {
   return "Usage: tn nav add-agent <scene-id> <entity-id> [--move-x <axis>] [--move-z <axis>] [--speed <n>] [--slope-limit <n>] [--step-offset <n>] [--grounding <mode>] [--blocking <true|false>] [--project <path>] [--json]";

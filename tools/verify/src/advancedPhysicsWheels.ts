@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 
 import { PHYSICS_OBSERVATION_TOLERANCES, PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION, type IWheelAssemblyObservation, type IWorldIr } from "@threenative/ir";
 import { ADVANCED_PHYSICS_EVIDENCE_SCHEMA_VERSION, advancedPhysicsEvidenceMetadataDiagnostics } from "./advancedPhysicsEvidence.js";
+import { validateAdvancedPhysicsDebugEvidence, type AdvancedPhysicsDebugEvidence } from "./advancedPhysicsDebugEvidence.js";
 
 const root = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const gate = "advanced-physics-wheels";
@@ -44,6 +45,7 @@ type Scenario = {
   chassisRotation: Quat;
   chassisVelocity: Vec3;
   debugTelemetry?: unknown;
+  debugEvidence?: AdvancedPhysicsDebugEvidence[];
   initialSpeed?: number;
   speed: number;
   visuals: readonly Visual[];
@@ -72,6 +74,7 @@ export function validateAdvancedPhysicsWheelEvidence(web: AdvancedPhysicsWheelTr
   exact(web.authoredWheelIds, authoredWheelIds, "web/authoredWheelIds", "TN_VERIFY_PHYSICS_WHEEL_ORDER", diagnostics);
   exact(native.authoredWheelIds, authoredWheelIds, "native/authoredWheelIds", "TN_VERIFY_PHYSICS_WHEEL_ORDER", diagnostics);
   compareNumber(web.fixedDelta, native.fixedDelta, PHYSICS_OBSERVATION_TOLERANCES.distance, "fixedDelta", "TN_VERIFY_PHYSICS_WHEEL_FIXED_DELTA", diagnostics);
+  diagnostics.push(...validateAdvancedPhysicsDebugEvidence(gate, web.scenarios.staticLoad.debugEvidence ?? [], native.scenarios.staticLoad.debugEvidence ?? []));
 
   for (const name of ["staticLoad", "asphalt", "ice", "driveCausalNegative", "steering", "steeringCausalNegative", "braking", "brakingCausalNegative"] as const) {
     const webScenario = web.scenarios[name];
@@ -255,10 +258,16 @@ async function runWebScenario(runtime: Record<string, any>, sourceWorld: IWorldI
   if (options.driven === false) for (const wheel of assembly.wheels) wheel.driven = false;
   if (options.steering === false) for (const wheel of assembly.wheels) wheel.steering = false;
   if (options.braked === false) for (const wheel of assembly.wheels) wheel.braked = false;
+  const debugEvidenceByKey = new Map<string, AdvancedPhysicsDebugEvidence>();
   const step = (): void => {
     runtime.preparePhysicsRuntime(world);
     runtime.stepPhysicsVehicles(world, fixedDelta);
     runtime.stepPhysics(world, fixedDelta);
+    if (options.kind === "static" && ![...debugEvidenceByKey.values()].some((entry) => entry.category === "contact")) {
+      for (const { category, id, kind } of runtime.collectPhysicsDebugCore(world, { fixedDt: fixedDelta, maxPrimitives: 4096, tick: debugEvidenceByKey.size }).primitives as AdvancedPhysicsDebugEvidence[]) {
+        debugEvidenceByKey.set(`${category}\u0000${id}\u0000${kind}`, { category, id, kind });
+      }
+    }
   };
   let initialSpeed: number | undefined;
   if (options.kind === "braking") {
@@ -278,7 +287,8 @@ async function runWebScenario(runtime: Record<string, any>, sourceWorld: IWorldI
   const position = [...(chassis.components.Transform?.position ?? [0, 0, 0])] as Vec3;
   const rotation = [...(chassis.components.Transform?.rotation ?? [0, 0, 0, 1])] as Quat;
   const observation = runtime.observePhysicsVehicles(world)[0] as IWheelAssemblyObservation;
-  const scenario = { chassisAngularVelocity: angularVelocity, chassisPosition: position, chassisRotation: rotation, chassisVelocity: velocity, ...(options.kind === "static" ? { debugTelemetry: runtime.buildPhysicsVehicleDebugOverlay(world) } : {}), ...(initialSpeed === undefined ? {} : { initialSpeed }), speed: Math.abs(velocity[2]), visuals: runtime.observePhysicsVehicleVisuals(world, "chassis", 0.5) as Visual[], wheels: observation.wheels };
+  const debugEvidence = options.kind === "static" ? [...debugEvidenceByKey.values()] : undefined;
+  const scenario = { chassisAngularVelocity: angularVelocity, chassisPosition: position, chassisRotation: rotation, chassisVelocity: velocity, ...(options.kind === "static" ? { debugEvidence, debugTelemetry: runtime.buildPhysicsVehicleDebugOverlay(world) } : {}), ...(initialSpeed === undefined ? {} : { initialSpeed }), speed: Math.abs(velocity[2]), visuals: runtime.observePhysicsVehicleVisuals(world, "chassis", 0.5) as Visual[], wheels: observation.wheels };
   runtime.disposePhysicsVehicleRuntime(world);
   runtime.disposePhysicsRuntime(world);
   return scenario;

@@ -121,6 +121,64 @@ test("advanced physics operations reject invalid payloads and missing removals",
   } finally { await rm(root, { force: true, recursive: true }); }
 });
 
+test("advanced physics diagnostics round trip structured fixes through authoring operations", async () => {
+  const cases = [
+    {
+      code: "TN_IR_PHYSICS_COMPOUND_FIELD_UNSUPPORTED",
+      key: "compound",
+      value: { ...values.compound, backendHandle: 42 },
+    },
+    {
+      code: "TN_IR_PHYSICS_DESTRUCTIBLE_BOND_STRENGTH_INVALID",
+      key: "destructible",
+      value: { ...values.destructible, bondStrength: Number.NaN },
+    },
+    {
+      code: "TN_IR_PHYSICS_WHEEL_REFERENCE_INVALID",
+      key: "wheel",
+      value: { ...values.wheel, wheels: [{ ...values.wheel.wheels[0], tire: "missing-tire" }] },
+    },
+    {
+      code: "TN_IR_PHYSICS_DESTRUCTIBLE_BUDGET_INVALID",
+      key: "destructible",
+      value: { ...values.destructible, activationBudget: 257 },
+    },
+  ] as const;
+
+  for (const fixture of cases) {
+    const root = await project();
+    try {
+      const definition = PORTABLE_PHYSICS_AUTHORING_COMPONENTS[fixture.key];
+      const rejected = await dispatchAuthoringOperation({
+        args: { entityId: "body", sceneId: "arena", [definition.valueArgument]: fixture.value },
+        name: `${definition.operationPrefix}.add`,
+        projectPath: root,
+      });
+      assert.equal(rejected.ok, false);
+      const diagnostic = rejected.diagnostics.find((candidate) => candidate.code === fixture.code);
+      assert.ok(diagnostic, `Missing ${fixture.code}`);
+      assert.equal(diagnostic.fix?.cookbook, fixture.key === "destructible" ? "advanced-physics-destruction" : undefined);
+      assert.ok(diagnostic.fix?.snippet, `${fixture.code} must include a structured component fix`);
+      const fixedValue = JSON.parse(diagnostic.fix.snippet) as Record<string, unknown>;
+
+      const applied = await dispatchAuthoringOperation({
+        args: { entityId: "body", sceneId: "arena", [definition.valueArgument]: fixedValue },
+        name: `${definition.operationPrefix}.set`,
+        projectPath: root,
+      });
+      assert.equal(applied.ok, true, JSON.stringify(applied.diagnostics));
+      const inspected = await dispatchAuthoringOperation({
+        args: { entityId: "body", sceneId: "arena" },
+        name: `${definition.operationPrefix}.inspect`,
+        projectPath: root,
+      });
+      assert.deepEqual((inspected as unknown as Record<string, unknown>)[definition.resultField], fixedValue);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
+  }
+});
+
 test("advanced physics validate should scope diagnostics to the requested declaration", async () => {
   const root = await project();
   try {
@@ -138,12 +196,63 @@ test("advanced physics validate should scope diagnostics to the requested declar
   } finally { await rm(root, { force: true, recursive: true }); }
 });
 
+test("advanced physics operations accept the generated structured-source transform owner", async () => {
+  const root = await project();
+  try {
+    const path = join(root, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(path, "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string; transform?: Record<string, unknown> }>;
+    };
+    const body = scene.entities.find((entity) => entity.id === "body")!;
+    body.transform = body.components!.Transform as Record<string, unknown>;
+    delete body.components!.Transform;
+    await writeFile(path, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const added = await dispatchAuthoringOperation({
+      args: { assembly: values.wheel, entityId: "body", sceneId: "arena" },
+      name: "physics.wheel.add",
+      projectPath: root,
+    });
+
+    assert.equal(added.ok, true, JSON.stringify(added.diagnostics));
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
+test("advanced physics operations resolve compact prefab instance references", async () => {
+  const root = await project();
+  try {
+    const path = join(root, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(path, "utf8")) as {
+      entities: Array<{ components?: Record<string, unknown>; id: string }>;
+      instances?: Array<{ components?: Record<string, unknown>; id: string; prefab: string; transform?: Record<string, unknown> }>;
+      prefabs?: Array<{ id: string; primitive: string }>;
+    };
+    const tire = scene.entities.find((entity) => entity.id === "tire")!;
+    const visual = scene.entities.find((entity) => entity.id === "wheel-visual")!;
+    scene.entities = scene.entities.filter((entity) => entity !== tire && entity !== visual);
+    scene.prefabs = [{ id: "prefab.goal", primitive: "box" }];
+    scene.instances = [
+      { components: tire.components, id: tire.id, prefab: "prefab.goal", transform: { position: [0, 0, 0] } },
+      { components: visual.components, id: visual.id, prefab: "prefab.goal", transform: { position: [0, 0, 0] } },
+    ];
+    await writeFile(path, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const added = await dispatchAuthoringOperation({
+      args: { assembly: values.wheel, entityId: "body", sceneId: "arena" },
+      name: "physics.wheel.add",
+      projectPath: root,
+    });
+
+    assert.equal(added.ok, true, JSON.stringify(added.diagnostics));
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
 async function project(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-advanced-physics-ops-"));
   await mkdir(join(root, "content/scenes"), { recursive: true });
   await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
     entities: [
-      { components: { RigidBody: { kind: "dynamic", mass: 100 }, Transform: { position: [0, 0, 0] } }, id: "body" },
+      { components: { CompoundCollider: values.compound, RigidBody: { kind: "dynamic", mass: 100 }, Transform: { position: [0, 0, 0] } }, id: "body" },
       { components: { RigidBody: { kind: "static" }, Transform: { position: [0, 0, 0] } }, id: "anchor" },
       { components: { TireModel: { lateralSlipCurve: [{ grip: 1, slip: 0 }, { grip: 1, slip: 1 }], loadSensitivity: 0, longitudinalSlipCurve: [{ grip: 1, slip: 0 }, { grip: 1, slip: 1 }], rollingResistance: 0 }, Transform: { position: [0, 0, 0] } }, id: "tire" },
       { id: "wheel-visual" },

@@ -7,8 +7,9 @@ import { fileURLToPath } from "node:url";
 
 import type { IAerodynamicObservation, IWorldIr, Vec3 } from "@threenative/ir";
 import { PHYSICS_OBSERVATION_TOLERANCES, PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION } from "@threenative/ir";
-import { disposePhysicsAerodynamics, disposePhysicsRuntime, initializePhysicsRuntime, preparePhysicsRuntime, setPhysicsAerodynamicInputs, stepPhysics, stepPhysicsAerodynamics } from "@threenative/runtime-web-three";
+import { collectPhysicsDebugCore, disposePhysicsAerodynamics, disposePhysicsRuntime, initializePhysicsRuntime, preparePhysicsRuntime, setPhysicsAerodynamicInputs, stepPhysics, stepPhysicsAerodynamics } from "@threenative/runtime-web-three";
 import { advancedPhysicsEvidenceMetadataDiagnostics } from "./advancedPhysicsEvidence.js";
+import { validateAdvancedPhysicsDebugEvidence, type AdvancedPhysicsDebugEvidence } from "./advancedPhysicsDebugEvidence.js";
 
 const root = resolve(fileURLToPath(new URL("../../..", import.meta.url)));
 const fixtureDir = resolve(root, "packages/ir/fixtures/conformance/advanced-physics-aerodynamics/game.bundle");
@@ -26,7 +27,7 @@ interface ManeuverManifest { bounds: ManeuverBounds; checkpoints: number[]; pari
 interface ScenarioManifest { entity: string; fixedDt: number; maneuver: ManeuverManifest; samples: ScenarioSample[]; schema: string; version: string }
 interface TraceSample { input: TraceInput; label: string; observation: IAerodynamicObservation; tick: number }
 interface ManeuverCheckpoint { position: Vec3; stalled: boolean; tick: number; velocity: Vec3; windVelocity: Vec3 }
-interface ManeuverTrace { checkpoints: ManeuverCheckpoint[]; finalPosition: Vec3; finalVelocity: Vec3; groundContactTick?: number; landingTick?: number; maximumAirborneAltitude: number; recoveryTick?: number; stallTick?: number; takeoffTick?: number; windEntryTick?: number; windExitTick?: number }
+interface ManeuverTrace { checkpoints: ManeuverCheckpoint[]; debugEvidence: AdvancedPhysicsDebugEvidence[]; finalPosition: Vec3; finalVelocity: Vec3; groundContactTick?: number; landingTick?: number; maximumAirborneAltitude: number; recoveryTick?: number; stallTick?: number; takeoffTick?: number; windEntryTick?: number; windExitTick?: number }
 interface PlaytestSummary { finalPoses?: Array<{ entity?: string; position?: Vec3 }>; pass?: boolean; proofMetadata?: { bundleHash?: string; sourceHash?: string }; runtime?: string; scenario?: string; target?: string }
 export interface AerodynamicsTrace { bundleHash: string; fixedDt: number; fixture: string; maneuver: ManeuverTrace; maneuverBounds: ManeuverBounds; maneuverParity: ManeuverParity; observations: TraceSample[]; runtime: "bevy" | "web"; schema: string; sourceHash: string; version: string }
 export interface AerodynamicsDiagnostic { code: string; message: string; path: string; severity: "error"; suggestedFix: string }
@@ -35,6 +36,7 @@ export function validateAdvancedPhysicsAerodynamicsEvidence(web: AerodynamicsTra
   const diagnostics: AerodynamicsDiagnostic[] = [];
   validateTrace(web, diagnostics);
   validateTrace(native, diagnostics);
+  diagnostics.push(...validateAdvancedPhysicsDebugEvidence("advanced-physics-aerodynamics", web.maneuver.debugEvidence ?? [], native.maneuver.debugEvidence ?? []));
   if (JSON.stringify(web.maneuverBounds) !== JSON.stringify(native.maneuverBounds)) push(diagnostics, "TN_VERIFY_AERODYNAMICS_MANEUVER_BOUNDS_DRIFT", "paired/maneuverBounds", "Web and native traces do not carry the same manifest-owned maneuver bounds.");
   if (JSON.stringify(web.maneuverParity) !== JSON.stringify(native.maneuverParity)) push(diagnostics, "TN_VERIFY_AERODYNAMICS_MANEUVER_PARITY_DRIFT", "paired/maneuverParity", "Web and native traces do not carry the same manifest-owned maneuver parity limits.");
   if (web.observations.length !== native.observations.length) push(diagnostics, "TN_VERIFY_AERODYNAMICS_SAMPLE_COUNT", "paired/observations", "Web and native trace sample counts differ.");
@@ -127,7 +129,7 @@ async function generateWebManeuver(world: IWorldIr, manifest: ScenarioManifest):
   preparePhysicsRuntime(world);
   const entity = world.entities.find((candidate) => candidate.id === manifest.entity)!;
   const checkpoints: ManeuverCheckpoint[] = [];
-  const trace: ManeuverTrace = { checkpoints, finalPosition: [0, 0, 0], finalVelocity: [0, 0, 0], maximumAirborneAltitude: -Infinity };
+  const trace: ManeuverTrace = { checkpoints, debugEvidence: [], finalPosition: [0, 0, 0], finalVelocity: [0, 0, 0], maximumAirborneAltitude: -Infinity };
   let tick = 0;
   let previouslyStalled = false;
   let insideWind = false;
@@ -155,6 +157,7 @@ async function generateWebManeuver(world: IWorldIr, manifest: ScenarioManifest):
     trace.finalPosition = position;
     trace.finalVelocity = velocity;
   }
+  trace.debugEvidence = collectPhysicsDebugCore(world, { fixedDt: manifest.fixedDt, maxPrimitives: 4096, tick }).primitives.map(({ category, id, kind }) => ({ category, id, kind }));
   disposePhysicsAerodynamics(world);
   disposePhysicsRuntime(world);
   return trace;

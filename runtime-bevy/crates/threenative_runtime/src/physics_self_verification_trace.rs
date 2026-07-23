@@ -1,5 +1,5 @@
 use std::{
-    collections::BTreeSet,
+    collections::{BTreeMap, BTreeSet},
     env, fs,
     path::{Path, PathBuf},
     process,
@@ -140,6 +140,7 @@ struct AerodynamicsManeuverSegment {
 #[serde(rename_all = "camelCase")]
 struct AerodynamicsManeuverTrace {
     checkpoints: Vec<AerodynamicsManeuverCheckpoint>,
+    debug_evidence: Vec<DebugEvidenceEntry>,
     final_position: [f32; 3],
     final_velocity: [f32; 3],
     ground_contact_tick: Option<usize>,
@@ -274,6 +275,8 @@ struct WheelScenario {
     chassis_rotation: [f32; 4],
     chassis_velocity: [f32; 3],
     #[serde(skip_serializing_if = "Vec::is_empty")]
+    debug_evidence: Vec<DebugEvidenceEntry>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     debug_telemetry: Vec<WheelDebugTelemetry>,
     #[serde(skip_serializing_if = "Option::is_none")]
     initial_speed: Option<f32>,
@@ -281,6 +284,13 @@ struct WheelScenario {
     steps: usize,
     visuals: Vec<WheelVisualObservation>,
     wheels: Vec<threenative_runtime::physics_vehicle::WheelObservation>,
+}
+
+#[derive(Serialize)]
+struct DebugEvidenceEntry {
+    category: String,
+    id: String,
+    kind: String,
 }
 
 #[derive(Serialize)]
@@ -417,6 +427,7 @@ struct AdvancedDestructionBudgetScenario {
 #[serde(rename_all = "camelCase")]
 struct AdvancedJointsTraceReport {
     bundle_hash: String,
+    debug_evidence: Vec<DebugEvidenceEntry>,
     fixture: &'static str,
     fixed_dt: f32,
     load_ramp: AdvancedJointsLoadRampTrace,
@@ -1056,12 +1067,16 @@ fn trace_advanced_physics_joints(
                 .map(AdvancedJointsIdentityObservation::from)
         })
         .collect();
+    let debug_evidence = inspect_cached_physics_debug(&per_kind_bundle, &per_kind_runtime)
+        .map(|snapshot| debug_evidence(snapshot.artifact.primitives))
+        .unwrap_or_default();
     dispose_native_physics_runtime(&per_kind_runtime);
 
     let load_ramp = trace_advanced_joints_load_ramp(bundle_path, &scenarios)?;
     let patch_reconcile = trace_advanced_joints_patch_reconcile(bundle_path, &scenarios)?;
     Ok(AdvancedJointsTraceReport {
         bundle_hash,
+        debug_evidence,
         fixture: "advanced-physics-joints",
         fixed_dt: scenarios.fixed_dt,
         load_ramp,
@@ -1385,10 +1400,24 @@ fn trace_advanced_physics_wheels(
     let braking_negative_runtime = BTreeSet::new();
 
     let mut static_bundle = bundle;
+    let mut static_debug_evidence = BTreeMap::new();
     for _ in 0..1200 {
         step_bundle_physics_with_script_poses(&mut static_bundle, FIXED_DELTA, &static_runtime);
+        if !static_debug_evidence
+            .values()
+            .any(|entry: &DebugEvidenceEntry| entry.category == "contact")
+            && let Some(snapshot) = inspect_cached_physics_debug(&static_bundle, &static_runtime)
+        {
+            for entry in debug_evidence(snapshot.artifact.primitives) {
+                static_debug_evidence.insert(
+                    format!("{}\0{}\0{}", entry.category, entry.id, entry.kind),
+                    entry,
+                );
+            }
+        }
     }
-    let static_load = wheel_scenario(&static_bundle, &static_runtime, 1200, None, true)?;
+    let mut static_load = wheel_scenario(&static_bundle, &static_runtime, 1200, None, true)?;
+    static_load.debug_evidence = static_debug_evidence.into_values().collect();
 
     let command = WheelControlInput {
         brake: 0.0,
@@ -1606,6 +1635,7 @@ fn trace_aerodynamics_maneuver(
     let mut checkpoints = Vec::new();
     let mut trace = AerodynamicsManeuverTrace {
         checkpoints: Vec::new(),
+        debug_evidence: Vec::new(),
         final_position: [0.0; 3],
         final_velocity: [0.0; 3],
         ground_contact_tick: None,
@@ -1698,9 +1728,25 @@ fn trace_aerodynamics_maneuver(
         }
     }
     trace.checkpoints = checkpoints;
+    trace.debug_evidence = inspect_cached_physics_debug(&bundle, &runtime)
+        .map(|snapshot| debug_evidence(snapshot.artifact.primitives))
+        .unwrap_or_default();
     dispose_physics_aerodynamics(runtime_id);
     dispose_native_physics_runtime(&runtime);
     Ok(trace)
+}
+
+fn debug_evidence(
+    primitives: Vec<threenative_runtime::physics_debug::PhysicsDebugPrimitive>,
+) -> Vec<DebugEvidenceEntry> {
+    primitives
+        .into_iter()
+        .map(|primitive| DebugEvidenceEntry {
+            category: primitive.category,
+            id: primitive.id,
+            kind: primitive.kind,
+        })
+        .collect()
 }
 
 fn aerodynamic_body_state(
@@ -2105,6 +2151,13 @@ fn wheel_scenario(
         chassis_position,
         chassis_rotation,
         chassis_velocity,
+        debug_evidence: if include_debug_telemetry {
+            inspect_cached_physics_debug(bundle, runtime)
+                .map(|snapshot| debug_evidence(snapshot.artifact.primitives))
+                .unwrap_or_default()
+        } else {
+            Vec::new()
+        },
         debug_telemetry: if include_debug_telemetry {
             inspect_physics_vehicle_debug_telemetry(native_physics_runtime_id(runtime))
         } else {

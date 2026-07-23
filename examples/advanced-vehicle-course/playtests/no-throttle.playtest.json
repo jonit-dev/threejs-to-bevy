@@ -1,0 +1,44 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced-vehicle-course-no-throttle",
+  "subject": "chassis",
+  "parity": {
+    "targets": ["web", "desktop"],
+    "compare": {
+      "movementDistance": { "maxDelta": 4 },
+      "resources": ["CourseState.checkpoint", "CourseState.damage", "CourseState.jumped", "CourseState.retryCount", "CourseState.status"]
+    }
+  },
+  "setup": {
+    "entities": [
+      { "entity": "chassis", "position": [0, 0.9, 40], "rotation": [0, 0, 0, 1] }
+    ]
+  },
+  "steps": [
+    { "label": "retry", "press": "KeyR", "holdTicks": 1, "release": true },
+    { "label": "no-throttle", "waitTicks": 60, "screenshot": "01-no-throttle" }
+  ],
+  "assert": {
+    "movement": { "entity": "chassis", "minDistance": 0, "maxDistance": 25 },
+    "resources": [
+      { "id": "CourseState", "path": "checkpoint", "equals": 1 },
+      { "id": "CourseState", "path": "damage", "equals": 0 },
+      { "id": "CourseState", "path": "jumped", "equals": false },
+      { "id": "CourseState", "path": "status", "equals": "mixed-surface" },
+      { "id": "CourseState", "path": "retryCount", "gte": 1, "changed": true }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "after",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

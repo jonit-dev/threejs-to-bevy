@@ -1,5 +1,5 @@
 import type { IFractureManifest, IWorldEntity, IWorldIr } from "@threenative/ir";
-import { disposePhysicsRuntime, observePhysicsContactImpulses, syncPhysicsDestructionBodies } from "./physics.js";
+import { disposePhysicsRuntime, observePhysicsContactImpulses, observePhysicsDestructionBodies, syncPhysicsDestructionBodies } from "./physics.js";
 
 export type { IFractureManifest } from "@threenative/ir";
 
@@ -137,9 +137,31 @@ export function stepPhysicsDestruction(runtime: IPhysicsDestructionRuntime, worl
       assembly.component.entity,
       [...assembly.pieces.values()].map((piece) => ({ lifecycle: piece.lifecycle, piece: piece.source })),
     );
+    syncDestructionVisualEntities(world, assembly.component.entity, [...assembly.pieces.keys()]);
   }
   writeEvents(world, events);
   return events;
+}
+
+function syncDestructionVisualEntities(world: IWorldIr, assemblyId: string, pieceIds: readonly string[]): void {
+  const physical = observePhysicsDestructionBodies(world, assemblyId);
+  const assembly = world.entities.find((entity) => entity.id === assemblyId);
+  if (assembly?.components.MeshRenderer !== undefined) {
+    assembly.components.MeshRenderer.visible = physical.assemblyCollisionActive;
+  }
+  const bodies = new Map(physical.pieces.map((piece) => [piece.id, piece]));
+  for (const pieceId of pieceIds) {
+    const entity = world.entities.find((candidate) => candidate.id === `${assemblyId}/${pieceId}`);
+    if (entity?.components.MeshRenderer === undefined) continue;
+    const body = bodies.get(entity.id);
+    entity.components.MeshRenderer.visible = body !== undefined;
+    if (body === undefined) continue;
+    entity.components.Transform = {
+      ...entity.components.Transform,
+      position: [...body.position],
+      rotation: [...body.rotation],
+    };
+  }
 }
 
 function queueRetainedContactDamage(runtime: IPhysicsDestructionRuntime, world: IWorldIr, tick: number): void {

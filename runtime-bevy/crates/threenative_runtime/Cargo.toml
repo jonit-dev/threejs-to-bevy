@@ -118,6 +118,10 @@ path = "src/v9_physics_character_trace.rs"
 name = "threenative_physics_self_verification_trace"
 path = "src/physics_self_verification_trace.rs"
 
+[[bin]]
+name = "threenative_advanced_physics_benchmark"
+path = "src/advanced_physics_benchmark.rs"
+
 [dependencies]
 bevy = { version = "=0.14.2", features = ["jpeg", "mp3", "pbr_multi_layer_material_textures", "pbr_transmission_textures", "webp"] }
 cef = { version = "=150.0.0", default-features = false, optional = true }

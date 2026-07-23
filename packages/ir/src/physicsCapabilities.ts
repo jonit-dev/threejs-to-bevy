@@ -76,6 +76,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     authoringOperation: "physics.aerodynamics.add",
     compilerComponent: "AerodynamicBody",
     component: "AerodynamicBody",
+    cookbook: "advanced-physics-aerodynamics",
     fixture: "advanced-physics-aerodynamics",
     gate: "advanced-physics-aerodynamics",
     limits: { curvePoints: PHYSICS_CAPABILITY_LIMITS.aerodynamicCurvePoints, force: PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, surfaces: PHYSICS_CAPABILITY_LIMITS.aerodynamicSurfacesPerBody, thrusters: PHYSICS_CAPABILITY_LIMITS.aerodynamicThrustersPerBody },
@@ -90,6 +91,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     authoringOperation: "physics.wind.add",
     compilerComponent: "WindVolume",
     component: "WindVolume",
+    cookbook: "advanced-physics-aerodynamics",
     fixture: "advanced-physics-aerodynamics",
     gate: "advanced-physics-aerodynamics",
     runtimeFields: ["airDensity", "gust", "radius", "shape", "size", "velocity"] as const,
@@ -113,6 +115,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     authoringOperation: "physics.destructible.add",
     compilerComponent: "Destructible",
     component: "Destructible",
+    cookbook: "advanced-physics-destruction",
     fixture: "advanced-physics-destruction",
     gate: "advanced-physics-destruction",
     limits: { activePiecesPerScene: PHYSICS_CAPABILITY_LIMITS.fractureActivePiecesPerScene, depth: PHYSICS_CAPABILITY_LIMITS.fractureDepth, piecesPerAssembly: PHYSICS_CAPABILITY_LIMITS.fracturePiecesPerAssembly },
@@ -232,6 +235,7 @@ export interface IPhysicsDescriptorConsumers {
   bevyRuntimeServices: readonly string[];
   bevyVisualComponents: readonly string[];
   compilerComponents: readonly string[];
+  cookbookEntries: readonly string[];
   fixtures: readonly string[];
   gates: readonly string[];
   irComponents: readonly string[];
@@ -283,6 +287,7 @@ export function physicsDescriptorDrift(consumers: IPhysicsDescriptorConsumers): 
     requireConsumer("irComponents", descriptor.component, descriptor.component);
     requireConsumer("authoringOperations", descriptor.authoringOperation, descriptor.component);
     if ("compilerComponent" in descriptor) requireConsumer("compilerComponents", descriptor.compilerComponent, descriptor.component);
+    if ("cookbook" in descriptor) requireConsumer("cookbookEntries", descriptor.cookbook, descriptor.component);
     if ("sdkHelpers" in descriptor) for (const helper of descriptor.sdkHelpers) requireConsumer("sdkComponents", helper, descriptor.component);
     if ("fixture" in descriptor) requireConsumer("fixtures", descriptor.fixture, descriptor.component);
     if ("gate" in descriptor) requireConsumer("gates", descriptor.gate, descriptor.component);

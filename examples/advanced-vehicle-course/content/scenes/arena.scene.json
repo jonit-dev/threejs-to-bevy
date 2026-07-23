@@ -1,0 +1,942 @@
+{
+  "entities": [
+    {
+      "components": {
+        "Camera": {
+          "active": true,
+          "clear": {
+            "color": "#18202b",
+            "mode": "color"
+          },
+          "far": 200,
+          "fovY": 55,
+          "kind": "perspective",
+          "near": 0.1
+        },
+        "Transform": {
+          "position": [
+            3,
+            2.9,
+            45
+          ],
+          "rotation": [
+            -0.158493,
+            0.263299,
+            0.0439,
+            0.950593
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "camera.main"
+    },
+    {
+      "components": {
+        "Light": {
+          "color": "#ffffff",
+          "intensity": 2,
+          "kind": "directional"
+        },
+        "Transform": {
+          "position": [
+            4,
+            2,
+            45
+          ],
+          "rotation": [
+            -0.382683,
+            0,
+            0,
+            0.92388
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "light.key"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            12,
+            3,
+            40
+          ]
+        }
+      },
+      "id": "debug.anchor"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1,
+            0.5,
+            1
+          ]
+        },
+        "PhysicsJoint": {
+          "anchor": [
+            0,
+            0,
+            0
+          ],
+          "breakForce": 0.0001,
+          "connectedEntity": "debug.anchor",
+          "connectedRotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "kind": "fixed",
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 5
+        },
+        "Transform": {
+          "position": [
+            12,
+            3.1,
+            40
+          ]
+        }
+      },
+      "id": "debug.joint"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "destructible",
+          "size": [
+            4,
+            4,
+            0.5
+          ]
+        },
+        "Destructible": {
+          "activationBudget": 4,
+          "cleanupPolicy": "sleep",
+          "fractureManifest": "fractures/wall.main.json",
+          "impactFilter": {
+            "layers": [
+              "projectile"
+            ],
+            "minImpulse": 5
+          },
+          "maxDepth": 2
+        },
+        "RigidBody": {
+          "gravityScale": 0,
+          "kind": "dynamic",
+          "mass": 80
+        },
+        "Transform": {
+          "position": [
+            16,
+            2,
+            40
+          ]
+        }
+      },
+      "id": "debug.target"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
+        "Transform": {
+          "position": [
+            17,
+            1,
+            40
+          ]
+        }
+      },
+      "id": "debug.target/piece.000"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
+        "Transform": {
+          "position": [
+            15,
+            3,
+            40
+          ]
+        }
+      },
+      "id": "debug.target/piece.001"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
+        "Transform": {
+          "position": [
+            17,
+            3,
+            40
+          ]
+        }
+      },
+      "id": "debug.target/piece.002"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
+        "Transform": {
+          "position": [
+            15,
+            1,
+            40
+          ]
+        }
+      },
+      "id": "debug.target/piece.003"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            40,
+            0.1,
+            400
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "PhysicsSurface": {
+          "combineRule": "multiply",
+          "grip": 1,
+          "rollingResistance": 0
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "ground-asphalt"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            5,
+            0.1,
+            4
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "PhysicsSurface": {
+          "combineRule": "multiply",
+          "grip": 0.08,
+          "rollingResistance": 0
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            -2.5,
+            0.05,
+            40
+          ]
+        }
+      },
+      "id": "ground-split-left-ice"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            5,
+            0.1,
+            4
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "PhysicsSurface": {
+          "combineRule": "multiply",
+          "grip": 1,
+          "rollingResistance": 0
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            2.5,
+            0.05,
+            40
+          ]
+        }
+      },
+      "id": "ground-split-right-asphalt"
+    },
+    {
+      "components": {
+        "TireModel": {
+          "lateralSlipCurve": [
+            {
+              "grip": 1,
+              "slip": 0
+            },
+            {
+              "grip": 1,
+              "slip": 1
+            }
+          ],
+          "loadSensitivity": 0,
+          "longitudinalSlipCurve": [
+            {
+              "grip": 1,
+              "slip": 0
+            },
+            {
+              "grip": 1,
+              "slip": 1
+            }
+          ],
+          "rollingResistance": 0
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ]
+        }
+      },
+      "id": "touring-tire"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "chassis"
+        },
+        "Transform": {
+          "position": [
+            0.65,
+            -0.5,
+            1
+          ]
+        }
+      },
+      "id": "wheel-visual-rear-right"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "chassis"
+        },
+        "Transform": {
+          "position": [
+            -0.65,
+            -0.5,
+            -1
+          ]
+        }
+      },
+      "id": "wheel-visual-front-left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "chassis"
+        },
+        "Transform": {
+          "position": [
+            -0.65,
+            -0.5,
+            1
+          ]
+        }
+      },
+      "id": "wheel-visual-rear-left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "chassis"
+        },
+        "Transform": {
+          "position": [
+            0.65,
+            -0.5,
+            -1
+          ]
+        }
+      },
+      "id": "wheel-visual-front-right"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            1.6,
+            0.4,
+            3
+          ]
+        },
+        "RigidBody": {
+          "enabledRotations": [
+            false,
+            true,
+            false
+          ],
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 200,
+          "velocity": [
+            0,
+            0,
+            0
+          ]
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.9,
+            40
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ]
+        },
+        "VehicleController": {
+          "assists": {
+            "abs": {
+              "enabled": true,
+              "response": 0.08,
+              "slipThreshold": 0.18
+            },
+            "tcs": {
+              "enabled": true,
+              "response": 0.08,
+              "slipThreshold": 0.16
+            }
+          },
+          "bindings": {
+            "brake": "brake",
+            "clutch": "clutch",
+            "gearDown": "gear-down",
+            "gearUp": "gear-up",
+            "handbrake": "handbrake",
+            "steer": "steer",
+            "throttle": "throttle"
+          },
+          "brakes": {
+            "frontBias": 0.62,
+            "handbrakeWheelIds": [
+              "rear-right",
+              "rear-left"
+            ]
+          },
+          "differential": {
+            "kind": "limited-slip",
+            "limitedSlipRatio": 2.5
+          },
+          "engine": {
+            "engineBraking": 0.12,
+            "idleRpm": 900,
+            "redlineRpm": 6500,
+            "torqueCurve": [
+              {
+                "rpm": 900,
+                "torque": 600
+              },
+              {
+                "rpm": 3500,
+                "torque": 800
+              },
+              {
+                "rpm": 6500,
+                "torque": 700
+              }
+            ]
+          },
+          "steering": {
+            "speedCurve": [
+              {
+                "scale": 1,
+                "speed": 0
+              },
+              {
+                "scale": 0.65,
+                "speed": 15
+              },
+              {
+                "scale": 0.3,
+                "speed": 40
+              }
+            ]
+          },
+          "transmission": {
+            "clutchResponse": 0.2,
+            "downshiftRpm": 950,
+            "finalDrive": 3.7,
+            "forwardRatios": [
+              3.1,
+              1.9,
+              1.3,
+              1
+            ],
+            "reverseRatio": 3,
+            "shiftPolicy": "manual",
+            "upshiftRpm": 2100
+          }
+        },
+        "WheelAssembly": {
+          "maxSteeringAngle": 0.6,
+          "maxSuspensionForce": 18000,
+          "maxTireForce": 12000,
+          "wheels": [
+            {
+              "attachment": [
+                0.65,
+                -0.2,
+                1
+              ],
+              "braked": true,
+              "driven": true,
+              "id": "rear-right",
+              "radius": 0.3,
+              "steering": false,
+              "suspension": {
+                "damperRate": 500,
+                "springRate": 20000,
+                "travel": 0.5
+              },
+              "tire": "touring-tire",
+              "visual": "wheel-visual-rear-right",
+              "width": 0.2
+            },
+            {
+              "attachment": [
+                -0.65,
+                -0.2,
+                -1
+              ],
+              "braked": true,
+              "driven": true,
+              "id": "front-left",
+              "radius": 0.3,
+              "steering": true,
+              "suspension": {
+                "damperRate": 500,
+                "springRate": 20000,
+                "travel": 0.5
+              },
+              "tire": "touring-tire",
+              "visual": "wheel-visual-front-left",
+              "width": 0.2
+            },
+            {
+              "attachment": [
+                -0.65,
+                -0.2,
+                1
+              ],
+              "braked": true,
+              "driven": true,
+              "id": "rear-left",
+              "radius": 0.3,
+              "steering": false,
+              "suspension": {
+                "damperRate": 500,
+                "springRate": 20000,
+                "travel": 0.5
+              },
+              "tire": "touring-tire",
+              "visual": "wheel-visual-rear-left",
+              "width": 0.2
+            },
+            {
+              "attachment": [
+                0.65,
+                -0.2,
+                -1
+              ],
+              "braked": true,
+              "driven": true,
+              "id": "front-right",
+              "radius": 0.3,
+              "steering": true,
+              "suspension": {
+                "damperRate": 500,
+                "springRate": 20000,
+                "travel": 0.5
+              },
+              "tire": "touring-tire",
+              "visual": "wheel-visual-front-right",
+              "width": 0.2
+            }
+          ]
+        }
+      },
+      "id": "chassis",
+      "prefab": "prefab.player"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            5,
+            0.5,
+            8
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.4,
+            70
+          ],
+          "rotation": [
+            0.043619,
+            0,
+            0,
+            0.999048
+          ],
+          "scale": [
+            5,
+            0.5,
+            8
+          ]
+        }
+      },
+      "id": "course.ramp"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "obstacle",
+          "size": [
+            8,
+            1.2,
+            1.2
+          ]
+        },
+        "MeshRenderer": {
+          "castShadow": true,
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "dynamic",
+          "mass": 1
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.7,
+            90
+          ]
+        }
+      },
+      "id": "damage-barrier",
+      "prefab": "prefab.player"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.5,
+            2,
+            70
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            -5,
+            1,
+            65
+          ],
+          "scale": [
+            0.5,
+            2,
+            70
+          ]
+        }
+      },
+      "id": "barrier.left"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            0.5,
+            2,
+            70
+          ]
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            5,
+            1,
+            65
+          ],
+          "scale": [
+            0.5,
+            2,
+            70
+          ]
+        }
+      },
+      "id": "barrier.right"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            14,
+            2,
+            0.25
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            1,
+            50
+          ],
+          "scale": [
+            14,
+            2,
+            0.25
+          ]
+        }
+      },
+      "id": "checkpoint.mixed"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            14,
+            2,
+            0.25
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            1,
+            70
+          ],
+          "scale": [
+            14,
+            2,
+            0.25
+          ]
+        }
+      },
+      "id": "checkpoint.jump"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            14,
+            2,
+            0.25
+          ],
+          "trigger": true
+        },
+        "MeshRenderer": {
+          "material": "mat.goal",
+          "mesh": "mesh.player"
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            1,
+            110
+          ],
+          "scale": [
+            14,
+            2,
+            0.25
+          ]
+        }
+      },
+      "id": "checkpoint.finish"
+    }
+  ],
+  "id": "arena",
+  "instances": [],
+  "prefabs": [
+    {
+      "color": "#34373d",
+      "id": "prefab.floor",
+      "primitive": "plane"
+    },
+    {
+      "color": "#0f172a",
+      "id": "prefab.rail",
+      "primitive": "box"
+    },
+    {
+      "color": "#e2e8f0",
+      "id": "prefab.marker",
+      "primitive": "box"
+    },
+    {
+      "asset": "assets/raceCarRed.glb",
+      "color": "#2f80ed",
+      "id": "prefab.player"
+    },
+    {
+      "color": "#f2c94c",
+      "id": "prefab.goal",
+      "primitive": "box"
+    }
+  ],
+  "resources": [
+    {
+      "id": "CourseState",
+      "value": {
+        "checkpoint": 0,
+        "collisionEntity": "",
+        "damage": 0,
+        "events": [],
+        "jumped": false,
+        "jumpLaunched": false,
+        "leftSurface": "",
+        "mixedSurface": false,
+        "previousPosition": [
+          0,
+          0.9,
+          40
+        ],
+        "retryCount": 0,
+        "rightSurface": "",
+        "speed": 0,
+        "status": "ready"
+      }
+    }
+  ],
+  "schema": "threenative.scene",
+  "systems": [],
+  "ui": {
+    "bindings": [],
+    "nodes": []
+  },
+  "version": "0.1.0"
+}

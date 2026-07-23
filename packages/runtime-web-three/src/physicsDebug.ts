@@ -1,6 +1,7 @@
-import { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_DEFAULTS, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type IWorldIr, type PhysicsDebugCategory, type Vec3 } from "@threenative/ir";
+import { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_DEFAULTS, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type PhysicsDebugCategory } from "@threenative/ir/physicsDebug";
+import type { IWorldIr, Vec3 } from "@threenative/ir";
 
-export { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_PRIMITIVE_KINDS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type PhysicsDebugCategory, type PhysicsDebugPrimitiveKind } from "@threenative/ir";
+export { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_PRIMITIVE_KINDS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type PhysicsDebugCategory, type PhysicsDebugPrimitiveKind } from "@threenative/ir/physicsDebug";
 
 import { observeLivePhysicsBodies, observePhysicsContactImpulses, observePhysicsDestructionBodies, observePhysicsJointLoads, observePhysicsTelemetryStats, physicsRuntimeStats } from "./physics.js";
 import { observePhysicsAerodynamics } from "./physicsAerodynamics.js";
@@ -66,7 +67,7 @@ function physicsDebugPrimitives(world: IWorldIr, destructionRuntime: IPhysicsDes
   for (const entity of [...world.entities].sort((left, right) => left.id.localeCompare(right.id))) {
     const body = bodies.get(entity.id);
     const position = body?.position ?? entity.components.Transform?.position ?? [0, 0, 0];
-    if (body !== undefined) {
+    if (body !== undefined && entity.components.RigidBody !== undefined) {
       primitives.push({ category: "center-of-mass", entity: entity.id, id: `center-of-mass:${entity.id}`, kind: "point", position: rounded(position) });
       primitives.push({ category: "sleep", entity: entity.id, id: `sleep:${entity.id}`, kind: "point", position: rounded(position), value: body.sleeping ? 1 : 0 });
     }

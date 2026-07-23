@@ -5,6 +5,7 @@ import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION, validateBundle, type IWorldIr } from "@threenative/ir";
+import { validateAdvancedPhysicsDebugEvidence, type AdvancedPhysicsDebugEvidence } from "./advancedPhysicsDebugEvidence.js";
 
 const root = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const fixtureDir = resolve(root, "packages/ir/fixtures/conformance/advanced-physics-joints/game.bundle");
@@ -93,6 +94,7 @@ export interface AdvancedPhysicsJointTrace {
   bundleHash: string;
   fixture: "advanced-physics-joints";
   fixedDt: number;
+  debugEvidence: AdvancedPhysicsDebugEvidence[];
   loadRamp: {
     events: Array<{ observation: NormalizedJointBreakEvent; tick: number }>;
     removedAtTick: number;
@@ -168,6 +170,7 @@ export function validateAdvancedPhysicsJointEvidence(
     push(diagnostics, "TN_VERIFY_PHYSICS_JOINT_PROVENANCE", "fixtureHashes", "Paired traces must identify the same non-empty source and bundle hashes.");
   }
   compare(web.fixedDt, native.fixedDt, { absolute: 0.000001, relative: 0.000001 }, "fixedDt", "TN_VERIFY_PHYSICS_JOINT_FIXED_DELTA", diagnostics);
+  diagnostics.push(...validateAdvancedPhysicsDebugEvidence("advanced-physics-joints", web.debugEvidence ?? [], native.debugEvidence ?? []));
   const expectedIdentities = expected.perKind.ordered.map(({ connectedEntity, entity, kind }) => ({ connectedEntity, entity, kind }));
   for (const [runtime, trace] of [["web", web], ["native", native]] as const) {
     exact(trace.perKind.map(({ connectedEntity, entity, kind }) => ({ connectedEntity, entity, kind })), expectedIdentities, `${runtime}/perKind`, "TN_VERIFY_PHYSICS_JOINT_KIND_ORDER", diagnostics);

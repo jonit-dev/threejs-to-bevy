@@ -1,0 +1,17 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "vehicle-course-input",
+  "actions": [
+    { "id": "throttle", "bindings": ["keyboard.KeyW", "keyboard.ArrowUp"] },
+    { "id": "brake", "bindings": ["keyboard.KeyS", "keyboard.ArrowDown"] },
+    { "id": "retry", "bindings": ["keyboard.KeyR"] }
+  ],
+  "axes": [
+    {
+      "id": "steer",
+      "negative": ["keyboard.KeyA", "keyboard.ArrowLeft"],
+      "positive": ["keyboard.KeyD", "keyboard.ArrowRight"]
+    }
+  ]
+}

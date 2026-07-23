@@ -386,7 +386,20 @@ test("playtest command should write bounded summary json with deep log pointers"
         frames: options.frames,
         input: options.press,
         movementThreshold: options.movementThreshold,
-        observations: { console: [], effectLog: [], hud: {}, network: [], resources: {}, runtimeDiagnostics: { frames: Array.from({ length: 250 }, (_, index) => ({ index })) } },
+        observations: {
+          console: [],
+          effectLog: [],
+          hud: {},
+          network: [],
+          physicsDebug: {
+            artifact: { primitives: Array.from({ length: 250 }, (_, index) => ({ category: "force", id: `force.${index}`, kind: "line" })) },
+            schema: "threenative.physics-debug-snapshot",
+            summary: { primitives: [] },
+            version: "0.1.0",
+          },
+          resources: {},
+          runtimeDiagnostics: { frames: Array.from({ length: 250 }, (_, index) => ({ index })) },
+        },
         pass: true,
         runtime: "web",
       }),
@@ -395,6 +408,7 @@ test("playtest command should write bounded summary json with deep log pointers"
   const payload = JSON.parse(result.stdout) as { artifacts: { effectLog: string; observations: string; summary: string }; schema: string };
   const summaryText = await readFile(payload.artifacts.summary, "utf8");
   const summary = JSON.parse(summaryText) as { artifacts: { effectLog: string; observations: string }; effectLog?: unknown; finalPoses: unknown[]; observations?: unknown; schema: string };
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { physicsDebug: { artifact: { primitives: unknown[] } } };
 
   assert.equal(payload.schema, "threenative.playtest-summary");
   assert.equal(summary.schema, "threenative.playtest-summary");
@@ -403,7 +417,9 @@ test("playtest command should write bounded summary json with deep log pointers"
   assert.match(summary.artifacts.effectLog, /effect-log\.json$/);
   assert.match(summary.artifacts.observations, /observations\.json$/);
   assert.equal(summary.finalPoses.length, 1);
+  assert.equal(observations.physicsDebug.artifact.primitives.length, 250);
   assert.ok(Buffer.byteLength(summaryText, "utf8") < 4096);
+  assert.ok(Buffer.byteLength(result.stdout, "utf8") < 4096);
 });
 
 test("playtest command should report latest playtest summary without reading deep logs to stdout", async () => {
@@ -721,6 +737,17 @@ test("playtest command should run desktop target through native proof harness", 
               diagnostics: [],
               ok: true,
               performance: { elapsed_ms: 33.3334, fps: 30, frame_ms: 33.3334 },
+              physicsDebug: {
+                artifact: {
+                  omittedPrimitives: 0,
+                  primitives: [{ category: "joint-load", id: "joint-load:door", kind: "line", value: 12 }],
+                  telemetry: { allocatedPieces: 0, bodies: { active: 1, sleeping: 0 }, contacts: 0, fixedDt: 1 / 60, queries: 0, rebuilds: 0, solverIterations: 4, tick: 37, timings: [] },
+                  truncated: false,
+                },
+                schema: "threenative.physics-debug-snapshot",
+                summary: { omittedPrimitives: 0, primitives: [], telemetry: { allocatedPieces: 0, bodies: { active: 1, sleeping: 0 }, contacts: 0, fixedDt: 1 / 60, queries: 0, rebuilds: 0, solverIterations: 4, tick: 37, timings: [] }, truncated: false },
+                version: "0.1.0",
+              },
               schema: "threenative.native-proof-readiness",
               tick: 37,
               transforms: [{ entity: "player", position: [0, 0, -1.1] }],
@@ -740,7 +767,11 @@ test("playtest command should run desktop target through native proof harness", 
   const commandStream = JSON.parse(await readFile(commandStreamPath ?? "", "utf8")) as { commands: Array<{ code?: string; entity?: string; frames?: number; position?: number[]; pressed?: boolean; tick: number; type: string }> };
   const summary = JSON.parse(await readFile(payload.artifacts.summary, "utf8")) as { diagnostics: unknown[]; movementDelta: number[]; nativeRecording: { frames: Array<{ byteSize: number; tick: number }> }; performance: { framesOverBudget: number; measurement: string; note: string; sampleCount: number; scope: string; source: string; worstFrameMs: number }; runtime: string; target: string };
   const nativeFrameSamples = JSON.parse(await readFile(payload.artifacts.nativeFrameSamples, "utf8")) as { samples: Array<{ frameMs: number; tick: number }>; summaries: { all: { sampleCount: number; worstFrameMs: number }; dropFirst: { sampleCount: number; worstFrameMs: number } } };
-  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as { runtimeDiagnostics: { readiness: Array<{ tick: number }> } };
+  const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as {
+    physicsDebug: { artifact: { primitives: Array<{ id: string }> } };
+    physicsDebugSeries: Array<{ label: string; snapshot: { artifact: { telemetry: { tick: number } } }; tick: number }>;
+    runtimeDiagnostics: { readiness: Array<{ tick: number }> };
+  };
   const writeAudit = JSON.parse(await readFile(payload.artifacts.writeAudit, "utf8")) as { diagnostics: unknown[]; observations: unknown[]; schema: string; version: string };
 
   assert.equal(result.exitCode, 0);
@@ -771,6 +802,10 @@ test("playtest command should run desktop target through native proof harness", 
   assert.equal(nativeFrameSamples.summaries.dropFirst.worstFrameMs, 33.3334);
   assert.equal(summary.runtime, "bevy");
   assert.equal(summary.target, "desktop");
+  assert.deepEqual(observations.physicsDebug.artifact.primitives.map((primitive) => primitive.id), ["joint-load:door"]);
+  assert.deepEqual(observations.physicsDebugSeries.map(({ label, snapshot, tick }) => ({ label, runtimeTick: snapshot.artifact.telemetry.tick, tick })), [
+    { label: "step-1", runtimeTick: 37, tick: 37 },
+  ]);
   assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, entity: command.entity, frames: command.frames, position: command.position, pressed: command.pressed, tick: command.tick, type: command.type })), [
     { code: undefined, entity: "player", frames: undefined, position: [0, 0.02, 5], pressed: undefined, tick: 5, type: "setTransform" },
     { code: "KeyW", entity: undefined, frames: undefined, position: undefined, pressed: true, tick: 6, type: "key" },

@@ -3,6 +3,7 @@ import type {
   EditorDocumentAccess,
   IEditorDocumentClassification,
   IEditorGamepadViewerSnapshot,
+  IPhysicsDebugSnapshot,
   IEditorToolSnapshot,
   IEditorVisualPanelRow,
   IEditorVisualPanelSnapshot,
@@ -164,6 +165,7 @@ export interface IEditorShellModel {
   inspector: IEditorPropertyRow[];
   lod: IEditorLodStats;
   projectName: string;
+  physicsDebug?: IPhysicsDebugSnapshot;
   sceneObjects: IEditorSceneObject[];
   selectedRowId?: string;
   status: EditorShellStatus;
@@ -181,6 +183,7 @@ export interface IEditorAdapterInput {
   inspector?: readonly IEditorPropertyRow[];
   lod?: IEditorLodStats;
   projectName?: string;
+  physicsDebug?: IPhysicsDebugSnapshot;
   sceneObjects?: readonly IEditorSceneObject[];
   selectedRowId?: string;
   status?: EditorShellStatus;
@@ -223,6 +226,7 @@ export function createEditorShellModel(input: IEditorAdapterInput = {}): IEditor
     inspector,
     lod: input.lod ?? { budget: 200_000, loadedTriangles: 0, loading: false, mode: "auto", precision: "estimate", selected: "original", triangleCount: 0 },
     projectName: input.projectName ?? "Untitled ThreeNative Project",
+    physicsDebug: input.physicsDebug,
     sceneObjects: [...(input.sceneObjects ?? [])],
     selectedRowId: input.selectedRowId,
     status,

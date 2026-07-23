@@ -159,6 +159,7 @@ test("should list gates by profile", () => {
   assert.deepEqual(listFocusedGateNamesByProfile("smoke"), []);
   assert.deepEqual(listFocusedGateNamesByProfile("changed"), []);
   assert.deepEqual(listFocusedGateNamesByProfile("release"), [
+    "verify:advanced-physics-major-games",
     "verify:agent-io",
     "verify:animation-physics-residuals",
     "verify:baked-gi",

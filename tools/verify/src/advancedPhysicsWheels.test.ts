@@ -4,6 +4,7 @@ import test from "node:test";
 
 import { PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION } from "@threenative/ir";
 import { manualEvidenceMetadataMatches, validateAdvancedPhysicsWheelEvidence, validateAdvancedPhysicsWheelVisualFixture, type AdvancedPhysicsWheelTrace } from "./advancedPhysicsWheels.js";
+import { expectedPhysicsDebugCategories } from "./advancedPhysicsDebugEvidence.js";
 
 const ids = ["rear-right", "front-left", "rear-left", "front-right"];
 const contact = (surface: string) => ({ distance: 0.2, entity: surface, normal: [0, 1, 0] as [number, number, number], point: [0, 0.05, 0] as [number, number, number] });
@@ -31,6 +32,11 @@ const scenario = (surface: string, speed: number, x = 0, rotation = yaw(0), movi
   visuals: visuals(),
   wheels: wheels(surface, moving),
 });
+const debugEvidence = expectedPhysicsDebugCategories("advanced-physics-wheels").map((category) => ({
+  category,
+  id: `${category}:fixture`,
+  kind: (category === "wheel" ? "sphere" : category === "force" || category === "slip" ? "vector" : category === "suspension" ? "line" : "point") as "line" | "point" | "sphere" | "vector",
+}));
 const trace = (runtime: "bevy" | "web"): AdvancedPhysicsWheelTrace => ({
   authoredWheelIds: ids,
   fixedDelta: 1 / 120,
@@ -41,7 +47,7 @@ const trace = (runtime: "bevy" | "web"): AdvancedPhysicsWheelTrace => ({
     brakingCausalNegative: { ...scenario("ground-asphalt", 3), initialSpeed: 3 },
     driveCausalNegative: scenario("ground-asphalt", 0, 0, yaw(0), false),
     ice: scenario("ground-ice", 1),
-    staticLoad: scenario("ground-asphalt", 0, 0, yaw(0), false),
+    staticLoad: { ...scenario("ground-asphalt", 0, 0, yaw(0), false), debugEvidence },
     steering: scenario("ground-asphalt", 3, 1, yaw(0.2)),
     steeringCausalNegative: scenario("ground-asphalt", 3, 0, yaw(0)),
   },

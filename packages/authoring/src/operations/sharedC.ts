@@ -329,6 +329,7 @@ import {
   validateOptionalPositiveNumber,
   cloneJson,
   validateEcsId,
+  validateEntityId,
   validateEventId,
   validateResourceId,
   validateLogicalId,
@@ -491,7 +492,7 @@ export function collectIds(
     const id = kind === "resource"
       ? validateResourceId(diagnostics, file, `${path}/id`, value.id)
       : kind === "entity"
-        ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
+        ? validateEntityId(diagnostics, file, `${path}/id`, value.id)
         : kind === "input axis"
           ? validateEcsId(diagnostics, file, `${path}/id`, value.id, kind)
           : kind === "event schema"

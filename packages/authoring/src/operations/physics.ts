@@ -1,4 +1,4 @@
-import { validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent, type IWorldIr } from "@threenative/ir";
+import { PHYSICS_CAPABILITY_DESCRIPTORS, PHYSICS_CAPABILITY_LIMITS, validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent, type IWorldIr } from "@threenative/ir";
 import { authoringDiagnostic } from "../diagnostics.js";
 import { loadAuthoringProject } from "../project.js";
 import { isRecord, type ISceneDocument, type ISceneEntity } from "../schemas.js";
@@ -56,14 +56,125 @@ async function portablePhysicsCandidateFailure(options: ISetPortablePhysicsCompo
   if (index < 0) return missing(options, "TN_AUTHORING_ENTITY_MISSING", "/entityId", `Entity '${options.entityId}' was not found.`);
   const entity = scene.entities![index]!;
   entity.components = { ...(entity.components ?? {}), [options.definition.component]: structuredClone(options.value) };
-  const entities = (scene.entities ?? []).map((candidate) => ({ ...candidate, components: candidate.components ?? {} })) as unknown as IWorldIr["entities"];
+  const entities = physicsValidationEntities(scene);
   const entityIds = new Set(entities.map((candidate) => candidate.id));
   const rigidBodyEntityIds = new Set(entities.filter((candidate) => candidate.components?.RigidBody !== undefined).map((candidate) => candidate.id));
   const tireModelEntityIds = new Set(entities.filter((candidate) => candidate.components?.TireModel !== undefined).map((candidate) => candidate.id));
   const diagnostics: IIrDiagnostic[] = [];
   validatePhysicsComponents(entities[index]!, `/entities/${index}`, entityIds, rigidBodyEntityIds, tireModelEntityIds, diagnostics);
   if (options.definition.component === "PhysicsJoint") validatePhysicsJointGraph({ entities, schema: "threenative.world", version: "0.1.0" }, "", diagnostics);
+  attachStructuredPhysicsFixes(options, diagnostics, entities);
   return portablePhysicsFailure(options, diagnostics, `Correct the ${options.definition.component} fields and run \`tn ${options.definition.operationPrefix.replaceAll(".", " ")} validate\` again.`);
+}
+
+function physicsValidationEntities(scene: ISceneDocument): IWorldIr["entities"] {
+  return [...(scene.entities ?? []), ...(scene.instances ?? [])].map((candidate) => ({
+    ...candidate,
+    components: {
+      ...(candidate.components ?? {}),
+      ...(candidate.components?.Transform !== undefined || candidate.transform === undefined
+        ? {}
+        : { Transform: structuredClone(candidate.transform) }),
+    },
+  })) as unknown as IWorldIr["entities"];
+}
+
+function attachStructuredPhysicsFixes(
+  options: ISetPortablePhysicsComponentOptions,
+  diagnostics: IIrDiagnostic[],
+  entities: IWorldIr["entities"],
+): void {
+  for (const diagnostic of diagnostics) {
+    if (diagnostic.fix !== undefined) continue;
+    const fixed = structuredClone(options.value);
+    let allowed: readonly string[] | undefined;
+    if (diagnostic.code.endsWith("_FIELD_UNSUPPORTED") || diagnostic.code === "TN_IR_PHYSICS_COMPOUND_FIELD_UNSUPPORTED") {
+      if (!deletePhysicsValueAtDiagnosticPath(fixed, options.definition.component, diagnostic.path)) continue;
+      const capability = PHYSICS_CAPABILITY_DESCRIPTORS.find((candidate) => candidate.component === options.definition.component);
+      allowed = capability === undefined ? undefined : [...capability.runtimeFields];
+    } else if (diagnostic.code === "TN_IR_PHYSICS_DESTRUCTIBLE_BOND_STRENGTH_INVALID") {
+      if (!setPhysicsValueAtDiagnosticPath(fixed, options.definition.component, diagnostic.path, 1)) continue;
+      allowed = ["finite number in (0, 1000000]"];
+    } else if (diagnostic.code === "TN_IR_PHYSICS_DESTRUCTIBLE_BUDGET_INVALID") {
+      if (!setPhysicsValueAtDiagnosticPath(fixed, options.definition.component, diagnostic.path, PHYSICS_CAPABILITY_LIMITS.fracturePiecesPerAssembly)) continue;
+      allowed = [`1..${PHYSICS_CAPABILITY_LIMITS.fracturePiecesPerAssembly}`];
+    } else if (diagnostic.code === "TN_IR_PHYSICS_WHEEL_REFERENCE_INVALID") {
+      const referenceKind = diagnostic.path.endsWith("/tire") ? "TireModel" : undefined;
+      const candidates = entities
+        .filter((entity) => referenceKind === undefined || entity.components[referenceKind] !== undefined)
+        .map((entity) => entity.id)
+        .sort();
+      const replacement = candidates[0];
+      if (replacement === undefined || !setPhysicsValueAtDiagnosticPath(fixed, options.definition.component, diagnostic.path, replacement)) continue;
+      allowed = candidates;
+    } else {
+      continue;
+    }
+    const capability = PHYSICS_CAPABILITY_DESCRIPTORS.find((candidate) => candidate.component === options.definition.component);
+    const cookbook = capability !== undefined && "cookbook" in capability ? capability.cookbook : undefined;
+    diagnostic.fix = {
+      ...(allowed === undefined ? {} : { allowed }),
+      ...(cookbook === undefined ? {} : { cookbook }),
+      instruction: `Apply this corrected ${options.definition.component} payload through '${options.definition.operationPrefix}.set'.`,
+      snippet: JSON.stringify(fixed),
+    };
+  }
+}
+
+function deletePhysicsValueAtDiagnosticPath(value: Record<string, unknown>, component: string, path: string): boolean {
+  const target = physicsDiagnosticTarget(value, component, path);
+  if (target === undefined) return false;
+  if (Array.isArray(target.parent)) {
+    const index = Number(target.key);
+    if (!Number.isInteger(index)) return false;
+    target.parent.splice(index, 1);
+  } else {
+    delete target.parent[target.key];
+  }
+  return true;
+}
+
+function setPhysicsValueAtDiagnosticPath(value: Record<string, unknown>, component: string, path: string, replacement: unknown): boolean {
+  const target = physicsDiagnosticTarget(value, component, path);
+  if (target === undefined) return false;
+  if (Array.isArray(target.parent)) {
+    const index = Number(target.key);
+    if (!Number.isInteger(index)) return false;
+    target.parent[index] = replacement;
+  } else {
+    target.parent[target.key] = replacement;
+  }
+  return true;
+}
+
+function physicsDiagnosticTarget(
+  value: Record<string, unknown>,
+  component: string,
+  path: string,
+): { key: string; parent: Record<string, unknown> | unknown[] } | undefined {
+  const marker = `/components/${component}`;
+  const markerIndex = path.indexOf(marker);
+  if (markerIndex < 0) return undefined;
+  const segments = path.slice(markerIndex + marker.length).split("/").filter(Boolean).map(decodeJsonPointerSegment);
+  const key = segments.pop();
+  if (key === undefined) return undefined;
+  let parent: unknown = value;
+  for (const segment of segments) {
+    if (Array.isArray(parent)) {
+      const index = Number(segment);
+      if (!Number.isInteger(index)) return undefined;
+      parent = parent[index];
+    } else if (isRecord(parent)) {
+      parent = parent[segment];
+    } else {
+      return undefined;
+    }
+  }
+  return Array.isArray(parent) || isRecord(parent) ? { key, parent } : undefined;
+}
+
+function decodeJsonPointerSegment(segment: string): string {
+  return segment.replaceAll("~1", "/").replaceAll("~0", "~");
 }
 
 export async function removePortablePhysicsComponent(options: IPortablePhysicsComponentOperationOptions): Promise<IAuthoringOperationResult> {
@@ -326,5 +437,5 @@ function physicsComponentPath(scene: ISceneDocument, entity: ISceneEntity, kind:
 
 function portablePhysicsFailure(options: IPortableAerodynamicsOperationOptions, diagnostics: IIrDiagnostic[], fallbackSuggestion: string): IAuthoringOperationResult | undefined {
   if (diagnostics.length === 0) return undefined;
-  return authoringOperationResult({ diagnostics: diagnostics.map((diagnostic) => authoringDiagnostic({ code: diagnostic.code, message: diagnostic.message, path: diagnostic.path, severity: diagnostic.severity, suggestion: diagnostic.suggestion ?? fallbackSuggestion })), projectPath: options.projectPath });
+  return authoringOperationResult({ diagnostics: diagnostics.map((diagnostic) => authoringDiagnostic({ code: diagnostic.code, fix: diagnostic.fix, message: diagnostic.message, path: diagnostic.path, severity: diagnostic.severity, suggestion: diagnostic.suggestion ?? fallbackSuggestion })), projectPath: options.projectPath });
 }

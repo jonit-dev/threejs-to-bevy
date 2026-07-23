@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "destruction.target-block",
+      "path": "assets/generated/destruction.target-block.glb",
+      "source": "generator:destruction.target-block",
+      "type": "model"
+    }
+  ],
+  "id": "destruction.target-block",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

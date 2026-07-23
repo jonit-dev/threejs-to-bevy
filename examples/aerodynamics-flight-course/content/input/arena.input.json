@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "id": "flight-course-input",
+  "actions": [
+    { "id": "throttle", "bindings": ["keyboard.KeyW"] },
+    { "id": "retry", "bindings": ["keyboard.KeyR"] }
+  ],
+  "axes": [
+    {
+      "id": "pitch",
+      "negative": ["keyboard.ArrowDown"],
+      "positive": ["keyboard.ArrowUp"]
+    }
+  ]
+}

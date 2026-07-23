@@ -1,0 +1,8 @@
+{
+  "name": "@threenative/example-destruction-range",
+  "private": true,
+  "scripts": {
+    "playtest": "node ../../packages/cli/dist/index.js playtest --scenario playtests/projectile-threshold.playtest.json --reuse-bundle --stable-artifacts --json",
+    "playtest:desktop": "node ../../packages/cli/dist/index.js playtest --scenario playtests/projectile-threshold.playtest.json --target desktop --reuse-bundle --stable-artifacts --json"
+  }
+}

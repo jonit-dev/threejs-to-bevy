@@ -655,12 +655,27 @@ export async function setTransform(options: ISetTransformOptions): Promise<IAuth
     if (entity === undefined) {
       return [missingReferenceDiagnostic(file, "/entities", "entity", options.entityId, idsFromArray(scene.entities))];
     }
-    entity.transform = {
-      ...(isRecord(entity.transform) ? entity.transform : {}),
+    const componentStyle = (readArray(scene.entities) ?? []).some((candidate) => {
+      if (!isRecord(candidate) || !isRecord(candidate.components)) return false;
+      return isRecord(candidate.components.Transform);
+    });
+    const current = componentStyle && isRecord(entity.components) && isRecord(entity.components.Transform)
+      ? entity.components.Transform
+      : entity.transform;
+    const transform = {
+      ...(isRecord(current) ? current : {}),
       ...(options.position === undefined ? {} : { position: options.position }),
       ...(options.rotation === undefined ? {} : { rotation: options.rotation }),
       ...(options.scale === undefined ? {} : { scale: options.scale }),
     };
+    if (componentStyle) {
+      const components = isRecord(entity.components) ? entity.components : {};
+      components.Transform = transform;
+      entity.components = components;
+      delete entity.transform;
+    } else {
+      entity.transform = transform;
+    }
     return [];
   });
 }

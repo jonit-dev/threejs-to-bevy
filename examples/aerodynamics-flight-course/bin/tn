@@ -1,0 +1,49 @@
+#!/usr/bin/env node
+
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
+
+const here = dirname(fileURLToPath(import.meta.url));
+const projectRoot = resolve(here, "..");
+const cli = resolveCli(projectRoot);
+
+if (cli === undefined) {
+  console.error("Unable to locate ThreeNative CLI. Run pnpm install, or run from a ThreeNative repo checkout with packages/cli built.");
+  process.exit(127);
+}
+
+const result = spawnSync(process.execPath, [cli, ...process.argv.slice(2)], {
+  env: {
+    ...process.env,
+    INIT_CWD: projectRoot,
+  },
+  stdio: "inherit",
+});
+
+process.exit(result.status ?? 1);
+
+function resolveCli(projectRoot) {
+  for (const candidate of [
+    resolve(projectRoot, ".threenative/cli/index.js"),
+    resolve(projectRoot, "node_modules/@threenative/cli/dist/index.js"),
+  ]) {
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+  }
+
+  let current = projectRoot;
+  while (true) {
+    const candidate = resolve(current, "packages/cli/dist/index.js");
+    if (existsSync(candidate)) {
+      return candidate;
+    }
+    const parent = dirname(current);
+    if (parent === current) {
+      return undefined;
+    }
+    current = parent;
+  }
+}

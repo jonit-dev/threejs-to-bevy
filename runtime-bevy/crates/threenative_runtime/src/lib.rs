@@ -385,6 +385,7 @@ fn install_native_runtime_systems(
     has_scripts: bool,
     initially_paused: bool,
 ) {
+    let requires_runtime_loop = has_scripts || bundle_has_simulated_physics(&bundle);
     app.add_systems(
         Update,
         (
@@ -399,7 +400,7 @@ fn install_native_runtime_systems(
         mesh_lod::select_native_mesh_lod
             .after(bevy::transform::TransformSystem::TransformPropagate),
     );
-    if has_scripts {
+    if requires_runtime_loop {
         app.insert_resource(systems_host::NativeResourceObservationState {
             declared: systems_host::native_declared_system_resources(&bundle),
             observations: Vec::new(),
@@ -435,6 +436,14 @@ fn install_native_runtime_systems(
                 .chain(),
         );
     }
+}
+
+fn bundle_has_simulated_physics(bundle: &LoadedBundle) -> bool {
+    bundle
+        .world
+        .entities
+        .iter()
+        .any(|entity| entity.components.rigid_body.is_some())
 }
 
 fn configure_native_ui(app: &mut App, bundle: &LoadedBundle) -> Result<(), RuntimeError> {
@@ -729,7 +738,7 @@ struct ScriptedRuntimeWorldParams<'w, 's> {
     proof_harness: Option<Res<'w, proof_harness::NativeProofHarnessState>>,
     resource_observations: Option<ResMut<'w, systems_host::NativeResourceObservationState>>,
     scripted: ScriptedRuntimeParams<'w>,
-    stable_ids: Query<'w, 's, &'static ThreeNativeId>,
+    stable_ids: Query<'w, 's, (Entity, &'static ThreeNativeId)>,
     text_nodes: Query<
         'w,
         's,
@@ -883,6 +892,7 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
         fixed_delta,
         &mut transforms,
     );
+    sync_scripted_visibility(&entities_by_id, &stable_ids, &mut commands);
     if let Some(loop_state) = sync_loop_state {
         sync_physics_vehicle_visuals(
             loop_state,
@@ -1229,7 +1239,7 @@ fn sync_physics_vehicle_visuals(
     loop_state: &systems_host::NativeGameLoopState,
     fixed_delta: f32,
     global_transforms: &Query<&GlobalTransform>,
-    stable_ids: &Query<&ThreeNativeId>,
+    stable_ids: &Query<(Entity, &ThreeNativeId)>,
     transforms: &mut Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
 ) {
     let alpha = if fixed_delta > 0.0 {
@@ -1245,7 +1255,7 @@ fn apply_physics_vehicle_visuals(
     runtime_id: usize,
     alpha: f32,
     global_transforms: &Query<&GlobalTransform>,
-    stable_ids: &Query<&ThreeNativeId>,
+    stable_ids: &Query<(Entity, &ThreeNativeId)>,
     transforms: &mut Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
 ) {
     let visuals = physics_vehicle::observe_physics_vehicle_visuals(runtime_id, alpha)
@@ -1271,7 +1281,7 @@ fn apply_physics_vehicle_visuals(
         let world_rotation = Quat::from_xyzw(qx, qy, qz, qw) * local_wheel_rotation;
         let direct_chassis_parent = parent
             .and_then(|parent| stable_ids.get(parent.get()).ok())
-            .is_some_and(|parent_id| parent_id.0 == visual.entity);
+            .is_some_and(|(_, parent_id)| parent_id.0 == visual.entity);
         if direct_chassis_parent {
             let [px, py, pz] = visual.interpolated_chassis_position;
             let chassis_position = Vec3::new(px, py, pz);
@@ -1290,6 +1300,34 @@ fn apply_physics_vehicle_visuals(
             target.translation = world_position;
             target.rotation = world_rotation;
         }
+    }
+}
+
+fn sync_scripted_visibility(
+    entities_by_id: &HashMap<&str, &WorldEntity>,
+    stable_ids: &Query<(Entity, &ThreeNativeId)>,
+    commands: &mut Commands<'_, '_>,
+) {
+    for (entity, stable_id) in stable_ids.iter() {
+        let Some(source) = entities_by_id.get(stable_id.0.as_str()) else {
+            continue;
+        };
+        let visible = source
+            .components
+            .visibility
+            .as_ref()
+            .is_none_or(|visibility| visibility.visible)
+            && source
+                .components
+                .mesh_renderer
+                .as_ref()
+                .and_then(|renderer| renderer.visible)
+                .unwrap_or(true);
+        commands.entity(entity).insert(if visible {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        });
     }
 }
 
@@ -1517,6 +1555,17 @@ mod tests {
     use super::*;
 
     #[test]
+    fn physics_only_bundle_should_require_the_native_runtime_loop() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle",
+        );
+        let bundle = load_bundle(root).expect("physics-only fixture should load");
+
+        assert!(bundle.manifest.entry.scripts.is_none());
+        assert!(bundle_has_simulated_physics(&bundle));
+    }
+
+    #[test]
     fn wheel_visual_presentation_should_apply_interpolated_parent_space_transform() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../../packages/ir/fixtures/conformance/advanced-physics-wheels/game.bundle");
@@ -1565,7 +1614,7 @@ mod tests {
 
         let mut system_state = bevy::ecs::system::SystemState::<(
             Query<&GlobalTransform>,
-            Query<&ThreeNativeId>,
+            Query<(Entity, &ThreeNativeId)>,
             Query<(&ThreeNativeId, &mut Transform, Option<&Parent>)>,
         )>::new(&mut world);
         let (global_transforms, stable_ids, mut transforms) = system_state.get_mut(&mut world);

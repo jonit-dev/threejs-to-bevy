@@ -203,6 +203,26 @@ const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
     release: { enrolled: true, name: "verify session cost", timingCategory: "focused-gate" },
   },
   {
+    artifact: { reportPath: "tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+        ["cargo", "build", "--manifest-path", "runtime-bevy/Cargo.toml", "-p", "threenative_runtime", "--release", "--bin", "threenative_advanced_physics_benchmark"],
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "--test", "tools/verify/dist/advancedPhysicsGate.test.js"],
+        ["node", "tools/verify/dist/advancedPhysicsGate.js"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Cross-runtime advanced-physics major-games acceptance and performance gate.",
+    focused: { profile: "release" },
+    name: "verify:advanced-physics-major-games",
+    owner: "tools/verify advanced physics major-games gate",
+    protects: "Current paired web/native vehicle, aerodynamics, and destruction playtests plus the fixed 60-second dense-scene performance workload.",
+    reason: "Rejects stale, single-adapter, semantically weakened, or over-budget evidence before advanced physics can be promoted.",
+    release: { enrolled: true, name: "verify advanced physics major games", timingCategory: "focused-gate" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/webview-package/verification-report.json" },
     command: {
       commands: [

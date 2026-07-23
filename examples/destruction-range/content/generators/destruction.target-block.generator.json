@@ -1,0 +1,334 @@
+{
+  "id": "destruction.target-block",
+  "inputHash": "sha256:756ed5964121d141a3605b541c111c91673dd720b2646842a737d7c6e57e0297",
+  "lastRun": {
+    "completedAt": "2026-07-23T06:30:07.181Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/destruction.target-block.glb",
+      "content/assets/destruction.target-block.assets.json",
+      "content/generators/destruction.target-block.generator.json"
+    ],
+    "inputHash": "sha256:756ed5964121d141a3605b541c111c91673dd720b2646842a737d7c6e57e0297",
+    "inspection": {
+      "animationClips": [],
+      "bounds": {
+        "center": [
+          0,
+          0,
+          -0.0275
+        ],
+        "max": [
+          1.1723619545583057,
+          0.9232030273791573,
+          0.36000001430511475
+        ],
+        "min": [
+          -1.1723619545583057,
+          -0.9232030273791573,
+          -0.4149999860674143
+        ],
+        "size": [
+          2.344724,
+          1.846406,
+          0.775
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 100,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 4.220503
+        },
+        "collider": {
+          "height": 1.846406,
+          "radiusForXZ": 1.172362
+        },
+        "fitScales": {
+          "targetHeight2m": 1.083185,
+          "targetLength4m": 1.705958,
+          "targetWidth1m": 0.426489
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "ok",
+          "widthToLaneRatio": 0.669921
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 13,
+        "animations": 0,
+        "buffers": 1,
+        "images": 0,
+        "materials": 2,
+        "meshes": 4,
+        "nodes": 4,
+        "scenes": 1,
+        "textures": 0,
+        "triangles": 48
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [],
+      "file": {
+        "byteSize": 6824,
+        "path": "assets/generated/destruction.target-block.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:destruction.target-block.glb.staging-870560-1784788206731-bc5bd6bfef99c",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "materials": [
+              "material:concrete"
+            ],
+            "mesh": "mesh:block.mesh",
+            "name": "block",
+            "path": "/block",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                1.7999999523162842,
+                1.7999999523162842,
+                0.7200000286102295
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:warning"
+            ],
+            "mesh": "mesh:stripe.center.mesh",
+            "name": "stripe.center",
+            "path": "/stripe.center",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                0,
+                0.30070579051971436,
+                0.9537169933319092
+              ],
+              "scale": [
+                0.2199999988079071,
+                2.0999999046325684,
+                0.05000000074505806
+              ],
+              "translation": [
+                0,
+                0,
+                -0.38999998569488525
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:warning"
+            ],
+            "mesh": "mesh:stripe.left.mesh",
+            "name": "stripe.left",
+            "path": "/stripe.left",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                0,
+                0.30070579051971436,
+                0.9537169933319092
+              ],
+              "scale": [
+                0.2199999988079071,
+                2.0999999046325684,
+                0.05000000074505806
+              ],
+              "translation": [
+                -0.47999998927116394,
+                0,
+                -0.38999998569488525
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:warning"
+            ],
+            "mesh": "mesh:stripe.right.mesh",
+            "name": "stripe.right",
+            "path": "/stripe.right",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                0,
+                0.30070579051971436,
+                0.9537169933319092
+              ],
+              "scale": [
+                0.2199999988079071,
+                2.0999999046325684,
+                0.05000000074505806
+              ],
+              "translation": [
+                0.47999998927116394,
+                0,
+                -0.38999998569488525
+              ]
+            }
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            0.3400000035762787,
+            0.3799999952316284,
+            0.4399999976158142,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.05000000074505806,
+          "metallicRoughnessTexture": false,
+          "name": "concrete",
+          "roughness": 0.7799999713897705
+        },
+        {
+          "baseColor": [
+            0.949999988079071,
+            0.30000001192092896,
+            0.03999999910593033,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.10000000149011612,
+          "metallicRoughnessTexture": false,
+          "name": "warning",
+          "roughness": 0.44999998807907104
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            0,
+            -0.0275
+          ],
+          "max": [
+            1.1723619545583057,
+            0.36000001430511475
+          ],
+          "min": [
+            -1.1723619545583057,
+            -0.4149999860674143
+          ],
+          "size": [
+            2.344724,
+            0.775
+          ]
+        },
+        "originCorrection": [
+          0,
+          0,
+          0.0275
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          0,
+          -0.0275
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0.0275
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0.0275,
+                0,
+                0
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                -0.0275
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -0.0275,
+                0,
+                0
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            2.344724,
+            0.775
+          ],
+          "halfExtents": [
+            1.172362,
+            0.3875
+          ],
+          "suggestedCellSize": 2.344724
+        },
+        "y": {
+          "center": 0,
+          "max": 0.9232030273791573,
+          "min": -0.9232030273791573,
+          "size": 1.846406
+        }
+      },
+      "namedNodes": [
+        "block",
+        "stripe.center",
+        "stripe.left",
+        "stripe.right"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:fe04e6e8ae9a1addd6d9c5f5d37b56f79bc7305cea4a5148d2f4c828bb247af0",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:cac5fc523a42205e533805e3354ca2128a64ce7df610d651a1ba496ee0f4641d",
+    "startedAt": "2026-07-23T06:30:06.731Z"
+  },
+  "outputHash": "sha256:fe04e6e8ae9a1addd6d9c5f5d37b56f79bc7305cea4a5148d2f4c828bb247af0",
+  "outputs": [
+    "assets/generated/destruction.target-block.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/destruction.target-block.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

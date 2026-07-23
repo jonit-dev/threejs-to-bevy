@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "name": "destruction-range-retry",
+  "subject": "projectile.fast",
+  "parity": {
+    "targets": ["web", "desktop"],
+    "compare": {
+      "resources": ["DestructionState.retryCount"]
+    }
+  },
+  "steps": [
+    {
+      "label": "retry",
+      "press": "KeyR",
+      "holdTicks": 1,
+      "release": true,
+      "screenshot": "01-retry"
+    },
+    { "label": "post-retry-stability", "waitTicks": 100, "screenshot": "02-stable" }
+  ],
+  "assert": {
+    "resources": [
+      { "id": "DestructionState", "path": "retryCount", "gte": 1, "changed": true }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}
