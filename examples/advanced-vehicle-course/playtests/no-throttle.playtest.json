@@ -22,7 +22,7 @@
     "movement": { "entity": "chassis", "minDistance": 0, "maxDistance": 15 },
     "resources": [
       { "id": "CourseState", "path": "damage", "equals": 0 },
-      { "id": "CourseState", "path": "events", "equals": ["retry"], "changed": true },
+      { "id": "CourseState", "path": "events", "equals": ["retry"] },
       { "id": "CourseState", "path": "jumped", "equals": false },
       { "id": "CourseState", "path": "retryCount", "gte": 1 }
     ],
