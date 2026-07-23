@@ -1213,6 +1213,28 @@ fn apply_resource(bundle: &mut LoadedBundle, resource: &NativeSystemResourceEffe
 }
 
 fn apply_physics_body_service(bundle: &mut LoadedBundle, service: &NativeSystemServiceEffect) {
+    if service.service == "physics.aerodynamics.setInputs" {
+        let Some(request) = service.payload.get("request") else {
+            return;
+        };
+        let Some(entity) = request.get("entity").and_then(Value::as_str) else {
+            return;
+        };
+        let Some(inputs) = request
+            .get("inputs")
+            .cloned()
+            .and_then(|inputs| serde_json::from_value(inputs).ok())
+        else {
+            return;
+        };
+        let Some(runtime_id) = crate::systems_host::active_physics_runtime_id() else {
+            return;
+        };
+        crate::physics_aerodynamics::set_physics_aerodynamic_inputs(
+            runtime_id, bundle, entity, inputs,
+        );
+        return;
+    }
     if service.service == "physics.vehicle.setInputs" {
         let Some(request) = service.payload.get("request") else {
             return;

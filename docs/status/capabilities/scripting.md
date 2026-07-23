@@ -60,6 +60,9 @@ Current support:
 - Web and native runtime system hosts report declared resource load/read/write
   observations so failing playtests can distinguish missing propagation from
   ordinary movement/input assertion failures.
+- `physics.aerodynamics.setInputs` and its typed
+  `ctx.physics.aerodynamics.setInputs` facade queue bounded control-surface and
+  thruster input for the current fixed tick on both runtime hosts.
 - Web and native hosts retain sensor occupancy across fixed ticks, return one
   stable same-tick snapshot to every reader, and emit one semantic `enter`,
   `stay`, or `exit` transition per occupant change. `TriggerEx.entered` is a

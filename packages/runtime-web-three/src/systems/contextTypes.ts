@@ -26,6 +26,8 @@ import type {
   IScriptPersistenceLoadResult,
   IScriptPersistenceSaveResult,
   IScriptPhysicsBodyCommandResult,
+  IScriptAerodynamicsSetInputsResult,
+  IScriptAerodynamicsInputs,
   IScriptPhysicsOverlapRequest,
   IScriptPhysicsOverlapResult,
   IScriptPhysicsRaycastRequest,
@@ -242,6 +244,9 @@ export interface ISystemContext {
     list(): ITaskDeclarationView[];
   };
   physics: {
+    aerodynamics: {
+      setInputs(entity: string, inputs: IScriptAerodynamicsInputs): IScriptAerodynamicsSetInputsResult;
+    };
     addForce(entity: string, force: readonly [number, number, number]): IPhysicsBodyCommandResult;
     addForceAtPoint(entity: string, force: readonly [number, number, number], point: readonly [number, number, number]): IPhysicsBodyCommandResult;
     addTorque(entity: string, torque: readonly [number, number, number]): IPhysicsBodyCommandResult;

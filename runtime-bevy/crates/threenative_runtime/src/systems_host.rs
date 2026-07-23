@@ -1039,6 +1039,7 @@ const PRE_PHYSICS_BODY_SERVICES: &[&str] = &[
     "character.move",
     "physics.addForce",
     "physics.addForceAtPoint",
+    "physics.aerodynamics.setInputs",
     "physics.addTorque",
     "physics.applyAngularImpulse",
     "physics.applyImpulse",

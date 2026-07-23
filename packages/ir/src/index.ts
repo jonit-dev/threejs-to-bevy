@@ -1,5 +1,5 @@
 export { schemaUrls, type SchemaName } from "./schemas.js";
-export { validatePhysicsComponents, validateVehicleController } from "./physicsValidation.js";
+export { validateAerodynamicBody, validatePhysicsComponents, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
 export {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,
@@ -286,6 +286,8 @@ export type {
   IScriptPersistenceSaveRecord,
   IScriptPersistenceSaveResult,
   IScriptPhysicsBodyCommandResult,
+  IScriptAerodynamicsSetInputsResult,
+  IScriptAerodynamicsInputs,
   IScriptVehicleSetInputsResult,
   IScriptPhysicsFilterRequest,
   IScriptPhysicsOverlapRequest,

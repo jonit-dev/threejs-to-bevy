@@ -1,5 +1,6 @@
 import { access, mkdir, readFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
+import { validateAerodynamicBody, validateWindVolume } from "@threenative/ir";
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "../documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
@@ -664,7 +665,11 @@ export function validateComponents(
       diagnostics.push(typeDiagnostic(file, `${path}/${escapeJsonPointer(kind)}`, `component '${kind}' must be an object.`, component));
       continue;
     }
-    if (kind === "camera") {
+    if (kind === "AerodynamicBody") {
+      validatePortablePhysicsComponent(diagnostics, file, `${path}/AerodynamicBody`, component, "AerodynamicBody");
+    } else if (kind === "WindVolume") {
+      validatePortablePhysicsComponent(diagnostics, file, `${path}/WindVolume`, component, "WindVolume");
+    } else if (kind === "camera") {
       validateCameraComponent(diagnostics, file, `${path}/camera`, component, entityIds);
     } else if (kind === "MeshRenderer" || kind === "meshRenderer") {
       validateMeshRendererComponent(diagnostics, file, `${path}/${escapeJsonPointer(kind)}`, component, materialIds);
@@ -692,6 +697,26 @@ export function validateComponents(
       validateVisibilityComponent(diagnostics, file, `${path}/Visibility`, component);
     }
   }
+}
+
+function validatePortablePhysicsComponent(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  path: string,
+  value: Record<string, unknown>,
+  kind: "AerodynamicBody" | "WindVolume",
+): void {
+  const irDiagnostics: import("@threenative/ir").IIrDiagnostic[] = [];
+  if (kind === "AerodynamicBody") validateAerodynamicBody(value, path, irDiagnostics);
+  else validateWindVolume(value, path, irDiagnostics);
+  diagnostics.push(...irDiagnostics.map((diagnostic) => authoringDiagnostic({
+    code: diagnostic.code,
+    file,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    severity: diagnostic.severity,
+    suggestion: diagnostic.suggestion,
+  })));
 }
 
 export function validatePatrolComponent(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: Record<string, unknown>): void {

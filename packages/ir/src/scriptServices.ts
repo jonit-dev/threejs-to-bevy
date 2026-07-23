@@ -288,6 +288,17 @@ export interface IScriptVehicleSetInputsResult {
   status: "applied" | "invalid-controller" | "invalid-input" | "missing";
 }
 
+export interface IScriptAerodynamicsSetInputsResult {
+  accepted: boolean;
+  entity: string;
+  status: "applied" | "invalid-aerodynamics" | "invalid-input" | "missing";
+}
+
+export interface IScriptAerodynamicsInputs {
+  surfaces?: Readonly<Record<string, number>>;
+  thrusters?: Readonly<Record<string, number>>;
+}
+
 export interface IScriptPhysicsSensorRequest {
   phases?: Array<"enter" | "exit" | "stay">;
   sensor?: string;

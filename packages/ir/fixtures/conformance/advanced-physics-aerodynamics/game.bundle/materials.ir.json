@@ -1,0 +1,9 @@
+{
+  "schema": "threenative.materials",
+  "version": "0.1.0",
+  "materials": [
+    { "color": "#30363d", "id": "mat.runway", "kind": "standard", "metalness": 0, "roughness": 0.9 },
+    { "color": "#e85d3f", "id": "mat.craft", "kind": "standard", "metalness": 0.1, "roughness": 0.5 },
+    { "color": "#55d6be", "id": "mat.wind", "kind": "standard", "metalness": 0, "roughness": 0.35 }
+  ]
+}

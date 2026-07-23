@@ -16,6 +16,7 @@ export type IrSystemService =
   | "physics.addForce"
   | "physics.addForceAtPoint"
   | "physics.addTorque"
+  | "physics.aerodynamics.setInputs"
   | "physics.applyAngularImpulse"
   | "physics.applyImpulse"
   | "physics.applyImpulseAtPoint"

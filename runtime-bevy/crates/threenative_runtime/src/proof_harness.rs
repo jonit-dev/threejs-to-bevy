@@ -117,6 +117,9 @@ pub struct NativeProofHarnessRequiredModels(Vec<Handle<Scene>>);
 #[derive(Clone, Debug, Default, Resource)]
 pub struct NativeProofHarnessFastForward(pub u64);
 
+#[derive(Clone, Debug, Default, Resource)]
+struct NativeProofHarnessExitRequested(bool);
+
 type NativeProofTransformQueries<'w, 's> = ParamSet<
     'w,
     's,
@@ -140,7 +143,6 @@ pub struct NativeProofHarnessSystem<'w, 's> {
     commands: Commands<'w, 's>,
     state: ResMut<'w, NativeProofHarnessState>,
     keyboard: ResMut<'w, ButtonInput<KeyCode>>,
-    exit: EventWriter<'w, AppExit>,
     windows: Query<'w, 's, Entity, With<PrimaryWindow>>,
     screenshots: Option<ResMut<'w, ScreenshotManager>>,
     transforms: NativeProofTransformQueries<'w, 's>,
@@ -346,6 +348,7 @@ pub fn install_native_proof_harness(
             options.audit_writes,
         ))
         .init_resource::<NativeProofHarnessFastForward>()
+        .init_resource::<NativeProofHarnessExitRequested>()
         .insert_resource(WinitSettings {
             focused_mode: update_mode,
             unfocused_mode: update_mode,
@@ -361,6 +364,7 @@ pub fn install_native_proof_harness(
         Update,
         write_native_proof_harness_post_runtime_sample.after(crate::run_scripted_runtime_systems),
     );
+    app.add_systems(PostUpdate, exit_native_proof_harness_after_sample);
     if waits_for_render_assets {
         app.add_systems(Update, request_native_proof_redraw);
     }
@@ -473,11 +477,19 @@ fn apply_native_proof_harness_action(
         }
         NativeProofHarnessAction::Exit => {
             if native_proof_screenshots_ready(&harness.state.commands, tick) {
-                harness.exit.send(AppExit::Success);
+                harness
+                    .commands
+                    .insert_resource(NativeProofHarnessExitRequested(true));
             } else {
                 progress.hold_tick = true;
             }
         }
+    }
+}
+
+fn exit_native_proof_harness_after_sample(requested: Res<NativeProofHarnessExitRequested>) {
+    if requested.0 {
+        std::process::exit(0);
     }
 }
 

@@ -27,6 +27,7 @@ export type SystemService =
   | "physics.addForce"
   | "physics.addForceAtPoint"
   | "physics.addTorque"
+  | "physics.aerodynamics.setInputs"
   | "physics.applyAngularImpulse"
   | "physics.applyImpulse"
   | "physics.applyImpulseAtPoint"

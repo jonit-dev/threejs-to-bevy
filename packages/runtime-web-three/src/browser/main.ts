@@ -57,6 +57,7 @@ const captureFrames = captureFramesRaw === null ? undefined : Number.parseInt(ca
 const captureTraceEntityId = params.get("captureTraceEntity") ?? undefined;
 const targetProfile = params.get("targetProfile") === "mobile-web" ? "mobile-web" : "desktop-web";
 const debugVehicle = params.get("debugVehicle");
+const debugAerodynamics = params.get("debugAerodynamics");
 const loadedBundle = await loadBundleUrl(resolvedBundleUrl);
 const debugVehiclePosition = params.get("debugVehiclePosition")?.split(",").map(Number);
 if (debugVehicle !== null && debugVehiclePosition?.length === 3 && debugVehiclePosition.every(Number.isFinite)) {
@@ -95,6 +96,7 @@ window.__THREENATIVE_RUNTIME__ = {
 };
 
 if (debugVehicle !== null) mountVehicleDebugHud(debugVehicle, result);
+if (debugAerodynamics !== null) mountAerodynamicDebugHud(debugAerodynamics, result);
 
 updateReadyState();
 window.__THREENATIVE_EFFECT_LOG__ = stableSystemEffectLog(result.effectLog);
@@ -154,6 +156,78 @@ function updateReadyState(): void {
     ok: result.diagnostics.every((diagnostic) => diagnostic.severity !== "error"),
     runtimeDiagnostics,
   };
+}
+
+function mountAerodynamicDebugHud(entity: string, runtime: Pick<typeof result, "aerodynamicSnapshot" | "entityWorldPosition">): void {
+  const root = document.createElement("section");
+  root.dataset.threenativeAerodynamicDebug = entity;
+  Object.assign(root.style, { background: "rgba(2,6,23,.92)", bottom: "12px", boxSizing: "border-box", color: "#e2e8f0", font: "12px monospace", left: "12px", maxWidth: "760px", padding: "10px", position: "fixed", width: "calc(100vw - 24px)", zIndex: "2147483647" });
+  const controls = document.createElement("div");
+  const history: string[] = JSON.parse(sessionStorage.getItem(`threenative.aerodynamics.history.${entity}`) ?? "[]") as string[];
+  const controlledKeys = ["KeyW", "ArrowUp", "ArrowDown"];
+  const apply = (label: string, key?: string) => {
+    for (const code of controlledKeys) window.dispatchEvent(new KeyboardEvent("keyup", { code }));
+    if (key !== undefined) window.dispatchEvent(new KeyboardEvent("keydown", { code: key }));
+    history.push(label);
+    sessionStorage.setItem(`threenative.aerodynamics.history.${entity}`, JSON.stringify(history.slice(-20)));
+  };
+  for (const [label, key] of [
+    ["Launch", "KeyW"],
+    ["Pitch / stall", "ArrowUp"],
+    ["Recover", "ArrowDown"],
+    ["Release", undefined],
+  ] as const) {
+    const button = document.createElement("button");
+    button.textContent = label;
+    button.dataset.aerodynamicControl = label.toLowerCase().replaceAll(" ", "-");
+    Object.assign(button.style, { margin: "2px", padding: "5px 8px" });
+    button.addEventListener("click", () => apply(label, key));
+    controls.append(button);
+  }
+  const retry = document.createElement("button");
+  retry.textContent = "Retry fresh runtime";
+  retry.dataset.aerodynamicControl = "retry";
+  retry.addEventListener("click", () => { history.push("Retry fresh runtime"); sessionStorage.setItem(`threenative.aerodynamics.history.${entity}`, JSON.stringify(history.slice(-20))); location.reload(); });
+  controls.append(retry);
+  const vectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  vectors.setAttribute("viewBox", "0 0 420 120");
+  vectors.setAttribute("aria-label", "Aerodynamic force vectors");
+  Object.assign(vectors.style, { background: "rgba(15,23,42,.85)", display: "block", height: "120px", marginTop: "8px", width: "420px" });
+  const telemetry = document.createElement("pre");
+  Object.assign(telemetry.style, { margin: "8px 0 0", whiteSpace: "pre-wrap" });
+  root.append(controls, vectors, telemetry);
+  document.body.append(root);
+  const update = () => {
+    const observation = runtime.aerodynamicSnapshot(entity)[0];
+    if (observation === undefined) { telemetry.textContent = `Aerodynamics ${entity}: awaiting first fixed tick`; return; }
+    const lift = observation.surfaces.reduce((sum, surface) => sum + surface.lift[1], 0);
+    const drag = observation.surfaces.reduce((sum, surface) => sum + Math.hypot(...surface.drag), 0);
+    const thrust = observation.thrusters.reduce((sum, item) => sum + Math.hypot(...item.force), 0);
+    const wind = Math.hypot(...observation.windVelocity);
+    const lines = [
+      ["LIFT", "#4ade80", 20, 100, 20, 100 - Math.min(80, Math.abs(lift) / 20)],
+      ["DRAG", "#fb923c", 120, 30, 120 + Math.min(80, drag / 5), 30],
+      ["THRUST", "#f43f5e", 120, 65, 120 + Math.min(80, thrust / 20), 65],
+      ["WIND", "#22d3ee", 120, 100, 120 + Math.min(80, wind * 12), 100],
+    ] as const;
+    vectors.replaceChildren(...lines.flatMap(([label, color, x1, y1, x2, y2]) => {
+      const line = document.createElementNS(vectors.namespaceURI, "line");
+      line.setAttribute("x1", String(x1)); line.setAttribute("y1", String(y1)); line.setAttribute("x2", String(x2)); line.setAttribute("y2", String(y2)); line.setAttribute("stroke", color); line.setAttribute("stroke-width", "5"); line.setAttribute("stroke-linecap", "round");
+      const text = document.createElementNS(vectors.namespaceURI, "text");
+      text.setAttribute("x", String(x1 + 4)); text.setAttribute("y", String(Math.max(12, y1 - 6))); text.setAttribute("fill", color); text.textContent = label;
+      return [line, text];
+    }));
+    const elevator = observation.surfaces.find((surface) => surface.id === "elevator");
+    const position = runtime.entityWorldPosition(entity);
+    telemetry.textContent = [
+      `Craft ${entity} | air ${Math.hypot(...observation.relativeAirVelocity).toFixed(2)} m/s | AoA ${(elevator?.angleOfAttack ?? 0).toFixed(3)} rad | sideslip ${observation.sideslip.toFixed(3)} rad`,
+      `lift ${lift.toFixed(1)} N | drag ${drag.toFixed(1)} N | thrust ${thrust.toFixed(1)} N | wind ${observation.windVelocity.map((value) => value.toFixed(2)).join(",")}`,
+      `elevator ${(elevator?.controlDeflection ?? 0).toFixed(3)} rad | stall ${observation.surfaces.some((surface) => surface.stalled) ? "ACTIVE" : "clear"} | diagnostics ${observation.diagnostics.length}`,
+      `pose ${position?.map((value) => value.toFixed(2)).join(",") ?? "missing"} | History: ${history.join(" -> ") || "none"}`,
+    ].join("\n");
+  };
+  update();
+  setInterval(update, 100);
 }
 
 function mountVehicleDebugHud(entity: string, runtime: Pick<typeof result, "entityWorldPosition" | "entityWorldRotation" | "setVehicleControllerInputs" | "vehicleControllerSnapshot" | "vehicleWheelSnapshot">): void {

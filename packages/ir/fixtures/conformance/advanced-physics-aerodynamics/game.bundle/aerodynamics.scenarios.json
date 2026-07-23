@@ -1,0 +1,37 @@
+{
+  "schema": "threenative.advanced-physics-aerodynamics-scenarios",
+  "version": "0.1.0",
+  "fixedDt": 0.016666666666666666,
+  "entity": "craft",
+  "maneuver": {
+    "checkpoints": [0, 60, 90, 120, 138, 160, 199, 240, 260],
+    "segments": [
+      { "label": "launch", "steps": 90, "inputs": { "surfaces": { "elevator": 0 }, "thrusters": { "main-engine": 1 } } },
+      { "label": "pitch-up", "steps": 35, "inputs": { "surfaces": { "elevator": 1 }, "thrusters": { "main-engine": 1 } } },
+      { "label": "recover", "steps": 35, "inputs": { "surfaces": { "elevator": -1 }, "thrusters": { "main-engine": 1 } } },
+      { "label": "approach", "steps": 40, "inputs": { "surfaces": { "elevator": 0 }, "thrusters": { "main-engine": 1 } } },
+      { "label": "power-off-landing", "steps": 70, "inputs": { "surfaces": { "elevator": 0 }, "thrusters": { "main-engine": 0 } } }
+    ],
+    "bounds": {
+      "groundedAltitude": [-0.8, -0.3],
+      "minimumAirborneAltitudeAfterGroundContact": 1,
+      "recoveryTick": [150, 175],
+      "stallTick": [125, 150],
+      "windTick": [85, 170]
+    },
+    "parity": {
+      "eventTickMaxDelta": 12,
+      "finalPositionMaxDelta": 6
+    }
+  },
+  "samples": [
+    { "label": "zero-air-outside-wind", "position": [20, 2, 8], "velocity": [0, 0, 0], "inputs": {} },
+    { "label": "quadratic-drag-slow", "position": [20, 2, 8], "velocity": [0, 0, -10], "inputs": {} },
+    { "label": "quadratic-drag-fast", "position": [20, 2, 8], "velocity": [0, 0, -20], "inputs": {} },
+    { "label": "elevator-positive", "position": [20, 2, 8], "velocity": [0, 0, -20], "inputs": { "surfaces": { "elevator": 1 } } },
+    { "label": "elevator-negative", "position": [20, 2, 8], "velocity": [0, 0, -20], "inputs": { "surfaces": { "elevator": -1 } } },
+    { "label": "stall-entry", "position": [0, 4, -28], "velocity": [3, 12, -10], "inputs": { "thrusters": { "main-engine": 1 } } },
+    { "label": "stall-recovery", "position": [0, 4, -28], "velocity": [3, 1, -24], "inputs": { "thrusters": { "main-engine": 1 } } },
+    { "label": "wind-outside-boundary", "position": [10, 4, -28], "velocity": [0, 0, -20], "inputs": {} }
+  ]
+}

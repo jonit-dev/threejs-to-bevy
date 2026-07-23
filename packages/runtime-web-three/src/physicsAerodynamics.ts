@@ -1,4 +1,4 @@
-import type { IAerodynamicBodyComponent, IAerodynamicObservation, IAerodynamicSurfaceComponent, IWindVolumeComponent, IWorldIr, Quat, Vec3 } from "@threenative/ir";
+import type { IAerodynamicBodyComponent, IAerodynamicObservation, IAerodynamicSurfaceComponent, IScriptAerodynamicsInputs, IWindVolumeComponent, IWorldIr, Quat, Vec3 } from "@threenative/ir";
 
 import { applyLivePhysicsAtPoint } from "./physics.js";
 import type { IWebInputState } from "./input.js";
@@ -12,10 +12,7 @@ interface IAerodynamicRuntimeState {
   throttles: Map<string, number>;
 }
 
-export interface IAerodynamicInputs {
-  surfaces?: Readonly<Record<string, number>>;
-  thrusters?: Readonly<Record<string, number>>;
-}
+export type IAerodynamicInputs = IScriptAerodynamicsInputs;
 
 interface IForceContribution {
   drag?: Vec3;
@@ -27,24 +24,34 @@ interface IForceContribution {
 }
 
 const observationsByWorld = new WeakMap<IWorldIr, IAerodynamicObservation[]>();
+const manualInputsByWorld = new WeakMap<IWorldIr, Set<string>>();
 const stateByWorld = new WeakMap<IWorldIr, Map<string, IAerodynamicRuntimeState>>();
 
 export function setPhysicsAerodynamicInputs(world: IWorldIr, entityId: string, inputs: IAerodynamicInputs): boolean {
   const body = world.entities.find((entity) => entity.id === entityId)?.components.AerodynamicBody;
   if (body === undefined || !validInputs(body, inputs)) return false;
-  const state = stateFor(world, entityId);
+  const manual = manualInputsByWorld.get(world) ?? new Set<string>();
+  manual.add(entityId);
+  manualInputsByWorld.set(world, manual);
+  applyInputs(stateFor(world, entityId), inputs);
+  return true;
+}
+
+function applyInputs(state: IAerodynamicRuntimeState, inputs: IAerodynamicInputs): void {
+  for (const id of [...state.controls.keys()]) if (!id.startsWith("applied:")) state.controls.delete(id);
+  for (const id of [...state.throttles.keys()]) if (!id.startsWith("applied:")) state.throttles.delete(id);
   for (const [id, value] of Object.entries(inputs.surfaces ?? {})) state.controls.set(id, value);
   for (const [id, value] of Object.entries(inputs.thrusters ?? {})) state.throttles.set(id, value);
-  return true;
 }
 
 export function applyPhysicsAerodynamicBindings(world: IWorldIr, input: IWebInputState): void {
   for (const entity of world.entities) {
     const body = entity.components.AerodynamicBody;
     if (body === undefined) continue;
+    if (manualInputsByWorld.get(world)?.has(entity.id) === true) continue;
     const surfaces = Object.fromEntries(body.surfaces.flatMap((surface) => surface.control?.binding === undefined ? [] : [[surface.id, input.axis(surface.control.binding)]]));
     const thrusters = Object.fromEntries((body.thrusters ?? []).flatMap((thruster) => thruster.binding === undefined ? [] : [[thruster.id, Math.max(0, input.axis(thruster.binding), input.action(thruster.binding) ? 1 : 0)]]));
-    if (Object.keys(surfaces).length > 0 || Object.keys(thrusters).length > 0) setPhysicsAerodynamicInputs(world, entity.id, { surfaces, thrusters });
+    if (Object.keys(surfaces).length > 0 || Object.keys(thrusters).length > 0) applyInputs(stateFor(world, entity.id), { surfaces, thrusters });
   }
 }
 
@@ -53,6 +60,7 @@ export function observePhysicsAerodynamics(world: IWorldIr): IAerodynamicObserva
 }
 
 export function disposePhysicsAerodynamics(world: IWorldIr): void {
+  manualInputsByWorld.delete(world);
   observationsByWorld.delete(world);
   stateByWorld.delete(world);
 }
@@ -172,7 +180,7 @@ function gustVelocity(volume: IWindVolumeComponent, elapsed: number): Vec3 {
   return [0, 1, 2].map((axis) => gust.amplitude[axis]! * Math.sin(phase + seededPhase(gust.seed, axis))) as unknown as Vec3;
 }
 
-function seededPhase(seed: number, axis: number): number { const value = Math.sin((seed + 1) * (axis + 11) * 12.9898) * 43758.5453; return (value - Math.floor(value)) * Math.PI * 2; }
+function seededPhase(seed: number, axis: number): number { let value = (seed ^ Math.imul(axis + 1, 0x9e3779b9)) >>> 0; value ^= value << 13; value ^= value >>> 17; value ^= value << 5; return ((value >>> 0) & 0xffff) * (Math.PI * 2 / 65536); }
 function sampleCurve(curve: IAerodynamicSurfaceComponent["liftCurve"], angle: number): number { if (angle <= curve[0]!.angle) return curve[0]!.coefficient; if (angle >= curve.at(-1)!.angle) return curve.at(-1)!.coefficient; const upper = curve.findIndex((point) => point.angle >= angle); const left = curve[upper - 1]!; const right = curve[upper]!; const alpha = (angle - left.angle) / (right.angle - left.angle); return left.coefficient + (right.coefficient - left.coefficient) * alpha; }
 function stateFor(world: IWorldIr, entity: string): IAerodynamicRuntimeState { const states = stateByWorld.get(world) ?? new Map<string, IAerodynamicRuntimeState>(); stateByWorld.set(world, states); const state = states.get(entity) ?? { controls: new Map(), stalls: new Set(), throttles: new Map() }; states.set(entity, state); return state; }
 function validInputs(body: IAerodynamicBodyComponent, inputs: IAerodynamicInputs): boolean { const surfaces = new Set(body.surfaces.map((surface) => surface.id)); const thrusters = new Set((body.thrusters ?? []).map((thruster) => thruster.id)); return Object.entries(inputs.surfaces ?? {}).every(([id, value]) => surfaces.has(id) && Number.isFinite(value) && value >= -1 && value <= 1) && Object.entries(inputs.thrusters ?? {}).every(([id, value]) => thrusters.has(id) && Number.isFinite(value) && value >= 0 && value <= 1); }

@@ -27,6 +27,7 @@ context.persistence.save("autosave");
 context.physics.addForce("hero", [1, 0, 0]);
 context.physics.addForceAtPoint("hero", [1, 0, 0], [0, 1, 0]);
 context.physics.addTorque("hero", [0, 1, 0]);
+context.physics.aerodynamics.setInputs("hero", { surfaces: { elevator: 0.25 }, thrusters: { main: 1 } });
 context.physics.applyAngularImpulse("hero", [0, 1, 0]);
 context.physics.applyImpulse("hero", [1, 0, 0]);
 context.physics.applyImpulseAtPoint("hero", [1, 0, 0], [0, 1, 0]);

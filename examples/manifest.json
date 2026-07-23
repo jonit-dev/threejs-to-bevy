@@ -4,6 +4,11 @@
   "examples": [
     {
       "classification": "fixture-only",
+      "path": "examples/advanced-physics-aerodynamics",
+      "reason": "Fixture-backed Phase 4 aerodynamic flight playtest wrapper; paired web/native evidence and release readiness remain owned by the advanced-physics capability gate."
+    },
+    {
+      "classification": "fixture-only",
       "path": "examples/advanced-physics-drivetrain",
       "reason": "Fixture-backed Phase 3 drivetrain playtest wrapper; paired web/native evidence and release readiness remain owned by the advanced-physics capability gate."
     },

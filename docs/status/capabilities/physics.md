@@ -68,6 +68,14 @@ Current support:
   ground-plane chassis velocity, excluding vertical suspension and landing
   velocity. Paired traces, browser review, and real web/graphical-desktop
   playtests pass; release enrollment remains deferred to the final PRD phase.
+- Phase 4 implements bounded pre-release aerodynamics on both adapters:
+  quadratic body drag, lift/drag curves, control surfaces and stall, force and
+  torque thrusters with fuel hooks, deterministic box/sphere wind volumes,
+  density overrides, and `physics.aerodynamics.setInputs`. Paired traces prove
+  analytic behavior and numeric parity; real web/graphical-desktop flights and
+  a hash-bound browser review prove takeoff, gust response, stall/recovery,
+  landing, force telemetry, and fresh retry. Release enrollment remains
+  deferred to the final PRD phase.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
@@ -91,10 +99,12 @@ Verification:
 - `pnpm verify:physics-self-verification`
 - `pnpm verify:focused verify:advanced-physics-wheels`
 - `pnpm verify:focused verify:advanced-physics-drivetrain`
+- `pnpm verify:focused verify:advanced-physics-aerodynamics`
 - `pnpm verify:focused verify:feature-parity-physics-native`
 - `packages/ir/fixtures/conformance/advanced-physics-foundation/`
 - `packages/ir/fixtures/conformance/advanced-physics-wheels/`
 - `packages/ir/fixtures/conformance/advanced-physics-drivetrain/`
+- `packages/ir/fixtures/conformance/advanced-physics-aerodynamics/`
 - `tn playtest --target desktop ...`
 
 Full prior evidence is preserved in

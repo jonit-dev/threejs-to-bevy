@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import { feedbackPresetById } from "@threenative/ir/feedback";
-import type { IAssetsManifest, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptSystemQuery, IScriptVehicleSetInputsResult, ISystemsIr, IUiIr, IUiNodeIr, IVehicleControllerInput, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAerodynamicBodyComponent, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptAerodynamicsInputs, IScriptAerodynamicsSetInputsResult, IScriptSystemQuery, IScriptVehicleSetInputsResult, ISystemsIr, IUiIr, IUiNodeIr, IVehicleControllerInput, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -377,6 +377,19 @@ export function createSystemContext(
           : { accepted: true, entity, status: "applied" };
     services.push({ payload: { request: { entity, inputs: cloneValue(inputs) }, result }, service: "physics.vehicle.setInputs" });
     return cloneValue(result) as IScriptVehicleSetInputsResult;
+  };
+  const queueAerodynamicInputs = (entity: string, inputs: IScriptAerodynamicsInputs): IScriptAerodynamicsSetInputsResult => {
+    const target = world.entities.find((candidate) => candidate.id === entity);
+    const body = target?.components.AerodynamicBody;
+    const result: IScriptAerodynamicsSetInputsResult = target === undefined
+      ? { accepted: false, entity, status: "missing" }
+      : body === undefined || target.components.RigidBody?.kind !== "dynamic"
+        ? { accepted: false, entity, status: "invalid-aerodynamics" }
+        : !validAerodynamicInputs(body, inputs)
+          ? { accepted: false, entity, status: "invalid-input" }
+          : { accepted: true, entity, status: "applied" };
+    services.push({ payload: { request: { entity, inputs: cloneValue(inputs) }, result }, service: "physics.aerodynamics.setInputs" });
+    return cloneValue(result) as IScriptAerodynamicsSetInputsResult;
   };
   return {
     commands,
@@ -939,6 +952,11 @@ export function createSystemContext(
         },
       },
       physics: {
+        aerodynamics: {
+          setInputs(entity, inputs) {
+            return queueAerodynamicInputs(normalizeEntityRef(entity), inputs);
+          },
+        },
         addForce(entity, force) {
           return queuePhysicsBodyCommand("physics.addForce", entity, force);
         },
@@ -1035,6 +1053,13 @@ export function createSystemContext(
     resources,
     services,
   };
+}
+
+function validAerodynamicInputs(body: IAerodynamicBodyComponent, inputs: IScriptAerodynamicsInputs): boolean {
+  const surfaces = new Set(body.surfaces.map((surface) => surface.id));
+  const thrusters = new Set((body.thrusters ?? []).map((thruster) => thruster.id));
+  return Object.entries(inputs.surfaces ?? {}).every(([id, value]) => surfaces.has(id) && Number.isFinite(value) && value >= -1 && value <= 1)
+    && Object.entries(inputs.thrusters ?? {}).every(([id, value]) => thrusters.has(id) && Number.isFinite(value) && value >= 0 && value <= 1);
 }
 
 function queueSceneService<TOperation extends "change" | "loadAdditive" | "push" | "unload">(

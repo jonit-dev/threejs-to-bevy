@@ -1,0 +1,90 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "camera.main",
+      "components": {
+        "Camera": { "active": true, "clear": { "color": "#87b8dc", "mode": "color" }, "far": 500, "fovY": 55, "kind": "perspective", "near": 0.1 },
+        "Transform": { "position": [12, 9, 24], "rotation": [-0.18, 0.22, 0.04, 0.958] }
+      }
+    },
+    {
+      "id": "light.sun",
+      "components": {
+        "Light": { "color": "#fff7df", "intensity": 2.5, "kind": "directional" },
+        "Transform": { "position": [8, 16, 12], "rotation": [-0.38, 0.1, 0.04, 0.918] }
+      }
+    },
+    {
+      "id": "runway",
+      "components": {
+        "Collider": { "kind": "box", "size": [80, 0.2, 180] },
+        "MeshRenderer": { "material": "mat.runway", "mesh": "mesh.runway", "receiveShadow": true },
+        "RigidBody": { "kind": "static" },
+        "Transform": { "position": [0, -1.2, -55] }
+      }
+    },
+    {
+      "id": "craft",
+      "components": {
+        "AerodynamicBody": {
+          "dragArea": [0.6, 0.8, 1.1],
+          "maxForce": 5000,
+          "surfaces": [
+            {
+              "area": 8,
+              "aspectRatio": 7,
+              "centerOfPressure": [0, 0, 0],
+              "dragCurve": [{ "angle": -1.5, "coefficient": 0.16 }, { "angle": 0, "coefficient": 0.04 }, { "angle": 1.5, "coefficient": 0.16 }],
+              "id": "main-wing",
+              "liftCurve": [{ "angle": -1.5, "coefficient": -1 }, { "angle": 0, "coefficient": 0.65 }, { "angle": 1.5, "coefficient": 1.2 }],
+              "recoveryAngle": 0.28,
+              "stallAngle": 0.52
+            },
+            {
+              "area": 2,
+              "aspectRatio": 4,
+              "centerOfPressure": [0, 0, -2],
+              "control": { "binding": "Pitch", "input": 0, "maxDeflection": 0.4, "response": 100 },
+              "dragCurve": [{ "angle": -1.5, "coefficient": 0.12 }, { "angle": 0, "coefficient": 0.04 }, { "angle": 1.5, "coefficient": 0.12 }],
+              "id": "elevator",
+              "liftCurve": [{ "angle": -1.5, "coefficient": -1 }, { "angle": 0, "coefficient": 0 }, { "angle": 1.5, "coefficient": 1 }],
+              "recoveryAngle": 0.25,
+              "stallAngle": 0.5
+            }
+          ],
+          "thrusters": [
+            { "binding": "Throttle", "direction": [0, 0, -1], "fuelHook": "fuel.avgas", "id": "main-engine", "maxForce": 700, "point": [0, 0, 1.8], "response": 60, "throttle": 0 }
+          ]
+        },
+        "Collider": { "kind": "box", "size": [1.2, 0.8, 4] },
+        "MeshRenderer": { "castShadow": true, "material": "mat.craft", "mesh": "mesh.fuselage" },
+        "RigidBody": { "ccd": { "enabled": true, "maxSubsteps": 4, "mode": "swept-aabb" }, "damping": 0.05, "gravityScale": 1, "kind": "dynamic", "mass": 80, "velocity": [0, 0, -12] },
+        "Transform": { "position": [0, 2, 8], "rotation": [0, 0, 0, 1] }
+      }
+    },
+    {
+      "id": "craft.wing",
+      "components": {
+        "Hierarchy": { "parent": "craft" },
+        "MeshRenderer": { "castShadow": true, "material": "mat.craft", "mesh": "mesh.wing" },
+        "Transform": { "position": [0, 0, 0] }
+      }
+    },
+    {
+      "id": "wind.gust",
+      "components": {
+        "Transform": { "position": [0, 4, -28] },
+        "WindVolume": { "airDensity": 1.1, "gust": { "amplitude": [2, 0.5, 0], "frequency": 0.75, "seed": 7 }, "shape": "box", "size": [18, 12, 24], "velocity": [3, 0, 0] }
+      }
+    },
+    {
+      "id": "wind.marker",
+      "components": {
+        "MeshRenderer": { "material": "mat.wind", "mesh": "mesh.marker" },
+        "Transform": { "position": [0, 0.4, -28] }
+      }
+    }
+  ]
+}

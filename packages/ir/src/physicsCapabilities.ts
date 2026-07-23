@@ -29,6 +29,10 @@ export const PHYSICS_CAPABILITY_LIMITS = Object.freeze({
 export const PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION = "0.4.0";
 
 export const PHYSICS_OBSERVATION_TOLERANCES = Object.freeze({
+  aerodynamicAngle: { absolute: 0.00001, relative: 0.001 },
+  aerodynamicControl: { absolute: 0.00001, relative: 0.001 },
+  aerodynamicForce: { absolute: 0.01, relative: 0.001 },
+  aerodynamicVelocity: { absolute: 0.0001, relative: 0.001 },
   angularVelocity: { absolute: 0.0001, relative: 0.001 },
   distance: { absolute: 0.0001, relative: 0.001 },
   linearVelocity: { absolute: 0.0001, relative: 0.001 },
@@ -64,7 +68,7 @@ export const PHYSICS_OBSERVATION_TOLERANCES = Object.freeze({
 export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "physics.aerodynamics.add",
     compilerComponent: "AerodynamicBody",
     component: "AerodynamicBody",
     fixture: "advanced-physics-aerodynamics",
@@ -77,7 +81,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "physics.wind.add",
     compilerComponent: "WindVolume",
     component: "WindVolume",
     fixture: "advanced-physics-aerodynamics",
@@ -88,7 +92,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "scene.set_component",
     component: "CompoundCollider",
     fixture: "advanced-physics-foundation",
     gate: "physics-self-verification",
@@ -98,7 +102,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "scene.set_component",
     compilerComponent: "PhysicsSurface",
     component: "PhysicsSurface",
     fixture: "advanced-physics-wheels",
@@ -109,7 +113,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "scene.set_component",
     compilerComponent: "TireModel",
     component: "TireModel",
     fixture: "advanced-physics-wheels",
@@ -121,7 +125,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.component.set",
+    authoringOperation: "scene.set_component",
     compilerComponent: "WheelAssembly",
     component: "WheelAssembly",
     fixture: "advanced-physics-wheels",
@@ -163,6 +167,7 @@ export const PHYSICS_SCRIPT_SERVICE_DESCRIPTORS = [
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.addForce", mutation: true, service: "physics.addForce", unit: "newtons" },
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.addForceAtPoint", mutation: true, service: "physics.addForceAtPoint", unit: "newtons" },
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.addTorque", mutation: true, service: "physics.addTorque", unit: "newton-meters" },
+  { adapters: ["bevy", "web"] as const, context: "ctx.physics.aerodynamics.setInputs", mutation: true, service: "physics.aerodynamics.setInputs", unit: "normalized-input" },
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.applyAngularImpulse", mutation: true, service: "physics.applyAngularImpulse", unit: "newton-meter-seconds" },
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.applyImpulse", mutation: true, service: "physics.applyImpulse", unit: "newton-seconds" },
   { adapters: ["bevy", "web"] as const, context: "ctx.physics.applyImpulseAtPoint", mutation: true, service: "physics.applyImpulseAtPoint", unit: "newton-seconds" },

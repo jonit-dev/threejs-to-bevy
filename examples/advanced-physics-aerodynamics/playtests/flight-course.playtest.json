@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "name": "advanced-physics-aerodynamics-flight-course",
+  "target": "web",
+  "viewport": { "width": 1280, "height": 720 },
+  "subject": "craft",
+  "parity": { "targets": ["web", "desktop"], "compare": { "movementDistance": { "maxDelta": 18 } } },
+  "setup": { "entities": [{ "entity": "craft", "position": [0, 2, 8] }] },
+  "warmupFrames": 0,
+  "steps": [
+    { "label": "launch", "press": "KeyW", "holdTicks": 90, "release": true },
+    { "label": "pitch-up-and-stall", "press": "ArrowUp", "holdTicks": 35, "release": true },
+    { "label": "recover", "press": "ArrowDown", "holdTicks": 35, "release": true },
+    { "label": "approach", "waitTicks": 40, "release": true },
+    { "label": "controlled-landing", "waitTicks": 70, "release": true }
+  ],
+  "assert": {
+    "movement": { "entity": "craft", "axis": "-z", "minDistance": 4, "maxDistance": 100 },
+    "diagnostics": { "runtimeReady": true, "noConsoleErrors": true, "noNetworkErrors": true, "noRuntimeDiagnostics": true }
+  },
+  "artifacts": { "screenshots": "before-after", "console": true, "network": true, "runtimeTrace": true, "effectLog": "focused" }
+}

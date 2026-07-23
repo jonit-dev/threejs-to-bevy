@@ -626,6 +626,27 @@ function __tnInvokeSystem(options) {
       });
       return clone(result);
     };
+    const aerodynamicCommand = (entity, inputs) => {
+      const entityId = normalizeEntityRef(entity);
+      const target = entityIndex.get(entityId);
+      const body = target?.components?.AerodynamicBody;
+      const surfaces = inputs?.surfaces ?? {};
+      const thrusters = inputs?.thrusters ?? {};
+      const validInputs = inputs && typeof inputs === "object"
+        && surfaces && typeof surfaces === "object" && !Array.isArray(surfaces)
+        && thrusters && typeof thrusters === "object" && !Array.isArray(thrusters)
+        && Object.entries(surfaces).every(([id, value]) => body?.surfaces?.some((surface) => surface.id === id) && Number.isFinite(value) && value >= -1 && value <= 1)
+        && Object.entries(thrusters).every(([id, value]) => body?.thrusters?.some((thruster) => thruster.id === id) && Number.isFinite(value) && value >= 0 && value <= 1);
+      const result = !target
+        ? { accepted: false, entity: entityId, status: "missing" }
+        : !body || target.components?.RigidBody?.kind !== "dynamic"
+          ? { accepted: false, entity: entityId, status: "invalid-aerodynamics" }
+          : !validInputs
+            ? { accepted: false, entity: entityId, status: "invalid-input" }
+            : { accepted: true, entity: entityId, status: "applied" };
+      effects.services.push({ service: "physics.aerodynamics.setInputs", payload: { request: { entity: entityId, inputs: clone(inputs) }, result } });
+      return clone(result);
+    };
     const vehicleControllerCommand = (entity, inputs) => {
       const entityId = normalizeEntityRef(entity);
       const target = entityIndex.get(entityId);
@@ -1482,6 +1503,11 @@ function __tnInvokeSystem(options) {
       }
       },
       physics: {
+        aerodynamics: {
+          setInputs(entity, inputs) {
+            return aerodynamicCommand(entity, inputs);
+          }
+        },
         addForce(entity, force) {
           return physicsBodyCommand("physics.addForce", entity, force);
         },

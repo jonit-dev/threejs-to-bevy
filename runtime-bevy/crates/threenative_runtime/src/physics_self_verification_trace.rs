@@ -10,6 +10,11 @@ use threenative_runtime::{
         ensure_native_physics_runtime, native_physics_runtime_id,
         step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
     },
+    physics_aerodynamics::{
+        AerodynamicInputs, AerodynamicObservation, AerodynamicTraceSample,
+        dispose_physics_aerodynamics, observe_physics_aerodynamics, set_physics_aerodynamic_inputs,
+        trace_physics_aerodynamics,
+    },
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
     physics_vehicle::{
         VehicleControlInput, VehicleControllerObservation, WheelAssemblyObservation,
@@ -32,6 +37,7 @@ use threenative_runtime::{
 #[derive(Serialize)]
 #[serde(untagged)]
 enum PhysicsSelfVerificationTrace {
+    Aerodynamics(AerodynamicsTraceReport),
     Advanced(AdvancedTraceReport),
     Character(CharacterTraceReport),
     Joint(JointTraceReport),
@@ -39,6 +45,108 @@ enum PhysicsSelfVerificationTrace {
     Rigid(RigidTraceReport),
     Wheels(WheelTraceReport),
     Drivetrain(DrivetrainTraceReport),
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsTraceReport {
+    bundle_hash: String,
+    fixed_dt: f32,
+    fixture: &'static str,
+    maneuver: AerodynamicsManeuverTrace,
+    maneuver_bounds: AerodynamicsManeuverBounds,
+    maneuver_parity: AerodynamicsManeuverParity,
+    observations: Vec<AerodynamicsTraceObservation>,
+    runtime: &'static str,
+    schema: &'static str,
+    source_hash: String,
+    version: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsTraceObservation {
+    input: AerodynamicTraceSample,
+    label: String,
+    observation: AerodynamicObservation,
+    tick: usize,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsScenarioManifest {
+    entity: String,
+    fixed_dt: f32,
+    maneuver: AerodynamicsManeuverManifest,
+    samples: Vec<AerodynamicsScenarioSample>,
+    schema: String,
+    version: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsManeuverManifest {
+    bounds: AerodynamicsManeuverBounds,
+    checkpoints: Vec<usize>,
+    parity: AerodynamicsManeuverParity,
+    segments: Vec<AerodynamicsManeuverSegment>,
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsManeuverBounds {
+    grounded_altitude: [f32; 2],
+    minimum_airborne_altitude_after_ground_contact: f32,
+    recovery_tick: [usize; 2],
+    stall_tick: [usize; 2],
+    wind_tick: [usize; 2],
+}
+
+#[derive(Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsManeuverParity {
+    event_tick_max_delta: usize,
+    final_position_max_delta: f32,
+}
+
+#[derive(Deserialize)]
+struct AerodynamicsManeuverSegment {
+    inputs: AerodynamicInputs,
+    label: String,
+    steps: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsManeuverTrace {
+    checkpoints: Vec<AerodynamicsManeuverCheckpoint>,
+    final_position: [f32; 3],
+    final_velocity: [f32; 3],
+    ground_contact_tick: Option<usize>,
+    landing_tick: Option<usize>,
+    maximum_airborne_altitude: f32,
+    recovery_tick: Option<usize>,
+    stall_tick: Option<usize>,
+    takeoff_tick: Option<usize>,
+    wind_entry_tick: Option<usize>,
+    wind_exit_tick: Option<usize>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AerodynamicsManeuverCheckpoint {
+    position: [f32; 3],
+    stalled: bool,
+    tick: usize,
+    velocity: [f32; 3],
+    wind_velocity: [f32; 3],
+}
+
+#[derive(Deserialize)]
+struct AerodynamicsScenarioSample {
+    label: String,
+    #[serde(flatten)]
+    sample: AerodynamicTraceSample,
 }
 
 #[derive(Serialize)]
@@ -203,7 +311,7 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
     let output_path = PathBuf::from(args.next().ok_or("missing output path")?);
     let source_hash = args.next();
     let bundle_hash = args.next();
-    let bundle = load_bundle(bundle_path)?;
+    let bundle = load_bundle(&bundle_path)?;
     let trace = match scene_id.as_str() {
         "advanced-physics-foundation" => {
             PhysicsSelfVerificationTrace::Advanced(trace_advanced_physics_foundation(bundle)?)
@@ -216,6 +324,14 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 bundle,
                 source_hash.ok_or("missing drivetrain source hash")?,
                 bundle_hash.ok_or("missing drivetrain bundle hash")?,
+            )?)
+        }
+        "advanced-physics-aerodynamics" => {
+            PhysicsSelfVerificationTrace::Aerodynamics(trace_advanced_physics_aerodynamics(
+                &bundle_path,
+                bundle,
+                source_hash.ok_or("missing aerodynamics source hash")?,
+                bundle_hash.ok_or("missing aerodynamics bundle hash")?,
             )?)
         }
         "physics-character-obstacles" => {
@@ -477,6 +593,209 @@ fn trace_advanced_physics_wheels(
             steering_causal_negative,
         },
     })
+}
+
+fn trace_advanced_physics_aerodynamics(
+    bundle_path: &str,
+    bundle: threenative_loader::LoadedBundle,
+    source_hash: String,
+    bundle_hash: String,
+) -> Result<AerodynamicsTraceReport, Box<dyn std::error::Error>> {
+    let manifest: AerodynamicsScenarioManifest = serde_json::from_slice(&fs::read(
+        PathBuf::from(bundle_path).join("aerodynamics.scenarios.json"),
+    )?)?;
+    if manifest.schema != "threenative.advanced-physics-aerodynamics-scenarios"
+        || manifest.version != "0.1.0"
+        || !manifest.fixed_dt.is_finite()
+        || manifest.fixed_dt <= 0.0
+        || manifest.samples.is_empty()
+        || manifest.maneuver.segments.is_empty()
+        || manifest
+            .maneuver
+            .segments
+            .iter()
+            .any(|segment| segment.steps == 0)
+        || manifest.maneuver.bounds.grounded_altitude[0]
+            >= manifest.maneuver.bounds.grounded_altitude[1]
+        || manifest.maneuver.bounds.stall_tick[0] > manifest.maneuver.bounds.stall_tick[1]
+        || manifest.maneuver.bounds.recovery_tick[0] > manifest.maneuver.bounds.recovery_tick[1]
+        || manifest.maneuver.bounds.wind_tick[0] > manifest.maneuver.bounds.wind_tick[1]
+    {
+        return Err("invalid advanced physics aerodynamics scenario manifest".into());
+    }
+    let samples = manifest
+        .samples
+        .iter()
+        .map(|entry| entry.sample.clone())
+        .collect::<Vec<_>>();
+    let observations =
+        trace_physics_aerodynamics(&bundle, &manifest.entity, manifest.fixed_dt, &samples)
+            .ok_or("aerodynamics scenario entity is missing")?;
+    let maneuver = trace_aerodynamics_maneuver(
+        bundle,
+        &manifest.entity,
+        manifest.fixed_dt,
+        &manifest.maneuver,
+    )?;
+    Ok(AerodynamicsTraceReport {
+        bundle_hash,
+        fixed_dt: manifest.fixed_dt,
+        fixture: "advanced-physics-aerodynamics",
+        maneuver,
+        maneuver_bounds: manifest.maneuver.bounds,
+        maneuver_parity: manifest.maneuver.parity,
+        observations: manifest
+            .samples
+            .into_iter()
+            .zip(observations)
+            .enumerate()
+            .map(
+                |(tick, (entry, observation))| AerodynamicsTraceObservation {
+                    input: entry.sample,
+                    label: entry.label,
+                    observation,
+                    tick,
+                },
+            )
+            .collect(),
+        runtime: "bevy",
+        schema: "threenative.advanced-physics-aerodynamics-trace",
+        source_hash,
+        version: "0.1.0",
+    })
+}
+
+fn trace_aerodynamics_maneuver(
+    mut bundle: threenative_loader::LoadedBundle,
+    entity_id: &str,
+    fixed_dt: f32,
+    maneuver: &AerodynamicsManeuverManifest,
+) -> Result<AerodynamicsManeuverTrace, Box<dyn std::error::Error>> {
+    let runtime = BTreeSet::new();
+    let runtime_id = native_physics_runtime_id(&runtime);
+    let mut checkpoints = Vec::new();
+    let mut trace = AerodynamicsManeuverTrace {
+        checkpoints: Vec::new(),
+        final_position: [0.0; 3],
+        final_velocity: [0.0; 3],
+        ground_contact_tick: None,
+        landing_tick: None,
+        maximum_airborne_altitude: f32::NEG_INFINITY,
+        recovery_tick: None,
+        stall_tick: None,
+        takeoff_tick: None,
+        wind_entry_tick: None,
+        wind_exit_tick: None,
+    };
+    let mut tick = 0usize;
+    let mut previously_stalled = false;
+    let mut inside_wind = false;
+    for segment in &maneuver.segments {
+        for _ in 0..segment.steps {
+            if !set_physics_aerodynamic_inputs(
+                runtime_id,
+                &bundle,
+                entity_id,
+                segment.inputs.clone(),
+            ) {
+                return Err(format!(
+                    "integrated aerodynamic inputs rejected in '{}'",
+                    segment.label
+                )
+                .into());
+            }
+            step_bundle_physics_with_script_poses(&mut bundle, fixed_dt, &runtime);
+            let observation = observe_physics_aerodynamics(runtime_id)
+                .into_iter()
+                .find(|item| item.entity == entity_id)
+                .ok_or("integrated aerodynamic observation is missing")?;
+            let (position, velocity) = aerodynamic_body_state(&bundle, entity_id)?;
+            let stalled = observation.surfaces.iter().any(|surface| surface.stalled);
+            let wind = observation
+                .wind_velocity
+                .iter()
+                .map(|value| value * value)
+                .sum::<f32>()
+                > 0.0;
+            let ground_contact = position[1] >= maneuver.bounds.grounded_altitude[0]
+                && position[1] <= maneuver.bounds.grounded_altitude[1];
+            let settled = ground_contact && velocity[1].abs() <= 0.2;
+            if trace.ground_contact_tick.is_none() && ground_contact {
+                trace.ground_contact_tick = Some(tick);
+            }
+            if trace.ground_contact_tick.is_some() {
+                trace.maximum_airborne_altitude = trace.maximum_airborne_altitude.max(position[1]);
+            }
+            if trace.takeoff_tick.is_none()
+                && trace.ground_contact_tick.is_some()
+                && position[1]
+                    >= maneuver
+                        .bounds
+                        .minimum_airborne_altitude_after_ground_contact
+                && velocity[1] > 0.0
+            {
+                trace.takeoff_tick = Some(tick);
+            }
+            if !previously_stalled && stalled && trace.stall_tick.is_none() {
+                trace.stall_tick = Some(tick);
+            }
+            if previously_stalled && !stalled && trace.recovery_tick.is_none() {
+                trace.recovery_tick = Some(tick);
+            }
+            if !inside_wind && wind && trace.wind_entry_tick.is_none() {
+                trace.wind_entry_tick = Some(tick);
+            }
+            if inside_wind && !wind && trace.wind_exit_tick.is_none() {
+                trace.wind_exit_tick = Some(tick);
+            }
+            if tick >= 200 && settled && trace.landing_tick.is_none() {
+                trace.landing_tick = Some(tick);
+            }
+            if maneuver.checkpoints.contains(&tick) {
+                checkpoints.push(AerodynamicsManeuverCheckpoint {
+                    position,
+                    stalled,
+                    tick,
+                    velocity,
+                    wind_velocity: observation.wind_velocity,
+                });
+            }
+            previously_stalled = stalled;
+            inside_wind = wind;
+            trace.final_position = position;
+            trace.final_velocity = velocity;
+            tick += 1;
+        }
+    }
+    trace.checkpoints = checkpoints;
+    dispose_physics_aerodynamics(runtime_id);
+    dispose_native_physics_runtime(&runtime);
+    Ok(trace)
+}
+
+fn aerodynamic_body_state(
+    bundle: &threenative_loader::LoadedBundle,
+    entity_id: &str,
+) -> Result<([f32; 3], [f32; 3]), Box<dyn std::error::Error>> {
+    let entity = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_id)
+        .ok_or("integrated aerodynamic entity is missing")?;
+    let position = entity
+        .components
+        .transform
+        .as_ref()
+        .and_then(|transform| transform.position)
+        .ok_or("integrated aerodynamic position is missing")?;
+    let velocity = entity
+        .components
+        .rigid_body
+        .as_ref()
+        .and_then(|body| body.velocity)
+        .ok_or("integrated aerodynamic velocity is missing")?;
+    Ok((position, velocity))
 }
 
 fn trace_advanced_physics_drivetrain(

@@ -1,4 +1,4 @@
-import type { IIrSystemDeclaration, IPrefabsIr, IRuntimeDiagnostic, IVehicleControllerInput, IWorldIr } from "@threenative/ir";
+import type { IIrSystemDeclaration, IPrefabsIr, IRuntimeDiagnostic, IScriptAerodynamicsInputs, IVehicleControllerInput, IWorldIr } from "@threenative/ir";
 
 import {
   applyCommands,
@@ -12,6 +12,7 @@ import {
 import type { ISystemEffectLogEntry } from "./log.js";
 import { applyLivePhysicsAtPoint, markScriptAuthoredTransform } from "../physics.js";
 import { setPhysicsVehicleControllerInputs } from "../physicsVehicle.js";
+import { setPhysicsAerodynamicInputs } from "../physicsAerodynamics.js";
 import type { IRuntimeWriteLedger } from "./writeAudit.js";
 import type { RuntimeWriteWriter } from "@threenative/ir";
 
@@ -51,6 +52,11 @@ function applyPhysicsBodyServices(world: IWorldIr, services: ReadonlyArray<IQueu
     }
     const request = service.payload.request;
     const entityId = typeof request.entity === "string" ? request.entity : undefined;
+    const aerodynamicInputs = physicsAerodynamicInputs(request.inputs);
+    if (service.service === "physics.aerodynamics.setInputs" && entityId !== undefined && aerodynamicInputs !== undefined) {
+      setPhysicsAerodynamicInputs(world, entityId, aerodynamicInputs);
+      continue;
+    }
     const vehicleInputs = physicsVehicleInputs(request.inputs);
     if (service.service === "physics.vehicle.setInputs" && entityId !== undefined && vehicleInputs !== undefined) {
       setPhysicsVehicleControllerInputs(world, entityId, vehicleInputs);
@@ -88,6 +94,14 @@ function applyPhysicsBodyServices(world: IWorldIr, services: ReadonlyArray<IQueu
       ];
     }
   }
+}
+
+function physicsAerodynamicInputs(value: unknown): IScriptAerodynamicsInputs | undefined {
+  if (!isRecord(value)) return undefined;
+  const surfaces = isRecord(value.surfaces) ? value.surfaces : {};
+  const thrusters = isRecord(value.thrusters) ? value.thrusters : {};
+  if (![...Object.values(surfaces), ...Object.values(thrusters)].every((entry) => typeof entry === "number" && Number.isFinite(entry))) return undefined;
+  return { surfaces: surfaces as Record<string, number>, thrusters: thrusters as Record<string, number> };
 }
 
 function physicsVector(value: unknown): [number, number, number] | undefined {

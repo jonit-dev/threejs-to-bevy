@@ -24,6 +24,7 @@ pub const PROMOTED_SCRIPT_SERVICES: &[&str] = &[
     "physics.addForce",
     "physics.addForceAtPoint",
     "physics.addTorque",
+    "physics.aerodynamics.setInputs",
     "physics.applyAngularImpulse",
     "physics.applyImpulse",
     "physics.applyImpulseAtPoint",

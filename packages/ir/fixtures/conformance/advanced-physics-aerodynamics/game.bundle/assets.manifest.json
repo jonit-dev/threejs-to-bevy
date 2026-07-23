@@ -1,0 +1,10 @@
+{
+  "schema": "threenative.assets",
+  "version": "0.1.0",
+  "assets": [
+    { "format": "generated", "id": "mesh.runway", "kind": "mesh", "primitive": "box", "size": [80, 0.2, 180] },
+    { "format": "generated", "id": "mesh.fuselage", "kind": "mesh", "primitive": "box", "size": [1.2, 0.8, 4] },
+    { "format": "generated", "id": "mesh.wing", "kind": "mesh", "primitive": "box", "size": [8, 0.12, 1.4] },
+    { "format": "generated", "id": "mesh.marker", "kind": "mesh", "primitive": "box", "size": [0.25, 3, 0.25] }
+  ]
+}

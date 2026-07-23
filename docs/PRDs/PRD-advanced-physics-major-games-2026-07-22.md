@@ -449,15 +449,15 @@ responds to wind using portable declarations and force-at-point physics.
 
 **Implementation:**
 
-- [ ] Add quadratic body drag and local aerodynamic surfaces with lift/drag
+- [x] Add quadratic body drag and local aerodynamic surfaces with lift/drag
   curves, center of pressure, aspect-ratio correction, stall, and control input.
-- [ ] Add force/torque thrusters with throttle binding, response, and fuel hook
+- [x] Add force/torque thrusters with throttle binding, response, and fuel hook
   metadata; fuel inventory itself remains a gameplay/resource concern.
-- [ ] Add box/sphere wind volumes with deterministic uniform and seeded gust
+- [x] Add box/sphere wind volumes with deterministic uniform and seeded gust
   velocity and optional air density override.
-- [ ] Publish relative air velocity, angle of attack, sideslip, lift, drag,
+- [x] Publish relative air velocity, angle of attack, sideslip, lift, drag,
   force point, control deflection, and stall state.
-- [ ] Clamp only at declared physical/safety bounds and emit a diagnostic when
+- [x] Clamp only at declared physical/safety bounds and emit a diagnostic when
   input would create non-finite or over-budget force.
 
 **Tests required:**
@@ -845,3 +845,39 @@ the final evidence.
 - Course-correction exit verification passes: the complete native Rust suite,
   conformance, cookbook, typecheck, docs consistency, focused drivetrain gate,
   and the full JavaScript workspace suite with bounded test-runner concurrency.
+
+### Phase 4 evidence (checkpoint PASS)
+
+- `pnpm verify:focused verify:advanced-physics-aerodynamics` passes with zero
+  diagnostics and automated/manual evidence under
+  `tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/`.
+- The checked source hash is
+  `sha256-5fcc096e140dd2ad9c2b55f8d40767138b74a9b588f2c6a7b6be57d25eb9ae55`;
+  the checked bundle hash is
+  `sha256-5ed9385922833047402bed2fb5fae03760d2a9f43e38d861dd4f839083f6e9f9`;
+  and the manual browser screenshot hash is
+  `sha256-60260457bbd346b689e05fd97b67c44c5a5e2efdbd28ede2efc49e6bfd001b62`.
+- Paired analytic traces prove zero-air behavior, quadratic drag, control-torque
+  reversal, ordered stall/recovery, wind-volume boundaries and density,
+  deterministic gusts, bounded thrust, fuel-hook metadata, and numeric parity.
+  A retained 270-tick Rapier maneuver additionally records web/native ground
+  contact, takeoff, stall at tick 138, recovery at tick 160, gust entry/exit,
+  and settled landing, with final positions 0.40 m apart.
+- Real web and graphical-desktop `tn playtest` runs pass with zero diagnostics.
+  They use the same source/bundle hashes, finish 65.03 m and 64.84 m from the
+  authored start, and settle on the runway at altitudes -0.50 m and -0.70 m.
+- Manual browser review used the real HUD input path with exact fixed ticks to
+  launch, enter and recover from a stall, cross gust telemetry, land over the
+  runway, and retry. The hash-bound HUD screenshot shows lift, drag, thrust,
+  and wind vectors with zero runtime errors.
+- Descriptor-owned `physics aerodynamics` and `physics wind` add, inspect, and
+  validate operations now serve CLI/editor authoring and reject invalid source
+  through the shared IR validators. `docs/cookbook/advanced-physics-aerodynamics.md`
+  documents the reusable authoring and two-target proof workflow, and
+  `pnpm verify:cookbook` passes.
+- Verification found and fixed two native-boundary defects: aerodynamic force
+  is now integrated as a fixed-tick impulse like web, and successful graphical
+  proof exits no longer tear down through the crashing overlay path.
+- Independent checkpoint review reports PASS after confirming authoring
+  ownership, executable cookbook coverage, retained integrated maneuver proof,
+  target-specific playtests, and manifest-derived evidence bounds.

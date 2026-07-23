@@ -6,8 +6,8 @@ export type {
   IAuthoringDiagnosticRelated,
 } from "./diagnostics.js";
 export { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, unsupportedOperationDiagnostic } from "./diagnostics.js";
-export type { IAddVehicleControllerOptions, IVehicleControllerOperationOptions } from "./operations.js";
-export { addVehicleController, inspectVehicleController, validateVehicleControllerSource } from "./operations.js";
+export type { IAddAerodynamicBodyOptions, IAddVehicleControllerOptions, IAddWindVolumeOptions, IPortableAerodynamicsOperationOptions, IVehicleControllerOperationOptions } from "./operations.js";
+export { addAerodynamicBody, addVehicleController, addWindVolume, inspectAerodynamicBody, inspectVehicleController, inspectWindVolume, validateAerodynamicBodySource, validateVehicleControllerSource, validateWindVolumeSource } from "./operations.js";
 export type {
   IApplyAuthoringBatchOptions,
   IAuthoringBatchApplyResult,

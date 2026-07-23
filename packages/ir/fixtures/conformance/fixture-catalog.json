@@ -95,6 +95,38 @@
       }
     },
     {
+      "canonicalId": "advanced-physics-aerodynamics",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:focused verify:advanced-physics-aerodynamics",
+      "canonicalArtifactGate": "advanced-physics-aerodynamics",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:advanced-physics-aerodynamics",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-aerodynamics/game.bundle",
+      "promotedCapabilities": [],
+      "reportArtifacts": [
+        "tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/verification-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/web-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/native-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/manual-web-debug.json",
+        "tools/verify/artifacts/advanced-physics/phase-4-aerodynamics/manual-web-debug.png"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/advancedPhysicsAerodynamics.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Paired web/native deterministic aerodynamics, thrust, control-surface, stall, and wind evidence gate.",
+        "owner": "packages/ir advanced-physics-aerodynamics fixture and tools/verify aerodynamic evidence gate",
+        "profile": "focused",
+        "protects": "Quadratic force semantics, control torque reversal, ordered stall recovery, deterministic wind boundaries, thrust metadata, safety diagnostics, and force telemetry.",
+        "reason": "A catalog-owned recorded maneuver prevents aerodynamic promotion on package-local tests or a single adapter.",
+        "release": { "enrolled": false, "name": "verify advanced physics aerodynamics", "timingCategory": "focused-gate" }
+      }
+    },
+    {
       "canonicalId": "procedural-mesh",
       "owner": "ir-contract",
       "sourceExample": "procedural-mesh",

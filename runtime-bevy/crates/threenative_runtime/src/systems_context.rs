@@ -1082,6 +1082,7 @@ fn service_readable_components(service: &str) -> Vec<String> {
             "RigidBody".to_owned(),
             "Transform".to_owned(),
         ],
+        "physics.aerodynamics.setInputs" => vec!["AerodynamicBody".to_owned()],
         "physics.vehicle.setInputs" => {
             vec!["VehicleController".to_owned(), "WheelAssembly".to_owned()]
         }

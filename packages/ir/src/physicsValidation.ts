@@ -279,7 +279,7 @@ function validateNamedPhysicsComponent(
   validate(value, path, diagnostics);
 }
 
-function validateAerodynamicBody(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+export function validateAerodynamicBody(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
   validateObjectFields(value, new Set(["dragArea", "maxForce", "surfaces", "thrusters"]), path, "TN_IR_PHYSICS_AERODYNAMIC_BODY_FIELD_UNSUPPORTED", diagnostics);
   validateFiniteVec3Range(value.dragArea, 0, 10_000, `${path}/dragArea`, "TN_IR_PHYSICS_AERODYNAMIC_DRAG_INVALID", diagnostics);
   validateFiniteRange(value.maxForce, Number.MIN_VALUE, PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, `${path}/maxForce`, "TN_IR_PHYSICS_AERODYNAMIC_FORCE_INVALID", diagnostics);
@@ -349,7 +349,7 @@ function validateThrusters(values: unknown[], path: string, diagnostics: IIrDiag
   });
 }
 
-function validateWindVolume(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
+export function validateWindVolume(value: Record<string, unknown>, path: string, diagnostics: IIrDiagnostic[]): void {
   validateObjectFields(value, new Set(["airDensity", "gust", "radius", "shape", "size", "velocity"]), path, "TN_IR_PHYSICS_WIND_FIELD_UNSUPPORTED", diagnostics);
   if (!["box", "sphere"].includes(value.shape as string)) diagnostics.push({ code: "TN_IR_PHYSICS_WIND_SHAPE_INVALID", message: "WindVolume.shape must be box or sphere.", path: `${path}/shape`, severity: "error" });
   validateFiniteVec3(value.velocity, `${path}/velocity`, "TN_IR_PHYSICS_WIND_VELOCITY_INVALID", diagnostics);

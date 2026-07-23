@@ -9,8 +9,7 @@ use rapier3d::{
 };
 use serde::{Deserialize, Serialize};
 use threenative_loader::{
-    AerodynamicBodyComponent, AerodynamicCurvePoint, AerodynamicSurfaceComponent, LoadedBundle,
-    WindVolumeComponent,
+    AerodynamicBodyComponent, AerodynamicCurvePoint, LoadedBundle, WindVolumeComponent,
 };
 
 const DEFAULT_AIR_DENSITY: f32 = 1.225;
@@ -70,6 +69,15 @@ pub struct AerodynamicObservation {
     pub surfaces: Vec<AerodynamicSurfaceObservation>,
     pub thrusters: Vec<ThrusterObservation>,
     pub wind_velocity: [f32; 3],
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AerodynamicTraceSample {
+    #[serde(default)]
+    pub inputs: AerodynamicInputs,
+    pub position: [f32; 3],
+    pub velocity: [f32; 3],
 }
 
 #[derive(Default)]
@@ -136,6 +144,50 @@ pub fn dispose_physics_aerodynamics(runtime_id: usize) {
     });
 }
 
+pub fn trace_physics_aerodynamics(
+    bundle: &LoadedBundle,
+    entity_id: &str,
+    fixed_delta: f32,
+    samples: &[AerodynamicTraceSample],
+) -> Option<Vec<AerodynamicObservation>> {
+    let declaration = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == entity_id)?
+        .components
+        .aerodynamic_body
+        .as_ref()?;
+    let mut state = BodyState::default();
+    Some(
+        samples
+            .iter()
+            .enumerate()
+            .map(|(tick, sample)| {
+                let position = vec(sample.position);
+                let (mut observation, contributions) = compute_body(
+                    entity_id,
+                    declaration,
+                    position,
+                    rapier3d::math::Rotation::IDENTITY,
+                    vec(sample.velocity),
+                    wind_at(bundle, position, tick as u64, fixed_delta),
+                    Some(&sample.inputs),
+                    &mut state,
+                    fixed_delta,
+                );
+                scale_observation_to_force_budget(
+                    entity_id,
+                    declaration,
+                    &contributions,
+                    &mut observation,
+                );
+                observation
+            })
+            .collect(),
+    )
+}
+
 pub(crate) fn step_physics_aerodynamics(
     runtime_id: usize,
     bundle: &LoadedBundle,
@@ -187,40 +239,19 @@ pub(crate) fn step_physics_aerodynamics(
             runtime,
             fixed_delta,
         );
-        let total = contributions
-            .iter()
-            .fold(Vec3::ZERO, |sum, item| sum + item.force);
-        let finite = total.is_finite()
-            && contributions
-                .iter()
-                .all(|item| item.force.is_finite() && item.point.is_finite());
-        let force_scale = if !finite {
-            observation.diagnostics.push(AerodynamicDiagnostic {
-                code: "TN_PHYSICS_AERODYNAMIC_FORCE_INVALID".to_owned(),
-                path: format!("world/{entity_id}/AerodynamicBody"),
-            });
-            0.0
-        } else if total.length() > declaration.max_force {
-            observation.diagnostics.push(AerodynamicDiagnostic {
-                code: "TN_PHYSICS_AERODYNAMIC_FORCE_OVER_BUDGET".to_owned(),
-                path: format!("world/{entity_id}/AerodynamicBody/maxForce"),
-            });
-            declaration.max_force / total.length()
-        } else {
-            1.0
-        };
+        let force_scale = scale_observation_to_force_budget(
+            entity_id,
+            declaration,
+            &contributions,
+            &mut observation,
+        );
         if let Some(body) = world.bodies.get_mut(handle) {
             for contribution in contributions {
-                body.add_force_at_point(contribution.force * force_scale, contribution.point, true);
-            }
-        }
-        if force_scale != 1.0 {
-            for surface in &mut observation.surfaces {
-                surface.lift = array(vec(surface.lift) * force_scale);
-                surface.drag = array(vec(surface.drag) * force_scale);
-            }
-            for thruster in &mut observation.thrusters {
-                thruster.force = array(vec(thruster.force) * force_scale);
+                body.apply_impulse_at_point(
+                    contribution.force * force_scale * fixed_delta,
+                    contribution.point,
+                    true,
+                );
             }
         }
         observations.push(observation);
@@ -229,6 +260,46 @@ pub(crate) fn step_physics_aerodynamics(
         stored.borrow_mut().insert(runtime_id, observations);
     });
     state.tick = state.tick.saturating_add(1);
+}
+
+fn scale_observation_to_force_budget(
+    entity_id: &str,
+    declaration: &AerodynamicBodyComponent,
+    contributions: &[Contribution],
+    observation: &mut AerodynamicObservation,
+) -> f32 {
+    let total = contributions
+        .iter()
+        .fold(Vec3::ZERO, |sum, item| sum + item.force);
+    let finite = total.is_finite()
+        && contributions
+            .iter()
+            .all(|item| item.force.is_finite() && item.point.is_finite());
+    let force_scale = if !finite {
+        observation.diagnostics.push(AerodynamicDiagnostic {
+            code: "TN_PHYSICS_AERODYNAMIC_FORCE_INVALID".to_owned(),
+            path: format!("world/{entity_id}/AerodynamicBody"),
+        });
+        0.0
+    } else if total.length() > declaration.max_force {
+        observation.diagnostics.push(AerodynamicDiagnostic {
+            code: "TN_PHYSICS_AERODYNAMIC_FORCE_OVER_BUDGET".to_owned(),
+            path: format!("world/{entity_id}/AerodynamicBody/maxForce"),
+        });
+        declaration.max_force / total.length()
+    } else {
+        1.0
+    };
+    if force_scale != 1.0 {
+        for surface in &mut observation.surfaces {
+            surface.lift = array(vec(surface.lift) * force_scale);
+            surface.drag = array(vec(surface.drag) * force_scale);
+        }
+        for thruster in &mut observation.thrusters {
+            thruster.force = array(vec(thruster.force) * force_scale);
+        }
+    }
+    force_scale
 }
 
 fn compute_body(
@@ -434,8 +505,11 @@ fn gust_velocity(volume: &WindVolumeComponent, elapsed: f32) -> Vec3 {
     )
 }
 fn seeded_phase(seed: u32, axis: u32) -> f32 {
-    let value = (((seed + 1) * (axis + 11)) as f32 * 12.9898).sin() * 43_758.547;
-    (value - value.floor()) * std::f32::consts::TAU
+    let mut value = seed ^ (axis + 1).wrapping_mul(0x9e37_79b9);
+    value ^= value << 13;
+    value ^= value >> 17;
+    value ^= value << 5;
+    (value & 0xffff) as f32 * (std::f32::consts::TAU / 65_536.0)
 }
 fn sample_curve(curve: &[AerodynamicCurvePoint], angle: f32) -> f32 {
     if angle <= curve[0].angle {
@@ -488,7 +562,8 @@ fn round_array(value: Vec3) -> [f32; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use threenative_loader::AerodynamicControlComponent;
+    use std::path::PathBuf;
+    use threenative_loader::{AerodynamicControlComponent, AerodynamicSurfaceComponent};
 
     #[test]
     fn analytic_force_cases_match_portable_semantics() {
@@ -593,6 +668,59 @@ mod tests {
             1.0 / 60.0,
         );
         assert!(!recovered.surfaces[0].stalled);
+    }
+
+    #[test]
+    fn canonical_fixture_moves_through_the_native_physics_boundary() {
+        let path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join(
+            "../../../packages/ir/fixtures/conformance/advanced-physics-aerodynamics/game.bundle",
+        );
+        let mut bundle = threenative_loader::load_bundle(path).expect("fixture should load");
+        let script_poses = BTreeSet::new();
+        let runtime_id = crate::physics::native_physics_runtime_id(&script_poses);
+        assert!(set_physics_aerodynamic_inputs(
+            runtime_id,
+            &bundle,
+            "craft",
+            AerodynamicInputs {
+                surfaces: BTreeMap::from([("elevator".to_owned(), 0.0)]),
+                thrusters: BTreeMap::from([("main-engine".to_owned(), 1.0)]),
+            },
+        ));
+        let before = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == "craft")
+            .and_then(|entity| entity.components.transform.as_ref())
+            .and_then(|transform| transform.position)
+            .expect("craft position");
+        for _ in 0..60 {
+            crate::physics::step_bundle_physics_with_script_poses(
+                &mut bundle,
+                1.0 / 60.0,
+                &script_poses,
+            );
+        }
+        let after = bundle
+            .world
+            .entities
+            .iter()
+            .find(|entity| entity.id == "craft")
+            .and_then(|entity| entity.components.transform.as_ref())
+            .and_then(|transform| transform.position)
+            .expect("craft position");
+        assert!(
+            after[2] < before[2] - 5.0,
+            "before={before:?} after={after:?}"
+        );
+        assert!(after[1] > -0.7, "craft should be airborne: {after:?}");
+        assert!(
+            observe_physics_aerodynamics(runtime_id)
+                .iter()
+                .all(|observation| observation.diagnostics.is_empty())
+        );
+        crate::physics::dispose_native_physics_runtime(&script_poses);
     }
 
     fn body() -> AerodynamicBodyComponent {

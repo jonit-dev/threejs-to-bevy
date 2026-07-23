@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { IAerodynamicBodyComponent, IWorldIr } from "@threenative/ir";
-import { disposePhysicsAerodynamics, observePhysicsAerodynamics, setPhysicsAerodynamicInputs, stepPhysicsAerodynamics } from "./physicsAerodynamics.js";
+import { applyPhysicsAerodynamicBindings, disposePhysicsAerodynamics, observePhysicsAerodynamics, setPhysicsAerodynamicInputs, stepPhysicsAerodynamics } from "./physicsAerodynamics.js";
 
 const FIXED_DELTA = 1 / 60;
 
@@ -29,6 +29,13 @@ test("should reverse control torque when elevator deflection reverses", () => {
   assert.equal(setPhysicsAerodynamicInputs(world, "craft", { surfaces: { elevator: -1 } }), true);
   const negative = stepPhysicsAerodynamics(world, 1, 0)[0]!.surfaces[0]!.lift[1];
   assert.ok(positive > 0 && negative < 0);
+});
+
+test("should preserve explicit aerodynamic inputs over declarative binding polling", () => {
+  const world = aerodynamicWorld([0, 0, -20]);
+  assert.equal(setPhysicsAerodynamicInputs(world, "craft", { surfaces: { elevator: 1 } }), true);
+  applyPhysicsAerodynamicBindings(world, { action: () => false, axis: () => 0 } as never);
+  assert.ok(stepPhysicsAerodynamics(world, 1, 0)[0]!.surfaces[0]!.controlDeflection > 0);
 });
 
 test("should enter and leave stall under a recorded maneuver", () => {

@@ -299,6 +299,7 @@ export const supportedPrefabPrimitives = new Set(["box", "capsule", "cone", "cyl
 export const supportedMeshPrimitives = new Set(["box", "cone", "cylinder", "plane", "sphere", "torus"]);
 
 export const cameraComponentKeys = new Set(["far", "fovY", "mode", "near", "size", "target"]);
+export const aerodynamicBodyComponentKeys = new Set(["dragArea", "maxForce", "surfaces", "thrusters"]);
 export const characterControllerComponentKeys = new Set(["blocking", "grounding", "interactAction", "moveXAxis", "moveZAxis", "pushPolicy", "slopeLimit", "speed", "stepOffset"]);
 export const colliderComponentKeys = new Set(["center", "friction", "height", "kind", "layer", "mask", "radius", "restitution", "sensor", "size", "slope", "trigger"]);
 export const contactShadowsComponentKeys = new Set(["height", "opacity", "resolution", "size", "softness", "updateMode"]);
@@ -313,7 +314,9 @@ export const spawnerComponentKeys = new Set(["area", "despawnPolicy", "enabled",
 export const spawnerDespawnPolicyKeys = new Set(["afterSeconds", "beyondDistance"]);
 export const stateMachineComponentKeys = new Set(["current", "enabled", "initial", "states", "transitions"]);
 export const visibilityComponentKeys = new Set(["visible"]);
+export const windVolumeComponentKeys = new Set(["airDensity", "gust", "radius", "shape", "size", "velocity"]);
 export const componentRegistry = {
+  AerodynamicBody: { keys: aerodynamicBodyComponentKeys },
   camera: { keys: cameraComponentKeys },
   CharacterController: { keys: characterControllerComponentKeys },
   Collider: { keys: colliderComponentKeys },
@@ -327,6 +330,7 @@ export const componentRegistry = {
   Spawner: { keys: spawnerComponentKeys },
   StateMachine: { keys: stateMachineComponentKeys },
   Visibility: { keys: visibilityComponentKeys },
+  WindVolume: { keys: windVolumeComponentKeys },
 } as const;
 export const supportedComponentKinds = new Set(Object.keys(componentRegistry));
 export const supportedCameraModes = new Set(["third-person-follow", "perspective", "orthographic"]);

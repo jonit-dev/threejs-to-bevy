@@ -1,0 +1,14 @@
+{
+  "schema": "threenative.input",
+  "version": "0.1.0",
+  "actions": [
+    { "id": "Throttle", "bindings": [{ "device": "keyboard", "code": "KeyW" }] }
+  ],
+  "axes": [
+    {
+      "id": "Pitch",
+      "negative": [{ "device": "keyboard", "code": "ArrowDown" }],
+      "positive": [{ "device": "keyboard", "code": "ArrowUp" }]
+    }
+  ]
+}

@@ -7,6 +7,8 @@ import type {
   IScriptAnimationPlayResult,
   IScriptAnimationQueryResult,
   IScriptAnimationStopResult,
+  IScriptAerodynamicsInputs,
+  IScriptAerodynamicsSetInputsResult,
   IScriptAssetLoadResult,
   IScriptAudioPlayOptions,
   IScriptAudioPlayResult,
@@ -197,6 +199,7 @@ export interface ScriptPersistenceFacade {
 }
 
 export interface ScriptPhysicsFacade {
+  aerodynamics: ScriptPhysicsAerodynamicsFacade;
   addForce(entity: string, force: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   addForceAtPoint(entity: string, force: readonly [number, number, number], point: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   addTorque(entity: string, torque: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
@@ -210,6 +213,10 @@ export interface ScriptPhysicsFacade {
   setLinearVelocity(entity: string, velocity: readonly [number, number, number]): IScriptPhysicsBodyCommandResult;
   shapeCast(options: IScriptPhysicsShapeCastRequest): IScriptPhysicsShapeCastResult;
   vehicle: ScriptPhysicsVehicleFacade;
+}
+
+export interface ScriptPhysicsAerodynamicsFacade {
+  setInputs(entity: string | ScriptEntity, inputs: IScriptAerodynamicsInputs): IScriptAerodynamicsSetInputsResult;
 }
 
 export interface ScriptPhysicsVehicleFacade {
