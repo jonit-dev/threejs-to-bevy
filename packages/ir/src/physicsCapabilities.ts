@@ -97,7 +97,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.set_component",
+    authoringOperation: "physics.compound.add",
     component: "CompoundCollider",
     fixture: "advanced-physics-foundation",
     gate: "physics-self-verification",
@@ -107,9 +107,11 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.set_component",
+    authoringOperation: "physics.destructible.add",
     compilerComponent: "Destructible",
     component: "Destructible",
+    fixture: "advanced-physics-destruction",
+    gate: "advanced-physics-destruction",
     limits: { activePiecesPerScene: PHYSICS_CAPABILITY_LIMITS.fractureActivePiecesPerScene, depth: PHYSICS_CAPABILITY_LIMITS.fractureDepth, piecesPerAssembly: PHYSICS_CAPABILITY_LIMITS.fracturePiecesPerAssembly },
     manifestSchema: "threenative.fracture-manifest@0.1.0",
     observationFields: ["activePieces", "assemblyBroken", "bonds", "budget", "events"] as const,
@@ -119,7 +121,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.set_component",
+    authoringOperation: "physics.joint.add",
     compilerComponent: "PhysicsJoint",
     component: "PhysicsJoint",
     fixture: "advanced-physics-joints",
@@ -156,7 +158,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
   },
   {
     adapters: ["bevy", "web"] as const,
-    authoringOperation: "scene.set_component",
+    authoringOperation: "physics.wheel.add",
     compilerComponent: "WheelAssembly",
     component: "WheelAssembly",
     fixture: "advanced-physics-wheels",

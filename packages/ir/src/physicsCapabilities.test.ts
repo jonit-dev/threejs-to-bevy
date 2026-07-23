@@ -89,7 +89,7 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
   const bevyServices = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => (descriptor.adapters as readonly string[]).includes("bevy")).map((descriptor) => descriptor.service);
   const webServices = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => (descriptor.adapters as readonly string[]).includes("web")).map((descriptor) => descriptor.service);
   const consumers = {
-    authoringOperations: ["physics.aerodynamics.add", "physics.wind.add", "scene.set_component", "physics.vehicle.add"],
+    authoringOperations: ["physics.aerodynamics.add", "physics.compound.add", "physics.destructible.add", "physics.joint.add", "physics.vehicle.add", "physics.wheel.add", "physics.wind.add", "scene.set_component"],
     bevyComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     bevyHostServices: bevyServices,
     bevyRuntimeServices: bevyServices,
@@ -176,10 +176,9 @@ test("physics descriptors should match checked-in public contract adapter fixtur
   const nativeVisualSyncCount = nativeLib.match(/sync_physics_vehicle_visuals/g)?.length ?? 0;
   const consumers = {
     authoringOperations: [
-      ...(authoring.includes('descriptor("physics.aerodynamics.add"') ? ["physics.aerodynamics.add"] : []),
+      ...(authoring.includes("portablePhysicsComponentOperationEntries") ? ["physics.aerodynamics.add", "physics.compound.add", "physics.destructible.add", "physics.joint.add", "physics.vehicle.add", "physics.wheel.add"] : []),
       ...(authoring.includes('descriptor("physics.wind.add"') ? ["physics.wind.add"] : []),
       ...(authoring.includes('descriptor("scene.set_component"') ? ["scene.set_component"] : []),
-      ...(authoring.includes('descriptor("physics.vehicle.add"') ? ["physics.vehicle.add"] : []),
     ],
     bevyComponents: [
       ...(nativeLoader.includes("pub aerodynamic_body: Option<AerodynamicBodyComponent>") && nativeAerodynamics.includes("aerodynamic_body") ? ["AerodynamicBody"] : []),

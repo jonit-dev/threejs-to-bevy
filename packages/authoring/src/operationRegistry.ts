@@ -99,15 +99,15 @@ import {
   setRuntimeWindow,
   setSchemaEntry,
   setRigidBodyComponent,
-  addAerodynamicBody,
   addWindVolume,
-  addVehicleController,
-  inspectAerodynamicBody,
+  PORTABLE_PHYSICS_AUTHORING_COMPONENTS,
+  inspectPortablePhysicsComponent,
+  removePortablePhysicsComponent,
+  setPortablePhysicsComponent,
   inspectWindVolume,
-  inspectVehicleController,
-  validateAerodynamicBodySource,
+  validatePortablePhysicsComponent,
   validateWindVolumeSource,
-  validateVehicleControllerSource,
+  type PortablePhysicsAuthoringComponent,
   setSceneLifecycle,
   setSpawnerComponent,
   setSystemMetadata,
@@ -140,6 +140,39 @@ const STYLIZED_NATURE_AUTHORED_DEFAULTS = {
   size: 24,
   windStrength: 0.35,
 };
+
+type PortablePhysicsAction = "add" | "inspect" | "remove" | "set" | "validate";
+
+function portablePhysicsComponentOperationEntries<const TDefinition extends PortablePhysicsAuthoringComponent>(definition: TDefinition): OperationRegistryEntry<`${TDefinition["operationPrefix"]}.${PortablePhysicsAction}`>[] {
+  const baseArguments = [stringArg("sceneId"), stringArg("entityId")];
+  const cliBase = [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }] satisfies IAuthoringOperationCliArgumentBinding[];
+  const entry = (action: PortablePhysicsAction): OperationRegistryEntry<`${TDefinition["operationPrefix"]}.${PortablePhysicsAction}`> => {
+    const mutatesValue = action === "add" || action === "set";
+    const name = `${definition.operationPrefix}.${action}` as `${TDefinition["operationPrefix"]}.${PortablePhysicsAction}`;
+    const argumentsList = mutatesValue ? [...baseArguments, objectArg(definition.valueArgument)] : baseArguments;
+    const cliArguments = mutatesValue
+      ? [...cliBase, { argument: definition.valueArgument, flag: `--${definition.valueArgument}` }]
+      : cliBase;
+    const card = withEditor(withCli(descriptor(
+      name,
+      `${action === "inspect" ? "Inspect" : action === "validate" ? "Validate" : action === "remove" ? "Remove" : action === "add" ? "Add or replace" : "Set"} the descriptor-owned ${definition.component}${action === "inspect" || action === "validate" ? " without mutating source" : ""}.`,
+      "physics",
+      "source-document",
+      argumentsList,
+    ), {
+      path: [...definition.operationPrefix.split("."), action],
+      arguments: cliArguments,
+    }), { surface: "api" });
+    return operation(card, async ({ args, projectPath }) => {
+      const options = { definition, entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") };
+      if (action === "inspect") return inspectPortablePhysicsComponent(options);
+      if (action === "remove") return removePortablePhysicsComponent(options);
+      if (action === "validate") return validatePortablePhysicsComponent(options);
+      return setPortablePhysicsComponent({ ...options, value: requiredObject(args, definition.valueArgument) });
+    });
+  };
+  return (["add", "set", "remove", "inspect", "validate"] as const).map(entry);
+}
 
 export type AuthoringOperationPathPolicy = "source-document" | "source-script";
 export type AuthoringOperationSourceFamily = "archetype" | "asset" | "audio" | "distribution" | "environment" | "flow" | "generator" | "input" | "material" | "mesh" | "physics" | "prefab" | "project" | "resources" | "runtime" | "schema" | "scene" | "sequence" | "system" | "target" | "ui";
@@ -1085,43 +1118,12 @@ const operationEntries = [
     numberArg("gravityScale", false),
   ]), async ({ args, projectPath }) =>
     setRigidBodyComponent({ damping: optionalNumber(args, "damping"), entityId: requiredString(args, "entityId"), gravityScale: optionalNumber(args, "gravityScale"), kind: optionalString(args, "kind"), mass: optionalNumber(args, "mass"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.vehicle.add", "Add or replace the descriptor-owned VehicleController on a wheel assembly.", "physics", "source-document", [
-    stringArg("sceneId"),
-    stringArg("entityId"),
-    objectArg("controller"),
-  ]), {
-    path: ["physics", "vehicle", "add"],
-    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }, { argument: "controller", flag: "--controller" }],
-  }), { surface: "api" }), async ({ args, projectPath }) =>
-    addVehicleController({ controller: requiredObject(args, "controller"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.vehicle.inspect", "Inspect the authored VehicleController without mutating source.", "physics", "source-document", [
-    stringArg("sceneId"),
-    stringArg("entityId"),
-  ]), {
-    path: ["physics", "vehicle", "inspect"],
-    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }],
-  }), { surface: "api" }), async ({ args, projectPath }) =>
-    inspectVehicleController({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.vehicle.validate", "Validate the authored VehicleController contract without mutating source.", "physics", "source-document", [
-    stringArg("sceneId"),
-    stringArg("entityId"),
-  ]), {
-    path: ["physics", "vehicle", "validate"],
-    arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }],
-  }), { surface: "api" }), async ({ args, projectPath }) =>
-    validateVehicleControllerSource({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.aerodynamics.add", "Add or replace a bounded AerodynamicBody on a dynamic craft.", "physics", "source-document", [
-    stringArg("sceneId"), stringArg("entityId"), objectArg("body"),
-  ]), { path: ["physics", "aerodynamics", "add"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }, { argument: "body", flag: "--body" }] }), { surface: "api" }), async ({ args, projectPath }) =>
-    addAerodynamicBody({ body: requiredObject(args, "body"), entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.aerodynamics.inspect", "Inspect the authored AerodynamicBody without mutating source.", "physics", "source-document", [
-    stringArg("sceneId"), stringArg("entityId"),
-  ]), { path: ["physics", "aerodynamics", "inspect"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }] }), { surface: "api" }), async ({ args, projectPath }) =>
-    inspectAerodynamicBody({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
-  operation(withEditor(withCli(descriptor("physics.aerodynamics.validate", "Validate the authored AerodynamicBody without mutating source.", "physics", "source-document", [
-    stringArg("sceneId"), stringArg("entityId"),
-  ]), { path: ["physics", "aerodynamics", "validate"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }] }), { surface: "api" }), async ({ args, projectPath }) =>
-    validateAerodynamicBodySource({ entityId: requiredString(args, "entityId"), projectPath, sceneId: requiredString(args, "sceneId") })),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.compound),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.wheel),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.vehicle),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.aerodynamics),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.joint),
+  ...portablePhysicsComponentOperationEntries(PORTABLE_PHYSICS_AUTHORING_COMPONENTS.destructible),
   operation(withEditor(withCli(descriptor("physics.wind.add", "Add or replace a bounded WindVolume.", "physics", "source-document", [
     stringArg("sceneId"), stringArg("entityId"), objectArg("volume"),
   ]), { path: ["physics", "wind", "add"], arguments: [{ argument: "sceneId", positional: 0 }, { argument: "entityId", positional: 1 }, { argument: "volume", flag: "--volume" }] }), { surface: "api" }), async ({ args, projectPath }) =>

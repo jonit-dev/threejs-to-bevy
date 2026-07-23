@@ -45,7 +45,7 @@ test("vehicle operations derive CLI metadata and validate against the complete s
 
 test("vehicle descriptor cards are the single CLI, editor, MCP, and API metadata owner", () => {
   const cards = listAuthoringOperationDescriptors().filter((item) => item.name.startsWith("physics.vehicle."));
-  assert.deepEqual(cards.map((item) => item.name), ["physics.vehicle.add", "physics.vehicle.inspect", "physics.vehicle.validate"]);
+  assert.deepEqual(cards.map((item) => item.name), ["physics.vehicle.add", "physics.vehicle.set", "physics.vehicle.remove", "physics.vehicle.inspect", "physics.vehicle.validate"]);
   for (const card of cards) {
     assert.equal(card.adapters?.editor?.surface, "api");
     assert.deepEqual(getAuthoringOperationDescriptor(card.name), card);

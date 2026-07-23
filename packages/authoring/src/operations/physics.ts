@@ -1,11 +1,136 @@
-import { validateAerodynamicBody, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent } from "@threenative/ir";
+import { validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent, type IWorldIr } from "@threenative/ir";
 import { authoringDiagnostic } from "../diagnostics.js";
 import { loadAuthoringProject } from "../project.js";
 import { isRecord, type ISceneDocument, type ISceneEntity } from "../schemas.js";
 import { authoringOperationResult } from "./shared.js";
-import { setComponent } from "./sceneComponents.js";
+import { validationContextForProject } from "./sharedA.js";
+import { validateSceneDocument } from "./sharedB.js";
+import { removeComponent, setComponent } from "./sceneComponents.js";
 export { setRigidBodyComponent } from "./sceneComponents.js";
 import type { IAuthoringOperationResult } from "./types.js";
+
+export const PORTABLE_PHYSICS_AUTHORING_COMPONENTS = {
+  aerodynamics: { component: "AerodynamicBody", operationPrefix: "physics.aerodynamics", resultField: "body", valueArgument: "body" },
+  compound: { component: "CompoundCollider", operationPrefix: "physics.compound", resultField: "collider", valueArgument: "collider" },
+  destructible: { component: "Destructible", operationPrefix: "physics.destructible", resultField: "destructible", valueArgument: "destructible" },
+  joint: { component: "PhysicsJoint", operationPrefix: "physics.joint", resultField: "joint", valueArgument: "joint" },
+  vehicle: { component: "VehicleController", operationPrefix: "physics.vehicle", resultField: "controller", valueArgument: "controller" },
+  wheel: { component: "WheelAssembly", operationPrefix: "physics.wheel", resultField: "assembly", valueArgument: "assembly" },
+} as const;
+
+export type PortablePhysicsAuthoringComponent = (typeof PORTABLE_PHYSICS_AUTHORING_COMPONENTS)[keyof typeof PORTABLE_PHYSICS_AUTHORING_COMPONENTS];
+
+export interface IPortablePhysicsComponentOperationOptions {
+  definition: PortablePhysicsAuthoringComponent;
+  entityId: string;
+  projectPath: string;
+  sceneId: string;
+}
+
+export interface ISetPortablePhysicsComponentOptions extends IPortablePhysicsComponentOperationOptions {
+  value: Record<string, unknown>;
+}
+
+export async function setPortablePhysicsComponent(options: ISetPortablePhysicsComponentOptions): Promise<IAuthoringOperationResult> {
+  if (options.definition.component === "AerodynamicBody") {
+    return addAerodynamicBody({ body: options.value, entityId: options.entityId, projectPath: options.projectPath, sceneId: options.sceneId });
+  }
+  if (options.definition.component === "VehicleController") {
+    return addVehicleController({ controller: options.value, entityId: options.entityId, projectPath: options.projectPath, sceneId: options.sceneId });
+  }
+  const failure = await portablePhysicsCandidateFailure(options);
+  if (failure !== undefined) return failure;
+  return setComponent({
+    componentKind: options.definition.component,
+    entityId: options.entityId,
+    projectPath: options.projectPath,
+    sceneId: options.sceneId,
+    value: structuredClone(options.value),
+  });
+}
+
+async function portablePhysicsCandidateFailure(options: ISetPortablePhysicsComponentOptions): Promise<IAuthoringOperationResult | undefined> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const document = project.documents.find((item) => item.kind === "scene" && (item.data as { id?: unknown }).id === options.sceneId);
+  if (document === undefined) return missing(options, "TN_AUTHORING_SCENE_MISSING", "/sceneId", `Scene '${options.sceneId}' was not found.`);
+  const scene = structuredClone(document.data) as ISceneDocument;
+  const index = scene.entities?.findIndex((item) => item.id === options.entityId) ?? -1;
+  if (index < 0) return missing(options, "TN_AUTHORING_ENTITY_MISSING", "/entityId", `Entity '${options.entityId}' was not found.`);
+  const entity = scene.entities![index]!;
+  entity.components = { ...(entity.components ?? {}), [options.definition.component]: structuredClone(options.value) };
+  const entities = (scene.entities ?? []).map((candidate) => ({ ...candidate, components: candidate.components ?? {} })) as unknown as IWorldIr["entities"];
+  const entityIds = new Set(entities.map((candidate) => candidate.id));
+  const rigidBodyEntityIds = new Set(entities.filter((candidate) => candidate.components?.RigidBody !== undefined).map((candidate) => candidate.id));
+  const tireModelEntityIds = new Set(entities.filter((candidate) => candidate.components?.TireModel !== undefined).map((candidate) => candidate.id));
+  const diagnostics: IIrDiagnostic[] = [];
+  validatePhysicsComponents(entities[index]!, `/entities/${index}`, entityIds, rigidBodyEntityIds, tireModelEntityIds, diagnostics);
+  if (options.definition.component === "PhysicsJoint") validatePhysicsJointGraph({ entities, schema: "threenative.world", version: "0.1.0" }, "", diagnostics);
+  return portablePhysicsFailure(options, diagnostics, `Correct the ${options.definition.component} fields and run \`tn ${options.definition.operationPrefix.replaceAll(".", " ")} validate\` again.`);
+}
+
+export async function removePortablePhysicsComponent(options: IPortablePhysicsComponentOperationOptions): Promise<IAuthoringOperationResult> {
+  const loaded = await findPortablePhysicsComponent(options);
+  if (loaded.result !== undefined) return loaded.result;
+  return removeComponent({ componentKind: options.definition.component, entityId: options.entityId, projectPath: options.projectPath, sceneId: options.sceneId });
+}
+
+export async function inspectPortablePhysicsComponent(options: IPortablePhysicsComponentOperationOptions): Promise<IAuthoringOperationResult> {
+  const loaded = await findPortablePhysicsComponent(options);
+  if (loaded.result !== undefined) return loaded.result;
+  const result = {
+    ...authoringOperationResult({ projectPath: options.projectPath }),
+    [options.definition.resultField]: structuredClone(loaded.component),
+    component: options.definition.component,
+    entityId: options.entityId,
+    sceneId: options.sceneId,
+  };
+  return result;
+}
+
+export async function validatePortablePhysicsComponent(options: IPortablePhysicsComponentOperationOptions): Promise<IAuthoringOperationResult> {
+  if (options.definition.component === "AerodynamicBody") return validateAerodynamicBodySource(options);
+  if (options.definition.component === "VehicleController") return validateVehicleControllerSource(options);
+  const loaded = await findPortablePhysicsComponent(options);
+  if (loaded.result !== undefined) return loaded.result;
+  const diagnostics = await validateSceneDocument(
+    loaded.project!.projectPath,
+    loaded.document!.projectRelativePath,
+    loaded.scene,
+    validationContextForProject(loaded.project!),
+  );
+  if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
+    return authoringOperationResult({ diagnostics, projectPath: options.projectPath });
+  }
+  const result = {
+    ...authoringOperationResult({ diagnostics, projectPath: options.projectPath }),
+    [options.definition.resultField]: structuredClone(loaded.component),
+    component: options.definition.component,
+    valid: true,
+  };
+  return result;
+}
+
+async function findPortablePhysicsComponent(options: IPortablePhysicsComponentOperationOptions): Promise<{
+  component?: unknown;
+  document?: Awaited<ReturnType<typeof loadAuthoringProject>>["documents"][number];
+  entity?: ISceneEntity;
+  project?: Awaited<ReturnType<typeof loadAuthoringProject>>;
+  result?: IAuthoringOperationResult;
+  scene?: ISceneDocument;
+}> {
+  const project = await loadAuthoringProject({ projectPath: options.projectPath });
+  const document = project.documents.find((item) => item.kind === "scene" && (item.data as { id?: unknown }).id === options.sceneId);
+  if (document === undefined) return { result: missing(options, "TN_AUTHORING_SCENE_MISSING", "/sceneId", `Scene '${options.sceneId}' was not found.`) };
+  const scene = document.data as ISceneDocument;
+  const entity = scene.entities?.find((item) => item.id === options.entityId);
+  if (entity === undefined) return { result: missing(options, "TN_AUTHORING_ENTITY_MISSING", "/entityId", `Entity '${options.entityId}' was not found.`) };
+  const component = entity.components?.[options.definition.component];
+  if (component === undefined) {
+    const codeName = options.definition.component.replace(/([a-z])([A-Z])/gu, "$1_$2").toUpperCase();
+    return { result: missing(options, `TN_AUTHORING_${codeName}_MISSING`, `/entities/${options.entityId}/components/${options.definition.component}`, `Entity '${options.entityId}' has no ${options.definition.component}.`) };
+  }
+  return { component, document, entity, project, scene };
+}
 
 export interface IVehicleControllerOperationOptions {
   projectPath: string;

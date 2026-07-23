@@ -133,6 +133,13 @@ export interface GeneratorRecordBlenderArgs {
   "requestedBudgets"?: AuthoringJsonObject;
 }
 
+export interface GeneratorRecordImg2threejsArgs {
+  "generatorId": string;
+  "recipePath": string;
+  "output": string;
+  "overwritePolicy"?: "manual" | "replace" | "skip";
+}
+
 export interface SceneCreateArgs {
   "sceneId": string;
   "file"?: string;
@@ -595,6 +602,184 @@ export interface SceneSetRigidBodyArgs {
   "gravityScale"?: number;
 }
 
+export interface PhysicsCompoundAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "collider": AuthoringJsonObject;
+}
+
+export interface PhysicsCompoundSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "collider": AuthoringJsonObject;
+}
+
+export interface PhysicsCompoundRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsCompoundInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsCompoundValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsWheelAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "assembly": AuthoringJsonObject;
+}
+
+export interface PhysicsWheelSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "assembly": AuthoringJsonObject;
+}
+
+export interface PhysicsWheelRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsWheelInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsWheelValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsVehicleAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "controller": AuthoringJsonObject;
+}
+
+export interface PhysicsVehicleSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "controller": AuthoringJsonObject;
+}
+
+export interface PhysicsVehicleRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsVehicleInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsVehicleValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsAerodynamicsAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "body": AuthoringJsonObject;
+}
+
+export interface PhysicsAerodynamicsSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "body": AuthoringJsonObject;
+}
+
+export interface PhysicsAerodynamicsRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsAerodynamicsInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsAerodynamicsValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsJointAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "joint": AuthoringJsonObject;
+}
+
+export interface PhysicsJointSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "joint": AuthoringJsonObject;
+}
+
+export interface PhysicsJointRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsJointInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsJointValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsDestructibleAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "destructible": AuthoringJsonObject;
+}
+
+export interface PhysicsDestructibleSetArgs {
+  "sceneId": string;
+  "entityId": string;
+  "destructible": AuthoringJsonObject;
+}
+
+export interface PhysicsDestructibleRemoveArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsDestructibleInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsDestructibleValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsWindAddArgs {
+  "sceneId": string;
+  "entityId": string;
+  "volume": AuthoringJsonObject;
+}
+
+export interface PhysicsWindInspectArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
+export interface PhysicsWindValidateArgs {
+  "sceneId": string;
+  "entityId": string;
+}
+
 export interface SceneSetSpawnerArgs {
   "sceneId": string;
   "entityId": string;
@@ -657,6 +842,7 @@ export interface SceneAttachScriptArgs {
   "systemId": string;
   "modulePath": string;
   "exportName": string;
+  "source"?: string;
 }
 
 export interface SceneBindUiArgs {
@@ -788,6 +974,7 @@ export interface AuthoringOperationArgsMap {
   "environment.set_source_asset_lod": EnvironmentSetSourceAssetLodArgs;
   "generator.record": GeneratorRecordArgs;
   "generator.record_blender": GeneratorRecordBlenderArgs;
+  "generator.record_img2threejs": GeneratorRecordImg2threejsArgs;
   "scene.create": SceneCreateArgs;
   "scene.placement_add": ScenePlacementAddArgs;
   "scene.placement_inspect": ScenePlacementInspectArgs;
@@ -845,6 +1032,39 @@ export interface AuthoringOperationArgsMap {
   "scene.set_mesh_renderer": SceneSetMeshRendererArgs;
   "scene.set_render_layers": SceneSetRenderLayersArgs;
   "scene.set_rigid_body": SceneSetRigidBodyArgs;
+  "physics.compound.add": PhysicsCompoundAddArgs;
+  "physics.compound.set": PhysicsCompoundSetArgs;
+  "physics.compound.remove": PhysicsCompoundRemoveArgs;
+  "physics.compound.inspect": PhysicsCompoundInspectArgs;
+  "physics.compound.validate": PhysicsCompoundValidateArgs;
+  "physics.wheel.add": PhysicsWheelAddArgs;
+  "physics.wheel.set": PhysicsWheelSetArgs;
+  "physics.wheel.remove": PhysicsWheelRemoveArgs;
+  "physics.wheel.inspect": PhysicsWheelInspectArgs;
+  "physics.wheel.validate": PhysicsWheelValidateArgs;
+  "physics.vehicle.add": PhysicsVehicleAddArgs;
+  "physics.vehicle.set": PhysicsVehicleSetArgs;
+  "physics.vehicle.remove": PhysicsVehicleRemoveArgs;
+  "physics.vehicle.inspect": PhysicsVehicleInspectArgs;
+  "physics.vehicle.validate": PhysicsVehicleValidateArgs;
+  "physics.aerodynamics.add": PhysicsAerodynamicsAddArgs;
+  "physics.aerodynamics.set": PhysicsAerodynamicsSetArgs;
+  "physics.aerodynamics.remove": PhysicsAerodynamicsRemoveArgs;
+  "physics.aerodynamics.inspect": PhysicsAerodynamicsInspectArgs;
+  "physics.aerodynamics.validate": PhysicsAerodynamicsValidateArgs;
+  "physics.joint.add": PhysicsJointAddArgs;
+  "physics.joint.set": PhysicsJointSetArgs;
+  "physics.joint.remove": PhysicsJointRemoveArgs;
+  "physics.joint.inspect": PhysicsJointInspectArgs;
+  "physics.joint.validate": PhysicsJointValidateArgs;
+  "physics.destructible.add": PhysicsDestructibleAddArgs;
+  "physics.destructible.set": PhysicsDestructibleSetArgs;
+  "physics.destructible.remove": PhysicsDestructibleRemoveArgs;
+  "physics.destructible.inspect": PhysicsDestructibleInspectArgs;
+  "physics.destructible.validate": PhysicsDestructibleValidateArgs;
+  "physics.wind.add": PhysicsWindAddArgs;
+  "physics.wind.inspect": PhysicsWindInspectArgs;
+  "physics.wind.validate": PhysicsWindValidateArgs;
   "scene.set_spawner": SceneSetSpawnerArgs;
   "scene.set_collider": SceneSetColliderArgs;
   "scene.set_character_controller": SceneSetCharacterControllerArgs;

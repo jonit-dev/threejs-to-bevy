@@ -19,7 +19,9 @@ tn physics fracture generate wall.main --recipe '{"kind":"primitive","cells":[2,
 tn physics fracture inspect content/fractures/wall.main.json --project . --json
 tn physics fracture validate content/fractures/wall.main.json --project . --json
 tn scene add-entity arena wall --project . --json
-tn scene set-component arena wall Destructible --value '{"fractureManifest":"fractures/wall.main.json","activationBudget":4,"maxDepth":2,"cleanupPolicy":"sleep","impactFilter":{"minImpulse":5,"layers":["projectile"]}}' --project . --json
+tn physics destructible add arena wall --destructible '{"fractureManifest":"fractures/wall.main.json","activationBudget":4,"maxDepth":2,"cleanupPolicy":"sleep","impactFilter":{"minImpulse":5,"layers":["projectile"]}}' --project . --json
+tn physics destructible inspect arena wall --project . --json
+tn physics destructible validate arena wall --project . --json
 ```
 
 ## source-delta
