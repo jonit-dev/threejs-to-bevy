@@ -110,7 +110,7 @@ button, kbd { font: inherit; }
 .reticle {
   position: absolute;
   left: 50%;
-  top: 52%;
+  top: 28%;
   width: 190px;
   height: 80px;
   transform: translate(-50%, -50%);

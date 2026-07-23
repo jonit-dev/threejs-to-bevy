@@ -1,0 +1,15 @@
+{
+  "schema": "threenative/sfx-generation",
+  "version": "0.1.0",
+  "assetId": "battle-music",
+  "generation": {
+    "characterCost": "220",
+    "durationSeconds": 22,
+    "generatedAt": "2026-07-23T21:26:31.824Z",
+    "loop": true,
+    "model": "eleven_text_to_sound_v2",
+    "outputFormat": "mp3_44100_128",
+    "prompt": "WW2 Pacific theater orchestral battle background music, tense brass and drums, seamless loop",
+    "provider": "elevenlabs"
+  }
+}

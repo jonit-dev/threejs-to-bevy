@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "engine-loop",
+      "path": "assets/generated/audio/engine-loop.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "engine-loop",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

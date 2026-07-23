@@ -13,8 +13,17 @@
     "entities": [
       {
         "entity": "aircraft",
-        "position": [0, 2, 0],
-        "rotation": [0, 0, 0, 1]
+        "position": [
+          0,
+          2,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
       }
     ]
   },
@@ -41,7 +50,7 @@
     "movement": {
       "entity": "aircraft",
       "minDistance": 20,
-      "maxDistance": 400
+      "maxDistance": 700
     },
     "resources": [
       {

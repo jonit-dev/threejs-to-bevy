@@ -1526,6 +1526,49 @@ fn spawn_ripple_water(
     parent
 }
 
+fn spawn_ocean_water(
+    world: &mut World,
+    entity_id: &str,
+    component: &serde_json::Value,
+    transform: Transform,
+    stable_id: ThreeNativeId,
+    name: Name,
+) -> Entity {
+    let size = json_f32(component, "size", 4000.0).max(1.0);
+    let color = json_color(component, "color", "#1d5d76");
+    let mesh = world
+        .resource_mut::<Assets<Mesh>>()
+        .add(Mesh::from(Rectangle::new(size, size)));
+    let material = world
+        .resource_mut::<Assets<StandardMaterial>>()
+        .add(StandardMaterial {
+            base_color: color,
+            metallic: 0.08,
+            perceptual_roughness: 0.16,
+            ..Default::default()
+        });
+    let parent = world
+        .spawn(SpatialBundle {
+            transform,
+            ..Default::default()
+        })
+        .insert((stable_id, name))
+        .id();
+    let surface = world
+        .spawn(PbrBundle {
+            mesh,
+            material,
+            transform: Transform::from_rotation(Quat::from_rotation_x(
+                -std::f32::consts::FRAC_PI_2,
+            )),
+            ..Default::default()
+        })
+        .insert(Name::new(format!("{entity_id}.ocean-water-surface")))
+        .id();
+    world.entity_mut(parent).push_children(&[surface]);
+    parent
+}
+
 include!("map_world/entities.rs");
 include!("map_world/rendering.rs");
 

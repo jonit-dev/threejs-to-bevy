@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "battle-music",
+      "path": "assets/generated/audio/battle-music.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "battle-music",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

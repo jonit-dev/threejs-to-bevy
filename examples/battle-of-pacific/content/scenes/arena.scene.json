@@ -72,10 +72,15 @@
     {
       "id": "ocean.visual",
       "components": {
-        "MeshRenderer": {
-          "material": "mat.ocean",
-          "mesh": "mesh.ocean",
-          "receiveShadow": true
+        "OceanWater": {
+          "color": "#0a4a94",
+          "size": 24000,
+          "sunColor": "#fdf6e3",
+          "sunDirection": [
+            -0.5,
+            0.55,
+            -0.42
+          ]
         },
         "Transform": {
           "position": [
@@ -84,15 +89,15 @@
             -3500
           ],
           "rotation": [
-            -0.707107,
             0,
             0,
-            0.707107
+            0,
+            1
           ],
           "scale": [
-            8000,
-            8000,
-            8000
+            1,
+            1,
+            1
           ]
         }
       }
@@ -467,7 +472,7 @@
         "Transform": {
           "position": [
             0,
-            90,
+            260,
             0
           ],
           "rotation": [
@@ -502,6 +507,378 @@
             6.325,
             6.325,
             6.325
+          ]
+        }
+      }
+    },
+    {
+      "id": "aircraft.propdisc",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.propdisc",
+          "material": "mat.propdisc"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0.032,
+            0.56
+          ],
+          "rotation": [
+            0.707107,
+            0,
+            0,
+            0.707107
+          ],
+          "scale": [
+            0.5,
+            0.012,
+            0.5
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.00",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.01",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.02",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.03",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.04",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.05",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.06",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.07",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.08",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.09",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.10",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.11",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.12",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "tracer.13",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "fx.tracer-bolt",
+          "material": "mat.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.4,
+            1.4,
+            2.2
+          ]
+        }
+      }
+    },
+    {
+      "id": "muzzle.left",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.tracer",
+          "material": "mat.muzzleflash"
+        },
+        "Transform": {
+          "position": [
+            0.5375,
+            -0.024,
+            0.21
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
+    },
+    {
+      "id": "muzzle.right",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.tracer",
+          "material": "mat.muzzleflash"
+        },
+        "Transform": {
+          "position": [
+            -0.5375,
+            -0.024,
+            0.21
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
           ]
         }
       }

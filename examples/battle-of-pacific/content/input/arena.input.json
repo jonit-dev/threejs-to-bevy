@@ -3,26 +3,70 @@
   "version": "0.1.0",
   "id": "pacific-flight-input",
   "actions": [
-    { "id": "throttle-up", "bindings": ["keyboard.ShiftLeft", "keyboard.Equal"] },
-    { "id": "throttle-down", "bindings": ["keyboard.ControlLeft", "keyboard.Minus"] },
-    { "id": "flaps", "bindings": ["keyboard.KeyF"] },
-    { "id": "retry", "bindings": ["keyboard.KeyR"] }
+    {
+      "id": "throttle-up",
+      "bindings": [
+        "keyboard.ShiftLeft",
+        "keyboard.Equal"
+      ]
+    },
+    {
+      "id": "throttle-down",
+      "bindings": [
+        "keyboard.ControlLeft",
+        "keyboard.Minus"
+      ]
+    },
+    {
+      "id": "flaps",
+      "bindings": [
+        "keyboard.KeyF"
+      ]
+    },
+    {
+      "id": "retry",
+      "bindings": [
+        "keyboard.KeyR"
+      ]
+    },
+    {
+      "id": "fire",
+      "bindings": [
+        "keyboard.Space"
+      ]
+    }
   ],
   "axes": [
     {
       "id": "pitch",
-      "negative": ["keyboard.KeyS", "keyboard.ArrowDown"],
-      "positive": ["keyboard.KeyW", "keyboard.ArrowUp"]
+      "negative": [
+        "keyboard.KeyS",
+        "keyboard.ArrowDown"
+      ],
+      "positive": [
+        "keyboard.KeyW",
+        "keyboard.ArrowUp"
+      ]
     },
     {
       "id": "roll",
-      "negative": ["keyboard.KeyA", "keyboard.ArrowLeft"],
-      "positive": ["keyboard.KeyD", "keyboard.ArrowRight"]
+      "negative": [
+        "keyboard.KeyA",
+        "keyboard.ArrowLeft"
+      ],
+      "positive": [
+        "keyboard.KeyD",
+        "keyboard.ArrowRight"
+      ]
     },
     {
       "id": "yaw",
-      "negative": ["keyboard.KeyQ"],
-      "positive": ["keyboard.KeyE"]
+      "negative": [
+        "keyboard.KeyQ"
+      ],
+      "positive": [
+        "keyboard.KeyE"
+      ]
     }
   ]
 }

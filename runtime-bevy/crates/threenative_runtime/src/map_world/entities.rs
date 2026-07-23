@@ -84,6 +84,16 @@ fn spawn_entity(
             name,
         ));
     }
+    if let Some(ocean_water) = entity.components.extra.get("OceanWater") {
+        return Ok(spawn_ocean_water(
+            world,
+            &entity.id,
+            ocean_water,
+            transform,
+            stable_id,
+            name,
+        ));
+    }
 
     if entity.components.mesh_renderer.is_some() {
         return spawn_mesh_entity(world, entity, resources, transform);

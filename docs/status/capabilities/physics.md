@@ -80,6 +80,12 @@ Current support:
   landing, force telemetry, and fresh retry. The Phase 8 flight forcing
   function repeats that objective loop with a sourced aircraft on web and
   desktop.
+- 2026-07-23: the surface angle-of-attack sign was corrected on both adapters
+  (positive when the relative wind comes from below, i.e. while sinking). The
+  previous sign inverted the lift feedback loop, so any sink reduced lift and
+  every aerodynamic body was dynamically unstable regardless of tuning. Both
+  runtimes carry a sinking-reads-positive-AoA regression test and the paired
+  aerodynamics parity gate passes with the corrected convention.
 - Phase 5 implements the bounded rich-joint contract on both
   adapters: ball, fixed, hinge, rope, slider, and suspension constraints;
   force/torque-capped motors; stable load observations; one-shot breaks with

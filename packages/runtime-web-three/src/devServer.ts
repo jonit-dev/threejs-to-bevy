@@ -10,6 +10,7 @@ import { createServer, type Plugin, type ViteDevServer } from "vite";
 export interface IWebPreviewServer {
   close(): Promise<void>;
   metadata: IWebPreviewMetadata;
+  reload(): void;
   url: string;
 }
 
@@ -45,7 +46,10 @@ export async function startWebPreview(options: {
       host: options.host ?? "127.0.0.1",
       middlewareMode: false,
       ...(options.port === undefined ? {} : { port: options.port }),
-      strictPort: false,
+      // An explicitly requested port must never silently drift to a free
+      // neighbor: a stale server would keep the requested port while the new
+      // one binds elsewhere, so the browser keeps loading the stale build.
+      strictPort: options.port !== undefined,
     },
   });
   const sockets = new Set<Socket>();
@@ -81,6 +85,9 @@ export async function startWebPreview(options: {
       });
     },
     metadata,
+    reload() {
+      server.ws.send({ type: "full-reload" });
+    },
     url,
   };
 }

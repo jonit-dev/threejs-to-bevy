@@ -1,15 +1,15 @@
 {
   "id": "aircraft.douglas-sbd3",
-  "inputHash": "sha256:4ef849153e4489d9f1231816aa5b5a14834a7672d4fa81096a1cb46371b99c6d",
+  "inputHash": "sha256:26f73f703015aee66736ec88ab448089d6473632508b122327f8fd45def53a7a",
   "lastRun": {
-    "completedAt": "2026-07-23T16:54:03.763Z",
+    "completedAt": "2026-07-23T19:43:45.490Z",
     "diagnostics": [],
     "filesWritten": [
       "assets/generated/aircraft.douglas-sbd3.glb",
       "content/assets/aircraft.douglas-sbd3.assets.json",
       "content/generators/aircraft.douglas-sbd3.generator.json"
     ],
-    "inputHash": "sha256:4ef849153e4489d9f1231816aa5b5a14834a7672d4fa81096a1cb46371b99c6d",
+    "inputHash": "sha256:26f73f703015aee66736ec88ab448089d6473632508b122327f8fd45def53a7a",
     "inspection": {
       "animationClips": [
         {
@@ -496,12 +496,12 @@
       ],
       "diagnostics": [],
       "file": {
-        "byteSize": 11018444,
+        "byteSize": 11018448,
         "path": "assets/generated/aircraft.douglas-sbd3.glb",
         "type": "glb"
       },
       "gltf": {
-        "assetId": "asset:aircraft.douglas-sbd3.glb.staging-2867333-1784825642654-78acec5f933f5",
+        "assetId": "asset:aircraft.douglas-sbd3.glb.staging-3357910-1784835824140-5f66ba9bcc719",
         "customAttributes": [],
         "materials": [],
         "morphTargets": [],
@@ -834,7 +834,7 @@
             "spawnedHandleEligible": true,
             "transform": {
               "rotation": [
-                0.30070576071739197,
+                -0.30070576071739197,
                 0,
                 0,
                 0.9537169933319092
@@ -1397,13 +1397,13 @@
       ]
     },
     "ok": true,
-    "outputHash": "sha256:b7fb745204ac85ec3562238d2c5407f68a863cd8317e6c6ff969007c47cd1742",
+    "outputHash": "sha256:ea54549d569ce2c103955d69ff19f2ec2d0123bceebfaf107a9908f8b65f0089",
     "provider": "blender",
     "providerVersion": "4.5.11",
     "runnerHash": "sha256:084235afb49bf32a95000bed5508e7296fd80724c729a26a0f5f98aa89ca589d",
-    "startedAt": "2026-07-23T16:54:02.655Z"
+    "startedAt": "2026-07-23T19:43:44.140Z"
   },
-  "outputHash": "sha256:b7fb745204ac85ec3562238d2c5407f68a863cd8317e6c6ff969007c47cd1742",
+  "outputHash": "sha256:ea54549d569ce2c103955d69ff19f2ec2d0123bceebfaf107a9908f8b65f0089",
   "outputs": [
     "assets/generated/aircraft.douglas-sbd3.glb"
   ],

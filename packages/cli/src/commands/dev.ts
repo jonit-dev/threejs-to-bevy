@@ -50,13 +50,27 @@ export async function devCommand(
 
   const projectFlagIndex = normalizedArgv.indexOf("--project");
   const projectPath = projectFlagIndex === -1 ? cwd : resolve(cwd, normalizedArgv[projectFlagIndex + 1] ?? ".");
+  const portFlagIndex = normalizedArgv.indexOf("--port");
+  const requestedPort = portFlagIndex === -1 ? 5173 : Number(normalizedArgv[portFlagIndex + 1]);
+  if (!Number.isInteger(requestedPort) || requestedPort < 1 || requestedPort > 65535) {
+    return diagnosticResult(
+      { code: "TN_DEV_PORT_INVALID", message: "--port must be an integer between 1 and 65535." },
+      { exitCode: 1, json, stderr: true },
+    );
+  }
 
   try {
     await generateProjectTypes({ projectPath });
     if (watchMode) {
-      const watcher = await startDevWatch(projectPath);
+      let liveServer: IWebPreviewServer | undefined;
+      const watcher = await startDevWatch(projectPath, {
+        onReport(report) {
+          if (report.status === "pass") liveServer?.reload();
+        },
+      });
       const bundlePath = watcher.initialReport.bundlePath;
-      const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath }) : undefined;
+      const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath, port: requestedPort }) : undefined;
+      liveServer = server;
       const url = server === undefined ? undefined : previewUrl(server.url, debugColliders);
       const payload = {
         code: "TN_DEV_WATCH_READY",
@@ -97,7 +111,7 @@ export async function devCommand(
       };
     }
 
-    const server = await startWebPreview({ bundlePath, metadata });
+    const server = await startWebPreview({ bundlePath, metadata, port: requestedPort });
     const url = previewUrl(server.url, debugColliders);
     const payload = {
       bundlePath,
@@ -123,6 +137,16 @@ export async function devCommand(
     };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
+    if (/EADDRINUSE|is already in use|Port \d+ is in use/i.test(message)) {
+      return diagnosticResult(
+        {
+          code: "TN_DEV_PORT_IN_USE",
+          message: `Port ${requestedPort} is already in use — an earlier 'tn dev' server is probably still running and would serve a stale build.`,
+          suggestion: `Stop the old server (for example: fuser -k ${requestedPort}/tcp) and rerun, or pass --port <other> to run a second preview intentionally.`,
+        },
+        { exitCode: 1, json, stderr: true },
+      );
+    }
     return diagnosticResult({ code: "TN_DEV_FAILED", message }, { exitCode: 1, json, stderr: true });
   }
 }

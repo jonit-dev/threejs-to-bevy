@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "fx.tracer-bolt",
+      "path": "assets/generated/fx.tracer-bolt.glb",
+      "source": "generator:fx.tracer-bolt",
+      "type": "model"
+    }
+  ],
+  "id": "fx.tracer-bolt",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

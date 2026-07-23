@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "stall-horn",
+      "path": "assets/generated/audio/stall-horn.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "stall-horn",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

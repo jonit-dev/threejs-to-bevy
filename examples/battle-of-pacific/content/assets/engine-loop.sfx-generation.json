@@ -1,0 +1,15 @@
+{
+  "schema": "threenative/sfx-generation",
+  "version": "0.1.0",
+  "assetId": "engine-loop",
+  "generation": {
+    "characterCost": "100",
+    "durationSeconds": 10,
+    "generatedAt": "2026-07-23T21:26:22.222Z",
+    "loop": true,
+    "model": "eleven_text_to_sound_v2",
+    "outputFormat": "mp3_44100_128",
+    "prompt": "WW2 radial aircraft engine steady loud drone, seamless loop",
+    "provider": "elevenlabs"
+  }
+}

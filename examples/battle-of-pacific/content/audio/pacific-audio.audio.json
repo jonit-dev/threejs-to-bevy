@@ -1,0 +1,27 @@
+{
+  "id": "pacific-audio",
+  "schema": "threenative.audio",
+  "sounds": [
+    {
+      "asset": "machinegun-burst",
+      "id": "guns.burst"
+    },
+    {
+      "asset": "engine-loop",
+      "id": "engine.loop"
+    },
+    {
+      "asset": "battle-music",
+      "id": "music.battle"
+    },
+    {
+      "asset": "stall-horn",
+      "id": "warning.stall"
+    },
+    {
+      "asset": "water-splash",
+      "id": "crash.splash"
+    }
+  ],
+  "version": "0.1.0"
+}

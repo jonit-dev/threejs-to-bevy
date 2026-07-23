@@ -7,6 +7,16 @@
       "id": "mesh.ocean",
       "kind": "primitive",
       "primitive": "plane"
+    },
+    {
+      "id": "mesh.propdisc",
+      "kind": "primitive",
+      "primitive": "cylinder"
+    },
+    {
+      "id": "mesh.tracer",
+      "kind": "primitive",
+      "primitive": "sphere"
     }
   ]
 }

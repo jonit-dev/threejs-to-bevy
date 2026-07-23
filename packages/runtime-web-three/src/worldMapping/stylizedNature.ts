@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { Water } from "three/examples/jsm/objects/Water.js";
 import type { IAssetIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { bundleUrl, isLoadableModelFormat } from "./assets.js";
 import { colorToThree } from "./colors.js";
@@ -75,12 +76,22 @@ export interface IRippleWaterComponent {
   waveStrength?: number;
 }
 
+export interface IOceanWaterComponent {
+  color?: string;
+  distortionScale?: number;
+  size?: number;
+  speed?: number;
+  sunColor?: string;
+  sunDirection?: readonly [number, number, number];
+}
+
 export function hasStylizedNatureContent(world: IWorldIr): boolean {
   return world.entities.some(
     (entity) =>
       readStylizedNature(entity) !== undefined ||
       readStylizedSparkles(entity) !== undefined ||
-      readRippleWater(entity) !== undefined,
+      readRippleWater(entity) !== undefined ||
+      readOceanWater(entity) !== undefined,
   );
 }
 
@@ -106,6 +117,14 @@ export function readRippleWater(entity: IWorldEntity): IRippleWaterComponent | u
     return undefined;
   }
   return value as IRippleWaterComponent;
+}
+
+export function readOceanWater(entity: IWorldEntity): IOceanWaterComponent | undefined {
+  const value = entity.components.OceanWater;
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return undefined;
+  }
+  return value as IOceanWaterComponent;
 }
 
 export function advanceStylizedNatureRuntime(object: THREE.Object3D, fixedDelta: number): void {
@@ -140,7 +159,214 @@ export function advanceStylizedNatureRuntime(object: THREE.Object3D, fixedDelta:
         uniform.value = Number(uniform.value ?? 0) + fixedDelta;
       }
     }
+    const oceanState = child.userData.threeNativeOceanWater as { material: THREE.ShaderMaterial; speed: number } | undefined;
+    if (oceanState !== undefined) {
+      const uniform = oceanState.material.uniforms.time;
+      if (uniform !== undefined) {
+        uniform.value = Number(uniform.value ?? 0) + fixedDelta * oceanState.speed;
+      }
+    }
+    const cloudState = child.userData.threeNativeOceanCloudShadows as { speed: number } | undefined;
+    if (cloudState !== undefined && child instanceof THREE.Mesh) {
+      const material = child.material as THREE.MeshBasicMaterial;
+      if (material.map !== null) {
+        material.map.offset.x += fixedDelta * 0.0018 * cloudState.speed;
+        material.map.offset.y += fixedDelta * 0.0007 * cloudState.speed;
+      }
+    }
   });
+}
+
+export function createOceanWaterObject(component: IOceanWaterComponent): THREE.Object3D {
+  const size = finitePositive(component.size, 4000);
+  const sunDirection = new THREE.Vector3(...(component.sunDirection ?? [-0.42, 0.84, 0.28])).normalize();
+  // Borrowed shader lineage: jbouny/ocean, upstreamed into three.js examples
+  // as Water (planar reflection + scrolling normal-map distortion).
+  const water = new Water(new THREE.PlaneGeometry(size, size), {
+    alpha: 1,
+    distortionScale: finitePositive(component.distortionScale, 8),
+    fog: false,
+    sunColor: colorToThree(component.sunColor ?? "#fff1c7"),
+    sunDirection,
+    textureHeight: 512,
+    textureWidth: 512,
+    waterColor: colorToThree(component.color ?? "#10405c"),
+    waterNormals: proceduralOceanNormalsTexture(),
+  });
+  water.name = "borrowed-jbouny-ocean-water-surface";
+  water.rotation.x = -Math.PI / 2;
+  // Smaller normal features break the mirror into shimmer instead of glassy
+  // cloud reflections; the uniform exists on the stock Water shader.
+  const sizeUniform = water.material.uniforms.size;
+  if (sizeUniform !== undefined) sizeUniform.value = 14;
+  // Stock Water uses a Schlick base reflectivity of 0.3 - ten times real
+  // water (F0 ~ 0.02) - which turns a bright cloudy sky into a mirror.
+  // Lowering it keeps reflections only at grazing angles so the surface
+  // reads as diffuse blue ocean from altitude.
+  water.material.fragmentShader = water.material.fragmentShader
+    .replace("float rf0 = 0.3;", "float rf0 = 0.05;")
+    // Richer diffuse: let the water color carry the scene instead of the
+    // gray sun-diffuse term, and brighten scattering toward the camera.
+    .replace(
+      "vec3 scatter = max( 0.0, dot( surfaceNormal, eyeDirection ) ) * waterColor;",
+      "vec3 scatter = ( 0.22 + 0.85 * max( 0.0, dot( surfaceNormal, eyeDirection ) ) ) * waterColor;",
+    )
+    // Sun glitter must live outside the fresnel mix or a low F0 kills it.
+    .replace(
+      "vec3 outgoingLight = albedo;",
+      "vec3 outgoingLight = albedo + sunColor * specularLight * 0.55;",
+    )
+    // Atmospheric perspective: fade distant water into horizon haze.
+    .replace(
+      "gl_FragColor = vec4( outgoingLight, alpha );",
+      `float hazeT = clamp( distance / 16000.0, 0.0, 1.0 );
+       hazeT = hazeT * hazeT;
+       gl_FragColor = vec4( mix( outgoingLight, vec3( 0.70, 0.79, 0.86 ), hazeT * 0.9 ), alpha );`,
+    );
+  water.material.needsUpdate = true;
+  water.userData.threeNativeOceanWater = {
+    material: water.material,
+    speed: finiteNonNegative(component.speed, 1),
+  };
+  // Wrap in a group: the runtime applies the entity transform to the returned
+  // object, which would otherwise overwrite the surface's -90 degree tilt.
+  const group = new THREE.Group();
+  group.name = "OceanWaterSurface";
+  group.add(water);
+  const cloudShadows = new THREE.Mesh(
+    new THREE.PlaneGeometry(size, size),
+    new THREE.MeshBasicMaterial({
+      color: "#04101e",
+      depthWrite: false,
+      map: proceduralCloudShadowTexture(),
+      opacity: 0.55,
+      transparent: true,
+    }),
+  );
+  cloudShadows.name = "ocean-cloud-shadows";
+  cloudShadows.rotation.x = -Math.PI / 2;
+  cloudShadows.position.y = 0.6;
+  cloudShadows.renderOrder = 1;
+  cloudShadows.userData.threeNativeOceanCloudShadows = { speed: finiteNonNegative(component.speed, 1) };
+  group.add(cloudShadows);
+  return group;
+}
+
+let cachedCloudShadowTexture: THREE.DataTexture | undefined;
+
+function proceduralCloudShadowTexture(): THREE.DataTexture {
+  if (cachedCloudShadowTexture !== undefined) {
+    return cachedCloudShadowTexture;
+  }
+  const size = 256;
+  const field = new Float32Array(size * size);
+  let seed = 1234;
+  const random = (): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  // Sum of tiling low-frequency waves makes soft blotches; squashed and
+  // thresholded so shadows read as separate cloud patches, not stripes.
+  const waves: Array<{ amp: number; kx: number; ky: number; phase: number }> = [];
+  for (let index = 0; index < 14; index += 1) {
+    const angle = random() * Math.PI * 2;
+    const frequency = [1, 2, 2, 3, 3, 4, 5][index % 7]!;
+    waves.push({
+      amp: 1 / (frequency * 0.8),
+      kx: Math.round(Math.cos(angle) * frequency),
+      ky: Math.round(Math.sin(angle) * frequency),
+      phase: random() * Math.PI * 2,
+    });
+  }
+  let minValue = Infinity;
+  let maxValue = -Infinity;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let value = 0;
+      for (const wave of waves) {
+        value += wave.amp * Math.sin((2 * Math.PI * (wave.kx * x + wave.ky * y)) / size + wave.phase);
+      }
+      field[y * size + x] = value;
+      minValue = Math.min(minValue, value);
+      maxValue = Math.max(maxValue, value);
+    }
+  }
+  const data = new Uint8Array(size * size * 4);
+  for (let index = 0; index < size * size; index += 1) {
+    const normalized = (field[index]! - minValue) / (maxValue - minValue);
+    const shadow = Math.pow(Math.max(0, normalized - 0.55) / 0.45, 1.4);
+    const offset = index * 4;
+    data[offset] = 255;
+    data[offset + 1] = 255;
+    data[offset + 2] = 255;
+    data[offset + 3] = Math.round(Math.min(1, shadow) * 255);
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.needsUpdate = true;
+  cachedCloudShadowTexture = texture;
+  return texture;
+}
+
+let cachedOceanNormalsTexture: THREE.DataTexture | undefined;
+
+function proceduralOceanNormalsTexture(): THREE.DataTexture {
+  if (cachedOceanNormalsTexture !== undefined) {
+    return cachedOceanNormalsTexture;
+  }
+  const size = 256;
+  const waves: Array<{ amp: number; kx: number; ky: number; phase: number }> = [];
+  let seed = 7;
+  const random = (): number => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  for (let index = 0; index < 24; index += 1) {
+    const angle = random() * Math.PI * 2;
+    const frequency = [2, 3, 4, 5, 6, 8, 10, 13][index % 8]!;
+    waves.push({
+      amp: 1 / frequency ** 0.9,
+      kx: Math.round(Math.cos(angle) * frequency),
+      ky: Math.round(Math.sin(angle) * frequency),
+      phase: random() * Math.PI * 2,
+    });
+  }
+  const height = (x: number, y: number): number => {
+    let value = 0;
+    for (const wave of waves) {
+      value += wave.amp * Math.sin((2 * Math.PI * (wave.kx * x + wave.ky * y)) / size + wave.phase);
+    }
+    return value;
+  };
+  const data = new Uint8Array(size * size * 4);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const dhx = (height(x + 1, y) - height(x - 1, y)) * 1.8;
+      const dhy = (height(x, y + 1) - height(x, y - 1)) * 1.8;
+      const inverseLength = 1 / Math.sqrt(dhx * dhx + dhy * dhy + 1);
+      const offset = (y * size + x) * 4;
+      data[offset] = Math.round((-dhx * inverseLength * 0.5 + 0.5) * 255);
+      data[offset + 1] = Math.round((-dhy * inverseLength * 0.5 + 0.5) * 255);
+      data[offset + 2] = Math.round((inverseLength * 0.5 + 0.5) * 255);
+      data[offset + 3] = 255;
+    }
+  }
+  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  // Mipmaps are essential: without them the minified normal texture aliases
+  // into static noise at the horizon.
+  texture.generateMipmaps = true;
+  texture.minFilter = THREE.LinearMipmapLinearFilter;
+  texture.magFilter = THREE.LinearFilter;
+  texture.anisotropy = 4;
+  texture.needsUpdate = true;
+  cachedOceanNormalsTexture = texture;
+  return texture;
 }
 
 interface IGrassWindState {

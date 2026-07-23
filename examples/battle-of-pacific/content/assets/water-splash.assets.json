@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "water-splash",
+      "path": "assets/generated/audio/water-splash.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "water-splash",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -1,0 +1,277 @@
+{
+  "id": "fx.tracer-bolt",
+  "inputHash": "sha256:b5a45410bf84ddf1c72501ce970e39cdbcbe95d5e3a6946b3555653cf6dbc68a",
+  "lastRun": {
+    "completedAt": "2026-07-23T21:27:35.344Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/fx.tracer-bolt.glb",
+      "content/assets/fx.tracer-bolt.assets.json",
+      "content/generators/fx.tracer-bolt.generator.json"
+    ],
+    "inputHash": "sha256:b5a45410bf84ddf1c72501ce970e39cdbcbe95d5e3a6946b3555653cf6dbc68a",
+    "inspection": {
+      "animationClips": [],
+      "bounds": {
+        "center": [
+          0,
+          0,
+          0.1125
+        ],
+        "max": [
+          0.05999999865889549,
+          0.06000002351528376,
+          0.6750000367773172
+        ],
+        "min": [
+          -0.05999999865889549,
+          -0.06000002351528376,
+          -0.4500000552584978
+        ],
+        "size": [
+          0.12,
+          0.12,
+          1.125
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 100,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 2.025
+        },
+        "collider": {
+          "height": 0.12,
+          "radiusForXZ": 0.5625
+        },
+        "fitScales": {
+          "targetHeight2m": 16.666667,
+          "targetLength4m": 3.555556,
+          "targetWidth1m": 8.333333
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "too-small",
+          "widthToLaneRatio": 0.034286
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 8,
+        "animations": 0,
+        "buffers": 1,
+        "images": 0,
+        "materials": 1,
+        "meshes": 2,
+        "nodes": 2,
+        "scenes": 1,
+        "textures": 0,
+        "triangles": 66
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "TN_ASSET_GAMEPLAY_TOO_SMALL",
+          "message": "Model width is tiny relative to a 3.5m gameplay lane; consider applying the target scale in the calibration report.",
+          "severity": "warning"
+        }
+      ],
+      "file": {
+        "byteSize": 4860,
+        "path": "assets/generated/fx.tracer-bolt.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:fx.tracer-bolt.glb.staging-87500-1784842054726-7ead904f570a9",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "materials": [
+              "material:bolt.glow"
+            ],
+            "mesh": "mesh:core.mesh",
+            "name": "core",
+            "path": "/core",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.7071068286895752,
+                0,
+                0,
+                0.7071068286895752
+              ],
+              "scale": [
+                0.10000000149011612,
+                0.8999999761581421,
+                0.10000000149011612
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:bolt.glow"
+            ],
+            "mesh": "mesh:tip.mesh",
+            "name": "tip",
+            "path": "/tip",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.7071068286895752,
+                0,
+                0,
+                0.7071068286895752
+              ],
+              "scale": [
+                0.11999999731779099,
+                0.25,
+                0.11999999731779099
+              ],
+              "translation": [
+                0,
+                0,
+                0.550000011920929
+              ]
+            }
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            1,
+            0.949999988079071,
+            0.7200000286102295,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "bolt.glow",
+          "roughness": 0.4000000059604645
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            0,
+            0.1125
+          ],
+          "max": [
+            0.05999999865889549,
+            0.6750000367773172
+          ],
+          "min": [
+            -0.05999999865889549,
+            -0.4500000552584978
+          ],
+          "size": [
+            0.12,
+            1.125
+          ]
+        },
+        "originCorrection": [
+          0,
+          0,
+          -0.1125
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          0,
+          0.1125
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                -0.1125
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -0.1125,
+                0,
+                0
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                0,
+                0.1125
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0.1125,
+                0,
+                0
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            0.12,
+            1.125
+          ],
+          "halfExtents": [
+            0.06,
+            0.5625
+          ],
+          "suggestedCellSize": 1.125
+        },
+        "y": {
+          "center": 0,
+          "max": 0.06000002351528376,
+          "min": -0.06000002351528376,
+          "size": 0.12
+        }
+      },
+      "namedNodes": [
+        "core",
+        "tip"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:63a21605728ec61b85cbfa56f90789a5f05ec52fc1fc95b1f07e3f5a0ece4ce2",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:084235afb49bf32a95000bed5508e7296fd80724c729a26a0f5f98aa89ca589d",
+    "startedAt": "2026-07-23T21:27:34.726Z"
+  },
+  "outputHash": "sha256:63a21605728ec61b85cbfa56f90789a5f05ec52fc1fc95b1f07e3f5a0ece4ce2",
+  "outputs": [
+    "assets/generated/fx.tracer-bolt.glb"
+  ],
+  "overwritePolicy": "manual",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/fx.tracer-bolt.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

@@ -1,0 +1,48 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "fx.tracer-bolt",
+  "materials": [
+    {
+      "id": "bolt.glow",
+      "baseColor": [1.0, 0.95, 0.72, 1.0],
+      "metallic": 0.0,
+      "roughness": 0.4,
+      "emissive": [1.0, 0.82, 0.45]
+    }
+  ],
+  "parts": [
+    {
+      "id": "core",
+      "primitive": "cylinder",
+      "material": "bolt.glow",
+      "position": [0, 0, 0],
+      "rotation": [90, 0, 0],
+      "scale": [0.1, 0.9, 0.1],
+      "segments": 12,
+      "shading": "smooth"
+    },
+    {
+      "id": "tip",
+      "primitive": "cone",
+      "material": "bolt.glow",
+      "position": [0, 0, 0.55],
+      "rotation": [90, 0, 0],
+      "scale": [0.12, 0.25, 0.12],
+      "segments": 12,
+      "shading": "smooth"
+    }
+  ],
+  "budgets": {
+    "maxAnimations": 10,
+    "maxKeyframesPerTrack": 16,
+    "maxMaterials": 64,
+    "maxModifiersPerPart": 4,
+    "maxOperations": 16,
+    "maxOutputBytes": 20000000,
+    "maxParts": 128,
+    "maxPolygons": 20000,
+    "maxSegments": 32,
+    "maxTracksPerAnimation": 16
+  }
+}

@@ -12,12 +12,13 @@ export const updatePacificFlight = defineBehavior(
     id: "pacific-flight",
     eventReads: ["flight:restart", "flight:toggle-flaps"],
     eventWrites: ["flight:telemetry"],
-    reads: ["RigidBody"],
+    reads: ["RigidBody", "Transform"],
     resourceReads: ["FlightState"],
     resourceWrites: ["FlightState"],
     schedule: "fixedUpdate",
     services: [
       "animation.play",
+      "audio.play",
       "physics.addTorque",
       "physics.aerodynamics.setInputs",
       "physics.setAngularVelocity",
@@ -33,18 +34,35 @@ export const updatePacificFlight = defineBehavior(
 
     const control = context.state("pacific-flight-control", {
       activeClip: "",
+      audioStarted: false,
       elapsed: 0,
       flapTransitionUntil: 0,
       flapsDown: false,
       retracting: false,
+      discBlend: 0,
+      fireCooldown: 0,
+      lastGunSfx: -1,
+      muzzleFlash: 0,
+      nextTracer: 0,
+      prevFailed: false,
+      prevStall: false,
       retryCount: 0,
       throttle: 0.82,
+      tracers: [] as Array<{ life: number; px: number; py: number; pz: number; vx: number; vy: number; vz: number }>,
       visualBank: 0
     });
+
+    // Start the looping ambience once: the audio document stores flat sound cues
+    // with no autoplay, so the looping music and engine drone are runtime plays.
+    if (!control.audioStarted) {
+      context.audio.play("music.battle", { loop: true, volume: 0.5 });
+      context.audio.play("engine.loop", { loop: true, volume: 0.7 });
+      control.audioStarted = true;
+    }
     const restartFromOverlay = context.events.read("flight:restart").length > 0;
     if (context.input.pressed("retry") || restartFromOverlay) {
       aircraft.patch("Transform", {
-        position: [0, 90, 0],
+        position: [0, 260, 0],
         rotation: [0, 0, 0, 1]
       });
       context.physics.setLinearVelocity("aircraft", [0, 0, -72]);
@@ -116,30 +134,140 @@ export const updatePacificFlight = defineBehavior(
         -velocityNow[0] * sinT + velocityNow[2] * cosT
       ]);
     }
-    const bankTarget = -roll * 0.45;
+    // Wing guns: Space fires paired tracers from the wing roots that converge
+    // on the aim point 500 m ahead. Tracer entities are a fixed authored pool
+    // recycled by index; inactive rounds park far below the ocean.
+    const TRACER_POOL = 14;
+    const rotation = aircraft.get("Transform", { rotation: [0, 0, 0, 1] as [number, number, number, number] }).rotation ?? [0, 0, 0, 1];
+    const [qx, qy, qz, qw] = rotation;
+    const rotate = (v: readonly [number, number, number]): [number, number, number] => {
+      const [vx2, vy2, vz2] = v;
+      const tx = 2 * (qy * vz2 - qz * vy2);
+      const ty = 2 * (qz * vx2 - qx * vz2);
+      const tz = 2 * (qx * vy2 - qy * vx2);
+      return [
+        vx2 + qw * tx + qy * tz - qz * ty,
+        vy2 + qw * ty + qz * tx - qx * tz,
+        vz2 + qw * tz + qx * ty - qy * tx
+      ];
+    };
+    while (control.tracers.length < TRACER_POOL) control.tracers.push({ life: 0, px: 0, py: -9999, pz: 0, vx: 0, vy: 0, vz: 0 });
+    control.fireCooldown = Math.max(0, control.fireCooldown - dt);
+    const aircraftPosition = aircraft.transform().position;
+    if (context.input.getButton("fire") && control.fireCooldown <= 0) {
+      control.fireCooldown = 0.18;
+      // The 0.18s gun cadence would trigger the burst clip ~5.5x/sec; rate-limit
+      // the audio cue to ~3x/sec so overlapping one-shots stay legible.
+      if (context.time.elapsed - control.lastGunSfx >= 0.34) {
+        context.audio.play("guns.burst");
+        control.lastGunSfx = context.time.elapsed;
+      }
+      const forwardWorld = rotate([0, 0, -1]);
+      const aim = [
+        aircraftPosition[0] + forwardWorld[0] * 500,
+        aircraftPosition[1] + forwardWorld[1] * 500,
+        aircraftPosition[2] + forwardWorld[2] * 500
+      ];
+      for (const wing of [-3.4, 3.4]) {
+        const muzzleOffset = rotate([wing, -0.15, -1.2]);
+        const px = aircraftPosition[0] + muzzleOffset[0];
+        const py = aircraftPosition[1] + muzzleOffset[1];
+        const pz = aircraftPosition[2] + muzzleOffset[2];
+        const dx = aim[0] - px;
+        const dy = aim[1] - py;
+        const dz = aim[2] - pz;
+        const inv = 380 / Math.hypot(dx, dy, dz);
+        const tracer = control.tracers[control.nextTracer % TRACER_POOL]!;
+        const tracerIndex = control.nextTracer % TRACER_POOL;
+        control.nextTracer += 1;
+        tracer.life = 1.1;
+        tracer.px = px;
+        tracer.py = py;
+        tracer.pz = pz;
+        tracer.vx = dx * inv + velocityNow[0] * 0.6;
+        tracer.vy = dy * inv + velocityNow[1] * 0.6;
+        tracer.vz = dz * inv + velocityNow[2] * 0.6;
+        // Point the stretched tracer along its flight path once at spawn.
+        const speed2 = Math.hypot(tracer.vx, tracer.vy, tracer.vz);
+        const dirX = tracer.vx / speed2;
+        const dirY = tracer.vy / speed2;
+        const dirZ = tracer.vz / speed2;
+        const yawAngle = Math.atan2(-dirX, -dirZ);
+        const pitchAngle = Math.asin(Mathf.clamp(dirY, -1, 1));
+        const cy = Math.cos(yawAngle / 2);
+        const sy = Math.sin(yawAngle / 2);
+        const cp = Math.cos(pitchAngle / 2);
+        const sp = Math.sin(pitchAngle / 2);
+        const tracerEntity = context.entity(`tracer.${String(tracerIndex).padStart(2, "0")}`);
+        tracerEntity?.patch("Transform", {
+          rotation: [sp * cy, sy * cp, -sy * sp, cy * cp]
+        });
+      }
+      control.muzzleFlash = 0.07;
+    }
+    control.muzzleFlash = Math.max(0, control.muzzleFlash - dt);
+    const flashScale = control.muzzleFlash > 0 ? 0.085 : 0.001;
+    for (const side of ["left", "right"]) {
+      context.entity(`muzzle.${side}`)?.patch("Transform", {
+        scale: [flashScale, flashScale, flashScale * 1.6]
+      });
+    }
+    for (let index = 0; index < control.tracers.length; index += 1) {
+      const tracer = control.tracers[index]!;
+      const entity = context.entity(`tracer.${String(index).padStart(2, "0")}`);
+      if (entity === undefined) continue;
+      if (tracer.life > 0) {
+        tracer.life -= dt;
+        tracer.px += tracer.vx * dt;
+        tracer.py += tracer.vy * dt;
+        tracer.pz += tracer.vz * dt;
+        if (tracer.life <= 0 || tracer.py < 1) {
+          tracer.life = 0;
+          tracer.py = -9999;
+        }
+        entity.patch("Transform", { position: [tracer.px, tracer.py, tracer.pz] });
+      }
+    }
+
+    const bankTarget = roll * 0.45;
     control.visualBank += (bankTarget - control.visualBank) * Mathf.clamp(dt * 4, 0, 1);
+    // Compose the cosmetic bank with the model's authored 180-degree yaw
+    // ([0,1,0,0]): yaw180 * rollZ(bank) = [sin(b/2), cos(b/2), 0, 0].
     const halfBank = control.visualBank / 2;
     visual.patch("Transform", {
-      rotation: [0, 0, Math.sin(halfBank), Math.cos(halfBank)]
+      rotation: [Math.sin(halfBank), Math.cos(halfBank), 0, 0]
     });
+
+    // Propeller speed follows throttle: near-idle shows readable blades,
+    // full power spins into a strobe hidden behind the translucent blur disc.
+    const propSpeed = 1.5 + control.throttle * 35;
+    const discTarget = Mathf.clamp((control.throttle - 0.3) / 0.35, 0, 1);
+    control.discBlend += (discTarget - control.discBlend) * Mathf.clamp(dt * 3, 0, 1);
+    const disc = context.entity("aircraft.propdisc");
+    if (disc !== undefined) {
+      const discScale = Math.max(0.001, control.discBlend) * 0.5;
+      disc.patch("Transform", {
+        scale: [discScale, 0.012, discScale]
+      });
+    }
 
     const transitionActive = context.time.elapsed < control.flapTransitionUntil;
     let clip = "flight.cruise";
     let clipLoop = true;
-    let clipSpeed = 11;
+    let clipSpeed = propSpeed;
     if (transitionActive) {
       clip = control.retracting ? "flight.flaps-retract" : "flight.flaps";
       clipLoop = false;
       clipSpeed = 1;
     } else if (control.flapsDown) {
       clip = "flight.flaps-down";
-      clipSpeed = 11;
+      clipSpeed = propSpeed;
     } else if (Math.abs(pitch) > 0.18) {
       clip = pitch > 0 ? "flight.pitch-up" : "flight.pitch-down";
-      clipSpeed = 11;
+      clipSpeed = propSpeed;
     } else if (Math.abs(yaw) > 0.18) {
       clip = yaw > 0 ? "flight.rudder-right" : "flight.rudder-left";
-      clipSpeed = 11;
+      clipSpeed = propSpeed;
     }
     context.animation.play("aircraft.visual", clip, {
       activeState: clip,
@@ -156,7 +284,13 @@ export const updatePacificFlight = defineBehavior(
     const failed = altitude < 5 || (altitude < 22 && speed < 24);
     if (!failed) control.elapsed += dt;
     const complete = control.elapsed >= 45;
-    const stall = speed < 43 || (Math.abs(pitch) > 0.82 && speed < 58);
+    const stall = speed < 36;
+    // Fire warning/crash cues on the rising edge only, so they sound once per
+    // event rather than every fixed tick the condition stays true.
+    if (stall && !control.prevStall) context.audio.play("warning.stall");
+    control.prevStall = stall;
+    if (failed && !control.prevFailed) context.audio.play("crash.splash");
+    control.prevFailed = failed;
     const phase = failed ? "DITCHED" : stall ? "STALL" : complete ? "PATROL COMPLETE" : "CRUISE";
     const progress = Mathf.clamp(control.elapsed / 45, 0, 1);
     const airspeedKnots = Math.round(speed * 1.94384);

@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "probe-guns",
+  "name": "probe-guns",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "tracer.00",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "fire",
+      "press": "Space",
+      "holdFrames": 30,
+      "release": true
+    },
+    {
+      "label": "observe",
+      "waitTicks": 30
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "tracer.00",
+      "minDistance": 30,
+      "maxDistance": 1000000
+    }
+  },
+  "artifacts": {
+    "screenshots": "none",
+    "console": false,
+    "network": false,
+    "runtimeTrace": false,
+    "effectLog": "focused"
+  }
+}

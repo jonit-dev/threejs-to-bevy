@@ -64,3 +64,21 @@
   (`assets/generated/ocean-wave-normal.png`, tiled 420x) with specular water
   tuning. An engine-level animated water material preset remains a recorded
   follow-up; the portable shader IR has no operator grammar yet.
+
+## Flight-model fixes (2026-07-23, second pass)
+
+- Engine: the aerodynamic angle-of-attack sign was inverted on both adapters,
+  making lift feedback destabilizing (any sink reduced lift). Fixed with
+  regression tests; the paired aero parity gate passes.
+- Scene retune: rigid-body damping 0.035 -> 0.004 (aero drag already models
+  it), thruster maxForce 15.5 kN -> 21 kN, stowed-flap parasitic drag
+  0.11 -> 0.02 and stowed-flap lift zeroed (its baseline lift trimmed the
+  aircraft 7.5 degrees nose-down), wing CL0 0.58, wider stall envelope
+  (0.42/0.34), elevator deflection 0.16.
+- Script: elevator sign corrected (W climbs), A/D fly coordinated banked
+  turns (yaw torque + velocity rotated by the actual yaw rate each tick, with
+  cosmetic visual bank); the physics body never rolls, so knife-edge crashes
+  are impossible. Q/E remains rudder with the same coordinated turn support.
+- Regression scenarios kept in `playtests/`: `probe-long-cruise` (30 s
+  hands-off cruise), `probe-pitch-hold` (W-hold climbs), `probe-roll`
+  (full-stick sustained turn keeps altitude).

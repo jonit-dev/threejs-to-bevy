@@ -11,6 +11,34 @@
       "metalness": 0.08,
       "normalTexture": "ocean-wave-normal",
       "roughness": 0.16
+    },
+    {
+      "id": "mat.propdisc",
+      "color": "#1c1c20",
+      "opacity": 0.13,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 0.9,
+      "emissive": "#26262c",
+      "emissiveIntensity": 0.1
+    },
+    {
+      "id": "mat.tracer",
+      "color": "#fff3c8",
+      "emissive": "#ffcf5e",
+      "emissiveIntensity": 3.4,
+      "metalness": 0.0,
+      "roughness": 0.4
+    },
+    {
+      "id": "mat.muzzleflash",
+      "color": "#ffd9a0",
+      "emissive": "#ff9d3c",
+      "emissiveIntensity": 4.5,
+      "opacity": 0.9,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
     }
   ]
 }

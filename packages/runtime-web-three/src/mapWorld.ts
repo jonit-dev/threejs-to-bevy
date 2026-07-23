@@ -34,10 +34,12 @@ import {
 import {
   advanceStylizedNatureRuntime,
   attachStylizedSourceAssets,
+  createOceanWaterObject,
   createRippleWaterObject,
   createStylizedNatureObject,
   createStylizedSparklesObject,
   hasStylizedNatureContent,
+  readOceanWater,
   readRippleWater,
   readStylizedNature,
   readStylizedSparkles,
@@ -478,7 +480,7 @@ export function hasAnimationPlayback(mapped: IThreeWorld): boolean {
     }
     let animated = false;
     object.traverse((child) => {
-      if (child.userData.threeNativeGrassWind !== undefined || child.userData.threeNativeRippleMaterial !== undefined) {
+      if (child.userData.threeNativeGrassWind !== undefined || child.userData.threeNativeRippleMaterial !== undefined || child.userData.threeNativeOceanWater !== undefined) {
         animated = true;
       }
     });
@@ -586,6 +588,10 @@ function mapEntity(
   const rippleWater = readRippleWater(entity);
   if (rippleWater !== undefined) {
     return createRippleWaterObject(rippleWater);
+  }
+  const oceanWater = readOceanWater(entity);
+  if (oceanWater !== undefined) {
+    return createOceanWaterObject(oceanWater);
   }
 
   const renderer = entity.components.MeshRenderer;

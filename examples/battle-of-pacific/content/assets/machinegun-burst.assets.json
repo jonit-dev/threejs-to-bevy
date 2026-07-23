@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "machinegun-burst",
+      "path": "assets/generated/audio/machinegun-burst.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "machinegun-burst",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}
