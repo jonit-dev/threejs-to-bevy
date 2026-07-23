@@ -6,6 +6,7 @@
     "tn": "node bin/tn",
     "build": "tn build",
     "dev:web": "tn dev --target web",
+    "parity": "tn parity visual --project . --url http://127.0.0.1:5173 --reference docs/reference/target-visual.png",
     "iterate": "tn iterate --project . --json",
     "playtest": "tn playtest --scenario playtests/acceptance-objective-progress.playtest.json --stable-artifacts --json",
     "playtest:input": "tn playtest --scenario playtests/acceptance-input-caused-action.playtest.json --stable-artifacts --json",

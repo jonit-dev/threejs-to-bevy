@@ -26,8 +26,8 @@ import { MODEL_TEST_MCP_DESCRIPTOR, modelTestCommand } from "./commands/modelTes
 export { materialEvidence, modelTestCommand, type ModelTestMaterialEvidence, type ModelTestMaterialObservation } from "./commands/modelTest.js";
 import { overlayCommand } from "./commands/overlayAdd.js";
 import { packageCommand, packageCommandUsage } from "./commands/package.js";
-import { parityPlaytestCommand } from "./commands/parityPlaytest.js";
-import { performanceProofCommand } from "./commands/performanceProof.js";
+import { parityCommand } from "./commands/parityPlaytest.js";
+import { performanceCommand } from "./commands/performance.js";
 import { playtestCommand } from "./commands/playtest.js";
 import { navCommand, physicsCommand } from "./commands/physicsNav.js";
 import { proofCommand, proveCommand } from "./commands/proof.js";
@@ -243,16 +243,18 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: packageCommandUsage(),
   },
   parity: {
-    description: "Run paired runtime parity proof helpers.",
-    handler: parityPlaytestCommand,
+    description: "Run gameplay or reference-image parity proof helpers.",
+    handler: parityCommand,
     implemented: true,
-    subcommands: ["playtest"],
-    usage: "tn parity playtest --project <path> --scenario <playtest.json> [--targets web,desktop] [--stable-artifacts] [--json]",
+    subcommands: ["playtest", "visual"],
+    usage: "tn parity playtest --project <path> --scenario <playtest.json> [--targets web,desktop] [--stable-artifacts] [--json]\n              tn parity visual --project <path> --url <preview-url> --reference <png> [--out <png>] [--history <json>] [--viewport reference|desktop|mobile|<width>x<height>] [--json]",
   },
   performance: {
-    description: "Capture runtime performance metrics or unsupported native counter diagnostics and write a versioned proof sidecar.",
+    description: "Capture runtime performance proof or a browser DevTools CPU/GPU trace.",
+    handler: performanceCommand,
     implemented: true,
-    usage: "tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]",
+    subcommands: ["proof", "trace"],
+    usage: "tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]\n              tn performance trace --project <path> --url <preview-url> [--seconds <1..30>] [--out <file.json.gz>] [--json]",
   },
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",
@@ -523,10 +525,6 @@ async function legacyDispatch(commandName: string, commandArgv: readonly string[
 
   if (commandName === "package") {
     return packageCommand(commandArgv);
-  }
-
-  if (commandName === "performance") {
-    return performanceProofCommand(commandArgv);
   }
 
   if (commandName === "playtest") {

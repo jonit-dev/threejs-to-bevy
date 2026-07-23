@@ -186,11 +186,11 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
   },
   "visual-qa": {
     aliases: ["visual", "qa", "proof"],
-    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]", "tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>] [--input-script <path|default|none>] [--json]", "tn help screenshot", "tn help record"],
+    commands: ["tn dev --target web", "tn verify [--project <path>] [--frames <count>] [--json]", "tn parity visual --project <path> --url <preview-url> --reference <png> [--json]", "tn performance trace --project <path> --url <preview-url> [--seconds <1..30>] [--out <file.json.gz>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]", "tn record [--project <path>] --url <preview-url> --out <file.webm|file.mp4> [--duration <seconds>] [--input-script <path|default|none>] [--json]", "tn help screenshot", "tn help record"],
     docs: ["docs/workflows/developer-workflow.md", "docs/workflows/ai-workflows.md"],
-    examples: ["Run focused validation/build first, then capture visual proof and report exact artifact paths.", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png", "tn record --url http://127.0.0.1:5173 --out artifacts/proof/motion.webm --duration 5"],
-    failureSymptoms: ["ready flag true but frame is black", "HUD visible but world missing", "low visible mesh count", "resource load failure"],
-    summary: "Collect visual proof that the scene is actually visible, not just technically ready.",
+    examples: ["Run focused validation/build first, then capture visual proof and report exact artifact paths.", "Use tn parity visual for repeatable reference-image scoring with stale-preview protection.", "Use tn performance trace before rendering A/B changes when measured browser FPS is low.", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png", "tn record --url http://127.0.0.1:5173 --out artifacts/proof/motion.webm --duration 5"],
+    failureSymptoms: ["ready flag true but frame is black", "HUD visible but world missing", "low visible mesh count", "resource load failure", "interactive browser frame rate is below budget"],
+    summary: "Collect visual and browser performance proof that the scene is actually healthy, not just technically ready.",
     title: "Visual QA and proof",
   },
   playtest: {
@@ -213,9 +213,9 @@ export const HELP_TOPICS: Record<string, HelpTopic> = {
     title: "Playtest scenarios and assertions",
   },
   screenshot: {
-    commands: ["tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]", "tn verify --frames 1 --json", "tn compare-images <first.png> <second.png> [--json]"],
+    commands: ["tn parity visual --project <path> --url <preview-url> --reference <png> [--out <png>] [--history <json>] [--viewport reference|desktop|mobile|<width>x<height>] [--json]", "tn screenshot [--project <path>] --url <preview-url> --out <file.png> [--wait-ready] [--viewport desktop|mobile|<width>x<height>] [--json]", "tn verify --frames 1 --json", "tn compare-images <first.png> <second.png> [--json]"],
     docs: ["docs/workflows/developer-workflow.md", "docs/runtime/README.md"],
-    examples: ["tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png --json", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/game-production/mobile-viewport.png --viewport mobile --json"],
+    examples: ["tn parity visual --url http://127.0.0.1:5173 --reference docs/reference/target.png --json", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/proof/frame.png --json", "tn screenshot --url http://127.0.0.1:5173 --out artifacts/game-production/mobile-viewport.png --viewport mobile --json"],
     failureSymptoms: ["no canvas", "runtime readiness timeout", "black frame"],
     summary: "Capture or compare still-frame proof from the web preview workflow.",
     title: "Screenshot proof",

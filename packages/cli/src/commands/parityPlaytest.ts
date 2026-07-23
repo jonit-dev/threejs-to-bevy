@@ -3,6 +3,7 @@ import { basename, dirname, resolve } from "node:path";
 
 import { diagnosticResult, type ICommandResult } from "../diagnostics.js";
 import { comparePlaytestParity, type ComparablePlaytestSummary } from "./parityPlaytestCompare.js";
+import { parityVisualCommand } from "./parityVisual.js";
 import { playtestCommand } from "./playtest.js";
 import { loadPlaytestScenario, type PlaytestTarget } from "./playtestScenario.js";
 
@@ -30,6 +31,17 @@ export interface IParityPlaytestReport {
 
 export interface IParityPlaytestOptions {
   playtestRunner?: (argv: readonly string[], cwd: string) => Promise<ICommandResult>;
+}
+
+export async function parityCommand(
+  argv: readonly string[],
+  cwd = process.env.INIT_CWD ?? process.cwd(),
+): Promise<ICommandResult> {
+  const normalizedArgv = argv[0] === "--" ? argv.slice(1) : argv;
+  if (normalizedArgv[0] === "visual") {
+    return parityVisualCommand(normalizedArgv, cwd);
+  }
+  return parityPlaytestCommand(normalizedArgv, cwd);
 }
 
 export async function parityPlaytestCommand(

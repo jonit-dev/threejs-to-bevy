@@ -120,6 +120,19 @@ export function App() {
           <span><kbd>Q</kbd><kbd>E</kbd> RUDDER</span>
           <span><kbd>⇧</kbd><kbd>⌃</kbd> THROTTLE</span>
         </div>
+        <span
+          style={{
+            padding: "9px 10px",
+            borderLeft: "3px solid #c9bc8b",
+            color: "#eee2bd",
+            background: "#091012d9",
+            fontSize: "9px",
+            fontWeight: 800,
+            letterSpacing: ".11em"
+          }}
+        >
+          PRESS ANY KEY · ENABLE SOUND
+        </span>
         <button
           data-threenative-interactive
           className={telemetry.flaps === "DOWN" ? "is-active" : ""}

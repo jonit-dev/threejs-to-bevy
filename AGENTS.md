@@ -157,6 +157,30 @@ Iterate with `tn playtest` after gameplay/input changes, inspect artifacts, fix
 the owning source or script, and rerun. Before release claims, rerun the
 scenario with `--target desktop` so native behavior is proved too.
 
+For repeatable visual comparison against a reference image, use the generic
+parity command instead of creating a project-local screenshot/compare wrapper:
+
+```bash
+tn parity visual --project . --url http://127.0.0.1:5173 \
+  --reference docs/reference/target.png --json
+```
+
+The command verifies preview freshness, captures at the reference dimensions
+by default, reports a numeric similarity, and appends
+`artifacts/visual-parity/history.json`. Restart `tn dev` when it reports stale
+source or a served/local bundle mismatch.
+
+When interactive FPS is low, capture the actual browser CPU/GPU profile before
+changing render quality:
+
+```bash
+tn performance trace --project . --url http://127.0.0.1:5173 \
+  --seconds 5 --out artifacts/performance-trace.json.gz --json
+```
+
+Use this generic Playwright/CDP command instead of adding a project-local
+tracing script. Compare before/after traces from the same browser workflow.
+
 ## Repo Map
 
 - `packages/sdk`: public authoring APIs.
