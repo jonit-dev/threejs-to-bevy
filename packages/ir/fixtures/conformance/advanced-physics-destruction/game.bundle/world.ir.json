@@ -1,0 +1,29 @@
+{
+  "schema": "threenative.world",
+  "version": "0.1.0",
+  "entities": [
+    {
+      "id": "wall",
+      "components": {
+        "Transform": { "position": [0, 2, 0] },
+        "RigidBody": { "kind": "dynamic", "mass": 80, "gravityScale": 0 },
+        "Collider": { "kind": "box", "size": [4, 4, 0.5], "layer": "destructible", "mask": ["projectile"] },
+        "Destructible": {
+          "fractureManifest": "fractures/wall.main.json",
+          "activationBudget": 4,
+          "maxDepth": 2,
+          "cleanupPolicy": "sleep",
+          "impactFilter": { "minImpulse": 5, "layers": ["projectile"] }
+        }
+      }
+    },
+    {
+      "id": "projectile",
+      "components": {
+        "Transform": { "position": [0, 2, 3] },
+        "RigidBody": { "kind": "dynamic", "mass": 2, "gravityScale": 0, "velocity": [0, 0, -10] },
+        "Collider": { "kind": "sphere", "radius": 0.2, "layer": "projectile", "mask": ["destructible"] }
+      }
+    }
+  ]
+}

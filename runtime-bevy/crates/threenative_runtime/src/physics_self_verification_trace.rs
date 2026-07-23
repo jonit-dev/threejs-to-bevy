@@ -8,16 +8,19 @@ use threenative_runtime::{
     character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
     physics::{
         PhysicsJointObservation, RigidBodyTraceObservation, dispose_native_physics_runtime,
-        ensure_native_physics_runtime, inspect_cached_physics_joint,
-        inspect_cached_physics_joint_creation_count, inspect_cached_physics_joints,
-        inspect_cached_physics_world_generation, native_physics_runtime_id,
-        step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
+        ensure_native_physics_runtime, inspect_cached_physics_destruction,
+        inspect_cached_physics_joint, inspect_cached_physics_joint_creation_count,
+        inspect_cached_physics_joints, inspect_cached_physics_world_generation,
+        native_physics_runtime_id, queue_cached_physics_destruction_damage,
+        set_cached_physics_destruction_scene_budget, step_bundle_physics_with_script_poses,
+        trace_physics_joints, trace_rigid_body_primitives,
     },
     physics_aerodynamics::{
         AerodynamicInputs, AerodynamicObservation, AerodynamicTraceSample,
         dispose_physics_aerodynamics, observe_physics_aerodynamics, set_physics_aerodynamic_inputs,
         trace_physics_aerodynamics,
     },
+    physics_destruction::{DestructionCause, DestructionDamage, PieceLifecycle},
     physics_joints::PhysicsJointLoadObservation,
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
     physics_vehicle::{
@@ -43,6 +46,7 @@ use threenative_runtime::{
 enum PhysicsSelfVerificationTrace {
     Aerodynamics(AerodynamicsTraceReport),
     Advanced(AdvancedTraceReport),
+    AdvancedDestruction(AdvancedDestructionTraceReport),
     AdvancedJoints(AdvancedJointsTraceReport),
     Character(CharacterTraceReport),
     Joint(JointTraceReport),
@@ -304,6 +308,101 @@ struct JointTraceReport {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
+struct AdvancedDestructionTraceReport {
+    budget: AdvancedDestructionBudgetTrace,
+    bundle_hash: String,
+    fixture: &'static str,
+    fixed_dt: f32,
+    impact: AdvancedDestructionImpactTrace,
+    regional: AdvancedDestructionRegionalTrace,
+    runtime: &'static str,
+    schema: &'static str,
+    source_hash: String,
+    version: &'static str,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionImpactTrace {
+    physical: AdvancedDestructionPhysicalTrace,
+    ticks: Vec<AdvancedDestructionTickTrace>,
+}
+
+#[derive(Serialize)]
+struct AdvancedDestructionTickTrace {
+    events: Vec<Value>,
+    tick: u64,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionRegionalTrace {
+    broken_bonds: Vec<String>,
+    inactive_pieces: Vec<String>,
+    physical: AdvancedDestructionPhysicalTrace,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionBudgetTrace {
+    active_pieces: usize,
+    event_types: Vec<String>,
+    policy: String,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionPhysicalTrace {
+    assembly_collision_active: bool,
+    pieces: Vec<AdvancedDestructionPhysicalPieceTrace>,
+}
+
+#[derive(Serialize)]
+struct AdvancedDestructionPhysicalPieceTrace {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    handle: Option<[u32; 2]>,
+    id: String,
+    lifecycle: PieceLifecycle,
+    mass: f32,
+    position: [f32; 3],
+    velocity: [f32; 3],
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionScenarioManifest {
+    assembly: String,
+    budget_stress: AdvancedDestructionBudgetScenario,
+    fixed_dt: f32,
+    impact_replay: Vec<AdvancedDestructionDamageScenario>,
+    manifest: String,
+    regional_damage: Vec<AdvancedDestructionDamageScenario>,
+    schema: String,
+    seed: u32,
+    version: String,
+}
+
+#[derive(Clone, Deserialize)]
+struct AdvancedDestructionDamageScenario {
+    amount: Option<f32>,
+    bond: String,
+    cause: DestructionCause,
+    energy: Option<f32>,
+    impulse: Option<f32>,
+    layer: Option<String>,
+    tick: u64,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AdvancedDestructionBudgetScenario {
+    bonds: Vec<String>,
+    damage_tick: u64,
+    scene_max_active_pieces: usize,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 struct AdvancedJointsTraceReport {
     bundle_hash: String,
     fixture: &'static str,
@@ -504,6 +603,13 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 bundle_hash.ok_or("missing aerodynamics bundle hash")?,
             )?)
         }
+        "advanced-physics-destruction" => {
+            PhysicsSelfVerificationTrace::AdvancedDestruction(trace_advanced_physics_destruction(
+                &bundle_path,
+                source_hash.ok_or("missing destruction source hash")?,
+                bundle_hash.ok_or("missing destruction bundle hash")?,
+            )?)
+        }
         "advanced-physics-joints" => {
             PhysicsSelfVerificationTrace::AdvancedJoints(trace_advanced_physics_joints(
                 &bundle_path,
@@ -604,6 +710,265 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
         format!("{}\n", serde_json::to_string_pretty(&trace)?),
     )?;
     Ok(())
+}
+
+fn trace_advanced_physics_destruction(
+    bundle_path: &str,
+    source_hash: String,
+    bundle_hash: String,
+) -> Result<AdvancedDestructionTraceReport, Box<dyn std::error::Error>> {
+    let scenario_path = PathBuf::from(bundle_path).join("destruction.scenarios.json");
+    let scenarios: AdvancedDestructionScenarioManifest =
+        serde_json::from_str(&fs::read_to_string(scenario_path)?)?;
+    if scenarios.schema != "threenative.advanced-physics-destruction-scenarios"
+        || scenarios.version != "0.1.0"
+        || scenarios.fixed_dt <= 0.0
+        || scenarios.manifest.is_empty()
+    {
+        return Err("invalid advanced physics destruction scenario manifest".into());
+    }
+    let _seed = scenarios.seed;
+    let impact = trace_advanced_destruction_impact(bundle_path, &scenarios)?;
+    let regional = trace_advanced_destruction_regional(bundle_path, &scenarios)?;
+    let budget = trace_advanced_destruction_budget(bundle_path, &scenarios)?;
+    Ok(AdvancedDestructionTraceReport {
+        budget,
+        bundle_hash,
+        fixture: "advanced-physics-destruction",
+        fixed_dt: scenarios.fixed_dt,
+        impact,
+        regional,
+        runtime: "bevy",
+        schema: "threenative.advanced-physics-destruction-trace",
+        source_hash,
+        version: "0.1.0",
+    })
+}
+
+fn trace_advanced_destruction_impact(
+    bundle_path: &str,
+    scenarios: &AdvancedDestructionScenarioManifest,
+) -> Result<AdvancedDestructionImpactTrace, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+    let mut ticks = scenarios
+        .impact_replay
+        .iter()
+        .map(|damage| damage.tick)
+        .collect::<Vec<_>>();
+    ticks.sort();
+    ticks.dedup();
+    let mut trace_ticks = Vec::new();
+    for tick in ticks {
+        for damage in scenarios
+            .impact_replay
+            .iter()
+            .filter(|damage| damage.tick == tick)
+        {
+            queue_destruction_scenario_damage(&runtime, &scenarios.assembly, damage)?;
+        }
+        step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+        trace_ticks.push(AdvancedDestructionTickTrace {
+            events: destruction_events(&bundle),
+            tick,
+        });
+    }
+    let physical = advanced_destruction_physical(&runtime, &scenarios.assembly)?;
+    dispose_native_physics_runtime(&runtime);
+    Ok(AdvancedDestructionImpactTrace {
+        physical,
+        ticks: trace_ticks,
+    })
+}
+
+fn trace_advanced_destruction_regional(
+    bundle_path: &str,
+    scenarios: &AdvancedDestructionScenarioManifest,
+) -> Result<AdvancedDestructionRegionalTrace, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+    let mut damage = scenarios
+        .impact_replay
+        .iter()
+        .chain(&scenarios.regional_damage)
+        .collect::<Vec<_>>();
+    damage.sort_by(|left, right| left.tick.cmp(&right.tick).then(left.bond.cmp(&right.bond)));
+    for authored in &damage {
+        queue_destruction_scenario_damage(&runtime, &scenarios.assembly, authored)?;
+    }
+    let final_tick = damage.iter().map(|damage| damage.tick).max().unwrap_or(0);
+    for _ in 1..=final_tick {
+        step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+    }
+    let observation = inspect_cached_physics_destruction(&runtime)
+        .ok_or("regional destruction physics observation is missing")?;
+    let broken_bonds = observation
+        .bonds
+        .iter()
+        .filter(|bond| bond.assembly == scenarios.assembly && bond.broken)
+        .map(|bond| bond.id.clone())
+        .collect();
+    let inactive_pieces = observation
+        .pieces
+        .iter()
+        .filter(|piece| {
+            piece.assembly == scenarios.assembly && piece.lifecycle == PieceLifecycle::Bound
+        })
+        .map(|piece| piece.piece.clone())
+        .collect();
+    let physical =
+        advanced_destruction_physical_from_observation(observation, &scenarios.assembly)?;
+    dispose_native_physics_runtime(&runtime);
+    Ok(AdvancedDestructionRegionalTrace {
+        broken_bonds,
+        inactive_pieces,
+        physical,
+    })
+}
+
+fn trace_advanced_destruction_budget(
+    bundle_path: &str,
+    scenarios: &AdvancedDestructionScenarioManifest,
+) -> Result<AdvancedDestructionBudgetTrace, Box<dyn std::error::Error>> {
+    let mut bundle = load_bundle(bundle_path)?;
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+    if !set_cached_physics_destruction_scene_budget(
+        &runtime,
+        scenarios.budget_stress.scene_max_active_pieces,
+    ) {
+        return Err("budget destruction runtime is missing".into());
+    }
+    let mut bonds = scenarios.budget_stress.bonds.clone();
+    bonds.sort();
+    for bond in bonds {
+        let queued = queue_cached_physics_destruction_damage(
+            &runtime,
+            DestructionDamage {
+                amount: Some(f32::MAX),
+                assembly: scenarios.assembly.clone(),
+                bond,
+                cause: DestructionCause {
+                    contact: None,
+                    entity: None,
+                    kind: threenative_runtime::physics_destruction::DestructionCauseKind::Script,
+                },
+                energy: None,
+                impulse: None,
+                layer: None,
+                tick: scenarios.budget_stress.damage_tick,
+            },
+        );
+        if !queued {
+            return Err("budget destruction damage could not be queued".into());
+        }
+    }
+    step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
+    let events = destruction_events(&bundle);
+    let observation = inspect_cached_physics_destruction(&runtime)
+        .ok_or("budget destruction physics observation is missing")?;
+    let active_pieces = observation
+        .pieces
+        .iter()
+        .filter(|piece| {
+            piece.assembly == scenarios.assembly && piece.lifecycle == PieceLifecycle::Active
+        })
+        .count();
+    let event_types = events
+        .iter()
+        .filter_map(|event| event.get("type").and_then(Value::as_str).map(str::to_owned))
+        .collect();
+    let manifest: threenative_runtime::physics_destruction::FractureManifest =
+        serde_json::from_str(&fs::read_to_string(
+            PathBuf::from(bundle_path).join(&scenarios.manifest),
+        )?)?;
+    let policy = serde_json::to_value(manifest.budgets.overflow_policy)?
+        .as_str()
+        .unwrap_or_default()
+        .to_owned();
+    dispose_native_physics_runtime(&runtime);
+    Ok(AdvancedDestructionBudgetTrace {
+        active_pieces,
+        event_types,
+        policy,
+    })
+}
+
+fn queue_destruction_scenario_damage(
+    runtime: &BTreeSet<String>,
+    assembly: &str,
+    authored: &AdvancedDestructionDamageScenario,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if !queue_cached_physics_destruction_damage(
+        runtime,
+        DestructionDamage {
+            amount: authored.amount,
+            assembly: assembly.to_owned(),
+            bond: authored.bond.clone(),
+            cause: authored.cause.clone(),
+            energy: authored.energy,
+            impulse: authored.impulse,
+            layer: authored.layer.clone(),
+            tick: authored.tick,
+        },
+    ) {
+        return Err(format!(
+            "destruction damage '{}' at tick {} could not be queued",
+            authored.bond, authored.tick
+        )
+        .into());
+    }
+    Ok(())
+}
+
+fn destruction_events(bundle: &threenative_loader::LoadedBundle) -> Vec<Value> {
+    bundle
+        .world
+        .events
+        .get("DestructionEvent")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
+}
+
+fn advanced_destruction_physical(
+    runtime: &BTreeSet<String>,
+    assembly: &str,
+) -> Result<AdvancedDestructionPhysicalTrace, Box<dyn std::error::Error>> {
+    let observation = inspect_cached_physics_destruction(runtime)
+        .ok_or("destruction physics observation is missing")?;
+    advanced_destruction_physical_from_observation(observation, assembly)
+}
+
+fn advanced_destruction_physical_from_observation(
+    observation: threenative_runtime::physics_destruction::DestructionPhysicsObservation,
+    assembly: &str,
+) -> Result<AdvancedDestructionPhysicalTrace, Box<dyn std::error::Error>> {
+    let assembly_collision_active = observation
+        .assemblies
+        .iter()
+        .find(|candidate| candidate.assembly == assembly)
+        .ok_or("destruction assembly physics observation is missing")?
+        .intact_collision_active;
+    let pieces = observation
+        .pieces
+        .into_iter()
+        .filter(|piece| piece.assembly == assembly)
+        .map(|piece| AdvancedDestructionPhysicalPieceTrace {
+            handle: piece.body_handle,
+            id: piece.piece,
+            lifecycle: piece.lifecycle,
+            mass: piece.mass,
+            position: piece.position,
+            velocity: piece.linear_velocity,
+        })
+        .collect();
+    Ok(AdvancedDestructionPhysicalTrace {
+        assembly_collision_active,
+        pieces,
+    })
 }
 
 fn trace_advanced_physics_joints(

@@ -1,0 +1,23 @@
+{
+  "schema": "threenative.advanced-physics-destruction-expected",
+  "version": "0.1.0",
+  "traceSchema": "threenative.advanced-physics-destruction-trace",
+  "traceVersion": "0.1.0",
+  "toleranceRegistryVersion": "0.4.0",
+  "assemblyMass": 80,
+  "assemblyVelocity": [0, 0, 0],
+  "massTolerance": { "absolute": 0.001, "relative": 0.00001 },
+  "momentumTolerance": { "absolute": 0.05, "relative": 0.01 },
+  "impact": {
+    "subThresholdTick": 1,
+    "breakTick": 2,
+    "bond": "bond.north",
+    "activatedPieces": ["piece.northwest", "piece.northeast"],
+    "eventTypes": ["damaged", "bondBroken", "pieceActivated", "pieceActivated"]
+  },
+  "regional": {
+    "brokenBonds": ["bond.north", "bond.west"],
+    "inactivePieces": ["piece.southeast"]
+  },
+  "budget": { "policy": "reject-new", "maximumActivePieces": 2, "requireBudgetExceeded": true }
+}

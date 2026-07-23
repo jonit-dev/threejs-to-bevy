@@ -1,7 +1,17 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fs,
+};
 
+use rapier3d::{
+    glamx::{Quat as RapierQuat, Vec3 as RapierVec3},
+    prelude::*,
+};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use threenative_loader::LoadedBundle;
+
+use crate::physics::ColliderOwner;
 
 pub const DEFAULT_SCENE_ACTIVE_PIECE_BUDGET: usize = 1024;
 const FRACTURE_SCHEMA: &str = "threenative.fracture-manifest";
@@ -233,6 +243,35 @@ pub struct DestructibleObservation {
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DestructionAssemblyPhysicsObservation {
+    pub assembly: String,
+    pub intact_collision_active: bool,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DestructionPieceBodyObservation {
+    pub angular_velocity: [f32; 3],
+    pub assembly: String,
+    pub body_handle: Option<[u32; 2]>,
+    pub lifecycle: PieceLifecycle,
+    pub linear_velocity: [f32; 3],
+    pub mass: f32,
+    pub piece: String,
+    pub position: [f32; 3],
+    pub rotation: [f32; 4],
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DestructionPhysicsObservation {
+    pub assemblies: Vec<DestructionAssemblyPhysicsObservation>,
+    pub bonds: Vec<DestructibleBondObservation>,
+    pub pieces: Vec<DestructionPieceBodyObservation>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum DestructionEvent {
     Damaged {
@@ -240,6 +279,7 @@ pub enum DestructionEvent {
         assembly: String,
         bond: String,
         cause: DestructionCause,
+        #[serde(rename = "remainingHealth")]
         remaining_health: f32,
         tick: u64,
     },
@@ -508,6 +548,10 @@ impl DestructionRuntime {
             .flat_map(|assembly| assembly.pieces.values())
             .filter(|piece| piece.lifecycle == PieceLifecycle::Active)
             .count()
+    }
+
+    pub(crate) fn set_scene_active_piece_budget(&mut self, budget: usize) {
+        self.scene_active_piece_budget = budget;
     }
 
     fn group_damage(&self, mut queued: Vec<DestructionDamage>) -> Vec<DamageGroup> {
@@ -787,6 +831,506 @@ fn damage_amount(damage: &DestructionDamage, bond: &BondState) -> f32 {
     bond.source.health * impulse_ratio.max(energy_ratio)
 }
 
+#[derive(Default)]
+pub(crate) struct NativeDestructionState {
+    assembly_snapshots: BTreeMap<String, AssemblyBodySnapshot>,
+    bond_joints: BTreeMap<(String, String), ImpulseJointHandle>,
+    intact_collision_retired: BTreeSet<String>,
+    pieces: BTreeMap<(String, String), NativePieceBody>,
+    registered: BTreeSet<String>,
+    runtime: DestructionRuntime,
+    tick: u64,
+}
+
+struct NativePieceBody {
+    angular_velocity: RapierVec3,
+    collider: ColliderHandle,
+    handle: RigidBodyHandle,
+    mass: f32,
+    linear_velocity: RapierVec3,
+}
+
+#[derive(Clone)]
+struct AssemblyBodySnapshot {
+    angular_velocity: RapierVec3,
+    gravity_scale: f32,
+    layer: Option<String>,
+    linear_velocity: RapierVec3,
+    mask: Vec<String>,
+    mass: f32,
+    position: RapierVec3,
+    rotation: RapierQuat,
+}
+
+impl NativeDestructionState {
+    pub(crate) fn reconcile(&mut self, bundle: &LoadedBundle) {
+        let declarations = bundle
+            .world
+            .entities
+            .iter()
+            .filter_map(|entity| {
+                let component = entity.components.extra.get("Destructible")?;
+                Some((entity.id.clone(), component.clone()))
+            })
+            .collect::<Vec<_>>();
+        for (entity, component) in declarations {
+            if self.registered.contains(&entity) {
+                continue;
+            }
+            let Ok(config) = serde_json::from_value::<Destructible>(component) else {
+                continue;
+            };
+            let manifest_path = bundle.bundle_path.join(&config.fracture_manifest);
+            let Ok(source) = fs::read_to_string(manifest_path) else {
+                continue;
+            };
+            let Ok(manifest) = serde_json::from_str::<FractureManifest>(&source) else {
+                continue;
+            };
+            if self.runtime.register(&entity, manifest, config).is_ok() {
+                self.registered.insert(entity);
+            }
+        }
+        let desired = bundle
+            .world
+            .entities
+            .iter()
+            .filter(|entity| entity.components.extra.contains_key("Destructible"))
+            .map(|entity| entity.id.clone())
+            .collect::<BTreeSet<_>>();
+        let removed = self
+            .registered
+            .difference(&desired)
+            .cloned()
+            .collect::<Vec<_>>();
+        for entity in removed {
+            self.runtime.unregister(&entity);
+            self.registered.remove(&entity);
+        }
+    }
+
+    pub(crate) fn queue_damage(&mut self, damage: DestructionDamage) -> bool {
+        self.runtime.queue_damage(damage)
+    }
+
+    pub(crate) fn set_scene_active_piece_budget(&mut self, budget: usize) {
+        self.runtime.set_scene_active_piece_budget(budget);
+    }
+
+    pub(crate) fn step(
+        &mut self,
+        world: &mut PhysicsWorld,
+        handles: &mut BTreeMap<String, RigidBodyHandle>,
+        collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+        fixed_delta: f32,
+    ) -> Vec<DestructionEvent> {
+        self.tick += 1;
+        let events = self.runtime.step(self.tick, fixed_delta);
+        self.sync_piece_bodies(world, handles, collider_owners);
+        events
+    }
+
+    pub(crate) fn queue_contact_damage(
+        &mut self,
+        world: &PhysicsWorld,
+        collider_owners: &[(ColliderHandle, ColliderOwner)],
+    ) {
+        let owner_for = |handle: ColliderHandle| {
+            collider_owners
+                .iter()
+                .find_map(|(candidate, owner)| (*candidate == handle).then_some(owner))
+        };
+        let mut contacts = Vec::new();
+        for pair in world
+            .contact_pairs()
+            .filter(|pair| pair.has_any_active_contact())
+        {
+            let (Some(left), Some(right)) = (owner_for(pair.collider1), owner_for(pair.collider2))
+            else {
+                continue;
+            };
+            for (assembly, impact) in [(left, right), (right, left)] {
+                let Some(state) = self.runtime.assemblies.get(&assembly.entity) else {
+                    continue;
+                };
+                let Some(bond) = state
+                    .bonds
+                    .iter()
+                    .find_map(|(id, bond)| (!bond.broken).then_some(id.clone()))
+                else {
+                    continue;
+                };
+                contacts.push(DestructionDamage {
+                    amount: None,
+                    assembly: assembly.entity.clone(),
+                    bond,
+                    cause: DestructionCause {
+                        contact: Some(format!(
+                            "{}:{}:{}",
+                            assembly.entity,
+                            impact.entity,
+                            self.tick + 1
+                        )),
+                        entity: Some(impact.entity.clone()),
+                        kind: DestructionCauseKind::Contact,
+                    },
+                    energy: None,
+                    impulse: Some(pair.total_impulse_magnitude()),
+                    layer: impact.layer.clone(),
+                    tick: self.tick + 1,
+                });
+            }
+        }
+        contacts.sort_by(|left, right| damage_sort_key(left).cmp(&damage_sort_key(right)));
+        for damage in contacts {
+            self.runtime.queue_damage(damage);
+        }
+    }
+
+    pub(crate) fn observation(&self, world: &PhysicsWorld) -> DestructionPhysicsObservation {
+        let semantic = self.runtime.observe();
+        DestructionPhysicsObservation {
+            assemblies: semantic
+                .assemblies
+                .into_iter()
+                .map(|assembly| DestructionAssemblyPhysicsObservation {
+                    intact_collision_active: !self.intact_collision_retired.contains(&assembly.id),
+                    assembly: assembly.id,
+                })
+                .collect(),
+            bonds: semantic.bonds,
+            pieces: semantic
+                .pieces
+                .into_iter()
+                .map(|piece| {
+                    let native = self.pieces.get(&(piece.assembly.clone(), piece.id.clone()));
+                    let body = native.and_then(|native| world.bodies.get(native.handle));
+                    let position = body.map_or([0.0; 3], |body| body.translation().into());
+                    let rotation = body.map_or([0.0, 0.0, 0.0, 1.0], |body| {
+                        let rotation = body.rotation();
+                        [rotation.x, rotation.y, rotation.z, rotation.w]
+                    });
+                    DestructionPieceBodyObservation {
+                        angular_velocity: body.map_or([0.0; 3], |body| body.angvel().into()),
+                        assembly: piece.assembly,
+                        body_handle: native.map(|native| {
+                            let (index, generation) = native.handle.into_raw_parts();
+                            [index, generation]
+                        }),
+                        lifecycle: piece.lifecycle,
+                        linear_velocity: body.map_or([0.0; 3], |body| body.linvel().into()),
+                        mass: native.map_or(0.0, |native| native.mass),
+                        piece: piece.id,
+                        position,
+                        rotation,
+                    }
+                })
+                .collect(),
+        }
+    }
+
+    fn sync_piece_bodies(
+        &mut self,
+        world: &mut PhysicsWorld,
+        handles: &mut BTreeMap<String, RigidBodyHandle>,
+        collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+    ) {
+        let pieces = self.runtime.observe().pieces;
+        let desired_piece_keys = pieces
+            .iter()
+            .map(|piece| (piece.assembly.clone(), piece.id.clone()))
+            .collect::<BTreeSet<_>>();
+        let orphaned = self
+            .pieces
+            .keys()
+            .filter(|key| !desired_piece_keys.contains(*key))
+            .cloned()
+            .collect::<Vec<_>>();
+        for key in orphaned {
+            self.remove_piece_body(world, handles, collider_owners, &key);
+        }
+        let newly_fractured = pieces
+            .iter()
+            .filter(|piece| piece.lifecycle == PieceLifecycle::Active)
+            .map(|piece| piece.assembly.clone())
+            .filter(|assembly| !self.intact_collision_retired.contains(assembly))
+            .collect::<BTreeSet<_>>();
+        for assembly in newly_fractured {
+            self.materialize_assembly(world, handles, collider_owners, &assembly, &pieces);
+        }
+        for piece in pieces {
+            let key = (piece.assembly.clone(), piece.id.clone());
+            match piece.lifecycle {
+                PieceLifecycle::Active => {
+                    if let Some(native) = self.pieces.get(&key) {
+                        if let Some(body) = world.bodies.get_mut(native.handle)
+                            && body.body_type() != RigidBodyType::Dynamic
+                        {
+                            body.set_body_type(RigidBodyType::Dynamic, true);
+                            body.set_linvel(native.linear_velocity, true);
+                            body.set_angvel(native.angular_velocity, true);
+                        }
+                    } else {
+                        self.create_piece_body(
+                            world,
+                            handles,
+                            collider_owners,
+                            &piece.assembly,
+                            &piece.id,
+                        );
+                    }
+                }
+                PieceLifecycle::Sleeping => {
+                    if let Some(native) = self.pieces.get(&key)
+                        && let Some(body) = world.bodies.get_mut(native.handle)
+                    {
+                        body.sleep();
+                    }
+                }
+                PieceLifecycle::Bound => {}
+                PieceLifecycle::Despawned | PieceLifecycle::Pooled => {
+                    self.remove_piece_body(world, handles, collider_owners, &key);
+                }
+            }
+        }
+        self.reconcile_bond_joints(world);
+    }
+
+    fn materialize_assembly(
+        &mut self,
+        world: &mut PhysicsWorld,
+        handles: &mut BTreeMap<String, RigidBodyHandle>,
+        collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+        assembly_id: &str,
+        pieces: &[DestructiblePieceObservation],
+    ) {
+        let Some(snapshot) = assembly_body_snapshot(world, handles, collider_owners, assembly_id)
+        else {
+            return;
+        };
+        self.assembly_snapshots
+            .insert(assembly_id.to_owned(), snapshot);
+        for piece in pieces.iter().filter(|piece| piece.assembly == assembly_id) {
+            self.create_piece_body(world, handles, collider_owners, assembly_id, &piece.id);
+        }
+        if self.intact_collision_retired.insert(assembly_id.to_owned()) {
+            retire_intact_assembly(world, handles, collider_owners, assembly_id);
+        }
+    }
+
+    fn create_piece_body(
+        &mut self,
+        world: &mut PhysicsWorld,
+        handles: &mut BTreeMap<String, RigidBodyHandle>,
+        collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+        assembly_id: &str,
+        piece_id: &str,
+    ) {
+        if self
+            .pieces
+            .contains_key(&(assembly_id.to_owned(), piece_id.to_owned()))
+        {
+            return;
+        }
+        let Some(assembly) = self.runtime.assemblies.get(assembly_id) else {
+            return;
+        };
+        let Some(piece) = assembly.pieces.get(piece_id) else {
+            return;
+        };
+        let Some(snapshot) = self.assembly_snapshots.get(assembly_id).cloned() else {
+            return;
+        };
+        let Some(mut collider) = fracture_collider(&piece.source.collider) else {
+            return;
+        };
+        let local_position = RapierVec3::from_array(piece.source.local_position);
+        let local_rotation =
+            RapierQuat::from_array(piece.source.local_rotation.unwrap_or([0.0, 0.0, 0.0, 1.0]))
+                .normalize();
+        let position = snapshot.position + snapshot.rotation * local_position;
+        let rotation = (snapshot.rotation * local_rotation).normalize();
+        let mass = snapshot.mass * piece.source.mass_fraction;
+        let body = RigidBodyBuilder::dynamic()
+            .translation(position)
+            .rotation(rotation.to_scaled_axis())
+            .linvel(snapshot.linear_velocity)
+            .angvel(snapshot.angular_velocity)
+            .gravity_scale(snapshot.gravity_scale);
+        collider = collider.mass(mass);
+        let (handle, collider_handle) = world.insert(body, collider);
+        let handle_id = piece_body_id(assembly_id, piece_id);
+        handles.insert(handle_id, handle);
+        collider_owners.push((
+            collider_handle,
+            ColliderOwner {
+                child: Some(piece_id.to_owned()),
+                entity: assembly_id.to_owned(),
+                layer: snapshot.layer,
+                mask: snapshot.mask,
+            },
+        ));
+        self.pieces.insert(
+            (assembly_id.to_owned(), piece_id.to_owned()),
+            NativePieceBody {
+                angular_velocity: snapshot.angular_velocity,
+                collider: collider_handle,
+                handle,
+                linear_velocity: snapshot.linear_velocity,
+                mass,
+            },
+        );
+    }
+
+    fn remove_piece_body(
+        &mut self,
+        world: &mut PhysicsWorld,
+        handles: &mut BTreeMap<String, RigidBodyHandle>,
+        collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+        key: &(String, String),
+    ) {
+        let Some(native) = self.pieces.remove(key) else {
+            return;
+        };
+        world.remove_body(native.handle);
+        handles.remove(&piece_body_id(&key.0, &key.1));
+        collider_owners.retain(|(handle, _)| *handle != native.collider);
+    }
+
+    fn reconcile_bond_joints(&mut self, world: &mut PhysicsWorld) {
+        let mut desired = BTreeMap::new();
+        for (assembly_id, assembly) in &self.runtime.assemblies {
+            if !self.intact_collision_retired.contains(assembly_id) {
+                continue;
+            }
+            for (bond_id, bond) in &assembly.bonds {
+                if !bond.broken {
+                    desired.insert(
+                        (assembly_id.clone(), bond_id.clone()),
+                        bond.source.pieces.clone(),
+                    );
+                }
+            }
+        }
+        let removed = self
+            .bond_joints
+            .keys()
+            .filter(|key| !desired.contains_key(*key))
+            .cloned()
+            .collect::<Vec<_>>();
+        for key in removed {
+            if let Some(handle) = self.bond_joints.remove(&key) {
+                world.remove_impulse_joint(handle);
+            }
+        }
+        for (key, pieces) in desired {
+            if self.bond_joints.contains_key(&key) {
+                continue;
+            }
+            let Some(left) = self
+                .pieces
+                .get(&(key.0.clone(), pieces[0].clone()))
+                .map(|piece| piece.handle)
+            else {
+                continue;
+            };
+            let Some(right) = self
+                .pieces
+                .get(&(key.0.clone(), pieces[1].clone()))
+                .map(|piece| piece.handle)
+            else {
+                continue;
+            };
+            let (Some(left_body), Some(right_body)) =
+                (world.bodies.get(left), world.bodies.get(right))
+            else {
+                continue;
+            };
+            let left_pose = left_body.position();
+            let right_pose = right_body.position();
+            let relative = right_pose.inverse() * left_pose;
+            let joint = FixedJointBuilder::new()
+                .contacts_enabled(false)
+                .local_frame1(Pose::IDENTITY)
+                .local_frame2(relative)
+                .build();
+            let handle = world.insert_impulse_joint(left, right, joint);
+            self.bond_joints.insert(key, handle);
+        }
+    }
+}
+
+fn piece_body_id(assembly: &str, piece: &str) -> String {
+    format!("{assembly}#fracture:{piece}")
+}
+
+fn assembly_body_snapshot(
+    world: &PhysicsWorld,
+    handles: &BTreeMap<String, RigidBodyHandle>,
+    collider_owners: &[(ColliderHandle, ColliderOwner)],
+    assembly: &str,
+) -> Option<AssemblyBodySnapshot> {
+    let handle = handles.get(assembly).copied()?;
+    let body = world.bodies.get(handle)?;
+    let owner = collider_owners
+        .iter()
+        .find_map(|(_, owner)| (owner.entity == assembly).then_some(owner));
+    Some(AssemblyBodySnapshot {
+        angular_velocity: body.angvel(),
+        gravity_scale: body.gravity_scale(),
+        layer: owner.and_then(|owner| owner.layer.clone()),
+        linear_velocity: body.linvel(),
+        mask: owner.map_or_else(Vec::new, |owner| owner.mask.clone()),
+        mass: body.mass(),
+        position: body.translation(),
+        rotation: *body.rotation(),
+    })
+}
+
+fn retire_intact_assembly(
+    world: &mut PhysicsWorld,
+    handles: &BTreeMap<String, RigidBodyHandle>,
+    collider_owners: &mut Vec<(ColliderHandle, ColliderOwner)>,
+    assembly: &str,
+) {
+    let colliders = collider_owners
+        .iter()
+        .filter(|(_, owner)| owner.entity == assembly && owner.child.is_none())
+        .map(|(handle, _)| *handle)
+        .collect::<Vec<_>>();
+    for collider in &colliders {
+        world.remove_collider(*collider);
+    }
+    collider_owners.retain(|(handle, _)| !colliders.contains(handle));
+    if let Some(handle) = handles.get(assembly)
+        && let Some(body) = world.bodies.get_mut(*handle)
+    {
+        body.set_enabled(false);
+    }
+}
+
+fn fracture_collider(source: &FracturePieceCollider) -> Option<ColliderBuilder> {
+    match source {
+        FracturePieceCollider::Box { half_extents } => Some(ColliderBuilder::cuboid(
+            half_extents[0],
+            half_extents[1],
+            half_extents[2],
+        )),
+        FracturePieceCollider::Sphere { radius } => Some(ColliderBuilder::ball(*radius)),
+        FracturePieceCollider::Capsule {
+            half_height,
+            radius,
+        } => Some(ColliderBuilder::capsule_y(*half_height, *radius)),
+        FracturePieceCollider::ConvexHull { vertices } => ColliderBuilder::convex_hull(
+            &vertices
+                .iter()
+                .copied()
+                .map(RapierVec3::from_array)
+                .collect::<Vec<_>>(),
+        ),
+    }
+}
+
 fn validate_registration(
     manifest: &FractureManifest,
     config: &Destructible,
@@ -802,10 +1346,10 @@ fn validate_registration(
             "schema and version must be supported",
         ));
     }
-    if config.fracture_manifest != manifest.id {
+    if config.fracture_manifest.is_empty() {
         return Err(invalid(
             "Destructible.fractureManifest",
-            "component reference must match the registered manifest ID",
+            "component must reference a fracture manifest",
         ));
     }
     if manifest.pieces.is_empty() || manifest.budgets.max_active_pieces == 0 {

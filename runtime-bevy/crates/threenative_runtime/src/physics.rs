@@ -13,6 +13,9 @@ use threenative_loader::{
     WorldEntity,
 };
 
+use crate::physics_destruction::{
+    DestructionDamage, DestructionEvent, DestructionPhysicsObservation, NativeDestructionState,
+};
 use crate::physics_joints::{
     PhysicsJointBreakEvent, PhysicsJointLoadObservation, PhysicsJointRuntimeState,
     begin_joint_load_frame, observe_joint_loads_and_schedule_breaks, reconcile_physics_joints,
@@ -263,6 +266,48 @@ pub fn inspect_cached_physics_body_sleeping(
     })
 }
 
+pub fn queue_cached_physics_destruction_damage(
+    script_posed_entities: &BTreeSet<String>,
+    damage: DestructionDamage,
+) -> bool {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow_mut()
+            .get_mut(&runtime_id)
+            .is_some_and(|runtime| runtime.destruction_state.queue_damage(damage))
+    })
+}
+
+pub fn inspect_cached_physics_destruction(
+    script_posed_entities: &BTreeSet<String>,
+) -> Option<DestructionPhysicsObservation> {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        let caches = caches.borrow();
+        let runtime = caches.get(&runtime_id)?;
+        Some(runtime.destruction_state.observation(&runtime.world))
+    })
+}
+
+pub fn set_cached_physics_destruction_scene_budget(
+    script_posed_entities: &BTreeSet<String>,
+    budget: usize,
+) -> bool {
+    let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
+    RAPIER_CACHES.with(|caches| {
+        caches
+            .borrow_mut()
+            .get_mut(&runtime_id)
+            .is_some_and(|runtime| {
+                runtime
+                    .destruction_state
+                    .set_scene_active_piece_budget(budget);
+                true
+            })
+    })
+}
+
 pub fn inspect_cached_physics_ccd_substeps(
     script_posed_entities: &BTreeSet<String>,
 ) -> Option<usize> {
@@ -424,7 +469,7 @@ pub fn step_bundle_physics_with_script_poses(
         .and_then(|config| config.physics.as_ref())
         .map(|physics| physics.gravity)
         .unwrap_or([0.0, -9.81, 0.0]);
-    let (events, joint_break_events) = step_rapier_bodies(
+    let (events, joint_break_events, destruction_events) = step_rapier_bodies(
         bundle,
         &mut entities,
         fixed_delta,
@@ -455,6 +500,7 @@ pub fn step_bundle_physics_with_script_poses(
     }
     write_live_event_queues(bundle, &events);
     write_joint_break_event_queue(bundle, &joint_break_events);
+    write_destruction_event_queue(bundle, &destruction_events);
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -495,6 +541,13 @@ fn write_live_event_queues(bundle: &mut LoadedBundle, events: &[PhysicsEvent]) {
 fn write_joint_break_event_queue(bundle: &mut LoadedBundle, events: &[PhysicsJointBreakEvent]) {
     bundle.world.events.insert(
         "JointBreakEvent".to_owned(),
+        serde_json::to_value(events).unwrap_or_else(|_| serde_json::Value::Array(Vec::new())),
+    );
+}
+
+fn write_destruction_event_queue(bundle: &mut LoadedBundle, events: &[DestructionEvent]) {
+    bundle.world.events.insert(
+        "DestructionEvent".to_owned(),
         serde_json::to_value(events).unwrap_or_else(|_| serde_json::Value::Array(Vec::new())),
     );
 }
@@ -921,7 +974,11 @@ fn step_rapier_bodies(
     gravity: [f32; 3],
     script_posed_entities: &BTreeSet<String>,
     at_point_commands: &[PhysicsAtPointCommand],
-) -> (Vec<PhysicsEvent>, Vec<PhysicsJointBreakEvent>) {
+) -> (
+    Vec<PhysicsEvent>,
+    Vec<PhysicsJointBreakEvent>,
+    Vec<DestructionEvent>,
+) {
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
         let mut caches = caches.borrow_mut();
@@ -972,6 +1029,7 @@ struct PersistentRapierWorld {
     world: PhysicsWorld,
     joint_state: PhysicsJointRuntimeState,
     aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState,
+    destruction_state: NativeDestructionState,
     vehicle_state: crate::physics_vehicle::VehicleRuntimeState,
 }
 
@@ -1394,6 +1452,8 @@ impl PersistentRapierWorld {
             &[],
             &mut Vec::new(),
         );
+        let mut destruction_state = NativeDestructionState::default();
+        destruction_state.reconcile(bundle);
         Self {
             collider_owners,
             handles,
@@ -1404,6 +1464,7 @@ impl PersistentRapierWorld {
             world,
             joint_state,
             aerodynamic_state: crate::physics_aerodynamics::AerodynamicRuntimeState::default(),
+            destruction_state,
             vehicle_state: crate::physics_vehicle::VehicleRuntimeState::default(),
         }
     }
@@ -1416,7 +1477,11 @@ impl PersistentRapierWorld {
         fixed_delta: f32,
         script_posed_entities: &BTreeSet<String>,
         at_point_commands: &[PhysicsAtPointCommand],
-    ) -> (Vec<PhysicsEvent>, Vec<PhysicsJointBreakEvent>) {
+    ) -> (
+        Vec<PhysicsEvent>,
+        Vec<PhysicsJointBreakEvent>,
+        Vec<DestructionEvent>,
+    ) {
         let substeps = physics_substeps(fixed_delta);
         self.world.integration_parameters.dt = fixed_delta / substeps as f32;
         reconcile_physics_joints(
@@ -1425,6 +1490,7 @@ impl PersistentRapierWorld {
             &self.handles,
             &mut self.joint_state,
         );
+        self.destruction_state.reconcile(bundle);
         begin_joint_load_frame(&mut self.joint_state);
 
         for entity in entities.iter() {
@@ -1518,6 +1584,13 @@ impl PersistentRapierWorld {
             }
         }
 
+        let destruction_events = self.destruction_state.step(
+            &mut self.world,
+            &mut self.handles,
+            &mut self.collider_owners,
+            fixed_delta,
+        );
+
         let initial_query_broad_phase = self.initial_query_broad_phase.take();
         crate::physics_aerodynamics::step_physics_aerodynamics(
             runtime_id,
@@ -1546,6 +1619,8 @@ impl PersistentRapierWorld {
                 fixed_delta / substeps as f32,
             ));
         }
+        self.destruction_state
+            .queue_contact_damage(&self.world, &self.collider_owners);
 
         for entity in entities.iter_mut() {
             let Some(handle) = self.handles.get(&entity.id) else {
@@ -1573,7 +1648,7 @@ impl PersistentRapierWorld {
         let current_pairs = self.live_pairs();
         let events = physics_events_for_pair_delta(&current_pairs, &self.previous_pairs);
         self.previous_pairs = current_pairs;
-        (events, joint_break_events)
+        (events, joint_break_events, destruction_events)
     }
 
     fn live_pairs(&self) -> BTreeMap<String, DetectedPair> {

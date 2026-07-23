@@ -8,6 +8,7 @@ import { stepPatrols } from "./patrol.js";
 import { stepStateMachines } from "./stateMachines.js";
 import { stepCountdowns } from "./countdowns.js";
 import { preparePhysicsRuntime, stepPhysics } from "./physics.js";
+import { stepPhysicsDestruction, type IPhysicsDestructionRuntime } from "./physicsDestruction.js";
 import { applyPhysicsVehicleBindings, setPhysicsVehicleControllerInputs, stepPhysicsVehicles, updatePhysicsVehicleVisuals } from "./physicsVehicle.js";
 import { applyPhysicsAerodynamicBindings, stepPhysicsAerodynamics } from "./physicsAerodynamics.js";
 import { runSchedule, type ISystemModule } from "./systems/runner.js";
@@ -68,6 +69,7 @@ export async function runGameFrame(options: {
   assets?: IAssetsManifest;
   audio?: IAudioIr;
   delta: number;
+  destructionRuntime?: IPhysicsDestructionRuntime;
   componentSchemas?: IIrSchemaFile;
   effectLog?: ISystemEffectLog;
   environmentScene?: IEnvironmentSceneIr;
@@ -126,6 +128,7 @@ export async function runGameFrame(options: {
         stepPhysicsVehicles(options.world, fixedDelta);
         stepPhysicsAerodynamics(options.world, fixedDelta, state.tick);
         stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: state.tick, writeLedger: runtimeState.writeLedger });
+        if (options.destructionRuntime !== undefined) stepPhysicsDestruction(options.destructionRuntime, options.world, state.tick, fixedDelta);
         stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, state.tick);
         const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: state.tick });
         stepStateMachines(options.world, state.tick, sensorEvents);
@@ -160,6 +163,7 @@ export async function runGameFrame(options: {
     stepPhysicsVehicles(options.world, fixedDelta);
     stepPhysicsAerodynamics(options.world, fixedDelta, 0);
     stepPhysics(options.world, fixedDelta, options.environmentScene, { gravity: options.runtimeConfig?.physics?.gravity as [number, number, number] | undefined, tick: 0, writeLedger: runtimeState.writeLedger });
+    if (options.destructionRuntime !== undefined) stepPhysicsDestruction(options.destructionRuntime, options.world, 0, fixedDelta);
     stepCountdowns(options.world, options.systems, fixedDelta, runtimeState.countdowns, 0);
     const sensorEvents = runtimeState.sensors.advance(options.world, { fixedDelta, tick: 0 });
     stepStateMachines(options.world, 0, sensorEvents);

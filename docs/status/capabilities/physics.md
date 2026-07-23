@@ -83,14 +83,15 @@ Current support:
   Paired retained-Rapier traces prove the declared load threshold, exact break
   identity/order, lifecycle bounds, zero body rebuilds, and preserved unrelated
   handles. Release enrollment remains deferred to the final PRD phase.
-- Phase 6 now has a pre-release destruction contract and runtime-core slice:
+- Phase 6 now has a pre-release destruction contract and paired physical slice:
   compiler/CLI-owned seeded fracture baking emits byte-stable connected piece
   and bond manifests; IR validation enforces collider, mass, hierarchy, and
   activation budgets; and both adapters implement stable once-per-tick damage,
-  ordered bond/piece events, overflow policies, cleanup, and pooling. Live
-  Rapier piece-body activation with mass/momentum proof, the paired destruction
-  fixture, and web/desktop projectile playtests remain required before the
-  Phase 6 checkpoint can pass.
+  ordered bond/piece events, overflow policies, cleanup, and pooling. Both
+  retained Rapier adapters materialize stable physical pieces, preserve bound
+  regions, retire intact collision, inherit motion, and prove mass/momentum,
+  contact routing, and paired event/budget parity. Web/desktop projectile
+  playtests and manual contact-sheet review remain before the checkpoint passes.
 - Sensor, character, and query snapshots share local/mesh center, rotation,
   symmetric filter, deterministic 16-layer, and normalized-direction rules.
   Phase 1 script raycast, shape-cast, and overlap observations now come from
@@ -104,7 +105,7 @@ Current support:
   `advanced-physics-foundation` row additionally proves at-point causality,
   exact compound-child query identity, stable script-host order, and provenance.
   Release-enrolled drivetrain/controller, aerodynamics, and rich-joint support;
-  physical destruction activation, soft bodies, ragdolls, dynamic triangle compound children,
+  destruction playability/release enrollment, soft bodies, ragdolls, dynamic triangle compound children,
   arbitrary triangle narrow phase, and public backend handles remain explicit
   boundaries.
 
@@ -116,12 +117,14 @@ Verification:
 - `pnpm verify:focused verify:advanced-physics-drivetrain`
 - `pnpm verify:focused verify:advanced-physics-aerodynamics`
 - `pnpm verify:focused verify:advanced-physics-joints`
+- `pnpm verify:focused verify:advanced-physics-destruction`
 - `pnpm verify:focused verify:feature-parity-physics-native`
 - `packages/ir/fixtures/conformance/advanced-physics-foundation/`
 - `packages/ir/fixtures/conformance/advanced-physics-wheels/`
 - `packages/ir/fixtures/conformance/advanced-physics-drivetrain/`
 - `packages/ir/fixtures/conformance/advanced-physics-aerodynamics/`
 - `packages/ir/fixtures/conformance/advanced-physics-joints/`
+- `packages/ir/fixtures/conformance/advanced-physics-destruction/`
 - `tn playtest --target desktop ...`
 
 Full prior evidence is preserved in

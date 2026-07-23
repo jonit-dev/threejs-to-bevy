@@ -37,6 +37,7 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     "verify:advanced-physics-drivetrain",
     "verify:advanced-physics-aerodynamics",
     "verify:advanced-physics-joints",
+    "verify:advanced-physics-destruction",
     "verify:portable-feedback",
   ]);
 });
@@ -75,6 +76,15 @@ test("fixture catalog should own the advanced physics joints focused gate descri
   assert.ok(descriptor);
   assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/advanced-physics/phase-5-joints/verification-report.json");
   assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/advancedPhysicsJoints.js"]);
+  assert.equal(descriptor.release.enrolled, false);
+});
+
+test("fixture catalog should own the advanced physics destruction focused gate descriptor", () => {
+  const descriptor = fixtureCatalogGateDescriptors().find((entry) => entry.name === "verify:advanced-physics-destruction");
+
+  assert.ok(descriptor);
+  assert.equal(descriptor.artifact.reportPath, "tools/verify/artifacts/advanced-physics/phase-6-destruction/verification-report.json");
+  assert.deepEqual(descriptor.command.commands.at(-1), ["node", "tools/verify/dist/advancedPhysicsDestruction.js"]);
   assert.equal(descriptor.release.enrolled, false);
 });
 

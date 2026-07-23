@@ -24,6 +24,7 @@ test("focused gate dispatcher should list current capability gates", () => {
     "verify:agent-io",
     "verify:advanced-physics-wheels",
     "verify:advanced-physics-joints",
+    "verify:advanced-physics-destruction",
     "verify:animation-physics-residuals",
     "verify:baked-gi",
     "verify:bundle-safety-hardening",

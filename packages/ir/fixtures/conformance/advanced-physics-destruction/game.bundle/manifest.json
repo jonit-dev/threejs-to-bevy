@@ -1,0 +1,20 @@
+{
+  "schema": "threenative.bundle",
+  "version": "0.1.0",
+  "name": "conformance-advanced-physics-destruction",
+  "requiredCapabilities": {
+    "physics": [
+      "destruction.bounded-fracture",
+      "destruction.cleanup.sleep",
+      "rigid-body.dynamic",
+      "collider.box",
+      "collider.sphere"
+    ]
+  },
+  "entry": { "world": "world.ir.json" },
+  "files": {
+    "assets": "assets.manifest.json",
+    "materials": "materials.ir.json",
+    "targetProfile": "target.profile.json"
+  }
+}

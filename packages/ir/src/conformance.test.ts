@@ -135,6 +135,14 @@ test("should include capability tags for each conformance fixture", async () => 
     "physics:joint.suspension",
   ]);
 
+  assertFixtureCapabilities(byName, "advanced-physics-destruction", [
+    "physics:collider.box",
+    "physics:collider.sphere",
+    "physics:destruction.bounded-fracture",
+    "physics:destruction.cleanup.sleep",
+    "physics:rigid-body.dynamic",
+  ]);
+
   assertFixtureCapabilities(byName, "basic-scene", [
     "rendering:mesh.primitive.box",
     "rendering:mesh.primitive.capsule",

@@ -34,6 +34,7 @@ import { GodRaysPass, webGodRaysSettings } from "./rendering/godrays/GodRaysPass
 import { SsgiPass, webSsgiSettings } from "./rendering/ssgi/ssgiPass.js";
 import { createGameLoopState, runExactFixedTicks, runGameFrame, setPaused as setGameLoopPaused } from "./gameLoop.js";
 import { disposePhysicsRuntime, initializePhysicsRuntime } from "./physics.js";
+import { createWebDestructionHost } from "./webDestructionHost.js";
 import { attachInputListeners, createInputState } from "./input.js";
 import { hasKinematicMovers, stepKinematicMovers } from "./kinematicMover.js";
 import { loadSystemModuleUrl } from "./systems/moduleLoaderUrl.js";
@@ -129,7 +130,7 @@ export interface IWebRuntimeProbeObservations {
 const EMPTY_SYSTEMS: ISystemsIr = Object.freeze({ schema: "threenative.systems", systems: [], version: "0.1.0" });
 
 export function requiresWebFixedLoop(world: IWorldIr): boolean {
-  return world.entities.some((entity) => entity.components.RigidBody?.kind === "dynamic");
+  return world.entities.some((entity) => entity.components.RigidBody?.kind === "dynamic" || entity.components.Destructible !== undefined);
 }
 
 export interface IRenderOptions {
@@ -360,6 +361,9 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   exposeDebugSceneSnapshot(mapped.scene);
   const input = createInputState(bundle.input);
   const loopState = createGameLoopState(bundle.runtimeConfig);
+  const destructionHost = createWebDestructionHost(bundle);
+  const destructionRuntime = destructionHost.runtime;
+  const reconcileDestruction = () => destructionHost.reconcile(bundle.world);
   let gameLoopExecution: Promise<void> = Promise.resolve();
   const enqueueGameLoop = <T>(operation: () => Promise<T>): Promise<T> => {
     const result = gameLoopExecution.then(operation);
@@ -503,11 +507,13 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   for (let frame = 0; frame < captureFrames; frame += 1) {
     consumeOverlayEvents();
     if (runsFixedLoop) {
+      reconcileDestruction();
       await enqueueGameLoop(() => runGameFrame({
         assets: bundle.assets,
         audio: bundle.audio,
         componentSchemas: bundle.componentSchemas,
         delta: 1 / 60,
+        destructionRuntime,
         effectLog,
         environmentScene: bundle.environmentScene,
         gameFlow: bundle.gameFlow,
@@ -581,11 +587,13 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
           await enqueueGameLoop(async () => {
             consumeOverlayEvents();
             drainUiActionsIntoInput(ui, input);
+            reconcileDestruction();
             await runGameFrame({
               assets: bundle.assets,
               audio: bundle.audio,
               componentSchemas: bundle.componentSchemas,
               delta,
+              destructionRuntime,
               effectLog,
               environmentScene: bundle.environmentScene,
               gameFlow: bundle.gameFlow,
@@ -690,11 +698,13 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       const result = await enqueueGameLoop(async () => {
         consumeOverlayEvents();
         drainUiActionsIntoInput(ui, input);
+        reconcileDestruction();
         const exact = await runExactFixedTicks({
           assets: bundle.assets,
           audio: bundle.audio,
           componentSchemas: bundle.componentSchemas,
           delta: bundle.runtimeConfig?.time.fixedDelta ?? 1 / 60,
+          destructionRuntime,
           effectLog,
           environmentScene: bundle.environmentScene,
           gameFlow: bundle.gameFlow,

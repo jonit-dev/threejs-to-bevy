@@ -5,6 +5,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IGameFlowIr,
+  IFractureManifest,
   IInputIr,
   IInteractionsIr,
   IIrSchemaFile,
@@ -81,12 +82,19 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
   const sequences =
     manifest.entry.sequences === undefined ? undefined : await reader.readJson<ISequencesIr>(manifest.entry.sequences);
   const assets = await hydrateGeneratedMeshAssets(await reader.readJson<IAssetsManifest>(manifest.files.assets), reader);
+  const world = await reader.readJson<IWorldIr>(manifest.entry.world);
+  const fracturePaths = [...new Set(world.entities.flatMap((entity) => entity.components.Destructible?.fractureManifest ?? []))].sort();
+  const fractureManifests = Object.fromEntries(await Promise.all(fracturePaths.map(async (path) => {
+    assertBundleRelativePath(path);
+    return [path, await reader.readJson<IFractureManifest>(path)] as const;
+  }))) as Record<string, IFractureManifest>;
   return {
     assets,
     animations,
     audio,
     componentSchemas,
     environmentScene,
+    fractureManifests,
     gameFlow,
     gltfScene,
     input,
@@ -103,7 +111,7 @@ export async function hydrateWebBundle(source: string, reader: IBundleFileReader
     systems,
     targetProfile: await reader.readJson<ITargetProfile>(manifest.files.targetProfile),
     ui,
-    world: await reader.readJson<IWorldIr>(manifest.entry.world),
+    world,
   };
 }
 

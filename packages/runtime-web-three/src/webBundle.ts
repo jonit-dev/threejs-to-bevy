@@ -5,6 +5,7 @@ import type {
   IBundleManifest,
   IEnvironmentSceneIr,
   IGameFlowIr,
+  IFractureManifest,
   IInputIr,
   IInteractionsIr,
   IIrSchemaFile,
@@ -28,6 +29,7 @@ export interface IWebBundle {
   audio?: IAudioIr;
   componentSchemas?: IIrSchemaFile;
   environmentScene?: IEnvironmentSceneIr;
+  fractureManifests?: Record<string, IFractureManifest>;
   gameFlow?: IGameFlowIr;
   gltfScene?: IGltfSceneMetadataIr;
   input?: IInputIr;

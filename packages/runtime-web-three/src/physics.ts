@@ -1,6 +1,6 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
-import type { IColliderComponent, ICompoundColliderComponent, ICompoundColliderShape, IEnvironmentSceneIr, IPhysicsBodyObservation, IPhysicsQueryHitObservation, IScriptPhysicsOverlapRequest, IScriptPhysicsOverlapResult, IScriptPhysicsRaycastRequest, IScriptPhysicsRaycastResult, IScriptPhysicsShapeCastRequest, IScriptPhysicsShapeCastResult, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
+import type { IColliderComponent, ICompoundColliderComponent, ICompoundColliderShape, IEnvironmentSceneIr, IFracturePiece, IPhysicsBodyObservation, IPhysicsQueryHitObservation, IScriptPhysicsOverlapRequest, IScriptPhysicsOverlapResult, IScriptPhysicsRaycastRequest, IScriptPhysicsRaycastResult, IScriptPhysicsShapeCastRequest, IScriptPhysicsShapeCastResult, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
 import { beginPhysicsJointTick, collectBrokenPhysicsJoints, createPhysicsJointRuntime, observePhysicsJointLoads as observeJointLoads, preparePhysicsJointStep, reconcilePhysicsJoints, recordPhysicsJointCommandLoad, type IPhysicsJointBreakEvent, type IPhysicsJointLoadObservation, type IPhysicsJointRuntime } from "./physicsJoints.js";
 import type { IRuntimeWriteLedger } from "./systems/writeAudit.js";
 
@@ -92,7 +92,7 @@ function prepareRetainedPhysicsRuntime(cacheKey: IWorldIr, physicsWorld: IWorldI
     reconcilePhysicsJoints(runtime.joints, physicsWorld, runtime.world, runtime.bodies);
     return;
   }
-  runtime?.world.free();
+  if (runtime !== undefined) freeRapierRuntime(runtime);
   rapierWorlds.set(cacheKey, createRapierRuntime(physicsWorld, gravity, signature));
   rapierRebuilds.set(cacheKey, (rapierRebuilds.get(cacheKey) ?? 0) + 1);
 }
@@ -187,10 +187,25 @@ export function markScriptAuthoredTransform(world: IWorldIr, entity: string): vo
 interface IRapierRuntime {
   bodies: Map<string, RAPIER.RigidBody>;
   colliders: Map<number, { child?: string; entity: string }>;
+  contactImpulses: Map<string, { handles: readonly [number, number]; impulse: number }>;
+  destructionAssemblies: Map<string, IDestructionAssemblyPhysicsState>;
+  eventQueue: RAPIER.EventQueue;
   joints: IPhysicsJointRuntime;
   physicsWorld: IWorldIr;
   signature: string;
   world: RAPIER.World;
+}
+
+interface IDestructionAssemblyPhysicsState {
+  angularVelocity: Vec3;
+  colliderHandles: number[];
+  collisionActive: boolean;
+  linearVelocity: Vec3;
+  mass: number;
+  position: Vec3;
+  pieceLifecycles: Map<string, "active" | "bound" | "despawned" | "pooled" | "sleeping">;
+  retired: boolean;
+  rotation: readonly [number, number, number, number];
 }
 
 interface IPointPhysicsCommand {
@@ -201,7 +216,8 @@ interface IPointPhysicsCommand {
 }
 
 export function disposePhysicsRuntime(world: IWorldIr): void {
-  rapierWorlds.get(world)?.world.free();
+  const runtime = rapierWorlds.get(world);
+  if (runtime !== undefined) freeRapierRuntime(runtime);
   rapierWorlds.delete(world);
   rapierRebuilds.delete(world);
   previousPairsByWorld.delete(world);
@@ -227,6 +243,201 @@ export function physicsBodySleeping(world: IWorldIr, entity: string): boolean | 
 
 export function physicsRuntimeCcdSubsteps(world: IWorldIr): number | undefined {
   return rapierWorlds.get(world)?.world.maxCcdSubsteps;
+}
+
+export function syncPhysicsDestructionBodies(
+  world: IWorldIr,
+  assembly: string,
+  pieces: readonly { lifecycle: "active" | "bound" | "despawned" | "pooled" | "sleeping"; piece: IFracturePiece }[],
+): boolean {
+  const runtime = liveRuntime(world);
+  if (runtime === undefined) return false;
+  let state = runtime.destructionAssemblies.get(assembly);
+  if (state === undefined) {
+    const body = runtime.bodies.get(assembly);
+    if (body === undefined) return false;
+    const position = body.translation();
+    const rotation = body.rotation();
+    const linearVelocity = body.linvel();
+    const angularVelocity = body.angvel();
+    state = {
+      angularVelocity: [angularVelocity.x, angularVelocity.y, angularVelocity.z],
+      colliderHandles: [...runtime.colliders].filter(([, owner]) => owner.entity === assembly).map(([handle]) => handle).sort((left, right) => left - right),
+      collisionActive: true,
+      linearVelocity: [linearVelocity.x, linearVelocity.y, linearVelocity.z],
+      mass: body.mass(),
+      pieceLifecycles: new Map(),
+      position: [position.x, position.y, position.z],
+      retired: false,
+      rotation: [rotation.x, rotation.y, rotation.z, rotation.w],
+    };
+    runtime.destructionAssemblies.set(assembly, state);
+  }
+  const participating = pieces.filter(({ lifecycle }) => lifecycle !== "bound");
+  if (participating.length === 0) return true;
+  disableDestructionAssemblyCollision(runtime, assembly, state);
+  for (const item of [...pieces].sort((left, right) => left.piece.id.localeCompare(right.piece.id))) {
+    const id = destructionPieceBodyId(assembly, item.piece.id);
+    state.pieceLifecycles.set(id, item.lifecycle);
+    if (item.lifecycle === "active" || item.lifecycle === "bound" || item.lifecycle === "sleeping") {
+      let body = runtime.bodies.get(id);
+      if (body === undefined) {
+        body = createDestructionPieceBody(runtime, state, id, item.piece, item.lifecycle);
+      }
+      if (item.lifecycle === "active" && !body.isDynamic()) {
+        body.setBodyType(RAPIER.RigidBodyType.Dynamic, true);
+        body.setLinvel(rapierVector(pieceVelocity(state, item.piece)), true);
+        body.setAngvel(rapierVector(state.angularVelocity), true);
+      }
+      if (item.lifecycle === "bound" && !body.isFixed()) body.setBodyType(RAPIER.RigidBodyType.Fixed, false);
+      if (item.lifecycle === "sleeping") body.sleep();
+    } else if (item.lifecycle === "despawned" || item.lifecycle === "pooled") {
+      removeDestructionBody(runtime, id);
+    }
+  }
+  retireDestructionAssembly(runtime, assembly, state);
+  return true;
+}
+
+export function destructionPieceBodyId(assembly: string, piece: string): string { return `${assembly}/${piece}`; }
+
+export interface IPhysicsDestructionBodyObservation {
+  assemblyCollisionActive: boolean;
+  pieces: Array<{
+    handle: number;
+    id: string;
+    lifecycle: "active" | "bound" | "despawned" | "pooled" | "sleeping";
+    mass: number;
+    position: Vec3;
+    rotation: readonly [number, number, number, number];
+    velocity: Vec3;
+  }>;
+}
+
+export interface IPhysicsContactImpulseObservation {
+  a: string;
+  b: string;
+  impulse: number;
+  point?: Vec3;
+}
+
+export function observePhysicsContactImpulses(world: IWorldIr): IPhysicsContactImpulseObservation[] {
+  const runtime = rapierWorlds.get(world);
+  if (runtime === undefined) return [];
+  const observations: IPhysicsContactImpulseObservation[] = [];
+  for (const { handles: [leftHandle, rightHandle], impulse } of runtime.contactImpulses.values()) {
+    const leftOwner = runtime.colliders.get(leftHandle);
+    const rightOwner = runtime.colliders.get(rightHandle);
+    const left = runtime.world.getCollider(leftHandle);
+    const right = runtime.world.getCollider(rightHandle);
+    if (leftOwner === undefined || rightOwner === undefined || left === null || right === null || leftOwner.entity === rightOwner.entity) continue;
+    let point: Vec3 | undefined;
+    runtime.world.contactPair(left, right, (manifold: RAPIER.TempContactManifold) => {
+      if (point === undefined && manifold.numSolverContacts() > 0) {
+        const contact = manifold.solverContactPoint(0);
+        point = [contact.x, contact.y, contact.z];
+      }
+    });
+    const [a, b] = leftOwner.entity.localeCompare(rightOwner.entity) <= 0 ? [leftOwner.entity, rightOwner.entity] : [rightOwner.entity, leftOwner.entity];
+    observations.push({ a, b, impulse, ...(point === undefined ? {} : { point }) });
+  }
+  return observations.sort((left, right) => left.a.localeCompare(right.a) || left.b.localeCompare(right.b));
+}
+
+export function observePhysicsDestructionBodies(world: IWorldIr, assembly: string): IPhysicsDestructionBodyObservation {
+  const runtime = rapierWorlds.get(world);
+  const state = runtime?.destructionAssemblies.get(assembly);
+  if (runtime === undefined) return { assemblyCollisionActive: false, pieces: [] };
+  const prefix = `${assembly}/`;
+  const pieces = [...runtime.bodies]
+    .filter(([id]) => id.startsWith(prefix))
+    .map(([id, body]) => {
+      const position = body.translation();
+      const rotation = body.rotation();
+      const velocity = body.linvel();
+      return {
+        handle: body.handle,
+        id,
+        lifecycle: state?.pieceLifecycles.get(id) ?? "active" as const,
+        mass: destructionBodyMass(runtime, id),
+        position: [position.x, position.y, position.z] as Vec3,
+        rotation: [rotation.x, rotation.y, rotation.z, rotation.w] as const,
+        velocity: [velocity.x, velocity.y, velocity.z] as Vec3,
+      };
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
+  return { assemblyCollisionActive: state?.collisionActive ?? runtime.bodies.has(assembly), pieces };
+}
+
+function destructionBodyMass(runtime: IRapierRuntime, id: string): number {
+  let mass = 0;
+  for (const [handle, owner] of runtime.colliders) {
+    if (owner.entity !== id) continue;
+    mass += runtime.world.getCollider(handle)?.mass() ?? 0;
+  }
+  return mass;
+}
+
+function disableDestructionAssemblyCollision(runtime: IRapierRuntime, assembly: string, state: IDestructionAssemblyPhysicsState): void {
+  for (const handle of state.colliderHandles) {
+    const collider = runtime.world.getCollider(handle);
+    if (collider === null) continue;
+    collider.setCollisionGroups(0);
+    collider.setSolverGroups(0);
+  }
+  const body = runtime.bodies.get(assembly);
+  body?.sleep();
+  state.collisionActive = false;
+}
+
+function createDestructionPieceBody(runtime: IRapierRuntime, state: IDestructionAssemblyPhysicsState, id: string, piece: IFracturePiece, lifecycle: "active" | "bound" | "sleeping"): RAPIER.RigidBody {
+  const offset = rotateVec3(piece.localPosition, state.rotation);
+  const position = addVec3(state.position, offset);
+  const rotation = multiplyQuat(state.rotation, piece.localRotation ?? [0, 0, 0, 1]);
+  const velocity = pieceVelocity(state, piece);
+  const desc = (lifecycle === "bound" ? RAPIER.RigidBodyDesc.fixed() : RAPIER.RigidBodyDesc.dynamic())
+    .setTranslation(position[0], position[1], position[2])
+    .setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] })
+    .setLinvel(velocity[0], velocity[1], velocity[2])
+    .setAngvel(rapierVector(state.angularVelocity));
+  const body = runtime.world.createRigidBody(desc);
+  const colliderDesc = fracturePieceColliderDesc(piece);
+  colliderDesc.setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS).setMass(state.mass * piece.massFraction);
+  const collider = runtime.world.createCollider(colliderDesc, body);
+  runtime.bodies.set(id, body);
+  runtime.colliders.set(collider.handle, { child: piece.id, entity: id });
+  return body;
+}
+
+function pieceVelocity(state: IDestructionAssemblyPhysicsState, piece: IFracturePiece): Vec3 {
+  return addVec3(state.linearVelocity, crossVec3(state.angularVelocity, rotateVec3(piece.localPosition, state.rotation)));
+}
+
+function fracturePieceColliderDesc(piece: IFracturePiece): RAPIER.ColliderDesc {
+  const collider = piece.collider;
+  if (collider.kind === "box") return RAPIER.ColliderDesc.cuboid(collider.halfExtents[0], collider.halfExtents[1], collider.halfExtents[2]);
+  if (collider.kind === "sphere") return RAPIER.ColliderDesc.ball(collider.radius);
+  if (collider.kind === "capsule") return RAPIER.ColliderDesc.capsule(collider.halfHeight, collider.radius);
+  const desc = RAPIER.ColliderDesc.convexHull(new Float32Array(collider.vertices.flatMap((vertex) => [...vertex])));
+  if (desc === null) throw new Error(`Fracture piece '${piece.id}' has an invalid convex hull.`);
+  return desc;
+}
+
+function retireDestructionAssembly(runtime: IRapierRuntime, assembly: string, state: IDestructionAssemblyPhysicsState): void {
+  const body = runtime.bodies.get(assembly);
+  if (body === undefined || state.retired) return;
+  for (const handle of state.colliderHandles) runtime.colliders.delete(handle);
+  runtime.world.removeRigidBody(body);
+  runtime.bodies.delete(assembly);
+  state.retired = true;
+}
+
+function removeDestructionBody(runtime: IRapierRuntime, id: string): void {
+  const body = runtime.bodies.get(id);
+  if (body === undefined) return;
+  for (const [handle, owner] of runtime.colliders) if (owner.entity === id) runtime.colliders.delete(handle);
+  runtime.world.removeRigidBody(body);
+  runtime.bodies.delete(id);
 }
 
 function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: number, gravity: Vec3, scriptAuthoredTransforms: ReadonlySet<string>): IPhysicsJointBreakEvent[] {
@@ -270,11 +481,18 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
   const pointCommands = pendingPointCommands.get(cacheKey) ?? [];
   pendingPointCommands.delete(cacheKey);
   const jointBreaks: IPhysicsJointBreakEvent[] = [];
+  runtime.contactImpulses.clear();
   beginPhysicsJointTick(runtime.joints);
   for (let step = 0; step < substeps; step += 1) {
     applyPointPhysicsCommands(runtime, pointCommands, step === 0, fixedDelta);
     preparePhysicsJointStep(runtime.joints, fixedDelta / substeps);
-    rapierWorld.step();
+    rapierWorld.step(runtime.eventQueue);
+    runtime.eventQueue.drainContactForceEvents((event: RAPIER.TempContactForceEvent) => {
+      const handles = [event.collider1(), event.collider2()].sort((left, right) => left - right) as [number, number];
+      const key = `${handles[0]}:${handles[1]}`;
+      const current = runtime.contactImpulses.get(key);
+      runtime.contactImpulses.set(key, { handles, impulse: (current?.impulse ?? 0) + event.totalForceMagnitude() * fixedDelta / substeps });
+    });
     jointBreaks.push(...collectBrokenPhysicsJoints(runtime.joints));
   }
 
@@ -356,6 +574,7 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
       const center = descriptor.localPosition;
       colliderDesc
         .setTranslation(center[0], center[1], center[2])
+        .setActiveEvents(RAPIER.ActiveEvents.CONTACT_FORCE_EVENTS)
         .setActiveCollisionTypes(RAPIER.ActiveCollisionTypes.ALL)
         .setFriction(descriptor.friction ?? (collider?.friction ?? 0))
         .setRestitution(descriptor.restitution ?? (collider?.restitution ?? 0))
@@ -375,7 +594,12 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
 
   const joints = createPhysicsJointRuntime();
   reconcilePhysicsJoints(joints, world, rapierWorld, bodies);
-  return { bodies, colliders, joints, physicsWorld: world, signature, world: rapierWorld };
+  return { bodies, colliders, contactImpulses: new Map(), destructionAssemblies: new Map(), eventQueue: new RAPIER.EventQueue(true), joints, physicsWorld: world, signature, world: rapierWorld };
+}
+
+function freeRapierRuntime(runtime: IRapierRuntime): void {
+  runtime.eventQueue.free();
+  runtime.world.free();
 }
 
 function applyPointPhysicsCommands(runtime: IRapierRuntime, commands: readonly IPointPhysicsCommand[], includeImpulses: boolean, forceDelta: number): void {
@@ -566,6 +790,16 @@ function validPhysicsVector(value: readonly number[]): boolean {
 
 function addVec3(left: readonly number[], right: readonly number[]): Vec3 {
   return [left[0]! + right[0]!, left[1]! + right[1]!, left[2]! + right[2]!];
+}
+
+function crossVec3(left: readonly number[], right: readonly number[]): Vec3 {
+  return [left[1]! * right[2]! - left[2]! * right[1]!, left[2]! * right[0]! - left[0]! * right[2]!, left[0]! * right[1]! - left[1]! * right[0]!];
+}
+
+function multiplyQuat(left: readonly number[], right: readonly number[]): readonly [number, number, number, number] {
+  const [lx = 0, ly = 0, lz = 0, lw = 1] = left;
+  const [rx = 0, ry = 0, rz = 0, rw = 1] = right;
+  return [lw * rx + lx * rw + ly * rz - lz * ry, lw * ry - lx * rz + ly * rw + lz * rx, lw * rz + lx * ry - ly * rx + lz * rw, lw * rw - lx * rx - ly * ry - lz * rz];
 }
 
 function scaleVec3(value: readonly number[], scale: number): Vec3 {

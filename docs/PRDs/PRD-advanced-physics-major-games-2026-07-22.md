@@ -542,7 +542,7 @@ impact or script damage without runtime mesh cutting or unbounded debris.
   convex build-time fracture recipes; preserve stable piece and bond IDs.
 - [x] Compute/validate piece colliders, mass fractions, adjacency bonds, health,
   impulse/energy thresholds, material response, and hierarchical activation.
-- [ ] Convert normalized contact impulse or explicit portable damage into bond
+- [x] Convert normalized contact impulse or explicit portable damage into bond
   damage once per tick, activate pieces in stable order, and conserve authored
   assembly mass within tolerance.
 - [x] Enforce per-assembly and scene active-piece budgets with declared policy,
@@ -909,7 +909,7 @@ the final evidence.
   one-shot deferred breaking, joint-only reconciliation, descriptor ownership,
   complete evidence metadata, and matching retained artifact hashes.
 
-### Phase 6 core evidence (partial; checkpoint pending)
+### Phase 6 automated evidence (manual checkpoint review pending)
 
 - Seeded primitive and imported/convex fracture inputs now bake byte-stable
   manifests with stable piece/bond IDs. The compiler validates and copies every
@@ -920,10 +920,20 @@ the final evidence.
 - `tn physics fracture generate|inspect|validate` owns the reusable CLI path;
   the focused cookbook entry generates, attaches, validates, and builds a
   destructible wall successfully.
-- Web runtime tests pass 531/531, including five focused destruction cases.
-  Native destruction integration tests pass 6/6 and native library tests pass
-  83/83. IR passes 414/414, SDK 159/159, and compiler 291/291.
-- The checkpoint remains open: semantic activation is not yet connected to
-  retained Rapier piece bodies, so mass/momentum conservation, paired impact
-  replay, contact-sheet review, and web/desktop projectile playtests are not
-  claimed by this partial slice.
+- Both adapters now map stable fracture pieces into their existing retained
+  Rapier world, retire intact collision, preserve unrelated regional pieces,
+  conserve authored assembly mass and inherited momentum, retain stable body
+  handles, and translate solver contact impulses into next-tick bond damage.
+  The production web host loads fracture manifests through its existing bundle
+  reader and automatically registers/reconciles authored Destructible entities.
+- `pnpm verify:focused verify:advanced-physics-destruction` passes with zero
+  diagnostics. Its catalog-owned fixture compares exact impact event order,
+  bond/piece IDs, regional isolation, physical lifecycle, manifest-owned mass
+  and momentum tolerances, overflow policy/events, paired provenance, and stale
+  or weakened evidence controls. The report and normalized traces are under
+  `tools/verify/artifacts/advanced-physics/phase-6-destruction/`.
+- Web runtime tests pass 536/536. Native destruction integration tests pass
+  9/9 and native library tests pass 83/83. The focused verifier tests pass 4/4,
+  descriptor/dispatcher tests pass 22/22, and IR conformance tests pass 11/11.
+- The Phase 6 checkpoint remains open only for the required web/desktop
+  projectile playtests and manual destruction contact-sheet review.

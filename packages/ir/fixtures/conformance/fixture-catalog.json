@@ -157,6 +157,36 @@
       }
     },
     {
+      "canonicalId": "advanced-physics-destruction",
+      "owner": "ir-contract",
+      "regenerateCommand": "pnpm verify:focused verify:advanced-physics-destruction",
+      "canonicalArtifactGate": "advanced-physics-destruction",
+      "ownerDocs": "docs/PRDs/PRD-advanced-physics-major-games-2026-07-22.md",
+      "aggregateGate": "verify:advanced-physics-destruction",
+      "bundlePath": "packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle",
+      "promotedCapabilities": [],
+      "reportArtifacts": [
+        "tools/verify/artifacts/advanced-physics/phase-6-destruction/verification-report.json",
+        "tools/verify/artifacts/advanced-physics/phase-6-destruction/web-trace.json",
+        "tools/verify/artifacts/advanced-physics/phase-6-destruction/native-trace.json"
+      ],
+      "focusedGate": {
+        "commands": [
+          ["pnpm", "--filter", "@threenative/ir", "build"],
+          ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+          ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+          ["node", "tools/verify/dist/advancedPhysicsDestruction.js"]
+        ],
+        "conflictPolicy": "none",
+        "description": "Paired web/native impact, regional fracture, physical-piece conservation, budget, and cleanup evidence gate.",
+        "owner": "packages/ir advanced-physics-destruction fixture and tools/verify destruction evidence gate",
+        "profile": "focused",
+        "protects": "Stable bond and piece activation, once-per-tick damage, retained physical pieces, mass and momentum conservation, regional isolation, overflow events, and bounded cleanup.",
+        "reason": "A catalog-owned paired normalized trace prevents destruction support from advancing on semantic-only or single-adapter evidence.",
+        "release": { "enrolled": false, "name": "verify advanced physics destruction", "timingCategory": "focused-gate" }
+      }
+    },
+    {
       "canonicalId": "procedural-mesh",
       "owner": "ir-contract",
       "sourceExample": "procedural-mesh",

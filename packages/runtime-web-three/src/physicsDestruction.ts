@@ -1,4 +1,5 @@
 import type { IFractureManifest, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { disposePhysicsRuntime, observePhysicsContactImpulses, syncPhysicsDestructionBodies } from "./physics.js";
 
 export type { IFractureManifest } from "@threenative/ir";
 
@@ -54,6 +55,7 @@ interface IAssemblyState {
   component: IPhysicsDestructibleComponent;
   manifest: IFractureManifest;
   pieces: Map<string, IPieceState>;
+  sourceSignature: string;
 }
 
 export interface IPhysicsDestructionRuntime {
@@ -76,7 +78,30 @@ export function registerPhysicsDestructible(runtime: IPhysicsDestructionRuntime,
     component,
     manifest,
     pieces: new Map(manifest.pieces.map((piece) => [piece.id, { activeAge: 0, lifecycle: "bound", source: piece }])),
+    sourceSignature: destructionSourceSignature(component, manifest),
   });
+}
+
+export function reconcilePhysicsDestructibles(runtime: IPhysicsDestructionRuntime, world: IWorldIr, manifests: Readonly<Record<string, IFractureManifest>>): void {
+  const desired = new Map(world.entities.flatMap((entity) => {
+    const component = entity.components.Destructible;
+    if (component === undefined) return [];
+    const manifest = manifests[component.fractureManifest];
+    if (manifest === undefined) throw new Error(`Destructible '${entity.id}' references unloaded fracture manifest '${component.fractureManifest}'.`);
+    return [[entity.id, { component: { ...component, entity: entity.id }, manifest }] as const];
+  }));
+  let invalidatedPhysics = false;
+  for (const [entity, current] of runtime.assemblies) {
+    const next = desired.get(entity);
+    if (next !== undefined && current.sourceSignature === destructionSourceSignature(next.component, next.manifest)) continue;
+    unregisterPhysicsDestructible(runtime, entity);
+    invalidatedPhysics = true;
+  }
+  if (invalidatedPhysics) disposePhysicsRuntime(world);
+  for (const [entity, next] of desired) {
+    if (runtime.assemblies.has(entity)) continue;
+    registerPhysicsDestructible(runtime, next.component, next.manifest);
+  }
 }
 
 export function unregisterPhysicsDestructible(runtime: IPhysicsDestructionRuntime, entity: string): void {
@@ -97,6 +122,7 @@ export function stepPhysicsDestruction(runtime: IPhysicsDestructionRuntime, worl
     writeEvents(world, []);
     return [];
   }
+  queueRetainedContactDamage(runtime, world, tick);
   runtime.lastProcessedTick = tick;
   for (const queuedTick of runtime.pending.keys()) if (queuedTick < tick) runtime.pending.delete(queuedTick);
   cleanupPieces(runtime, Math.max(0, delta));
@@ -104,9 +130,52 @@ export function stepPhysicsDestruction(runtime: IPhysicsDestructionRuntime, worl
   const grouped = groupDamage(runtime, runtime.pending.get(tick) ?? []);
   runtime.pending.delete(tick);
   for (const group of grouped) applyDamageGroup(runtime, group, tick, events);
+  for (const assembly of [...runtime.assemblies.values()].sort((left, right) => left.component.entity.localeCompare(right.component.entity))) {
+    syncPhysicsDestructionBodies(
+      world,
+      assembly.component.entity,
+      [...assembly.pieces.values()].map((piece) => ({ lifecycle: piece.lifecycle, piece: piece.source })),
+    );
+  }
   writeEvents(world, events);
   return events;
 }
+
+function queueRetainedContactDamage(runtime: IPhysicsDestructionRuntime, world: IWorldIr, tick: number): void {
+  for (const contact of observePhysicsContactImpulses(world)) {
+    for (const entity of [contact.a, contact.b]) {
+      const assemblyId = [...runtime.assemblies.keys()].find((id) => entity === id || entity.startsWith(`${id}/`));
+      if (assemblyId === undefined) continue;
+      const other = entity === contact.a ? contact.b : contact.a;
+      const assembly = runtime.assemblies.get(assemblyId);
+      if (assembly === undefined) continue;
+      const bond = contactBond(assembly, world, contact.point);
+      if (bond === undefined) continue;
+      const contactId = `rapier:${contact.a}:${contact.b}`;
+      const alreadyQueued = (runtime.pending.get(tick) ?? []).some((damage) => damage.assembly === assemblyId && damage.bond === bond && damage.cause.kind === "contact" && damage.cause.contact === contactId);
+      if (alreadyQueued) continue;
+      const layer = world.entities.find((candidate) => candidate.id === other)?.components.Collider?.layer;
+      queuePhysicsDestructionDamage(runtime, { assembly: assemblyId, bond, cause: { contact: contactId, entity: other, kind: "contact" }, impulse: contact.impulse, ...(layer === undefined ? {} : { layer }), tick });
+    }
+  }
+}
+
+function contactBond(assembly: IAssemblyState, world: IWorldIr, point: readonly number[] | undefined): string | undefined {
+  const healthy = [...assembly.bonds.values()].filter((bond) => !bond.broken).sort((left, right) => left.source.id.localeCompare(right.source.id));
+  if (healthy.length === 0) return undefined;
+  if (point === undefined) return healthy[0]?.source.id;
+  const origin = world.entities.find((entity) => entity.id === assembly.component.entity)?.components.Transform?.position ?? [0, 0, 0];
+  const nearestPiece = [...assembly.pieces.values()].sort((left, right) => {
+    const leftDistance = squaredDistance(point, addPosition(origin, left.source.localPosition));
+    const rightDistance = squaredDistance(point, addPosition(origin, right.source.localPosition));
+    return leftDistance - rightDistance || left.source.id.localeCompare(right.source.id);
+  })[0]?.source.id;
+  return healthy.find((bond) => nearestPiece !== undefined && bond.source.pieces.includes(nearestPiece))?.source.id ?? healthy[0]?.source.id;
+}
+
+function addPosition(left: readonly number[], right: readonly number[]): readonly number[] { return [(left[0] ?? 0) + (right[0] ?? 0), (left[1] ?? 0) + (right[1] ?? 0), (left[2] ?? 0) + (right[2] ?? 0)]; }
+function squaredDistance(left: readonly number[], right: readonly number[]): number { return ((left[0] ?? 0) - (right[0] ?? 0)) ** 2 + ((left[1] ?? 0) - (right[1] ?? 0)) ** 2 + ((left[2] ?? 0) - (right[2] ?? 0)) ** 2; }
+function destructionSourceSignature(component: IPhysicsDestructibleComponent, manifest: IFractureManifest): string { return JSON.stringify([component, manifest]); }
 
 export function observePhysicsDestruction(runtime: IPhysicsDestructionRuntime): {
   assemblies: Array<{ broken: boolean; id: string }>;

@@ -1,0 +1,16 @@
+{
+  "schema": "threenative.advanced-physics-destruction-scenarios",
+  "version": "0.1.0",
+  "seed": 0,
+  "fixedDt": 0.008333333333333333,
+  "assembly": "wall",
+  "manifest": "fractures/wall.main.json",
+  "impactReplay": [
+    { "tick": 1, "bond": "bond.north", "cause": { "kind": "contact", "entity": "projectile", "contact": "contact.projectile-wall" }, "impulse": 20, "energy": 100, "layer": "projectile" },
+    { "tick": 2, "bond": "bond.north", "cause": { "kind": "contact", "entity": "projectile", "contact": "contact.projectile-wall" }, "impulse": 60, "energy": 300, "layer": "projectile" }
+  ],
+  "regionalDamage": [
+    { "tick": 3, "bond": "bond.west", "cause": { "kind": "script", "entity": "wall" }, "amount": 100 }
+  ],
+  "budgetStress": { "sceneMaxActivePieces": 2, "damageTick": 1, "bonds": ["bond.north", "bond.south"] }
+}

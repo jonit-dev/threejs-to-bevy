@@ -1,0 +1,24 @@
+{
+  "schema": "threenative.fracture-manifest",
+  "version": "0.1.0",
+  "id": "wall.main",
+  "source": {
+    "kind": "primitive",
+    "seed": 11,
+    "sourceHash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "pieces": [
+    { "id": "piece.northwest", "localPosition": [-1, 1, 0], "massFraction": 0.25, "activationDepth": 0, "collider": { "kind": "box", "halfExtents": [1, 1, 0.25] } },
+    { "id": "piece.northeast", "localPosition": [1, 1, 0], "massFraction": 0.25, "activationDepth": 1, "collider": { "kind": "box", "halfExtents": [1, 1, 0.25] } },
+    { "id": "piece.southwest", "localPosition": [-1, -1, 0], "massFraction": 0.25, "activationDepth": 1, "collider": { "kind": "box", "halfExtents": [1, 1, 0.25] } },
+    { "id": "piece.southeast", "localPosition": [1, -1, 0], "massFraction": 0.25, "activationDepth": 2, "collider": { "kind": "box", "halfExtents": [1, 1, 0.25] } }
+  ],
+  "bonds": [
+    { "id": "bond.north", "pieces": ["piece.northwest", "piece.northeast"], "health": 100, "impulseThreshold": 40, "energyThreshold": 200, "materialResponse": 1 },
+    { "id": "bond.west", "pieces": ["piece.northwest", "piece.southwest"], "health": 100, "impulseThreshold": 40, "energyThreshold": 200, "materialResponse": 1 },
+    { "id": "bond.east", "pieces": ["piece.northeast", "piece.southeast"], "health": 100, "impulseThreshold": 40, "energyThreshold": 200, "materialResponse": 1 },
+    { "id": "bond.south", "pieces": ["piece.southwest", "piece.southeast"], "health": 100, "impulseThreshold": 40, "energyThreshold": 200, "materialResponse": 1 }
+  ],
+  "budgets": { "maxActivePieces": 4, "maxDepth": 2, "overflowPolicy": "reject-new" },
+  "cleanup": { "sleepAfterSeconds": 0.25, "despawnAfterSeconds": 2, "poolCapacity": 2 }
+}

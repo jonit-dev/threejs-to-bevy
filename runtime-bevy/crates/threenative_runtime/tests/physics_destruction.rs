@@ -1,9 +1,220 @@
+use std::collections::BTreeSet;
+
+use threenative_loader::load_bundle;
+use threenative_runtime::physics::{
+    dispose_native_physics_runtime, ensure_native_physics_runtime,
+    inspect_cached_physics_destruction, queue_cached_physics_destruction_damage,
+    step_bundle_physics_with_script_poses,
+};
 use threenative_runtime::physics_destruction::{
     CleanupPolicy, DEFAULT_SCENE_ACTIVE_PIECE_BUDGET, Destructible, DestructionCause,
     DestructionCauseKind, DestructionDamage, DestructionEvent, DestructionRuntime, FractureBond,
     FractureBudgets, FractureCleanup, FractureManifest, FracturePiece, FracturePieceCollider,
     FractureSource, ImpactFilter, OverflowPolicy, PieceLifecycle,
 };
+
+#[test]
+fn activated_pieces_should_use_retained_bodies_with_conserved_mass_and_stable_handles() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let wall = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("wall should exist");
+    let body = wall
+        .components
+        .rigid_body
+        .as_mut()
+        .expect("wall body should exist");
+    body.velocity = Some([2.0, 0.0, 0.0]);
+    body.angular_velocity = Some([0.0, 0.5, 0.0]);
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+    for bond in ["bond.east", "bond.north", "bond.south", "bond.west"] {
+        assert!(queue_cached_physics_destruction_damage(
+            &runtime,
+            DestructionDamage {
+                amount: Some(100.0),
+                assembly: "wall".to_owned(),
+                bond: bond.to_owned(),
+                cause: DestructionCause {
+                    contact: Some("impact.1".to_owned()),
+                    entity: Some("projectile".to_owned()),
+                    kind: DestructionCauseKind::Contact,
+                },
+                energy: None,
+                impulse: Some(100.0),
+                layer: Some("projectile".to_owned()),
+                tick: 1,
+            }
+        ));
+    }
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+    let observation = inspect_cached_physics_destruction(&runtime)
+        .expect("retained destruction observation should exist");
+
+    assert!(!observation.assemblies[0].intact_collision_active);
+    assert_eq!(
+        observation
+            .pieces
+            .iter()
+            .map(|piece| piece.piece.as_str())
+            .collect::<Vec<_>>(),
+        [
+            "piece.northeast",
+            "piece.northwest",
+            "piece.southeast",
+            "piece.southwest",
+        ]
+    );
+    assert!(
+        observation
+            .pieces
+            .iter()
+            .all(|piece| piece.lifecycle == PieceLifecycle::Active)
+    );
+    let handles = observation
+        .pieces
+        .iter()
+        .map(|piece| piece.body_handle.expect("active piece needs a handle"))
+        .collect::<BTreeSet<_>>();
+    assert_eq!(handles.len(), 4);
+    let total_mass = observation
+        .pieces
+        .iter()
+        .map(|piece| piece.mass)
+        .sum::<f32>();
+    assert!((total_mass - 80.0).abs() < 0.001);
+    let momentum_x = observation
+        .pieces
+        .iter()
+        .map(|piece| piece.mass * piece.linear_velocity[0])
+        .sum::<f32>();
+    assert!((momentum_x - 160.0).abs() < 0.5);
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+    let next = inspect_cached_physics_destruction(&runtime).expect("observation should persist");
+    assert_eq!(
+        next.pieces
+            .iter()
+            .map(|piece| piece.body_handle)
+            .collect::<Vec<_>>(),
+        observation
+            .pieces
+            .iter()
+            .map(|piece| piece.body_handle)
+            .collect::<Vec<_>>()
+    );
+    dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
+fn regional_activation_should_keep_unrelated_bound_pieces_in_the_retained_world() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+    assert!(queue_cached_physics_destruction_damage(
+        &runtime,
+        DestructionDamage {
+            amount: Some(100.0),
+            assembly: "wall".to_owned(),
+            bond: "bond.north".to_owned(),
+            cause: DestructionCause {
+                contact: Some("impact.north".to_owned()),
+                entity: Some("projectile".to_owned()),
+                kind: DestructionCauseKind::Contact,
+            },
+            energy: None,
+            impulse: Some(100.0),
+            layer: Some("projectile".to_owned()),
+            tick: 1,
+        }
+    ));
+
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+    let observation = inspect_cached_physics_destruction(&runtime)
+        .expect("retained destruction observation should exist");
+
+    assert!(!observation.assemblies[0].intact_collision_active);
+    assert_eq!(
+        observation
+            .pieces
+            .iter()
+            .filter(|piece| piece.lifecycle == PieceLifecycle::Active)
+            .map(|piece| piece.piece.as_str())
+            .collect::<Vec<_>>(),
+        ["piece.northeast", "piece.northwest"]
+    );
+    assert_eq!(
+        observation
+            .pieces
+            .iter()
+            .filter(|piece| piece.lifecycle == PieceLifecycle::Bound)
+            .map(|piece| piece.piece.as_str())
+            .collect::<Vec<_>>(),
+        ["piece.southeast", "piece.southwest"]
+    );
+    assert!(
+        observation
+            .pieces
+            .iter()
+            .all(|piece| piece.body_handle.is_some())
+    );
+    assert!(
+        (observation
+            .pieces
+            .iter()
+            .map(|piece| piece.mass)
+            .sum::<f32>()
+            - 80.0)
+            .abs()
+            < 0.001
+    );
+    dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
+fn retained_contact_impulse_should_queue_normalized_damage_for_the_next_tick() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let runtime = BTreeSet::new();
+    let mut damaged = false;
+
+    for _ in 0..90 {
+        step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+        damaged |= bundle
+            .world
+            .events
+            .get("DestructionEvent")
+            .and_then(serde_json::Value::as_array)
+            .is_some_and(|events| {
+                events.iter().any(|event| {
+                    event.get("type").and_then(serde_json::Value::as_str) == Some("damaged")
+                        && event
+                            .get("cause")
+                            .and_then(|cause| cause.get("kind"))
+                            .and_then(serde_json::Value::as_str)
+                            == Some("contact")
+                })
+            });
+        if damaged {
+            break;
+        }
+    }
+
+    assert!(
+        damaged,
+        "retained solver contact should route into bond damage"
+    );
+    dispose_native_physics_runtime(&runtime);
+}
 
 #[test]
 fn damage_should_resolve_once_per_tick_with_stable_bond_and_piece_events() {
