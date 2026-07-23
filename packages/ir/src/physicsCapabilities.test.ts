@@ -88,21 +88,24 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
   const services = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.map((descriptor) => descriptor.service);
   const bevyServices = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => (descriptor.adapters as readonly string[]).includes("bevy")).map((descriptor) => descriptor.service);
   const webServices = PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.filter((descriptor) => (descriptor.adapters as readonly string[]).includes("web")).map((descriptor) => descriptor.service);
+  const runtimeFields = PHYSICS_CAPABILITY_DESCRIPTORS.flatMap((descriptor) => descriptor.runtimeFields.map((field) => `${descriptor.component}.${field}`));
   const consumers = {
     authoringOperations: ["physics.aerodynamics.add", "physics.compound.add", "physics.destructible.add", "physics.joint.add", "physics.vehicle.add", "physics.wheel.add", "physics.wind.add", "scene.set_component"],
     bevyComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    bevyFields: runtimeFields,
     bevyHostServices: bevyServices,
     bevyRuntimeServices: bevyServices,
     bevyVisualComponents: ["WheelAssembly"],
     compilerComponents: ["AerodynamicBody", "WindVolume", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
-    fixtures: ["advanced-physics-foundation", "advanced-physics-wheels"],
-    gates: ["physics-self-verification", "advanced-physics-wheels"],
+    fixtures: ["advanced-physics-aerodynamics", "advanced-physics-destruction", "advanced-physics-drivetrain", "advanced-physics-foundation", "advanced-physics-joints", "advanced-physics-wheels"],
+    gates: ["advanced-physics-aerodynamics", "advanced-physics-destruction", "advanced-physics-drivetrain", "advanced-physics-joints", "advanced-physics-wheels", "physics-self-verification"],
     irComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
     irServices: services,
     sdkServices: services,
     sdkComponents: ["aerodynamicBody", "aerodynamicSurface", "thruster", "windVolume", "destructible", "physicsJoint", "physicsSurface", "tireModel", "wheelAssembly", "wheelControlInput", "vehicleController", "vehicleControllerInputs"],
     stdlibContexts: PHYSICS_SCRIPT_SERVICE_DESCRIPTORS.map((descriptor) => descriptor.context),
     webComponents: ["AerodynamicBody", "WindVolume", "CompoundCollider", "Destructible", "PhysicsJoint", "PhysicsSurface", "TireModel", "WheelAssembly", "VehicleController"],
+    webFields: runtimeFields,
     webHostServices: webServices,
     webRuntimeServices: webServices,
     webVisualComponents: ["WheelAssembly"],
@@ -113,10 +116,16 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
     physicsDescriptorDrift({ ...consumers, bevyVisualComponents: [] }).includes("WheelAssembly missing bevyVisualComponents:WheelAssembly"),
     "removing native WheelAssembly visual consumption must fail the intended descriptor diagnostic",
   );
+  assert.ok(
+    physicsDescriptorDrift({ ...consumers, bevyFields: consumers.bevyFields.filter((field) => field !== "Destructible.impactFilter") })
+      .includes("Destructible missing bevyFields:Destructible.impactFilter"),
+    "removing one native public-field consumer must fail descriptor drift",
+  );
   for (const [group, values] of Object.entries(consumers)) {
     for (const value of values) {
       const drifted = { ...consumers, [group]: values.filter((candidate) => candidate !== value) };
-      if (!physicsDescriptorDrift(consumers).some((diagnostic) => diagnostic.endsWith(`missing ${group}:${value}`)) && (group === "bevyHostServices" || group === "bevyRuntimeServices" || group === "webHostServices" || group === "webRuntimeServices")) continue;
+      const baselineRequiresConsumer = physicsDescriptorDrift({ ...consumers, [group]: [] }).some((diagnostic) => diagnostic.includes(` missing ${group}:`));
+      if (!baselineRequiresConsumer) continue;
       assert.ok(
         physicsDescriptorDrift(drifted).some((diagnostic) => diagnostic.endsWith(`missing ${group}:${value}`)),
         `removing ${group}:${value} must cause descriptor drift`,
@@ -126,7 +135,7 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
 });
 
 test("physics descriptors should match checked-in public contract adapter fixture and gate consumers", async () => {
-  const [webPhysics, webJoints, webDestruction, webVehicle, webAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeDestruction, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, catalogSource] = await Promise.all([
+  const [webPhysics, webJoints, webDestruction, webVehicle, webAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeDestruction, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, destructionGate, catalogSource] = await Promise.all([
     readFile(resolve(root, "packages/runtime-web-three/src/physics.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsJoints.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsDestruction.ts"), "utf8"),
@@ -157,11 +166,12 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     readFile(resolve(root, "tools/verify/src/advancedPhysicsDrivetrain.ts"), "utf8"),
     readFile(resolve(root, "tools/verify/src/advancedPhysicsAerodynamics.ts"), "utf8"),
     readFile(resolve(root, "tools/verify/src/advancedPhysicsJoints.ts"), "utf8"),
+    readFile(resolve(root, "tools/verify/src/advancedPhysicsDestruction.ts"), "utf8"),
     readFile(resolve(root, "packages/ir/fixtures/conformance/fixture-catalog.json"), "utf8"),
   ]);
   const catalog = JSON.parse(catalogSource) as { fixtures: Array<{ aggregateGate: string; bundlePath: string; canonicalId: string }> };
   for (const descriptor of PHYSICS_CAPABILITY_DESCRIPTORS) {
-    if (("stage" in descriptor && descriptor.stage !== "promoted") || !("fixture" in descriptor)) continue;
+    if (!("fixture" in descriptor)) continue;
     const fixture = catalog.fixtures.find((candidate) => candidate.canonicalId === descriptor.fixture);
     assert.ok(fixture, `fixture catalog must enroll ${descriptor.fixture}`);
     await access(resolve(root, fixture.bundlePath, "manifest.json"));
@@ -172,8 +182,39 @@ test("physics descriptors should match checked-in public contract adapter fixtur
   const fixtures = catalog.fixtures.map((fixture) => fixture.canonicalId);
   const gates = catalog.fixtures
     .map((fixture) => fixture.aggregateGate.replace(/^verify:/, ""))
-    .filter((candidate) => foundationGate.includes(`const gate = "${candidate}"`) || wheelGate.includes(`const gate = "${candidate}"`) || drivetrainGate.includes(`conformance/${candidate}/game.bundle`) || aerodynamicsGate.includes(`conformance/${candidate}/game.bundle`) || jointsGate.includes(`conformance/${candidate}/game.bundle`));
+    .filter((candidate) => foundationGate.includes(`const gate = "${candidate}"`) || wheelGate.includes(`const gate = "${candidate}"`) || drivetrainGate.includes(`conformance/${candidate}/game.bundle`) || aerodynamicsGate.includes(`conformance/${candidate}/game.bundle`) || jointsGate.includes(`conformance/${candidate}/game.bundle`) || destructionGate.includes(`conformance/${candidate}/game.bundle`));
   const nativeVisualSyncCount = nativeLib.match(/sync_physics_vehicle_visuals/g)?.length ?? 0;
+  const webRuntimeSources: Readonly<Record<string, string>> = {
+    AerodynamicBody: webAerodynamics,
+    WindVolume: webAerodynamics,
+    CompoundCollider: webPhysics,
+    Destructible: webDestruction,
+    PhysicsJoint: webJoints,
+    PhysicsSurface: webVehicle,
+    TireModel: webVehicle,
+    WheelAssembly: webVehicle,
+    VehicleController: webVehicle,
+  };
+  const nativeRuntimeSources: Readonly<Record<string, string>> = {
+    AerodynamicBody: nativeAerodynamics,
+    WindVolume: nativeAerodynamics,
+    CompoundCollider: nativePhysics,
+    Destructible: nativeDestruction,
+    PhysicsJoint: nativeJoints,
+    PhysicsSurface: nativeVehicle,
+    TireModel: nativeVehicle,
+    WheelAssembly: nativeVehicle,
+    VehicleController: nativeVehicle,
+  };
+  const snakeCase = (value: string): string => value.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+  const consumedFields = (adapter: "bevy" | "web"): string[] => PHYSICS_CAPABILITY_DESCRIPTORS.flatMap((descriptor) => descriptor.runtimeFields
+    .filter((field) => {
+      const source = adapter === "web" ? webRuntimeSources[descriptor.component] : nativeRuntimeSources[descriptor.component];
+      const token = adapter === "web" ? field : snakeCase(field);
+      const occurrences = source?.match(new RegExp(`\\b${token}\\b`, "g"))?.length ?? 0;
+      return occurrences >= (adapter === "bevy" && descriptor.component === "Destructible" ? 2 : 1);
+    })
+    .map((field) => `${descriptor.component}.${field}`));
   const consumers = {
     authoringOperations: [
       ...(authoring.includes("portablePhysicsComponentOperationEntries") ? ["physics.aerodynamics.add", "physics.compound.add", "physics.destructible.add", "physics.joint.add", "physics.vehicle.add", "physics.wheel.add"] : []),
@@ -191,6 +232,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
       ...(nativeLoader.includes("pub wheel_assembly: Option<WheelAssemblyComponent>") && nativeVehicle.includes("wheel_assembly") ? ["WheelAssembly"] : []),
       ...(nativeLoader.includes("pub vehicle_controller: Option<VehicleControllerComponent>") && nativeVehicle.includes("vehicle_controller") ? ["VehicleController"] : []),
     ],
+    bevyFields: consumedFields("bevy"),
     bevyHostServices: services.filter((service) => nativeMatrix.includes(`\"${service}\"`) && nativeBridge.includes(`\"${service}\"`)),
     bevyRuntimeServices: services.filter((service) => mutationServices.has(service) ? nativeEffects.includes(`\"${service}\"`) : nativeContext.includes(`\"${service}\"`)),
     bevyVisualComponents: nativeVehicle.includes("observe_physics_vehicle_visuals") && nativeLib.includes("fn sync_physics_vehicle_visuals(") && nativeVisualSyncCount >= 2 ? ["WheelAssembly"] : [],
@@ -215,6 +257,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
       ...(webVehicle.includes("components.WheelAssembly") ? ["WheelAssembly"] : []),
       ...(webVehicle.includes("components.VehicleController") ? ["VehicleController"] : []),
     ],
+    webFields: consumedFields("web"),
     webHostServices: services.filter((service) => webContext.includes(`\"${service}\"`)),
     webRuntimeServices: services.filter((service) => mutationServices.has(service) ? webEffects.includes(`\"${service}\"`) : webContext.includes(`\"${service}\"`)),
     webVisualComponents: webVehicle.includes("observePhysicsVehicleVisuals") && webVehicle.includes("updatePhysicsVehicleVisuals") ? ["WheelAssembly"] : [],

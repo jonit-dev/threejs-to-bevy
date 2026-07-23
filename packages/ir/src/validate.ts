@@ -57,6 +57,7 @@ import {
 import { validateUnsupportedFields } from "./validationDiagnostics.js";
 import { validateEntityTags } from "./tagValidation.js";
 import { validateDistribution } from "./distribution.js";
+import { validateFractureManifest } from "./fractureManifest.js";
 
 export interface IIrDiagnostic {
   code: string;
@@ -137,6 +138,7 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
 
   if (world !== undefined) {
     validateWorld(world, manifest.entry.world, diagnostics, input);
+    await validateReferencedFractureManifests(bundlePath, world, diagnostics);
     validateMeshRendererReferences(world, materials, assets, manifest.entry.world, diagnostics);
     const entityIds = new Set(world.entities.map((entity) => entity.id));
     if (componentSchemas !== undefined) {
@@ -252,6 +254,17 @@ export async function validateBundle(bundlePath: string): Promise<IBundleValidat
   }
 
   return { diagnostics, ok: diagnostics.length === 0 };
+}
+
+async function validateReferencedFractureManifests(bundlePath: string, world: IWorldIr, diagnostics: IIrDiagnostic[]): Promise<void> {
+  const references = [...new Set(world.entities.flatMap((entity) => {
+    const destructible = entity.components.Destructible;
+    return destructible === undefined ? [] : [destructible.fractureManifest];
+  }))].sort();
+  for (const reference of references) {
+    const manifest = await readJson<unknown>(resolve(bundlePath, reference), diagnostics);
+    if (manifest !== undefined) diagnostics.push(...validateFractureManifest(manifest, reference));
+  }
 }
 
 function validateTargetProfile(targetProfile: ITargetProfile, path: string, diagnostics: IIrDiagnostic[]): void {
@@ -836,6 +849,10 @@ function validatePortablePhysicsLayerCapacity(world: IWorldIr, path: string, dia
         names.add(name);
       }
     }
+    for (const child of entity.components.CompoundCollider?.children ?? []) {
+      if (typeof child.filter?.layer === "string") names.add(child.filter.layer);
+      for (const name of child.filter?.mask ?? []) if (typeof name === "string") names.add(name);
+    }
   }
   if (names.size > PORTABLE_PHYSICS_LAYER_CAPACITY) {
     diagnostics.push({
@@ -843,7 +860,7 @@ function validatePortablePhysicsLayerCapacity(world: IWorldIr, path: string, dia
       message: `World declares ${names.size} physics layers, exceeding the portable limit of ${PORTABLE_PHYSICS_LAYER_CAPACITY}.`,
       path: `${path}/entities`,
       severity: "error",
-      suggestion: `Use at most ${PORTABLE_PHYSICS_LAYER_CAPACITY} unique Collider.layer and Collider.mask names.`,
+      suggestion: `Use at most ${PORTABLE_PHYSICS_LAYER_CAPACITY} unique Collider and CompoundCollider filter layer names.`,
     });
   }
 }

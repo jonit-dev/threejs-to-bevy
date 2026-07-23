@@ -15,6 +15,7 @@ import {
   type IBundleManifest,
   type IGltfSceneMetadataIr,
   type IInputIr,
+  type IFractureManifest,
   type ILocalDataIr,
   type IMaterialIr,
   type IMaterialsIr,
@@ -25,6 +26,7 @@ import {
   type IUiNodeIr,
   type IWorldIr,
 } from "@threenative/ir";
+import { fractureManifestSourceHash } from "../bake/fracture.js";
 import { normalizeKeyboardCodeAlias } from "@threenative/ir/input";
 import type { IAuthoringDocument } from "@threenative/authoring";
 import { type IAnimationsDeclaration, type IAssetGroupDeclaration, type IAssetModuleDeclaration, type IAssetReference, type IAudioDeclaration, type IInputMapDeclaration, type IOverlayDeclaration, type IPersistenceDeclaration, type ISceneAudioDeclaration, type ISceneLifecycleDeclaration, type World } from "@threenative/sdk";
@@ -370,6 +372,11 @@ async function planFractureManifestCopies(projectPath: string, world: IWorldIr |
     if (diagnostics.length > 0) {
       const first = diagnostics[0]!;
       throw new Error(`${first.code}: ${first.message} (${first.path})`);
+    }
+    const fracture = parsed as IFractureManifest;
+    const recomputedSourceHash = fractureManifestSourceHash(fracture);
+    if (fracture.source.sourceHash !== recomputedSourceHash) {
+      throw new Error(`TN_COMPILER_FRACTURE_SOURCE_HASH_MISMATCH: Fracture manifest '${sourcePath}' records '${fracture.source.sourceHash}', but its canonical source content hashes to '${recomputedSourceHash}'. Regenerate it with tn physics fracture generate.`);
     }
     copies.push({ path: reference, sourcePath });
   }

@@ -799,7 +799,7 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
     );
 
     let mut requires_live_reconciliation = false;
-    for _ in 0..frame_count {
+    for frame_index in 0..frame_count {
         if let Some(bridge) = scripted.overlay_bridge.as_deref_mut() {
             bridge
                 .bridge
@@ -817,6 +817,16 @@ fn run_scripted_runtime_systems(params: ScriptedRuntimeWorldParams<'_, '_>) {
             input: input_snapshot.as_ref(),
             paused,
         };
+
+        if let Some(input) = input_snapshot.as_ref() {
+            let runtime_id = physics::native_physics_runtime_id(&loop_state.script_posed_entities);
+            physics_vehicle::apply_physics_vehicle_bindings(
+                runtime_id,
+                &runtime.bundle,
+                input,
+                frame_index == 0,
+            );
+        }
 
         let run = systems_host::run_native_systems_frame_with_input(
             &mut runtime.bundle,

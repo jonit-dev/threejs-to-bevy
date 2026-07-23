@@ -69,6 +69,28 @@ test("physics debug core should expose retained destruction chunks with stable p
   disposePhysicsRuntime(world);
 });
 
+test("center-of-mass debug should use the portable body origin for offset compound colliders", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    entities: [{
+      components: {
+        CompoundCollider: { children: [{ id: "offset", localPose: { position: [2, 0, 0] }, shape: { kind: "box", size: [1, 1, 1] } }] },
+        RigidBody: { gravityScale: 0, kind: "dynamic" },
+        Transform: { position: [5, 1, 0] },
+      },
+      id: "offset-body",
+    }],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  preparePhysicsRuntime(world, undefined, [0, 0, 0]);
+
+  const center = collectPhysicsDebugCore(world, { categories: ["center-of-mass"], fixedDt: 1 / 60, maxPrimitives: 4, tick: 0 }).primitives[0];
+
+  assert.deepEqual(center?.position, [5, 1, 0]);
+  disposePhysicsRuntime(world);
+});
+
 test("physics debug should normalize vehicle, aero, contact, force, and joint-load views", async () => {
   await initializePhysicsRuntime();
   const world = debugSystemsWorld();

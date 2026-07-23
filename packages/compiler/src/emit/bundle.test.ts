@@ -95,6 +95,13 @@ test("should validate and copy referenced fracture manifests into the bundle", a
     scene.add(new Mesh({ geometry: new BoxGeometry(), id: "wall", material: new MeshStandardMaterial(), physics: physics({ destructible: destructible({ fractureManifest: "fractures/wall.main.json" }) }) }));
     const bundle = await emitBundle({ entry: "src/game.ts", outDir: "dist/game.bundle", projectPath: root, schema: "threenative.project", version: "0.1.0" }, scene);
     assert.equal(await readFile(join(bundle, "fractures/wall.main.json"), "utf8"), baked.json);
+    const tampered = structuredClone(baked.manifest);
+    tampered.pieces[0] = { ...tampered.pieces[0]!, localPosition: [tampered.pieces[0]!.localPosition[0] + 0.25, tampered.pieces[0]!.localPosition[1], tampered.pieces[0]!.localPosition[2]] };
+    await writeFile(join(root, "content/fractures/wall.main.json"), JSON.stringify(tampered));
+    await assert.rejects(
+      emitBundle({ entry: "src/game.ts", outDir: "dist/tampered.bundle", projectPath: root, schema: "threenative.project", version: "0.1.0" }, scene),
+      /TN_COMPILER_FRACTURE_SOURCE_HASH_MISMATCH/u,
+    );
   } finally { await rm(root, { force: true, recursive: true }); }
 });
 

@@ -3,8 +3,6 @@ import { authoringDiagnostic } from "../diagnostics.js";
 import { loadAuthoringProject } from "../project.js";
 import { isRecord, type ISceneDocument, type ISceneEntity } from "../schemas.js";
 import { authoringOperationResult } from "./shared.js";
-import { validationContextForProject } from "./sharedA.js";
-import { validateSceneDocument } from "./sharedB.js";
 import { removeComponent, setComponent } from "./sceneComponents.js";
 export { setRigidBodyComponent } from "./sceneComponents.js";
 import type { IAuthoringOperationResult } from "./types.js";
@@ -92,17 +90,11 @@ export async function validatePortablePhysicsComponent(options: IPortablePhysics
   if (options.definition.component === "VehicleController") return validateVehicleControllerSource(options);
   const loaded = await findPortablePhysicsComponent(options);
   if (loaded.result !== undefined) return loaded.result;
-  const diagnostics = await validateSceneDocument(
-    loaded.project!.projectPath,
-    loaded.document!.projectRelativePath,
-    loaded.scene,
-    validationContextForProject(loaded.project!),
-  );
-  if (diagnostics.some((diagnostic) => diagnostic.severity === "error")) {
-    return authoringOperationResult({ diagnostics, projectPath: options.projectPath });
-  }
+  if (!isRecord(loaded.component)) return missing(options, "TN_AUTHORING_PHYSICS_COMPONENT_INVALID", `/entities/${options.entityId}/components/${options.definition.component}`, `${options.definition.component} must be an object.`);
+  const failure = await portablePhysicsCandidateFailure({ ...options, value: structuredClone(loaded.component) });
+  if (failure !== undefined) return failure;
   const result = {
-    ...authoringOperationResult({ diagnostics, projectPath: options.projectPath }),
+    ...authoringOperationResult({ projectPath: options.projectPath }),
     [options.definition.resultField]: structuredClone(loaded.component),
     component: options.definition.component,
     valid: true,

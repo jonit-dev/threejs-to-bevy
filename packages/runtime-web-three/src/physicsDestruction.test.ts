@@ -58,6 +58,19 @@ test("destruction cleanup should sleep and pool pieces within authored capacity"
   assert.equal(observePhysicsDestruction(runtime).pieces.find((piece) => piece.id === "piece.core")?.lifecycle, "pooled");
 });
 
+test("scene-budget eviction should emit the replaced piece lifecycle", () => {
+  const runtime = createPhysicsDestructionRuntime({ maxActivePieces: 1 });
+  const manifest = fractureManifest();
+  manifest.budgets.maxActivePieces = 1;
+  manifest.budgets.overflowPolicy = "sleep-oldest";
+  registerPhysicsDestructible(runtime, { entity: "wall", fractureManifest: "fractures/wall.fracture.json" }, manifest);
+  queuePhysicsDestructionDamage(runtime, { amount: 100, assembly: "wall", bond: "bond.left", cause: { kind: "script" }, tick: 1 });
+
+  const events = stepPhysicsDestruction(runtime, emptyWorld(), 1, 1 / 60);
+
+  assert.ok(events.some((event) => event.type === "pieceLifecycleChanged" && event.piece === "piece.core" && event.lifecycle === "sleeping"));
+});
+
 test("recorded impacts should honor filters and break the same regional bonds", () => {
   const runtime = createPhysicsDestructionRuntime();
   const world = emptyWorld();

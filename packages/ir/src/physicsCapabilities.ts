@@ -80,6 +80,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     gate: "advanced-physics-aerodynamics",
     limits: { curvePoints: PHYSICS_CAPABILITY_LIMITS.aerodynamicCurvePoints, force: PHYSICS_CAPABILITY_LIMITS.aerodynamicForce, surfaces: PHYSICS_CAPABILITY_LIMITS.aerodynamicSurfacesPerBody, thrusters: PHYSICS_CAPABILITY_LIMITS.aerodynamicThrustersPerBody },
     observationFields: ["relativeAirVelocity", "sideslip", "surfaces", "thrusters", "windVelocity", "airDensity", "diagnostics"] as const,
+    runtimeFields: ["dragArea", "maxForce", "surfaces", "thrusters"] as const,
     sdkHelpers: ["aerodynamicBody", "aerodynamicSurface", "thruster"] as const,
     stage: "contract" as const,
     unit: "SI",
@@ -91,6 +92,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     component: "WindVolume",
     fixture: "advanced-physics-aerodynamics",
     gate: "advanced-physics-aerodynamics",
+    runtimeFields: ["airDensity", "gust", "radius", "shape", "size", "velocity"] as const,
     sdkHelpers: ["windVolume"] as const,
     stage: "contract" as const,
     unit: "meters-per-second",
@@ -102,6 +104,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     fixture: "advanced-physics-foundation",
     gate: "physics-self-verification",
     kinds: ["box", "capsule", "convexHull", "sphere"] as const,
+    runtimeFields: ["children"] as const,
     limits: { children: PHYSICS_CAPABILITY_LIMITS.compoundColliderChildren, convexHullVertices: PHYSICS_CAPABILITY_LIMITS.convexHullVertices },
     unit: "meters",
   },
@@ -115,6 +118,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     limits: { activePiecesPerScene: PHYSICS_CAPABILITY_LIMITS.fractureActivePiecesPerScene, depth: PHYSICS_CAPABILITY_LIMITS.fractureDepth, piecesPerAssembly: PHYSICS_CAPABILITY_LIMITS.fracturePiecesPerAssembly },
     manifestSchema: "threenative.fracture-manifest@0.1.0",
     observationFields: ["activePieces", "assemblyBroken", "bonds", "budget", "events"] as const,
+    runtimeFields: ["activationBudget", "bondStrength", "cleanupPolicy", "fractureManifest", "impactFilter", "maxDepth"] as const,
     sdkHelpers: ["destructible"] as const,
     stage: "contract" as const,
     unit: "SI",
@@ -129,6 +133,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     kinds: ["ball", "fixed", "hinge", "rope", "slider", "suspension"] as const,
     limits: { perBody: PHYSICS_CAPABILITY_LIMITS.jointsPerBody, perWorld: PHYSICS_CAPABILITY_LIMITS.jointsPerWorld },
     observationFields: ["active", "connectedEntity", "entity", "force", "kind", "lifecycle", "torque"] as const,
+    runtimeFields: ["anchor", "axis", "breakForce", "breakTorque", "connectedAnchor", "connectedEntity", "connectedRotation", "damping", "kind", "length", "limits", "motor", "rotation", "stiffness", "travel"] as const,
     sdkHelpers: ["physicsJoint"] as const,
     stage: "contract" as const,
     unit: "SI",
@@ -140,6 +145,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     component: "PhysicsSurface",
     fixture: "advanced-physics-wheels",
     gate: "advanced-physics-wheels",
+    runtimeFields: ["combineRule", "grip", "rollingResistance"] as const,
     sdkHelpers: ["physicsSurface"] as const,
     stage: "promoted" as const,
     unit: "coefficient",
@@ -152,6 +158,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     fixture: "advanced-physics-wheels",
     gate: "advanced-physics-wheels",
     limits: { slipCurvePoints: PHYSICS_CAPABILITY_LIMITS.slipCurvePoints },
+    runtimeFields: ["lateralSlipCurve", "loadSensitivity", "longitudinalSlipCurve", "rollingResistance"] as const,
     sdkHelpers: ["tireModel"] as const,
     stage: "promoted" as const,
     unit: "normalized-slip",
@@ -164,6 +171,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     fixture: "advanced-physics-wheels",
     gate: "advanced-physics-wheels",
     limits: { force: PHYSICS_CAPABILITY_LIMITS.wheelForce, steeringAngle: PHYSICS_CAPABILITY_LIMITS.wheelSteeringAngle, wheels: PHYSICS_CAPABILITY_LIMITS.wheelsPerAssembly },
+    runtimeFields: ["maxSteeringAngle", "maxSuspensionForce", "maxTireForce", "wheels"] as const,
     sdkHelpers: ["wheelAssembly", "wheelControlInput"] as const,
     stage: "promoted" as const,
     unit: "meters",
@@ -180,6 +188,7 @@ export const PHYSICS_CAPABILITY_DESCRIPTORS = [
     limits: { forwardGears: PHYSICS_CAPABILITY_LIMITS.vehicleForwardGears, groundedCouplingGraceTicks: PHYSICS_CAPABILITY_LIMITS.vehicleGroundedCouplingGraceTicks, limitedSlipActivationDelta: PHYSICS_CAPABILITY_LIMITS.vehicleLimitedSlipActivationDelta, steeringCurvePoints: PHYSICS_CAPABILITY_LIMITS.vehicleSteeringCurvePoints, torqueCurvePoints: PHYSICS_CAPABILITY_LIMITS.vehicleTorqueCurvePoints },
     observationFields: ["speed", "engineRpm", "gear", "clutch", "shiftState", "driveTorque", "torquePath", "absActive", "tcsActive", "inputs"] as const,
     observationSemantics: { speed: "Y-up ground-plane linear-velocity magnitude; excludes vertical velocity" } as const,
+    runtimeFields: ["assists", "bindings", "brakes", "differential", "engine", "steering", "transmission"] as const,
     sdkHelpers: ["vehicleController", "vehicleControllerInputs"] as const,
     stage: "contract" as const,
     unit: "SI",
@@ -218,6 +227,7 @@ export type PhysicsScriptService = (typeof PHYSICS_SCRIPT_SERVICE_DESCRIPTORS)[n
 export interface IPhysicsDescriptorConsumers {
   authoringOperations: readonly string[];
   bevyComponents: readonly string[];
+  bevyFields: readonly string[];
   bevyHostServices: readonly string[];
   bevyRuntimeServices: readonly string[];
   bevyVisualComponents: readonly string[];
@@ -230,6 +240,7 @@ export interface IPhysicsDescriptorConsumers {
   sdkComponents: readonly string[];
   stdlibContexts: readonly string[];
   webComponents: readonly string[];
+  webFields: readonly string[];
   webHostServices: readonly string[];
   webRuntimeServices: readonly string[];
   webVisualComponents: readonly string[];
@@ -273,13 +284,18 @@ export function physicsDescriptorDrift(consumers: IPhysicsDescriptorConsumers): 
     requireConsumer("authoringOperations", descriptor.authoringOperation, descriptor.component);
     if ("compilerComponent" in descriptor) requireConsumer("compilerComponents", descriptor.compilerComponent, descriptor.component);
     if ("sdkHelpers" in descriptor) for (const helper of descriptor.sdkHelpers) requireConsumer("sdkComponents", helper, descriptor.component);
-    if (!("stage" in descriptor) || descriptor.stage === "promoted") {
-      if ("fixture" in descriptor) requireConsumer("fixtures", descriptor.fixture, descriptor.component);
-      if ("gate" in descriptor) requireConsumer("gates", descriptor.gate, descriptor.component);
-    }
+    if ("fixture" in descriptor) requireConsumer("fixtures", descriptor.fixture, descriptor.component);
+    if ("gate" in descriptor) requireConsumer("gates", descriptor.gate, descriptor.component);
     const adapters: readonly string[] = descriptor.adapters;
     if (adapters.includes("web")) requireConsumer("webComponents", descriptor.component, descriptor.component);
     if (adapters.includes("bevy")) requireConsumer("bevyComponents", descriptor.component, descriptor.component);
+    if ("runtimeFields" in descriptor) {
+      for (const field of descriptor.runtimeFields) {
+        const qualified = `${descriptor.component}.${field}`;
+        if (adapters.includes("web")) requireConsumer("webFields", qualified, descriptor.component);
+        if (adapters.includes("bevy")) requireConsumer("bevyFields", qualified, descriptor.component);
+      }
+    }
     if ("visualConsumption" in descriptor && descriptor.visualConsumption) {
       if (adapters.includes("web")) requireConsumer("webVisualComponents", descriptor.component, descriptor.component);
       if (adapters.includes("bevy")) requireConsumer("bevyVisualComponents", descriptor.component, descriptor.component);

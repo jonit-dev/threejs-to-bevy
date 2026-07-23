@@ -121,6 +121,23 @@ test("advanced physics operations reject invalid payloads and missing removals",
   } finally { await rm(root, { force: true, recursive: true }); }
 });
 
+test("advanced physics validate should scope diagnostics to the requested declaration", async () => {
+  const root = await project();
+  try {
+    const added = await dispatchAuthoringOperation({ args: { collider: values.compound, entityId: "body", sceneId: "arena" }, name: "physics.compound.add", projectPath: root });
+    assert.equal(added.ok, true, JSON.stringify(added.diagnostics));
+    const path = join(root, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(path, "utf8")) as { entities: Array<{ components?: Record<string, unknown>; id: string }> };
+    scene.entities.find((entity) => entity.id === "anchor")!.components!.Collider = { kind: "box", size: [0, 0, 0] };
+    await writeFile(path, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const validation = await dispatchAuthoringOperation({ args: { entityId: "body", sceneId: "arena" }, name: "physics.compound.validate", projectPath: root });
+
+    assert.equal(validation.ok, true, JSON.stringify(validation.diagnostics));
+    assert.equal((validation as unknown as { valid?: boolean }).valid, true);
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
 async function project(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-advanced-physics-ops-"));
   await mkdir(join(root, "content/scenes"), { recursive: true });

@@ -254,6 +254,92 @@ fn missing_native_fracture_manifest_should_fail_with_an_actionable_diagnostic() 
 }
 
 #[test]
+fn removed_destructible_should_clear_retirement_state_before_same_id_reregistration() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let runtime = BTreeSet::new();
+    let authored = bundle
+        .world
+        .entities
+        .iter()
+        .find(|entity| entity.id == "wall")
+        .and_then(|entity| entity.components.extra.get("Destructible"))
+        .cloned()
+        .expect("fixture wall should be destructible");
+
+    ensure_native_physics_runtime(&bundle, &runtime);
+    assert!(queue_cached_physics_destruction_damage(
+        &runtime,
+        DestructionDamage {
+            amount: Some(100.0),
+            assembly: "wall".to_owned(),
+            bond: "bond.north".to_owned(),
+            cause: DestructionCause {
+                contact: None,
+                entity: None,
+                kind: DestructionCauseKind::Script,
+            },
+            energy: None,
+            impulse: None,
+            layer: None,
+            tick: 1,
+        }
+    ));
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("fixture wall should exist")
+        .components
+        .extra
+        .remove("Destructible");
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+    bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("fixture wall should exist")
+        .components
+        .extra
+        .insert("Destructible".to_owned(), authored);
+    ensure_native_physics_runtime(&bundle, &runtime);
+    assert!(queue_cached_physics_destruction_damage(
+        &runtime,
+        DestructionDamage {
+            amount: Some(100.0),
+            assembly: "wall".to_owned(),
+            bond: "bond.north".to_owned(),
+            cause: DestructionCause {
+                contact: None,
+                entity: None,
+                kind: DestructionCauseKind::Script,
+            },
+            energy: None,
+            impulse: None,
+            layer: None,
+            tick: 1,
+        }
+    ));
+    step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+
+    let observation = inspect_cached_physics_destruction(&runtime)
+        .expect("re-registered destruction runtime should exist");
+    assert!(
+        observation
+            .pieces
+            .iter()
+            .any(|piece| piece.assembly == "wall" && piece.lifecycle != PieceLifecycle::Bound),
+        "same-id destructible should activate pieces after re-registration: {observation:?}"
+    );
+    dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
 fn damage_should_resolve_once_per_tick_with_stable_bond_and_piece_events() {
     let mut runtime = DestructionRuntime::new();
     runtime

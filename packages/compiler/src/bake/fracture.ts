@@ -47,7 +47,6 @@ export interface IFractureBakeResult {
 
 export function bakeFractureManifest(input: IFractureBakeInput): IFractureBakeResult {
   const seed = input.seed >>> 0;
-  const sourceHash = hashCanonical({ recipe: input.recipe, seed });
   const authored = input.recipe.kind === "primitive" ? bakePrimitive(input.recipe, seed) : {
     bonds: [...input.recipe.bonds].sort(byId),
     pieces: [...input.recipe.pieces].sort(byId),
@@ -68,13 +67,19 @@ export function bakeFractureManifest(input: IFractureBakeInput): IFractureBakeRe
       ...(input.recipe.kind === "imported" ? { asset: input.recipe.asset } : {}),
       kind: input.recipe.kind,
       seed,
-      sourceHash,
+      sourceHash: `sha256:${"0".repeat(64)}`,
     },
     version: "0.1.0",
   };
+  manifest.source.sourceHash = fractureManifestSourceHash(manifest);
   const diagnostics = validateFractureManifest(manifest);
   const json = `${stableJson(manifest)}\n`;
   return { diagnostics, hash: hashBytes(json), json, manifest };
+}
+
+export function fractureManifestSourceHash(manifest: IFractureManifest): string {
+  const { sourceHash: _sourceHash, ...source } = manifest.source;
+  return hashCanonical({ ...manifest, source });
 }
 
 function bakePrimitive(recipe: IPrimitiveFractureRecipe, seed: number): { bonds: IFractureBond[]; pieces: IFracturePiece[] } {

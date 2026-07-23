@@ -613,6 +613,23 @@ test("physics should derive contact velocity from script-posed kinematic motion"
   disposePhysicsRuntime(world);
 });
 
+test("retained physics should fail closed above the portable layer capacity", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    entities: Array.from({ length: 17 }, (_, index) => ({
+      components: {
+        Collider: { kind: "box" as const, layer: `layer-${index}`, size: [1, 1, 1] },
+        Transform: { position: [index * 2, 0, 0] },
+      },
+      id: `body-${index}`,
+    })),
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+
+  assert.throws(() => preparePhysicsRuntime(world), /TN_PHYSICS_LAYER_CAPACITY_EXCEEDED/u);
+});
+
 function makeRichJointWorld(): IWorldIr {
   return {
     schema: "threenative.world",

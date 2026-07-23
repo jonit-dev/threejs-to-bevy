@@ -80,6 +80,83 @@ fn retained_debug_should_expose_stable_normalized_destruction_categories_without
 }
 
 #[test]
+fn center_of_mass_debug_should_use_the_portable_body_origin_for_offset_compound_colliders() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-foundation/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("foundation fixture should load");
+    let body = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.components.rigid_body.is_some())
+        .expect("fixture should contain a rigid body");
+    let expected = body
+        .components
+        .transform
+        .as_ref()
+        .and_then(|transform| transform.position)
+        .expect("rigid body should have a position");
+    body.components.collider = None;
+    body.components.compound_collider = Some(
+        serde_json::from_value(serde_json::json!({
+            "children": [{
+                "id": "offset",
+                "localPose": { "position": [2, 0, 0] },
+                "shape": { "kind": "box", "size": [1, 1, 1] }
+            }]
+        }))
+        .expect("offset compound collider should deserialize"),
+    );
+    let entity = body.id.clone();
+    let runtime = BTreeSet::new();
+    ensure_native_physics_runtime(&bundle, &runtime);
+
+    let debug = inspect_cached_physics_debug(&bundle, &runtime)
+        .expect("retained debug snapshot should exist");
+    let center = debug
+        .summary
+        .primitives
+        .iter()
+        .find(|primitive| primitive.id == format!("center-of-mass:{entity}"))
+        .expect("center-of-mass primitive should exist");
+
+    assert_eq!(center.position, Some(expected));
+    dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
+fn contact_debug_should_report_only_solver_contacts_with_real_impulses() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let runtime = BTreeSet::new();
+    let debug = (0..90)
+        .find_map(|_| {
+            step_bundle_physics_with_script_poses(&mut bundle, 1.0 / 120.0, &runtime);
+            inspect_cached_physics_debug(&bundle, &runtime).filter(|snapshot| {
+                snapshot
+                    .summary
+                    .primitives
+                    .iter()
+                    .any(|primitive| primitive.category == "contact")
+            })
+        })
+        .expect("fixture should produce a solver contact");
+    let contacts = debug
+        .summary
+        .primitives
+        .iter()
+        .filter(|primitive| primitive.category == "contact")
+        .collect::<Vec<_>>();
+
+    assert_eq!(debug.summary.telemetry.contacts, contacts.len());
+    assert!(contacts.iter().all(|contact| {
+        contact.id.starts_with("contact:") && contact.value.is_some_and(|impulse| impulse > 0.0)
+    }));
+    dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
 fn debug_serialization_should_cap_primitives_timings_and_bytes_deterministically() {
     let primitives: Vec<PhysicsDebugPrimitive> = (0..700)
         .map(|index| PhysicsDebugPrimitive {

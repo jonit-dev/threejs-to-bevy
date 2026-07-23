@@ -9,7 +9,7 @@ export { loadProjectConfig, type IProjectConfig } from "./config.js";
 export { CompilerError } from "./errors.js";
 export { emitBundle, emitBundleWithReport } from "./emit/bundle.js";
 export { bakeGiBundle, type IBakeGiBundleResult } from "./bake/bakeGiBundle.js";
-export { bakeFractureManifest, type IAuthoredFractureRecipe, type IFractureBakeInput, type IFractureBakeResult, type IPrimitiveFractureRecipe } from "./bake/fracture.js";
+export { bakeFractureManifest, fractureManifestSourceHash, type IAuthoredFractureRecipe, type IFractureBakeInput, type IFractureBakeResult, type IPrimitiveFractureRecipe } from "./bake/fracture.js";
 export { extractGltfAssetMetadata, extractGltfSceneMetadata, gltfMaterialExtensionStatus } from "./gltf/metadata.js";
 export { validateBundle } from "./validate/index.js";
 export { AUTHORING_PROVENANCE_FILE, authoringProvenanceDocument, buildAuthoringProvenanceDocument } from "./authoring/provenance.js";

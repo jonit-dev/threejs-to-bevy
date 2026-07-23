@@ -11,7 +11,7 @@ use threenative_loader::{
     WheelAssemblyComponent, WheelComponent,
 };
 
-use crate::physics::ColliderOwner;
+use crate::{input::NativeInputState, physics::ColliderOwner};
 
 // Mirrors PHYSICS_CAPABILITY_LIMITS.vehicleLimitedSlipActivationDelta.
 const LIMITED_SLIP_ACTIVATION_DELTA: f32 = 0.05;
@@ -266,6 +266,98 @@ pub fn set_physics_vehicle_inputs(
     input: VehicleControlInput,
 ) -> bool {
     set_physics_vehicle_controller_inputs(runtime_id, entity, input)
+}
+
+pub fn apply_physics_vehicle_bindings(
+    runtime_id: usize,
+    bundle: &LoadedBundle,
+    input: &NativeInputState,
+    allow_gear_edges: bool,
+) {
+    let observed_gears = VEHICLE_CONTROLLER_OBSERVATIONS.with(|observations| {
+        observations
+            .borrow()
+            .get(&runtime_id)
+            .into_iter()
+            .flatten()
+            .map(|observation| (observation.entity.clone(), observation.gear))
+            .collect::<BTreeMap<_, _>>()
+    });
+    for entity in &bundle.world.entities {
+        let Some(controller) = entity.components.vehicle_controller.as_ref() else {
+            continue;
+        };
+        if controller.bindings.is_none() {
+            continue;
+        }
+        if entity.components.wheel_assembly.is_none() {
+            continue;
+        }
+        let current_gear = observed_gears.get(&entity.id).copied().unwrap_or_else(|| {
+            if controller.transmission.shift_policy == "automatic" {
+                1
+            } else {
+                0
+            }
+        });
+        set_physics_vehicle_controller_inputs(
+            runtime_id,
+            entity.id.clone(),
+            bound_vehicle_input(controller, input, current_gear, allow_gear_edges),
+        );
+    }
+}
+
+fn bound_vehicle_input(
+    controller: &VehicleControllerComponent,
+    input: &NativeInputState,
+    current_gear: i32,
+    allow_gear_edges: bool,
+) -> VehicleControlInput {
+    let bindings = controller
+        .bindings
+        .as_ref()
+        .expect("bound vehicle input requires bindings");
+    let analog = |binding: Option<&String>| {
+        binding.map_or(0.0, |binding| {
+            f32::max(
+                if input.action(binding) { 1.0 } else { 0.0 },
+                input.axis(binding),
+            )
+            .clamp(0.0, 1.0)
+        })
+    };
+    let gear_delta = if allow_gear_edges
+        && bindings
+            .gear_up
+            .as_ref()
+            .is_some_and(|binding| input.pressed(binding))
+    {
+        1
+    } else if allow_gear_edges
+        && bindings
+            .gear_down
+            .as_ref()
+            .is_some_and(|binding| input.pressed(binding))
+    {
+        -1
+    } else {
+        0
+    };
+    VehicleControlInput {
+        brake: analog(bindings.brake.as_ref()),
+        clutch: analog(bindings.clutch.as_ref()),
+        gear: (controller.transmission.shift_policy == "manual" && gear_delta != 0).then(|| {
+            (current_gear + gear_delta)
+                .clamp(-1, controller.transmission.forward_ratios.len() as i32)
+        }),
+        handbrake: analog(bindings.handbrake.as_ref()),
+        steer: bindings
+            .steer
+            .as_ref()
+            .map_or(0.0, |binding| input.axis(binding).clamp(-1.0, 1.0)),
+        throttle: analog(bindings.throttle.as_ref()),
+    }
 }
 
 pub fn observe_physics_vehicle_controllers(runtime_id: usize) -> Vec<VehicleControllerObservation> {
@@ -1421,12 +1513,36 @@ mod tests {
         VehicleAssistComponent, VehicleControllerComponent, WheelAssemblyComponent,
     };
 
+    use crate::input::NativeInputState;
+
     use super::{
-        VehicleControllerRuntimeState, WheelFeedback, airborne_observation,
+        VehicleControllerRuntimeState, WheelFeedback, airborne_observation, bound_vehicle_input,
         distribute_vehicle_torque, interpolate_angle, normalize_angle,
         normalized_vehicle_coupled_angular_speed, step_assist_multiplier, vehicle_planar_speed,
         vehicle_shaft_direction,
     };
+
+    #[test]
+    fn vehicle_bindings_should_drive_native_controller_input_and_single_gear_edge() {
+        let controller: VehicleControllerComponent = serde_json::from_value(serde_json::json!({
+            "bindings": { "brake": "Brake", "gearUp": "GearUp", "throttle": "Throttle" },
+            "brakes": { "frontBias": 0.5, "handbrakeWheelIds": [] },
+            "differential": { "kind": "open" },
+            "engine": { "engineBraking": 20, "idleRpm": 800, "redlineRpm": 5000, "torqueCurve": [{ "rpm": 800, "torque": 200 }] },
+            "steering": { "speedCurve": [{ "speed": 0, "scale": 1 }] },
+            "transmission": { "clutchResponse": 0.1, "finalDrive": 3, "forwardRatios": [3, 2], "reverseRatio": 3, "shiftPolicy": "manual" }
+        }))
+        .expect("bound vehicle controller should deserialize");
+        let input = NativeInputState::from_action_ids(["Throttle", "GearUp"]);
+
+        let first = bound_vehicle_input(&controller, &input, 0, true);
+        let repeated = bound_vehicle_input(&controller, &input, 0, false);
+
+        assert_eq!(first.throttle, 1.0);
+        assert_eq!(first.brake, 0.0);
+        assert_eq!(first.gear, Some(1));
+        assert_eq!(repeated.gear, None);
+    }
 
     #[test]
     fn wheel_visual_spin_should_interpolate_across_wrap_by_the_shortest_arc() {
