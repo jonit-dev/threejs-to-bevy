@@ -4,8 +4,8 @@
       "components": {
         "Camera": {
           "active": true,
-          "clear": {
-            "color": "#18202b",
+      "clear": {
+        "color": "#87b8dc",
             "mode": "color"
           },
           "far": 200,
@@ -72,6 +72,11 @@
             0.5
           ]
         },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
         "RigidBody": {
           "kind": "static"
         },
@@ -117,6 +122,11 @@
             1
           ]
         },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
         "RigidBody": {
           "kind": "dynamic",
           "mass": 5
@@ -153,6 +163,11 @@
             "minImpulse": 5
           },
           "maxDepth": 2
+        },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
         },
         "RigidBody": {
           "gravityScale": 0,
@@ -247,11 +262,6 @@
             400
           ]
         },
-        "MeshRenderer": {
-          "material": "mat.floor",
-          "mesh": "mesh.floor",
-          "receiveShadow": true
-        },
         "PhysicsSurface": {
           "combineRule": "multiply",
           "grip": 1,
@@ -272,23 +282,47 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            5,
-            0.1,
-            4
-          ],
-          "trigger": true
-        },
         "MeshRenderer": {
           "material": "mat.floor",
           "mesh": "mesh.floor",
           "receiveShadow": true
         },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            -0.707107,
+            0,
+            0,
+            0.707107
+          ],
+          "scale": [
+            40,
+            400,
+            1
+          ]
+        }
+      },
+      "id": "ground-asphalt.visual"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "layer": "surface-probe",
+          "mask": [],
+          "size": [
+            5,
+            0.1,
+            200
+          ]
+        },
         "PhysicsSurface": {
           "combineRule": "multiply",
-          "grip": 0.08,
+          "grip": 0.999,
           "rollingResistance": 0
         },
         "RigidBody": {
@@ -306,18 +340,43 @@
     },
     {
       "components": {
+        "MeshRenderer": {
+          "material": "mat.ice",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            -2.5,
+            0.051,
+            40
+          ],
+          "rotation": [
+            -0.707107,
+            0,
+            0,
+            0.707107
+          ],
+          "scale": [
+            5,
+            200,
+            1
+          ]
+        }
+      },
+      "id": "ground-split-left-ice.visual"
+    },
+    {
+      "components": {
         "Collider": {
           "kind": "box",
+          "layer": "surface-probe",
+          "mask": [],
           "size": [
             5,
             0.1,
-            4
+            200
           ]
-        },
-        "MeshRenderer": {
-          "material": "mat.floor",
-          "mesh": "mesh.floor",
-          "receiveShadow": true
         },
         "PhysicsSurface": {
           "combineRule": "multiply",
@@ -336,6 +395,34 @@
         }
       },
       "id": "ground-split-right-asphalt"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.floor",
+          "mesh": "mesh.floor",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            2.5,
+            0.051,
+            40
+          ],
+          "rotation": [
+            -0.707107,
+            0,
+            0,
+            0.707107
+          ],
+          "scale": [
+            5,
+            200,
+            1
+          ]
+        }
+      },
+      "id": "ground-split-right-asphalt.visual"
     },
     {
       "components": {
@@ -363,6 +450,11 @@
           ],
           "rollingResistance": 0
         },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
         "Transform": {
           "position": [
             0,
@@ -377,6 +469,11 @@
       "components": {
         "Hierarchy": {
           "parent": "chassis"
+        },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
         },
         "Transform": {
           "position": [
@@ -393,6 +490,11 @@
         "Hierarchy": {
           "parent": "chassis"
         },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
         "Transform": {
           "position": [
             -0.65,
@@ -408,6 +510,11 @@
         "Hierarchy": {
           "parent": "chassis"
         },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
+        },
         "Transform": {
           "position": [
             -0.65,
@@ -422,6 +529,11 @@
       "components": {
         "Hierarchy": {
           "parent": "chassis"
+        },
+        "MeshRenderer": {
+          "material": "mat.player",
+          "mesh": "mesh.player",
+          "visible": false
         },
         "Transform": {
           "position": [
@@ -466,9 +578,9 @@
           ],
           "rotation": [
             0,
+            1,
             0,
-            0,
-            1
+            0
           ]
         },
         "VehicleController": {
@@ -486,10 +598,6 @@
           },
           "bindings": {
             "brake": "brake",
-            "clutch": "clutch",
-            "gearDown": "gear-down",
-            "gearUp": "gear-up",
-            "handbrake": "handbrake",
             "steer": "steer",
             "throttle": "throttle"
           },
@@ -500,10 +608,9 @@
               "rear-left"
             ]
           },
-          "differential": {
-            "kind": "limited-slip",
-            "limitedSlipRatio": 2.5
-          },
+        "differential": {
+          "kind": "locked"
+        },
           "engine": {
             "engineBraking": 0.12,
             "idleRpm": 900,
@@ -550,7 +657,7 @@
               1
             ],
             "reverseRatio": 3,
-            "shiftPolicy": "manual",
+            "shiftPolicy": "automatic",
             "upshiftRpm": 2100
           }
         },
@@ -647,21 +754,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            5,
-            0.5,
-            8
-          ],
-          "trigger": true
-        },
         "MeshRenderer": {
           "material": "mat.goal",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -690,19 +785,16 @@
           "kind": "box",
           "layer": "obstacle",
           "size": [
-            8,
+            30,
             1.2,
             1.2
-          ]
+          ],
+          "trigger": true
         },
         "MeshRenderer": {
           "castShadow": true,
           "material": "mat.goal",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "dynamic",
-          "mass": 1
         },
         "Transform": {
           "position": [
@@ -717,20 +809,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            0.5,
-            2,
-            70
-          ]
-        },
         "MeshRenderer": {
           "material": "mat.goal",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -738,10 +819,10 @@
             1,
             65
           ],
-          "scale": [
-            0.5,
-            2,
-            70
+      "scale": [
+        0.25,
+        0.65,
+        70
           ]
         }
       },
@@ -749,20 +830,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            0.5,
-            2,
-            70
-          ]
-        },
         "MeshRenderer": {
-          "material": "mat.goal",
+        "material": "mat.floor",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -770,10 +840,10 @@
             1,
             65
           ],
-          "scale": [
-            0.5,
-            2,
-            70
+      "scale": [
+        0.25,
+        0.65,
+        70
           ]
         }
       },
@@ -781,21 +851,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            14,
-            2,
-            0.25
-          ],
-          "trigger": true
-        },
         "MeshRenderer": {
-          "material": "mat.goal",
+        "material": "mat.floor",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -803,10 +861,10 @@
             1,
             50
           ],
-          "scale": [
-            14,
-            2,
-            0.25
+      "scale": [
+        4.5,
+        0.15,
+        0.15
           ]
         }
       },
@@ -814,21 +872,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            14,
-            2,
-            0.25
-          ],
-          "trigger": true
-        },
         "MeshRenderer": {
           "material": "mat.goal",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -836,10 +882,10 @@
             1,
             70
           ],
-          "scale": [
-            14,
-            2,
-            0.25
+      "scale": [
+        4.5,
+        0.15,
+        0.15
           ]
         }
       },
@@ -847,21 +893,9 @@
     },
     {
       "components": {
-        "Collider": {
-          "kind": "box",
-          "size": [
-            14,
-            2,
-            0.25
-          ],
-          "trigger": true
-        },
         "MeshRenderer": {
           "material": "mat.goal",
           "mesh": "mesh.player"
-        },
-        "RigidBody": {
-          "kind": "static"
         },
         "Transform": {
           "position": [
@@ -869,10 +903,10 @@
             1,
             110
           ],
-          "scale": [
-            14,
-            2,
-            0.25
+      "scale": [
+        4.5,
+        0.15,
+        0.15
           ]
         }
       },

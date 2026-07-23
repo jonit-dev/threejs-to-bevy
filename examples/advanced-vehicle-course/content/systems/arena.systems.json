@@ -17,7 +17,8 @@
       "services": [
         "physics.raycast",
         "physics.setAngularVelocity",
-        "physics.setLinearVelocity"
+        "physics.setLinearVelocity",
+        "physics.vehicle.setInputs"
       ]
     }
   ]

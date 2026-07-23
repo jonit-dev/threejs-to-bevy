@@ -533,7 +533,11 @@ function distributeControllerTorque(
   previousWheels: ReadonlyMap<string, IWheelAssemblyObservation["wheels"][number]>,
   torque: number,
 ): Map<string, number> {
-  const eligible = assembly.wheels.filter((wheel) => wheel.driven);
+  const driven = assembly.wheels.filter((wheel) => wheel.driven);
+  const eligible = driven.filter((wheel) => (
+    controller.differential.kind === "locked"
+    || previousWheels.get(wheel.id)?.grounded === true
+  ));
   const weights = new Map<string, number>();
   if (eligible.length === 0) return new Map(assembly.wheels.map((wheel) => [wheel.id, 0]));
   const eligibleSlip = eligible.map((wheel) => Math.abs(previousWheels.get(wheel.id)?.longitudinalSlip ?? 0));

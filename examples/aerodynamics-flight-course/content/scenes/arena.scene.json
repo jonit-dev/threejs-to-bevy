@@ -66,11 +66,6 @@
             180
           ]
         },
-        "MeshRenderer": {
-          "material": "mat.runway",
-          "mesh": "mesh.runway",
-          "receiveShadow": true
-        },
         "RigidBody": {
           "kind": "static"
         },
@@ -79,6 +74,28 @@
             0,
             -1.2,
             -55
+          ]
+        }
+      }
+    },
+    {
+      "id": "runway.visual",
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.runway",
+          "mesh": "mesh.runway",
+          "receiveShadow": true
+        },
+        "Transform": {
+          "position": [
+            0,
+            -1.2,
+            -55
+          ],
+          "scale": [
+            80,
+            0.2,
+            180
           ]
         }
       }
@@ -248,6 +265,11 @@
         "Hierarchy": {
           "parent": "craft"
         },
+        "MeshRenderer": {
+          "material": "mat.craft",
+          "mesh": "mesh.marker",
+          "visible": false
+        },
         "Transform": {
           "position": [
             0,
@@ -260,6 +282,11 @@
     {
       "id": "wind.gust",
       "components": {
+        "MeshRenderer": {
+          "material": "mat.wind",
+          "mesh": "mesh.marker",
+          "visible": false
+        },
         "Transform": {
           "position": [
             0,
@@ -299,12 +326,17 @@
           "material": "mat.wind",
           "mesh": "mesh.marker"
         },
-        "Transform": {
-          "position": [
-            0,
-            0.4,
-            -28
-          ]
+    "Transform": {
+      "position": [
+        0,
+        0.4,
+        -28
+      ],
+      "scale": [
+        0.4,
+        4,
+        0.4
+      ]
         }
       }
     }

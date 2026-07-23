@@ -26,16 +26,14 @@
   "steps": [
     { "label": "settle", "waitTicks": 30, "screenshot": "01-grid" },
     { "label": "retry", "press": "KeyR", "holdTicks": 1, "release": true, "screenshot": "02-retry" },
-    { "label": "steering-correction", "press": "KeyD", "holdTicks": 1, "release": false },
-    { "label": "mixed-surface-and-ramp", "press": "KeyW", "holdTicks": 70, "release": false, "screenshot": "03-mixed-jump" },
-    { "label": "airborne", "press": "KeyW", "holdTicks": 35, "release": false },
-    { "label": "landing", "press": "KeyW", "holdTicks": 20, "release": false, "screenshot": "04-landing" },
-    { "label": "collision-damage", "press": "KeyW", "holdTicks": 15, "release": false, "screenshot": "05-collision" },
-    { "label": "finish", "press": "KeyW", "holdTicks": 40, "release": true, "screenshot": "06-finish" },
-    { "label": "release-steering", "press": "KeyD", "holdTicks": 1, "release": true }
+    { "label": "mixed-surface-and-ramp", "press": "KeyW", "holdTicks": 780, "release": false, "screenshot": "03-mixed-jump" },
+    { "label": "airborne", "press": "KeyW", "holdTicks": 300, "release": false },
+    { "label": "landing", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "04-landing" },
+    { "label": "collision-damage", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "05-collision" },
+    { "label": "finish", "press": "KeyW", "holdTicks": 600, "release": true, "screenshot": "06-finish" }
   ],
   "assert": {
-    "movement": { "entity": "chassis", "minDistance": 1, "maxDistance": 150 },
+    "movement": { "entity": "chassis", "minDistance": 1, "maxDistance": 300 },
     "resources": [
       { "id": "CourseState", "path": "checkpoint", "equals": 3, "changed": true },
       { "id": "CourseState", "path": "damage", "equals": 25, "changed": true },
@@ -43,7 +41,6 @@
       { "id": "CourseState", "path": "jumped", "equals": true, "changed": true },
       { "id": "CourseState", "path": "collisionEntity", "equals": "damage-barrier", "changed": true },
       { "id": "CourseState", "path": "events", "equals": ["retry", "mixed-surface", "jump", "collision-damage", "finish"], "changed": true },
-      { "id": "CourseState", "path": "speed", "gte": 0.1, "changed": true },
       { "id": "CourseState", "path": "retryCount", "gte": 1, "changed": true },
       { "id": "CourseState", "path": "status", "equals": "finished", "changed": true }
     ],

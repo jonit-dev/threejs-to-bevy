@@ -6,7 +6,13 @@
     {
       "id": "countdown",
       "type": "text",
-      "text": "Ready",
+      "text": "FLIGHT READY",
+      "style": {
+        "color": "#ffffff",
+        "fontSize": 24,
+        "fontWeight": "bold",
+        "textAlign": "center"
+      },
       "layout": {
         "justify": "center",
         "align": "center",
@@ -18,7 +24,7 @@
   "bindings": [
     {
       "node": "countdown",
-      "resource": "GameState.countdown"
+      "resource": "FlightState.phase"
     }
   ],
   "recipes": [

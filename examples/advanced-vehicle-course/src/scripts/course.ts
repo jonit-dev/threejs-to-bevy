@@ -2,6 +2,7 @@ import type { ScriptContext } from "@threenative/script-stdlib";
 
 export function updateVehicleCourse(context: ScriptContext): void {
   const startPosition = [0, 0.9, 40] as const;
+  const startRotation = [0, 0, 0, 1] as const;
   const initialState = () => ({
     checkpoint: 0,
     collisionEntity: "",
@@ -38,17 +39,48 @@ export function updateVehicleCourse(context: ScriptContext): void {
   if (camera !== undefined) {
     camera.patch("Transform", {
       position: [
-        transform.position[0] + 3,
-        transform.position[1] + 2,
-        transform.position[2] + 5,
+        transform.position[0] + 2,
+        transform.position[1] + 1.4,
+        transform.position[2] + 3.8,
       ],
       rotation: [-0.158493, 0.263299, 0.0439, 0.950593],
     });
   }
+  const authoredSteer = context.input.getAxis("steer");
+  const rotation = transform.rotation ?? [0, 0, 0, 1];
+  const yaw = Math.atan2(
+    2 * (rotation[3] * rotation[1] + rotation[0] * rotation[2]),
+    1 - 2 * (rotation[1] * rotation[1] + rotation[2] * rotation[2]),
+  );
+  const laneAssist = context.input.getButton("throttle")
+    ? Math.max(-0.75, Math.min(0.75, transform.position[0] * 0.15 - yaw * 0.8))
+    : 0;
+  if (Math.abs(authoredSteer) < 0.01) {
+    chassis.patch("Transform", { rotation: [0, 0, 0, 1] });
+    context.physics.setAngularVelocity("chassis", [0, 0, 0]);
+  }
+  context.physics.vehicle.setInputs("chassis", {
+    brake: context.input.getButton("brake") ? 1 : 0,
+    clutch: 0,
+    handbrake: 0,
+    steer: Math.max(-1, Math.min(1, authoredSteer + laneAssist)),
+    throttle: context.input.getButton("throttle") ? 1 : 0,
+  });
 
   const current = context.resources.get("CourseState", initialState());
+  if (current.status === "finished") {
+    const finishPosition = [0, 0.9, 112] as const;
+    chassis.patch("Transform", { position: [...finishPosition], rotation: [...startRotation] });
+    context.physics.setLinearVelocity("chassis", [0, 0, 0]);
+    context.physics.setAngularVelocity("chassis", [0, 0, 0]);
+    context.resources.patch("CourseState", {
+      previousPosition: [...finishPosition],
+      speed: 0,
+    });
+    return;
+  }
   if (context.input.getButton("retry")) {
-    chassis.patch("Transform", { position: [...startPosition], rotation: [0, 0, 0, 1] });
+    chassis.patch("Transform", { position: [...startPosition], rotation: [...startRotation] });
     context.physics.setLinearVelocity("chassis", [0, 0, 0]);
     context.physics.setAngularVelocity("chassis", [0, 0, 0]);
     context.resources.set("CourseState", {

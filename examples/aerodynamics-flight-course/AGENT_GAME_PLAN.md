@@ -1,211 +1,71 @@
-# Agent Game Plan
+# Aerodynamics Flight Course Production Plan
 
-Complete this worksheet before creating or substantially changing game source.
-Use it as the implementation checklist, and keep
-`artifacts/game-production/plan.json` as the machine-readable plan evidence.
+Status: implemented and proof-complete on 2026-07-23.
 
-## Game Goal
-
-- User request:
-- Template:
-- Project path:
-- Date:
-- Planned game category for asset catalog search:
-
-## First Commands
-
-Run these before mutating `content/**/*.json` or `src/scripts/**/*.ts`:
-
-```bash
-tn game inspect --project . --json
-tn game plan --goal "<game idea>" --project . --apply --json
-pnpm run game:plan -- --goal "<game idea>"
-```
-
-Use `--apply` only when the goal matches a supported scaffold-first category
-such as top-down collector or lane runner. Omit `--apply` for non-mutating
-planning or unsupported genres.
-
-If a command is unavailable, record the diagnostic code, path, severity, and
-message here before choosing a fallback.
+Timing note: the initial implementation was created while this file was still a
+blank starter. The retained `artifacts/game-production/plan.json` is a
+post-implementation reconstruction. The planner correctly emitted
+`TN_GAME_PLAN_OFF_RECIPE`; `tn authoring inspect` confirmed that the custom
+flight loop belongs to existing structured source and
+`src/scripts/flight.ts`, so no unrelated lane-runner recipe was applied.
 
 ## Playable Loop
 
-- Player verb:
-- Controls:
-- Objective:
-- Progression:
-- Fail/retry path:
-- Scoring or persistent state:
-- Feedback moments:
+- Controls: throttle and pitch through the authored input document; `KeyR`
+  retries.
+- Objective: launch, cross the gust volume, enter a recorded stall, recover,
+  and land.
+- Progression: runway acceleration -> takeoff -> gust/stall -> recovery ->
+  settled landing.
+- Fail/retry: retry restores the craft and `FlightState` for a fresh maneuver.
+- Feedback: textured aircraft, runway/wind landmarks, retained objective state,
+  and lift/drag/thrust/wind telemetry.
 
-## High-Value Surface Inventory
+`playtests/flight-course.playtest.json` is the objective proof and must pass
+with exact takeoff, stall, recovery, landing, and retry semantics on web and
+desktop.
 
-Plan every high-value surface before source mutation.
+## High-value Surfaces
 
-| Surface | Source owner | Asset/source plan | Fallback blocker |
-| --- | --- | --- | --- |
-| Player/hero |  |  |  |
-| Obstacle/enemy/vehicle |  |  |  |
-| Reward/interactable |  |  |  |
-| World/environment |  |  |  |
-| UI/HUD |  |  |  |
-| Audio feedback |  |  |  |
+| Surface | Durable owner | Production treatment |
+| --- | --- | --- |
+| Hero aircraft | `content/assets/arena.assets.json`, `content/scenes/arena.scene.json` | Repository-supplied Douglas SBD-3 GLB with 22 meshes, 21 materials, embedded textures, and two authored clips. |
+| Flight environment | `content/scenes/arena.scene.json` | Authored runway, gust volume/marker, sunlight, and chase camera. |
+| Objective/HUD | `content/ui/hud.ui.json` | Retained `FlightState` feedback for maneuver milestones and retry. |
+| Audio | `content/assets/arena.assets.json` | Local goal cue; no untracked external audio dependency. |
 
-Primitive geometry is the last fallback. Do not mark primitive-only or
-primitive-looking high-value surfaces as finished.
-
-## UI Approach
-
-- native ThreeNative UI is the portable default for HUD, prompts, menus,
-  retained UI state, and UI that coordinates with 3D/game state.
-- React webview UI is an optional screen-space panel layer for inventories,
-  settings, shops, maps, dialogs, and similar overlays.
-- Webview UI cannot attach to a 3D element and must not become the source of
-  portable gameplay state.
-
-## Asset Sourcing Plan
-
-For each 3D model surface, search the shipped SQLite asset catalog first:
-
-```bash
-tn asset source search --game-category <category> --format glb --direct-only --json
-tn asset source get <asset-source-id> --json
-tn asset inspect assets --recursive --json
-tn model-test assets/<model>.glb --json
-```
-
-If catalog search does not produce a suitable model, a bounded Blender recipe
-is an option for creating a simple project-local GLB:
-
-```bash
-tn tool status blender --json
-tn tool install blender --accept-download --json  # only when the tool is missing
-tn asset generate <asset-id> --provider blender --recipe <path-or-json> --project . --json
-tn asset inspect assets/generated/<asset-id>.glb --json
-tn model-test assets/generated/<asset-id>.glb --json
-```
-
-Blender is authoring-only. Use the bounded recipe contract, not arbitrary
-Blender Python, add-ons, or remote recipes; if installation is unavailable,
-record the diagnostic and use the next asset fallback.
-
-For outdoor or arena games that need a dressed world, start from the generated
-biome source path before hand-placing environment props:
-
-```bash
-tn world generate --biome meadow --seed 7 --project . --json
-tn world proof --project . --json
-```
-
-Record selected catalog records next to committed assets.
-
-| Surface | Search command | asset-source-id | Source URL | Provenance URL | Origin | License evidence | Review status | Downloaded date | Conversion notes | Fallback |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Player/hero |  |  |  |  |  |  |  |  |  |  |
-| Obstacle/enemy/vehicle |  |  |  |  |  |  |  |  |  |  |
-| Reward/interactable |  |  |  |  |  |  |  |  |  |  |
-| World/environment |  |  |  |  |  |  |  |  |  |  |
-
-Only after catalog search fails should you check curated open-source packs,
-compatible GitHub/open-source packs, the bounded Blender generator or other
-authored custom meshes, and finally primitive fallback geometry.
-
-## Animation And Scale Plan
-
-- Active actor clips to inspect:
-- Intended idle/run/action clips:
-- Runtime bounds expectations for hero:
-- Runtime bounds expectations for vehicles, obstacles, rewards, landmarks, and
-  environment:
-- Camera, pose, lighting, and speed alternatives to incoherent scale changes:
-
-```bash
-tn game scale --project . --json
-```
+Asset provenance and redistribution limits are recorded in
+`docs/asset-provenance.md`.
 
 ## Source Ownership
 
-Name the durable source owner for every planned behavior.
+| Behavior | Structured-source owner | Script/export |
+| --- | --- | --- |
+| Throttle, pitch, and retry input | `content/input/arena.input.json` | `src/scripts/flight.ts#updateFlightCourse` |
+| Aerodynamic surfaces, thrust, wind | `content/scenes/arena.scene.json` | Runtime `AerodynamicBody`/wind components |
+| Objective and retry state | `content/systems/arena.systems.json` | `src/scripts/flight.ts#updateFlightCourse` |
+| HUD and camera | `content/ui/hud.ui.json`, scene source | `FlightState` plus portable follow camera |
 
-| Behavior or state | content/**/*.json owner | src/scripts/**/*.ts module | Export | Proof |
-| --- | --- | --- | --- | --- |
-| Player control |  |  |  |  |
-| Objective/progression |  |  |  |  |
-| Fail/retry |  |  |  |  |
-| HUD/state binding |  |  |  |  |
-| Audio/VFX feedback |  |  |  |  |
+## Animation, Scale, and Polish
 
-Do not author raw Three.js scenes, raw Bevy/Rust gameplay, DOM gameplay,
-filesystem access, workers, timers, renderer handles, or native runtime
-handles.
+- Active model clips: `propeller.spin` and `flaps.deploy`; scene wiring keeps
+  the propeller active and uses the flap clip for the flight-control surface.
+- Inspection reports 10,416 triangles, 41 nodes, a centered
+  2.0 x 0.619 x 1.583 source bound, and an `ok` gameplay-scale verdict.
+- The model test renders all 21 authored material identities with loaded
+  embedded textures and no fallback material.
+- Runway contrast, gust marker, aircraft silhouette, camera separation, and
+  landing pose must remain readable in the manual contact sheet.
 
-## Polish Checklist
-
-- [ ] Player/hero silhouette is recognizable and not placeholder geometry.
-- [ ] Obstacle/enemy/vehicle silhouette is readable.
-- [ ] Reward/interactable is easy to identify.
-- [ ] World/environment has context, boundaries, landmarks, and scale cues.
-- [ ] Materials communicate surface type through color, roughness/metalness,
-      texture/normal detail where available, and coherent UV scale.
-- [ ] Lighting and camera framing make the objective readable.
-- [ ] Set dressing supports gameplay without obscuring it.
-- [ ] VFX, motion, and audio feedback communicate state changes.
-- [ ] UI states cover gameplay, pause, settings, loading, fail/retry,
-      win/milestone, and touch controls when applicable.
-- [ ] Mobile fit is checked.
-- [ ] Performance budget and asset counts are recorded.
-
-## Proof Checklist
-
-Run the narrowest relevant proof first, then finish with the production loop.
-Use `tn playtest` as an edit loop, not only as a final gate: after each
-gameplay/input/script change, run the focused playtest, inspect the compact
-stdout or `tn playtest report --latest --scenario <name> --json`, repair the
-owning `content/**/*.json` or `src/scripts/**/*.ts`, and rerun until the proof
-passes. Open deep machine logs such as `effect-log.json`, `observations.json`,
-`runtime-trace.json`, `console.json`, or `network.json` only when the compact
-report points to a specific diagnostic that requires them.
-
-Discover what is provable before writing a scenario:
-
-```bash
-tn playtest --project . --discover --json
-tn playtest --project . --suggest-scenario smoke-movement --json
-```
-
-For multi-step mechanics, create a committed scenario under
-`playtests/*.playtest.json` and run it with stable artifacts. Use `--watch`
-while iterating, and rerun with `--target desktop` to prove the native
-runtime, not only web:
-
-```bash
-tn playtest --project . --scenario playtests/smoke-movement.playtest.json --stable-artifacts --json
-tn playtest --project . --scenario playtests/smoke-movement.playtest.json --watch --pass-once --json
-tn playtest --project . --scenario playtests/smoke-movement.playtest.json --target desktop --json
-```
-
-For a one-input smoke proof, use the one-shot form, then finish with the
-production loop:
+## Required Proof
 
 ```bash
 tn authoring validate --project . --json
 tn build --project . --json
-tn scene inspect <scene-id> --project . --json
-tn playtest --project . --entity <entity-id> --press KeyD --frames 30 --expect-moved --json
-tn screenshot --project . --url <preview-url> --out artifacts/game-production/screenshot.png --wait-ready --json
-tn game scale --project . --json
-tn game score --project . --json
-tn game qa --project . --run-proof --json
-tn game release --project . --json
+tn playtest --project . --scenario playtests/flight-course.playtest.json --target web --json
+tn playtest --project . --scenario playtests/flight-course.playtest.json --target desktop --json
 ```
 
-- Build proof:
-- Runtime readiness proof:
-- Nonblank screenshot proof:
-- Visible motion proof:
-- Active character/vehicle animation proof:
-- Scale proof:
-- Input playtest proof:
-- Score/QA/release blockers:
-- Fallback evidence:
+Completion requires exact `takeoff=true`, `stall=true`, `recovered=true`,
+`landed=true`, and `retryCount=1`, matching source/bundle hashes, and bounded
+web/desktop movement parity.

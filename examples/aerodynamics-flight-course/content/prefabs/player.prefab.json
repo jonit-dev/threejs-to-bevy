@@ -1,10 +1,10 @@
 {
   "schema": "threenative.prefab",
   "version": "0.1.0",
-  "id": "prefab.player",
+  "id": "prefab.player.placeholder",
   "entities": [
     {
-      "id": "player",
+      "id": "player.placeholder",
       "components": {
         "MeshRenderer": {
           "material": "mat.player"

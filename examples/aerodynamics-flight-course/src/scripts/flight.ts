@@ -44,8 +44,8 @@ export function updateFlightCourse(context: ScriptContext): void {
   if (camera !== undefined) {
     camera.patch("Transform", {
       position: [
-        transform.position[0] + 4,
-        transform.position[1] + 2.5,
+        transform.position[0] + 3,
+        transform.position[1] + 1.8,
         transform.position[2] + 5,
       ],
       rotation: [-0.174613, 0.325291, 0.061251, 0.927332],

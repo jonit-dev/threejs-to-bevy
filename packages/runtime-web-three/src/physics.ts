@@ -71,6 +71,8 @@ const lastPhysicsQueries = new WeakMap<IWorldIr, number>();
 const lastPhysicsStepMilliseconds = new WeakMap<IWorldIr, number>();
 const queryBallShapes = new Map<number, RAPIER.Ball>();
 const queryCuboidShapes = new Map<string, RAPIER.Cuboid>();
+const ZERO_VEC3: Vec3 = [0, 0, 0];
+const IDENTITY_QUAT = [0, 0, 0, 1] as const;
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -195,12 +197,13 @@ export function markScriptAuthoredTransform(world: IWorldIr, entity: string): vo
 
 interface IRapierRuntime {
   bodies: Map<string, RAPIER.RigidBody>;
-  colliders: Map<number, { child?: string; entity: string }>;
+  colliders: Map<number, { child?: string; entity: string; layer?: string; mask?: string[] }>;
   contactImpulses: Map<string, { handles: readonly [number, number]; impulse: number }>;
   destructionAssemblies: Map<string, IDestructionAssemblyPhysicsState>;
   eventQueue: RAPIER.EventQueue;
   joints: IPhysicsJointRuntime;
   physicsWorld: IWorldIr;
+  sceneQueriesReady: boolean;
   signature: string;
   world: RAPIER.World;
 }
@@ -506,9 +509,9 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
     if (body === undefined || transform?.position === undefined || source === undefined) {
       continue;
     }
-    const rotation = transform.rotation ?? [0, 0, 0, 1];
-    const authoredVelocity = source.velocity ?? [0, 0, 0];
-    const angularVelocity = source.angularVelocity ?? [0, 0, 0];
+    const rotation = transform.rotation ?? IDENTITY_QUAT;
+    const authoredVelocity = source.velocity ?? ZERO_VEC3;
+    const angularVelocity = source.angularVelocity ?? ZERO_VEC3;
     const scriptPosedKinematic = source.kind === "kinematic" && scriptAuthoredTransforms.has(entity.id);
     const current = body.translation();
     const velocity = scriptPosedKinematic
@@ -518,19 +521,19 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
           (transform.position[2] - current.z) / fixedDelta,
         ] as Vec3
       : authoredVelocity;
-    if (!scriptPosedKinematic && !vec3ApproximatelyEqual(transform.position, [current.x, current.y, current.z])) {
+    if (!scriptPosedKinematic && !vec3ComponentsApproximatelyEqual(transform.position, current.x, current.y, current.z)) {
       body.setTranslation({ x: transform.position[0], y: transform.position[1], z: transform.position[2] }, false);
     }
     const currentRotation = body.rotation();
-    if (!quatApproximatelyEqual(rotation, [currentRotation.x, currentRotation.y, currentRotation.z, currentRotation.w])) {
+    if (!quatComponentsApproximatelyEqual(rotation, currentRotation.x, currentRotation.y, currentRotation.z, currentRotation.w)) {
       body.setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] }, false);
     }
     const currentVelocity = body.linvel();
-    if (!vec3ApproximatelyEqual(velocity, [currentVelocity.x, currentVelocity.y, currentVelocity.z])) {
+    if (!vec3ComponentsApproximatelyEqual(velocity, currentVelocity.x, currentVelocity.y, currentVelocity.z)) {
       body.setLinvel({ x: velocity[0], y: velocity[1], z: velocity[2] }, false);
     }
     const currentAngularVelocity = body.angvel();
-    if (!vec3ApproximatelyEqual(angularVelocity, [currentAngularVelocity.x, currentAngularVelocity.y, currentAngularVelocity.z])) {
+    if (!vec3ComponentsApproximatelyEqual(angularVelocity, currentAngularVelocity.x, currentAngularVelocity.y, currentAngularVelocity.z)) {
       body.setAngvel({ x: angularVelocity[0], y: angularVelocity[1], z: angularVelocity[2] }, false);
     }
   }
@@ -544,6 +547,7 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
     applyPointPhysicsCommands(runtime, pointCommands, step === 0, fixedDelta);
     preparePhysicsJointStep(runtime.joints, fixedDelta / substeps);
     rapierWorld.step(runtime.eventQueue);
+    runtime.sceneQueriesReady = true;
     runtime.eventQueue.drainContactForceEvents((event: RAPIER.TempContactForceEvent) => {
       const handles = [event.collider1(), event.collider2()].sort((left, right) => left - right) as [number, number];
       const key = `${handles[0]}:${handles[1]}`;
@@ -557,39 +561,68 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
 
   for (const entity of world.entities) {
     const body = bodies.get(entity.id);
-    if (body === undefined || entity.components.Transform?.position === undefined || entity.components.RigidBody === undefined) {
+    const transform = entity.components.Transform;
+    const rigidBody = entity.components.RigidBody;
+    if (body === undefined || transform?.position === undefined || rigidBody === undefined) {
       continue;
     }
-    if (scriptAuthoredTransforms.has(entity.id) && entity.components.RigidBody.kind === "kinematic") {
+    if (scriptAuthoredTransforms.has(entity.id) && rigidBody.kind === "kinematic") {
       continue;
     }
     const translation = body.translation();
     const rotation = body.rotation();
     const linvel = body.linvel();
     const angvel = body.angvel();
-    entity.components.Transform = {
-      ...entity.components.Transform,
-      position: [translation.x, translation.y, translation.z],
-      rotation: [rotation.x, rotation.y, rotation.z, rotation.w],
-    };
-    entity.components.RigidBody = {
-      ...entity.components.RigidBody,
-      angularVelocity: [angvel.x, angvel.y, angvel.z],
-      velocity: [linvel.x, linvel.y, linvel.z],
-    };
+    if (!vec3ComponentsApproximatelyEqual(transform.position, translation.x, translation.y, translation.z)) {
+      transform.position = updateVec3Components(transform.position, translation.x, translation.y, translation.z);
+    }
+    if (!quatComponentsApproximatelyEqual(transform.rotation, rotation.x, rotation.y, rotation.z, rotation.w)) {
+      transform.rotation = updateQuatComponents(transform.rotation, rotation.x, rotation.y, rotation.z, rotation.w);
+    }
+    if (!vec3ComponentsApproximatelyEqual(rigidBody.velocity, linvel.x, linvel.y, linvel.z)) {
+      rigidBody.velocity = updateVec3Components(rigidBody.velocity, linvel.x, linvel.y, linvel.z);
+    }
+    if (!vec3ComponentsApproximatelyEqual(rigidBody.angularVelocity, angvel.x, angvel.y, angvel.z)) {
+      rigidBody.angularVelocity = updateVec3Components(rigidBody.angularVelocity, angvel.x, angvel.y, angvel.z);
+    }
   }
   return jointBreaks;
 }
 
-function vec3ApproximatelyEqual(left: readonly number[], right: readonly number[]): boolean {
-  return Math.abs((left[0] ?? 0) - (right[0] ?? 0)) <= 1e-9
-    && Math.abs((left[1] ?? 0) - (right[1] ?? 0)) <= 1e-9
-    && Math.abs((left[2] ?? 0) - (right[2] ?? 0)) <= 1e-9;
+function updateVec3Components(current: readonly number[] | undefined, x: number, y: number, z: number): Vec3 {
+  if (current === undefined) return [x, y, z];
+  const mutable = current as [number, number, number];
+  mutable[0] = x;
+  mutable[1] = y;
+  mutable[2] = z;
+  return mutable;
 }
 
-function quatApproximatelyEqual(left: readonly number[], right: readonly number[]): boolean {
-  return vec3ApproximatelyEqual(left, right)
-    && Math.abs((left[3] ?? 1) - (right[3] ?? 1)) <= 1e-9;
+function updateQuatComponents(
+  current: readonly number[] | undefined,
+  x: number,
+  y: number,
+  z: number,
+  w: number,
+): readonly [number, number, number, number] {
+  if (current === undefined) return [x, y, z, w];
+  const mutable = current as [number, number, number, number];
+  mutable[0] = x;
+  mutable[1] = y;
+  mutable[2] = z;
+  mutable[3] = w;
+  return mutable;
+}
+
+function vec3ComponentsApproximatelyEqual(left: readonly number[] | undefined, x: number, y: number, z: number): boolean {
+  return Math.abs((left?.[0] ?? 0) - x) <= 1e-9
+    && Math.abs((left?.[1] ?? 0) - y) <= 1e-9
+    && Math.abs((left?.[2] ?? 0) - z) <= 1e-9;
+}
+
+function quatComponentsApproximatelyEqual(left: readonly number[] | undefined, x: number, y: number, z: number, w: number): boolean {
+  return vec3ComponentsApproximatelyEqual(left, x, y, z)
+    && Math.abs((left?.[3] ?? 1) - w) <= 1e-9;
 }
 
 function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string): IRapierRuntime {
@@ -597,7 +630,7 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
   rapierWorld.integrationParameters.numSolverIterations = 12;
   rapierWorld.maxCcdSubsteps = Math.max(1, ...world.entities.map((entity) => entity.components.RigidBody?.ccd?.enabled === true ? (entity.components.RigidBody.ccd.maxSubsteps ?? 1) : 1));
   const bodies = new Map<string, RAPIER.RigidBody>();
-  const colliders = new Map<number, { child?: string; entity: string }>();
+  const colliders = new Map<number, { child?: string; entity: string; layer?: string; mask?: string[] }>();
   const layerBits = layerBitsForWorld(world);
 
   for (const entity of world.entities) {
@@ -658,14 +691,19 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
         colliderDesc.setMass(mass / descriptors.length);
       }
       const liveCollider = rapierWorld.createCollider(colliderDesc, rapierBody);
-      colliders.set(liveCollider.handle, { ...(descriptor.child === undefined ? {} : { child: descriptor.child }), entity: entity.id });
+      colliders.set(liveCollider.handle, {
+        ...(descriptor.child === undefined ? {} : { child: descriptor.child }),
+        entity: entity.id,
+        ...(filter.layer === undefined ? {} : { layer: filter.layer }),
+        ...(filter.mask === undefined ? {} : { mask: [...filter.mask] }),
+      });
     }
     bodies.set(entity.id, rapierBody);
   }
 
   const joints = createPhysicsJointRuntime();
   reconcilePhysicsJoints(joints, world, rapierWorld, bodies);
-  return { bodies, colliders, contactImpulses: new Map(), destructionAssemblies: new Map(), eventQueue: new RAPIER.EventQueue(true), joints, physicsWorld: world, signature, world: rapierWorld };
+  return { bodies, colliders, contactImpulses: new Map(), destructionAssemblies: new Map(), eventQueue: new RAPIER.EventQueue(true), joints, physicsWorld: world, sceneQueriesReady: false, signature, world: rapierWorld };
 }
 
 function freeRapierRuntime(runtime: IRapierRuntime): void {
@@ -796,6 +834,9 @@ export function shapeCastLive(world: IWorldIr, request: IScriptPhysicsShapeCastR
     undefined,
     (collider: RAPIER.Collider) => queryColliderMatches(world, runtime, collider.handle, request),
   );
+  if (hit === null && !runtime.sceneQueriesReady) {
+    return shapeCastBeforeFirstStep(world, runtime, request, direction, shape);
+  }
   if (hit === null) return { hit: false };
   const owner = runtime.colliders.get(hit.collider.handle);
   if (owner === undefined) return { hit: false };
@@ -804,8 +845,43 @@ export function shapeCastLive(world: IWorldIr, request: IScriptPhysicsShapeCastR
     distance: roundNumber(hit.time_of_impact),
     entity: owner.entity,
     hit: true,
-    normal: mutableRoundedVec3([hit.normal2.x, hit.normal2.y, hit.normal2.z]),
-    point: mutableRoundedVec3(colliderLocalPointToWorld(hit.collider, hit.witness2)),
+    normal: mutableRoundedVec3(colliderLocalVectorToWorld(hit.collider, hit.normal1)),
+    point: mutableRoundedVec3(colliderLocalPointToWorld(hit.collider, hit.witness1)),
+  };
+}
+
+function shapeCastBeforeFirstStep(
+  world: IWorldIr,
+  runtime: IRapierRuntime,
+  request: IScriptPhysicsShapeCastRequest,
+  direction: Vec3,
+  shape: RAPIER.Shape,
+): IScriptPhysicsShapeCastResult {
+  let best: { collider: RAPIER.Collider; hit: RAPIER.ShapeCastHit } | undefined;
+  runtime.world.forEachCollider((collider: RAPIER.Collider) => {
+    if (!queryColliderMatches(world, runtime, collider.handle, request)) return;
+    const hit = collider.castShape(
+      { x: 0, y: 0, z: 0 },
+      shape,
+      rapierVector(request.origin),
+      { x: 0, y: 0, z: 0, w: 1 },
+      rapierVector(direction),
+      0,
+      request.maxDistance,
+      true,
+    );
+    if (hit !== null && (best === undefined || hit.time_of_impact < best.hit.time_of_impact)) best = { collider, hit };
+  });
+  if (best === undefined) return { hit: false };
+  const owner = runtime.colliders.get(best.collider.handle);
+  if (owner === undefined) return { hit: false };
+  return {
+    ...(owner.child === undefined ? {} : { child: owner.child }),
+    distance: roundNumber(best.hit.time_of_impact),
+    entity: owner.entity,
+    hit: true,
+    normal: mutableRoundedVec3(colliderLocalVectorToWorld(best.collider, best.hit.normal1)),
+    point: mutableRoundedVec3(colliderLocalPointToWorld(best.collider, best.hit.witness1)),
   };
 }
 
@@ -823,12 +899,16 @@ function retainedQueryShape(shape: IScriptPhysicsShapeCastRequest["shape"]): RAP
 
 function colliderLocalPointToWorld(collider: RAPIER.Collider, point: RAPIER.Vector): Vec3 {
   const translation = collider.translation();
+  const [x, y, z] = colliderLocalVectorToWorld(collider, point);
+  return [x + translation.x, y + translation.y, z + translation.z];
+}
+
+function colliderLocalVectorToWorld(collider: RAPIER.Collider, vector: RAPIER.Vector): Vec3 {
   const rotation = collider.rotation();
-  const [x, y, z] = rotateVectorByQuaternion(
-    [point.x, point.y, point.z],
+  return rotateVectorByQuaternion(
+    [vector.x, vector.y, vector.z],
     [rotation.x, rotation.y, rotation.z, rotation.w],
   );
-  return [x + translation.x, y + translation.y, z + translation.z];
 }
 
 function rotateVectorByQuaternion(
@@ -873,17 +953,15 @@ export function queryHitObservation(result: IScriptPhysicsRaycastResult | IScrip
   return { ...(result.child === undefined ? {} : { child: result.child }), distance: result.distance, entity: result.entity, normal: result.normal, point: result.point };
 }
 
-function queryColliderMatches(world: IWorldIr, runtime: IRapierRuntime, handle: number, request: { ignore?: string[]; layer?: string; layers?: string[]; mask?: string[] }): boolean {
+function queryColliderMatches(_world: IWorldIr, runtime: IRapierRuntime, handle: number, request: { ignore?: string[]; layer?: string; layers?: string[]; mask?: string[] }): boolean {
   const owner = runtime.colliders.get(handle);
   if (owner === undefined || request.ignore?.includes(owner.entity) === true) return false;
-  const entity = runtime.physicsWorld.entities.find((candidate) => candidate.id === owner.entity);
-  const collider = entity?.components.Collider;
-  const child = entity?.components.CompoundCollider?.children.find((candidate) => candidate.id === owner.child);
-  const layer = collider?.layer ?? child?.filter?.layer;
-  const mask = collider?.mask ?? child?.filter?.mask;
-  const requestedMask = new Set([...(request.mask ?? []), ...(request.layers ?? [])]);
-  if (requestedMask.size > 0 && (layer === undefined || !requestedMask.has(layer))) return false;
-  if (request.layer !== undefined && mask !== undefined && !mask.includes(request.layer)) return false;
+  const hasRequestedLayers = (request.mask?.length ?? 0) > 0 || (request.layers?.length ?? 0) > 0;
+  if (hasRequestedLayers && (
+    owner.layer === undefined
+    || !(request.mask?.includes(owner.layer) === true || request.layers?.includes(owner.layer) === true)
+  )) return false;
+  if (request.layer !== undefined && owner.mask !== undefined && !owner.mask.includes(request.layer)) return false;
   return true;
 }
 

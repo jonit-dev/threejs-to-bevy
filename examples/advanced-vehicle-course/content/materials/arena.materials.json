@@ -20,6 +20,14 @@
       "roughness": 0.38
     },
     {
+      "id": "mat.ice",
+      "color": "#9adcfb",
+      "emissive": "#38bdf8",
+      "emissiveIntensity": 0.12,
+      "metalness": 0.05,
+      "roughness": 0.18
+    },
+    {
       "id": "mat.goal",
       "color": "#facc15",
       "emissive": "#f97316",

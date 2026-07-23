@@ -6,7 +6,13 @@
     {
       "id": "countdown",
       "type": "text",
-      "text": "Ready",
+      "text": "RANGE ARMED",
+      "style": {
+        "color": "#ffffff",
+        "fontSize": 24,
+        "fontWeight": "bold",
+        "textAlign": "center"
+      },
       "layout": {
         "justify": "center",
         "align": "center",
@@ -18,7 +24,7 @@
   "bindings": [
     {
       "node": "countdown",
-      "resource": "GameState.countdown"
+      "resource": "DestructionState.phase"
     }
   ],
   "recipes": [

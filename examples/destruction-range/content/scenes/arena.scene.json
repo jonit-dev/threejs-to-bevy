@@ -6,15 +6,20 @@
     {
       "id": "camera.main",
       "components": {
-        "Camera": {
-          "kind": "perspective",
+    "Camera": {
+      "active": true,
+      "clear": {
+        "color": "#1b2838",
+        "mode": "color"
+      },
+      "kind": "perspective",
           "fovY": 50,
           "near": 0.1,
           "far": 100
         },
-        "Transform": {
-          "position": [
-            6,
+    "Transform": {
+      "position": [
+        6,
             4,
             9
           ],
@@ -24,11 +29,11 @@
             0.026454,
             0.953096
           ],
-          "scale": [
-            1,
-            1,
-            1
-          ]
+      "scale": [
+        1,
+        1,
+        1
+      ]
         }
       }
     },
@@ -63,10 +68,10 @@
     {
       "id": "ground",
       "components": {
-        "Transform": {
-          "position": [
-            0,
-            -0.25,
+    "Transform": {
+      "position": [
+        0,
+        -0.25,
             0
           ],
           "rotation": [
@@ -96,6 +101,23 @@
             "destructible",
             "projectile"
           ]
+        }
+      }
+    },
+    {
+      "id": "ground.visual",
+      "components": {
+        "Transform": {
+          "position": [
+            0,
+            -0.25,
+            0
+          ],
+          "scale": [
+            12,
+            0.5,
+            12
+          ]
         },
         "MeshRenderer": {
           "mesh": "mesh.ground",
@@ -107,6 +129,11 @@
     {
       "id": "wall",
       "components": {
+        "MeshRenderer": {
+          "material": "mat.wall",
+          "mesh": "mesh.wall",
+          "visible": false
+        },
         "Transform": {
           "position": [
             0,

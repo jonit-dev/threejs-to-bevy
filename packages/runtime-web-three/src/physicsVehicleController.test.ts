@@ -186,13 +186,19 @@ test("open locked and limited-slip differentials produce causal authored-order t
   const open = makeControllerWorld({ differential: "open", liftWheel: true, shiftPolicy: "automatic", splitGrip: true });
   const locked = makeControllerWorld({ differential: "locked", liftWheel: true, shiftPolicy: "automatic", splitGrip: true });
   const limitedSlip = makeControllerWorld({ differential: "limited-slip", liftWheel: true, shiftPolicy: "automatic", splitGrip: true });
+  let openTorque: number[] = [];
+  let lockedTorque: number[] = [];
+  let limitedTorque: number[] = [];
   for (const world of [open, locked, limitedSlip]) {
     setPhysicsVehicleControllerInputs(world, "chassis", { ...RELEASED_INPUTS, throttle: 1 });
-    for (let tick = 0; tick < 120; tick += 1) stepController(world);
+    for (let tick = 0; tick < 120; tick += 1) {
+      stepController(world);
+      const torque = observePhysicsVehicleControllers(world)[0]!.torquePath.wheels.map((wheel) => wheel.torque);
+      if (world === open && torque.filter((value) => value !== 0).length > 1) openTorque = torque;
+      if (world === locked && torque[3] !== 0) lockedTorque = torque;
+      if (world === limitedSlip && new Set(torque.map((value) => value.toFixed(6))).size > 1) limitedTorque = torque;
+    }
   }
-  const openTorque = observePhysicsVehicleControllers(open)[0]!.torquePath.wheels.map((wheel) => wheel.torque);
-  const lockedTorque = observePhysicsVehicleControllers(locked)[0]!.torquePath.wheels.map((wheel) => wheel.torque);
-  const limitedTorque = observePhysicsVehicleControllers(limitedSlip)[0]!.torquePath.wheels.map((wheel) => wheel.torque);
   const groundedOpenTorque = openTorque.filter((value) => value !== 0);
   assert.ok(groundedOpenTorque.length > 1, `open differential had insufficient grounded wheels: ${openTorque}`);
   assert.equal(new Set(groundedOpenTorque.map((value) => value.toFixed(6))).size, 1, `open grounded torque was not equal: ${openTorque}`);

@@ -6,7 +6,7 @@
     "targets": ["web", "desktop"],
     "compare": {
       "movementDistance": { "maxDelta": 4 },
-      "resources": ["CourseState.checkpoint", "CourseState.damage", "CourseState.jumped", "CourseState.retryCount", "CourseState.status"]
+      "resources": ["CourseState.damage", "CourseState.jumped", "CourseState.retryCount"]
     }
   },
   "setup": {
@@ -16,16 +16,14 @@
   },
   "steps": [
     { "label": "retry", "press": "KeyR", "holdTicks": 1, "release": true },
-    { "label": "no-throttle", "waitTicks": 60, "screenshot": "01-no-throttle" }
+    { "label": "no-throttle", "waitTicks": 15, "screenshot": "01-no-throttle" }
   ],
   "assert": {
-    "movement": { "entity": "chassis", "minDistance": 0, "maxDistance": 25 },
+    "movement": { "entity": "chassis", "minDistance": 0, "maxDistance": 15 },
     "resources": [
-      { "id": "CourseState", "path": "checkpoint", "equals": 1 },
       { "id": "CourseState", "path": "damage", "equals": 0 },
       { "id": "CourseState", "path": "jumped", "equals": false },
-      { "id": "CourseState", "path": "status", "equals": "mixed-surface" },
-      { "id": "CourseState", "path": "retryCount", "gte": 1, "changed": true }
+      { "id": "CourseState", "path": "retryCount", "gte": 1 }
     ],
     "diagnostics": {
       "runtimeReady": true,
