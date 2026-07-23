@@ -69,6 +69,7 @@ function trace(runtime: "bevy" | "web"): AdvancedPhysicsDestructionTrace {
     fixture: "advanced-physics-destruction",
     fixedDt: 1 / 120,
     impact: {
+      debug: { omittedPrimitives: 0, primitives: [], telemetry: { allocatedPieces: 2, bodies: { active: 2, sleeping: 0 }, contacts: 0, fixedDt: 1 / 120, queries: 0, rebuilds: 1, solverIterations: 12, tick: 2, timings: [] }, truncated: false },
       physical: { assemblyCollisionActive: false, pieces: structuredClone(pieces) },
       ticks: [
         { events: [{ assembly: "wall", bond: "bond.north", tick: 1, type: "damaged" }], tick: 1 },

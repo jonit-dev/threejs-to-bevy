@@ -152,6 +152,10 @@ export function collectBrokenPhysicsJoints(runtime: IPhysicsJointRuntime): IPhys
   return events.sort((left, right) => left.entity.localeCompare(right.entity));
 }
 
+export function flushBrokenPhysicsJoints(runtime: IPhysicsJointRuntime, world: RAPIER.World): void {
+  flushPendingRemovals(runtime, world);
+}
+
 export function observePhysicsJointLoads(runtime: IPhysicsJointRuntime): IPhysicsJointLoadObservation[] {
   return [...runtime.observations.values()]
     .sort((left, right) => left.entity.localeCompare(right.entity));

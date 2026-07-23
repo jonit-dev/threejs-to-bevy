@@ -73,7 +73,7 @@ fn retained_debug_should_expose_stable_normalized_destruction_categories_without
             .iter()
             .any(|primitive| primitive.id.starts_with("piece:wall:"))
     );
-    assert_eq!(debug.summary.telemetry.allocated_pieces, 4);
+    assert_eq!(debug.summary.telemetry.allocated_pieces, 2);
     assert_eq!(debug.summary.telemetry.tick, 1);
     assert!(debug.summary.telemetry.bodies.active > 0);
     dispose_native_physics_runtime(&runtime);
@@ -81,7 +81,7 @@ fn retained_debug_should_expose_stable_normalized_destruction_categories_without
 
 #[test]
 fn debug_serialization_should_cap_primitives_timings_and_bytes_deterministically() {
-    let primitives = (0..700)
+    let primitives: Vec<PhysicsDebugPrimitive> = (0..700)
         .map(|index| PhysicsDebugPrimitive {
             category: "force".to_owned(),
             entity: Some("body".to_owned()),
@@ -100,23 +100,28 @@ fn debug_serialization_should_cap_primitives_timings_and_bytes_deterministically
             system: format!("system-{index:03}"),
         })
         .collect();
-    let snapshot = PhysicsDebugSnapshot::bounded(
-        primitives,
-        PhysicsDebugTelemetry {
-            allocated_pieces: 0,
-            bodies: PhysicsDebugBodies {
-                active: 1,
-                sleeping: 0,
-            },
-            contacts: 0,
-            fixed_dt: 1.0 / 60.0,
-            queries: 0,
-            rebuilds: 1,
-            solver_iterations: 12,
-            tick: 1,
-            timings,
+    let telemetry = PhysicsDebugTelemetry {
+        allocated_pieces: 0,
+        bodies: PhysicsDebugBodies {
+            active: 1,
+            sleeping: 0,
         },
+        contacts: 0,
+        fixed_dt: 1.0 / 60.0,
+        queries: 0,
+        rebuilds: 1,
+        solver_iterations: 12,
+        tick: 1,
+        timings,
+    };
+    let deep = PhysicsDebugSnapshot::bounded_with_limits(
+        primitives.clone(),
+        telemetry.clone(),
+        512,
+        16_384,
+        256,
     );
+    let snapshot = PhysicsDebugSnapshot::bounded(primitives, telemetry);
 
     assert_eq!(snapshot.artifact.primitives.len(), 700);
     assert_eq!(snapshot.summary.primitives.len(), 128);
@@ -124,6 +129,8 @@ fn debug_serialization_should_cap_primitives_timings_and_bytes_deterministically
     assert_eq!(snapshot.summary.omitted_primitives, 572);
     assert!(snapshot.summary.truncated);
     assert!(!snapshot.artifact.truncated);
+    assert_eq!(deep.summary.primitives.len(), 512);
+    assert_eq!(deep.artifact.telemetry.timings.len(), 80);
     let first = snapshot
         .bounded_json(2048)
         .expect("bounded JSON should serialize");
@@ -136,26 +143,32 @@ fn debug_serialization_should_cap_primitives_timings_and_bytes_deterministically
 
 #[test]
 fn native_debug_contract_should_track_the_shared_ir_owner() {
-    let owner = include_str!(concat!(
+    let owner: serde_json::Value = serde_json::from_str(include_str!(concat!(
         env!("CARGO_MANIFEST_DIR"),
-        "/../../../packages/ir/src/physicsDebug.ts"
-    ));
+        "/../../../packages/ir/src/physicsDebugRegistry.json"
+    )))
+    .expect("shared physics debug registry should be valid JSON");
 
-    assert!(owner.contains(&format!(
-        "PHYSICS_DEBUG_SCHEMA = \"{PHYSICS_DEBUG_SCHEMA}\""
-    )));
-    assert!(owner.contains(&format!(
-        "PHYSICS_DEBUG_VERSION = \"{PHYSICS_DEBUG_VERSION}\""
-    )));
-    for category in PHYSICS_DEBUG_CATEGORIES {
-        assert!(owner.contains(&format!("  \"{category}\",")));
-    }
-    for kind in PHYSICS_DEBUG_PRIMITIVE_KINDS {
-        assert!(owner.contains(&format!("\"{kind}\"")));
-    }
-    assert_eq!(MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES, 16_384);
-    assert!(owner.contains("artifactPrimitives: 16_384"));
-    assert_eq!(MAX_PHYSICS_DEBUG_SUMMARY_PRIMITIVES, 512);
-    assert!(owner.contains("summaryPrimitives: 512"));
-    assert!(owner.contains(&format!("timings: {MAX_PHYSICS_DEBUG_TIMINGS}")));
+    assert_eq!(owner["schema"], PHYSICS_DEBUG_SCHEMA);
+    assert_eq!(owner["version"], PHYSICS_DEBUG_VERSION);
+    assert_eq!(
+        owner["categories"],
+        serde_json::json!(PHYSICS_DEBUG_CATEGORIES)
+    );
+    assert_eq!(
+        owner["primitiveKinds"],
+        serde_json::json!(PHYSICS_DEBUG_PRIMITIVE_KINDS)
+    );
+    assert_eq!(
+        owner["limits"]["artifactPrimitives"],
+        MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES
+    );
+    assert_eq!(
+        owner["limits"]["summaryPrimitives"],
+        MAX_PHYSICS_DEBUG_SUMMARY_PRIMITIVES
+    );
+    assert_eq!(owner["limits"]["timings"], MAX_PHYSICS_DEBUG_TIMINGS);
+    assert_eq!(owner["defaults"]["artifactPrimitives"], 4096);
+    assert_eq!(owner["defaults"]["summaryPrimitives"], 128);
+    assert_eq!(owner["defaults"]["timings"], 64);
 }

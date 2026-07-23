@@ -1,25 +1,32 @@
-use std::{collections::BTreeSet, env, fs, path::PathBuf, process};
+use std::{
+    collections::BTreeSet,
+    env, fs,
+    path::{Path, PathBuf},
+    process,
+};
 
 use rapier3d::glamx::{Quat as RapierQuat, Vec3 as RapierVec3};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use threenative_loader::{SystemIr, SystemQueryIr, load_bundle};
 use threenative_runtime::{
     character::{CharacterTraceAxis, CharacterTraceObservation, trace_character_controllers},
     physics::{
         PhysicsJointObservation, RigidBodyTraceObservation, dispose_native_physics_runtime,
-        ensure_native_physics_runtime, inspect_cached_physics_destruction,
-        inspect_cached_physics_joint, inspect_cached_physics_joint_creation_count,
-        inspect_cached_physics_joints, inspect_cached_physics_world_generation,
-        native_physics_runtime_id, queue_cached_physics_destruction_damage,
-        set_cached_physics_destruction_scene_budget, step_bundle_physics_with_script_poses,
-        trace_physics_joints, trace_rigid_body_primitives,
+        ensure_native_physics_runtime, inspect_cached_physics_debug,
+        inspect_cached_physics_destruction, inspect_cached_physics_joint,
+        inspect_cached_physics_joint_creation_count, inspect_cached_physics_joints,
+        inspect_cached_physics_world_generation, native_physics_runtime_id,
+        queue_cached_physics_destruction_damage, set_cached_physics_destruction_scene_budget,
+        step_bundle_physics_with_script_poses, trace_physics_joints, trace_rigid_body_primitives,
     },
     physics_aerodynamics::{
         AerodynamicInputs, AerodynamicObservation, AerodynamicTraceSample,
         dispose_physics_aerodynamics, observe_physics_aerodynamics, set_physics_aerodynamic_inputs,
         trace_physics_aerodynamics,
     },
+    physics_debug::PhysicsDebugDepth,
     physics_destruction::{DestructionCause, DestructionDamage, PieceLifecycle},
     physics_joints::PhysicsJointLoadObservation,
     physics_sensors::{PhysicsSensorEvent, trace_physics_sensors},
@@ -324,6 +331,7 @@ struct AdvancedDestructionTraceReport {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct AdvancedDestructionImpactTrace {
+    debug: PhysicsDebugDepth,
     physical: AdvancedDestructionPhysicalTrace,
     ticks: Vec<AdvancedDestructionTickTrace>,
 }
@@ -603,13 +611,9 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
                 bundle_hash.ok_or("missing aerodynamics bundle hash")?,
             )?)
         }
-        "advanced-physics-destruction" => {
-            PhysicsSelfVerificationTrace::AdvancedDestruction(trace_advanced_physics_destruction(
-                &bundle_path,
-                source_hash.ok_or("missing destruction source hash")?,
-                bundle_hash.ok_or("missing destruction bundle hash")?,
-            )?)
-        }
+        "advanced-physics-destruction" => PhysicsSelfVerificationTrace::AdvancedDestruction(
+            trace_advanced_physics_destruction(&bundle_path)?,
+        ),
         "advanced-physics-joints" => {
             PhysicsSelfVerificationTrace::AdvancedJoints(trace_advanced_physics_joints(
                 &bundle_path,
@@ -714,8 +718,6 @@ fn run() -> Result<(), Box<dyn std::error::Error>> {
 
 fn trace_advanced_physics_destruction(
     bundle_path: &str,
-    source_hash: String,
-    bundle_hash: String,
 ) -> Result<AdvancedDestructionTraceReport, Box<dyn std::error::Error>> {
     let scenario_path = PathBuf::from(bundle_path).join("destruction.scenarios.json");
     let scenarios: AdvancedDestructionScenarioManifest =
@@ -728,6 +730,8 @@ fn trace_advanced_physics_destruction(
         return Err("invalid advanced physics destruction scenario manifest".into());
     }
     let _seed = scenarios.seed;
+    let source_hash = sha256_file(&PathBuf::from(bundle_path).join(&scenarios.manifest))?;
+    let bundle_hash = sha256_directory(Path::new(bundle_path))?;
     let impact = trace_advanced_destruction_impact(bundle_path, &scenarios)?;
     let regional = trace_advanced_destruction_regional(bundle_path, &scenarios)?;
     let budget = trace_advanced_destruction_budget(bundle_path, &scenarios)?;
@@ -743,6 +747,40 @@ fn trace_advanced_physics_destruction(
         source_hash,
         version: "0.1.0",
     })
+}
+
+fn sha256_file(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let mut hash = Sha256::new();
+    hash.update(fs::read(path)?);
+    Ok(format!("sha256-{:x}", hash.finalize()))
+}
+
+fn sha256_directory(path: &Path) -> Result<String, Box<dyn std::error::Error>> {
+    let mut files = Vec::new();
+    collect_files(path, &mut files)?;
+    files.sort();
+    let mut hash = Sha256::new();
+    for file in files {
+        let relative = file
+            .strip_prefix(path)?
+            .to_string_lossy()
+            .replace('\\', "/");
+        hash.update(relative.as_bytes());
+        hash.update(fs::read(file)?);
+    }
+    Ok(format!("sha256-{:x}", hash.finalize()))
+}
+
+fn collect_files(path: &Path, files: &mut Vec<PathBuf>) -> Result<(), Box<dyn std::error::Error>> {
+    for entry in fs::read_dir(path)? {
+        let child = entry?.path();
+        if child.is_dir() {
+            collect_files(&child, files)?;
+        } else {
+            files.push(child);
+        }
+    }
+    Ok(())
 }
 
 fn trace_advanced_destruction_impact(
@@ -775,8 +813,12 @@ fn trace_advanced_destruction_impact(
         });
     }
     let physical = advanced_destruction_physical(&runtime, &scenarios.assembly)?;
+    let debug = inspect_cached_physics_debug(&bundle, &runtime)
+        .ok_or("destruction debug snapshot is missing")?
+        .artifact;
     dispose_native_physics_runtime(&runtime);
     Ok(AdvancedDestructionImpactTrace {
+        debug,
         physical,
         ticks: trace_ticks,
     })
@@ -1048,13 +1090,13 @@ fn trace_advanced_joints_load_ramp(
     let mut events = Vec::new();
     let mut samples = Vec::new();
     for sample in &scenarios.load_ramp.samples {
-        queue_joint_force(
-            &mut bundle,
-            &scenarios.load_ramp.joint,
-            scenarios.load_ramp.force_point,
-            sample.force,
-        );
         for _ in 0..sample.steps {
+            queue_joint_force(
+                &mut bundle,
+                &scenarios.load_ramp.joint,
+                scenarios.load_ramp.force_point,
+                sample.force,
+            );
             tick += 1;
             step_bundle_physics_with_script_poses(&mut bundle, scenarios.fixed_dt, &runtime);
             if inspect_cached_physics_joint(&runtime, &scenarios.load_ramp.joint)

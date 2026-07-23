@@ -1,4 +1,4 @@
-import { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type IWorldIr, type PhysicsDebugCategory, type Vec3 } from "@threenative/ir";
+import { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_DEFAULTS, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type IWorldIr, type PhysicsDebugCategory, type Vec3 } from "@threenative/ir";
 
 export { PHYSICS_DEBUG_CATEGORIES, PHYSICS_DEBUG_LIMITS, PHYSICS_DEBUG_PRIMITIVE_KINDS, PHYSICS_DEBUG_SCHEMA, PHYSICS_DEBUG_VERSION, type IPhysicsDebugCore, type IPhysicsDebugPrimitive, type IPhysicsDebugSnapshot, type IPhysicsDebugTelemetry, type PhysicsDebugCategory, type PhysicsDebugPrimitiveKind } from "@threenative/ir";
 
@@ -32,8 +32,8 @@ export function collectPhysicsDebugSnapshot(
 ): IPhysicsDebugSnapshot {
   const enabled = new Set(options.categories ?? PHYSICS_DEBUG_CATEGORIES);
   const all = physicsDebugPrimitives(world, options.destructionRuntime).filter((primitive) => enabled.has(primitive.category)).sort((left, right) => left.id.localeCompare(right.id));
-  const summaryCap = boundedCap(options.maxSummaryPrimitives, 128, PHYSICS_DEBUG_LIMITS.summaryPrimitives);
-  const artifactCap = boundedCap(options.maxArtifactPrimitives, 4096, PHYSICS_DEBUG_LIMITS.artifactPrimitives);
+  const summaryCap = boundedCap(options.maxSummaryPrimitives, PHYSICS_DEBUG_DEFAULTS.summaryPrimitives, PHYSICS_DEBUG_LIMITS.summaryPrimitives);
+  const artifactCap = boundedCap(options.maxArtifactPrimitives, PHYSICS_DEBUG_DEFAULTS.artifactPrimitives, PHYSICS_DEBUG_LIMITS.artifactPrimitives);
   const telemetry = physicsTelemetry(world, options);
   return {
     artifact: debugCore(all, artifactCap, telemetry),
@@ -107,9 +107,14 @@ function physicsDebugPrimitives(world: IWorldIr, destructionRuntime: IPhysicsDes
   }
   if (destructionRuntime !== undefined) {
     const destruction = observePhysicsDestruction(destructionRuntime);
-    for (const bond of destruction.bonds) primitives.push({ category: "bond", entity: bond.assembly, id: `bond:${bond.assembly}:${bond.id}`, kind: "line", position: rounded(bodies.get(bond.assembly)?.position ?? [0, 0, 0]), value: bond.broken ? 0 : finite(bond.health) });
-    for (const budget of destruction.budgets) primitives.push({ category: "budget", entity: budget.assembly, id: `budget:${budget.assembly}`, kind: "point", position: rounded(bodies.get(budget.assembly)?.position ?? [0, 0, 0]), value: finite(budget.activePieces / Math.max(1, budget.maximumActivePieces)) });
+    const physicalPieces = new Map(destruction.assemblies.flatMap((assembly) => observePhysicsDestructionBodies(world, assembly.id).pieces.map((piece) => [piece.id, piece.position] as const)));
     const semanticPieces = new Map(destruction.pieces.map((piece) => [`${piece.assembly}/${piece.id}`, piece]));
+    for (const bond of destruction.bonds) {
+      const origin = bodies.get(bond.assembly)?.position ?? world.entities.find((entity) => entity.id === bond.assembly)?.components.Transform?.position ?? [0, 0, 0];
+      const endpoint = (piece: string): Vec3 => physicalPieces.get(`${bond.assembly}/${piece}`) ?? add(origin, semanticPieces.get(`${bond.assembly}/${piece}`)?.localPosition ?? [0, 0, 0]);
+      primitives.push({ category: "bond", entity: bond.assembly, from: rounded(endpoint(bond.pieces[0])), id: `bond:${bond.assembly}:${bond.id}`, kind: "line", to: rounded(endpoint(bond.pieces[1])), value: bond.broken ? 0 : finite(bond.health) });
+    }
+    for (const budget of destruction.budgets) primitives.push({ category: "budget", entity: budget.assembly, id: `budget:${budget.assembly}`, kind: "point", position: rounded(bodies.get(budget.assembly)?.position ?? [0, 0, 0]), value: finite(budget.activePieces / Math.max(1, budget.maximumActivePieces)) });
     for (const assembly of destruction.assemblies) {
       for (const physical of observePhysicsDestructionBodies(world, assembly.id).pieces) {
         const piece = semanticPieces.get(physical.id);
@@ -132,7 +137,7 @@ function physicsTelemetry(world: IWorldIr, options: { destructionRuntime?: IPhys
     .map((timing) => ({ milliseconds: finite(timing.milliseconds), system: timing.system.slice(0, 80) }))
     .filter((timing) => timing.system.length > 0)
     .sort((left, right) => left.system.localeCompare(right.system))
-    .slice(0, boundedCap(options.maxTimings, 64, PHYSICS_DEBUG_LIMITS.timings));
+    .slice(0, boundedCap(options.maxTimings, PHYSICS_DEBUG_DEFAULTS.timings, PHYSICS_DEBUG_LIMITS.timings));
   return {
     allocatedPieces: destruction?.budgets.reduce((sum, budget) => sum + budget.activePieces, 0) ?? 0,
     bodies: { active: stats.activeBodies, sleeping: stats.sleepingBodies },

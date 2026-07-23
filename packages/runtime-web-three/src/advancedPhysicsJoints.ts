@@ -77,10 +77,10 @@ function traceLoadRamp(world: IWorldIr, scenarios: IAdvancedPhysicsJointScenario
   const initialPose = relativePose(world, scenarios.loadRamp.joint);
   preparePhysicsRuntime(world, undefined, [0, 0, 0]);
   for (const sample of scenarios.loadRamp.samples) {
-    if (!applyLivePhysicsAtPoint(world, scenarios.loadRamp.joint, sample.force, scenarios.loadRamp.forcePoint, "force")) {
-      throw new Error(`Advanced physics joint trace could not apply load to '${scenarios.loadRamp.joint}'.`);
-    }
     for (let step = 0; step < sample.steps; step += 1) {
+      if (!applyLivePhysicsAtPoint(world, scenarios.loadRamp.joint, sample.force, scenarios.loadRamp.forcePoint, "force")) {
+        throw new Error(`Advanced physics joint trace could not apply load to '${scenarios.loadRamp.joint}'.`);
+      }
       tick += 1;
       stepPhysics(world, scenarios.fixedDt, undefined, { gravity: [0, 0, 0] });
       const observation = observePhysicsJointLoads(world).find((candidate) => candidate.entity === scenarios.loadRamp.joint);

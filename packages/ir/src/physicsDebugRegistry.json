@@ -1,0 +1,30 @@
+{
+  "schema": "threenative.physics-debug-snapshot",
+  "version": "0.1.0",
+  "categories": [
+    "aero",
+    "bond",
+    "budget",
+    "center-of-mass",
+    "collider",
+    "contact",
+    "force",
+    "joint-load",
+    "piece",
+    "sleep",
+    "slip",
+    "suspension",
+    "wheel"
+  ],
+  "primitiveKinds": ["box", "line", "point", "sphere", "vector"],
+  "defaults": {
+    "artifactPrimitives": 4096,
+    "summaryPrimitives": 128,
+    "timings": 64
+  },
+  "limits": {
+    "artifactPrimitives": 16384,
+    "summaryPrimitives": 512,
+    "timings": 256
+  }
+}

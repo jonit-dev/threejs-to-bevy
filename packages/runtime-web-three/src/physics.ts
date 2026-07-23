@@ -1,7 +1,7 @@
 import RAPIER from "@dimforge/rapier3d-compat";
 
 import type { IColliderComponent, ICompoundColliderComponent, ICompoundColliderShape, IEnvironmentSceneIr, IFracturePiece, IPhysicsBodyObservation, IPhysicsQueryHitObservation, IScriptPhysicsOverlapRequest, IScriptPhysicsOverlapResult, IScriptPhysicsRaycastRequest, IScriptPhysicsRaycastResult, IScriptPhysicsShapeCastRequest, IScriptPhysicsShapeCastResult, IWorldEntity, IWorldIr, Vec3 } from "@threenative/ir";
-import { beginPhysicsJointTick, collectBrokenPhysicsJoints, createPhysicsJointRuntime, observePhysicsJointLoads as observeJointLoads, preparePhysicsJointStep, reconcilePhysicsJoints, recordPhysicsJointCommandLoad, type IPhysicsJointBreakEvent, type IPhysicsJointLoadObservation, type IPhysicsJointRuntime } from "./physicsJoints.js";
+import { beginPhysicsJointTick, collectBrokenPhysicsJoints, createPhysicsJointRuntime, flushBrokenPhysicsJoints, observePhysicsJointLoads as observeJointLoads, preparePhysicsJointStep, reconcilePhysicsJoints, recordPhysicsJointCommandLoad, type IPhysicsJointBreakEvent, type IPhysicsJointLoadObservation, type IPhysicsJointRuntime } from "./physicsJoints.js";
 import type { IRuntimeWriteLedger } from "./systems/writeAudit.js";
 
 export interface IPhysicsEventPayload {
@@ -252,7 +252,7 @@ export function observePhysicsTelemetryStats(world: IWorldIr): {
     physicsMilliseconds: finiteNonnegative(lastPhysicsStepMilliseconds.get(world)),
     queries: Math.max(0, Math.floor(lastPhysicsQueries.get(world) ?? pendingPhysicsQueries.get(world) ?? 0)),
     sleepingBodies: bodies.filter((body) => body.isSleeping()).length,
-    solverIterations: Math.max(1, ...world.entities.map((entity) => entity.components.RigidBody?.solverIterations ?? 1)),
+    solverIterations: runtime?.world.integrationParameters.numSolverIterations ?? 0,
   };
 }
 
@@ -304,6 +304,7 @@ export function syncPhysicsDestructionBodies(
     };
     runtime.destructionAssemblies.set(assembly, state);
   }
+  if (!state.retired) refreshDestructionAssemblySnapshot(runtime, assembly, state);
   const participating = pieces.filter(({ lifecycle }) => lifecycle !== "bound");
   if (participating.length === 0) return true;
   disableDestructionAssemblyCollision(runtime, assembly, state);
@@ -328,6 +329,20 @@ export function syncPhysicsDestructionBodies(
   }
   retireDestructionAssembly(runtime, assembly, state);
   return true;
+}
+
+function refreshDestructionAssemblySnapshot(runtime: IRapierRuntime, assembly: string, state: IDestructionAssemblyPhysicsState): void {
+  const body = runtime.bodies.get(assembly);
+  if (body === undefined) return;
+  const position = body.translation();
+  const rotation = body.rotation();
+  const linearVelocity = body.linvel();
+  const angularVelocity = body.angvel();
+  state.position = [position.x, position.y, position.z];
+  state.rotation = [rotation.x, rotation.y, rotation.z, rotation.w];
+  state.linearVelocity = [linearVelocity.x, linearVelocity.y, linearVelocity.z];
+  state.angularVelocity = [angularVelocity.x, angularVelocity.y, angularVelocity.z];
+  state.mass = body.mass();
 }
 
 export function destructionPieceBodyId(assembly: string, piece: string): string { return `${assembly}/${piece}`; }
@@ -524,7 +539,9 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
       const current = runtime.contactImpulses.get(key);
       runtime.contactImpulses.set(key, { handles, impulse: (current?.impulse ?? 0) + event.totalForceMagnitude() * fixedDelta / substeps });
     });
-    jointBreaks.push(...collectBrokenPhysicsJoints(runtime.joints));
+    const broken = collectBrokenPhysicsJoints(runtime.joints);
+    jointBreaks.push(...broken);
+    if (broken.length > 0) flushBrokenPhysicsJoints(runtime.joints, rapierWorld);
   }
 
   for (const entity of world.entities) {
@@ -555,6 +572,7 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
 
 function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string): IRapierRuntime {
   const rapierWorld = new RAPIER.World({ x: gravity[0], y: gravity[1], z: gravity[2] });
+  rapierWorld.integrationParameters.numSolverIterations = 12;
   rapierWorld.maxCcdSubsteps = Math.max(1, ...world.entities.map((entity) => entity.components.RigidBody?.ccd?.enabled === true ? (entity.components.RigidBody.ccd.maxSubsteps ?? 1) : 1));
   const bodies = new Map<string, RAPIER.RigidBody>();
   const colliders = new Map<number, { child?: string; entity: string }>();
@@ -894,7 +912,8 @@ function layerBitsForWorld(world: IWorldIr): Map<string, number> {
       }
     }
   }
-  return new Map([...names].sort().slice(0, 16).map((name, index) => [name, 1 << index]));
+  if (names.size > 16) throw new Error(`TN_PHYSICS_LAYER_CAPACITY_EXCEEDED: World declares ${names.size} physics layers; use at most 16 unique Collider and CompoundCollider filter layers.`);
+  return new Map([...names].sort().map((name, index) => [name, 1 << index]));
 }
 
 function rapierCollisionGroups(collider: IColliderComponent, layerBits: ReadonlyMap<string, number>): number {

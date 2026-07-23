@@ -132,6 +132,35 @@ test("piece activation should replace the intact body in retained Rapier without
   disposePhysicsRuntime(world);
 });
 
+test("piece activation should inherit the live assembly pose and velocity instead of its tick-zero snapshot", async () => {
+  await initializePhysicsRuntime();
+  const runtime = createPhysicsDestructionRuntime();
+  const world: IWorldIr = {
+    entities: [{
+      components: {
+        Collider: { kind: "box", size: [2, 1, 1] },
+        RigidBody: { gravityScale: 0, kind: "dynamic", mass: 10, velocity: [2, 0, 0] },
+        Transform: { position: [0, 2, 0] },
+      },
+      id: "moving-wall",
+    }],
+    schema: "threenative.world",
+    version: "0.1.0",
+  };
+  registerPhysicsDestructible(runtime, { entity: "moving-wall", fractureManifest: "fractures/wall.two.json" }, twoPieceManifest());
+  preparePhysicsRuntime(world, undefined, [0, 0, 0]);
+  stepPhysicsDestruction(runtime, world, 0, 1 / 60);
+  stepPhysics(world, 0.5, undefined, { gravity: [0, 0, 0] });
+  queuePhysicsDestructionDamage(runtime, { amount: 100, assembly: "moving-wall", bond: "bond.main", cause: { kind: "script" }, tick: 1 });
+
+  stepPhysicsDestruction(runtime, world, 1, 1 / 60);
+
+  const pieces = observePhysicsDestructionBodies(world, "moving-wall").pieces;
+  assert.ok(pieces.every((piece) => piece.position[0] > 0.4), JSON.stringify(pieces));
+  assert.ok(Math.abs(pieces.reduce((sum, piece) => sum + piece.mass * piece.velocity[0], 0) - 20) < 0.000001);
+  disposePhysicsRuntime(world);
+});
+
 test("regional activation should retain unrelated bound pieces as stable fixed bodies", async () => {
   await initializePhysicsRuntime();
   const runtime = createPhysicsDestructionRuntime();

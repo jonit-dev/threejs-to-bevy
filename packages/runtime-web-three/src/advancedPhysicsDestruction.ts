@@ -1,7 +1,12 @@
-import type { IFractureManifest, IWorldIr, Vec3 } from "@threenative/ir";
+import { createHash } from "node:crypto";
+import { readFile, readdir } from "node:fs/promises";
+import { relative, resolve } from "node:path";
+
+import type { IFractureManifest, IPhysicsDebugCore, IWorldIr, Vec3 } from "@threenative/ir";
 
 import { disposePhysicsRuntime, initializePhysicsRuntime, observePhysicsDestructionBodies, preparePhysicsRuntime, type IPhysicsDestructionBodyObservation } from "./physics.js";
 import { createPhysicsDestructionRuntime, observePhysicsDestruction, queuePhysicsDestructionDamage, registerPhysicsDestructible, stepPhysicsDestruction, type IPhysicsDestructionCause, type IPhysicsDestructionDamage, type IPhysicsDestructionEvent } from "./physicsDestruction.js";
+import { collectPhysicsDebugCore } from "./physicsDebug.js";
 
 interface IAuthoredDestructionDamage {
   amount?: number;
@@ -40,7 +45,7 @@ export interface IAdvancedPhysicsDestructionTrace {
   bundleHash: string;
   fixture: "advanced-physics-destruction";
   fixedDt: number;
-  impact: { physical: IDestructionPhysicalTrace; ticks: Array<{ events: IPhysicsDestructionEvent[]; tick: number }> };
+  impact: { debug: IPhysicsDebugCore; physical: IDestructionPhysicalTrace; ticks: Array<{ events: IPhysicsDestructionEvent[]; tick: number }> };
   regional: { brokenBonds: string[]; inactivePieces: string[]; physical: IDestructionPhysicalTrace };
   runtime: "web";
   schema: "threenative.advanced-physics-destruction-trace";
@@ -48,32 +53,30 @@ export interface IAdvancedPhysicsDestructionTrace {
   version: "0.1.0";
 }
 
-export async function traceAdvancedPhysicsDestruction(input: {
-  bundleHash: string;
-  expected: unknown;
-  fixtureDir: string;
-  manifest: IFractureManifest;
-  scenarios: IAdvancedPhysicsDestructionScenarios;
-  sourceHash: string;
-  world: IWorldIr;
-}): Promise<IAdvancedPhysicsDestructionTrace> {
+export async function traceAdvancedPhysicsDestruction(input: { fixtureDir: string }): Promise<IAdvancedPhysicsDestructionTrace> {
   await initializePhysicsRuntime();
-  void input.expected;
-  void input.fixtureDir;
-  assertCanonicalInputs(input);
-  const impact = traceImpact(structuredClone(input.world), input.manifest, input.scenarios);
-  const regional = traceRegional(structuredClone(input.world), input.manifest, input.scenarios);
-  const budget = traceBudget(structuredClone(input.world), input.manifest, input.scenarios);
+  const [worldBytes, scenarioBytes] = await Promise.all([
+    readFile(resolve(input.fixtureDir, "world.ir.json")),
+    readFile(resolve(input.fixtureDir, "destruction.scenarios.json")),
+  ]);
+  const world = JSON.parse(worldBytes.toString("utf8")) as IWorldIr;
+  const scenarios = JSON.parse(scenarioBytes.toString("utf8")) as IAdvancedPhysicsDestructionScenarios;
+  const manifestBytes = await readFile(resolve(input.fixtureDir, scenarios.manifest));
+  const manifest = JSON.parse(manifestBytes.toString("utf8")) as IFractureManifest;
+  assertCanonicalInputs({ manifest, scenarios });
+  const impact = traceImpact(structuredClone(world), manifest, scenarios);
+  const regional = traceRegional(structuredClone(world), manifest, scenarios);
+  const budget = traceBudget(structuredClone(world), manifest, scenarios);
   return {
     budget,
-    bundleHash: input.bundleHash,
+    bundleHash: await hashDirectory(input.fixtureDir),
     fixture: "advanced-physics-destruction",
-    fixedDt: input.scenarios.fixedDt,
+    fixedDt: scenarios.fixedDt,
     impact,
     regional,
     runtime: "web",
     schema: "threenative.advanced-physics-destruction-trace",
-    sourceHash: input.sourceHash,
+    sourceHash: sha256(manifestBytes),
     version: "0.1.0",
   };
 }
@@ -85,8 +88,9 @@ function traceImpact(world: IWorldIr, manifest: IFractureManifest, scenarios: IA
     return { events: stepPhysicsDestruction(runtime, world, tick, scenarios.fixedDt), tick };
   });
   const physical = physicalTrace(observePhysicsDestructionBodies(world, scenarios.assembly), scenarios.assembly);
+  const debug = collectPhysicsDebugCore(world, { destructionRuntime: runtime, fixedDt: scenarios.fixedDt, maxPrimitives: 16_384, maxTimings: 256, tick: Math.max(...ticks.map((sample) => sample.tick)) });
   disposePhysicsRuntime(world);
-  return { physical, ticks };
+  return { debug, physical, ticks };
 }
 
 function traceRegional(world: IWorldIr, manifest: IFractureManifest, scenarios: IAdvancedPhysicsDestructionScenarios): IAdvancedPhysicsDestructionTrace["regional"] {
@@ -147,3 +151,21 @@ function assertCanonicalInputs(input: { manifest: IFractureManifest; scenarios: 
 
 function round(value: number): number { return Number(value.toFixed(6)); }
 function roundVec3(value: Vec3): Vec3 { return [round(value[0]), round(value[1]), round(value[2])]; }
+function sha256(value: Uint8Array): string { return `sha256-${createHash("sha256").update(value).digest("hex")}`; }
+async function hashDirectory(path: string): Promise<string> {
+  const hash = createHash("sha256");
+  for (const file of await listFiles(path)) {
+    hash.update(relative(path, file).replaceAll("\\", "/"));
+    hash.update(await readFile(file));
+  }
+  return `sha256-${hash.digest("hex")}`;
+}
+async function listFiles(path: string): Promise<string[]> {
+  const files: string[] = [];
+  for (const entry of await readdir(path, { withFileTypes: true })) {
+    const child = resolve(path, entry.name);
+    if (entry.isDirectory()) files.push(...await listFiles(child));
+    else files.push(child);
+  }
+  return files.sort();
+}

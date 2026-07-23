@@ -143,8 +143,8 @@ pub enum CleanupPolicy {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ImpactFilter {
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub layers: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub layers: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub min_impulse: Option<f32>,
 }
@@ -276,6 +276,7 @@ pub(crate) struct DestructionBondDebugObservation {
     pub bond: String,
     pub broken: bool,
     pub from: [f32; 3],
+    pub health: f32,
     pub to: [f32; 3],
 }
 
@@ -318,6 +319,14 @@ pub enum DestructionEvent {
         piece: String,
         tick: u64,
     },
+    PieceLifecycleChanged {
+        assembly: String,
+        cause: DestructionCause,
+        lifecycle: PieceLifecycle,
+        piece: String,
+        policy: OverflowPolicy,
+        tick: u64,
+    },
     AssemblyBroken {
         assembly: String,
         cause: DestructionCause,
@@ -338,6 +347,7 @@ impl DestructionEvent {
             Self::Damaged { .. } => "damaged",
             Self::BondBroken { .. } => "bondBroken",
             Self::PieceActivated { .. } => "pieceActivated",
+            Self::PieceLifecycleChanged { .. } => "pieceLifecycleChanged",
             Self::AssemblyBroken { .. } => "assemblyBroken",
             Self::BudgetExceeded { .. } => "budgetExceeded",
         }
@@ -721,6 +731,14 @@ impl DestructionRuntime {
             {
                 piece.lifecycle = lifecycle;
             }
+            events.push(DestructionEvent::PieceLifecycleChanged {
+                assembly: victim_assembly,
+                cause: cause.clone(),
+                lifecycle,
+                piece: victim_piece,
+                policy,
+                tick,
+            });
         }
         let Some(piece) = self
             .assemblies
@@ -759,7 +777,7 @@ impl DestructionRuntime {
                     && assembly
                         .cleanup
                         .sleep_after_seconds
-                        .is_some_and(|after| piece.active_age + f32::EPSILON >= after)
+                        .is_some_and(|after| piece.active_age >= after)
                 {
                     piece.lifecycle = PieceLifecycle::Sleeping;
                 }
@@ -768,7 +786,7 @@ impl DestructionRuntime {
                     CleanupPolicy::Despawn | CleanupPolicy::Pool => assembly
                         .cleanup
                         .despawn_after_seconds
-                        .is_some_and(|after| piece.active_age + f32::EPSILON >= after),
+                        .is_some_and(|after| piece.active_age >= after),
                 };
                 if should_finish {
                     if assembly.cleanup_policy == CleanupPolicy::Pool
@@ -834,11 +852,12 @@ fn impact_allowed(config: &Destructible, damage: &DestructionDamage) -> bool {
     if damage.impulse.unwrap_or(0.0) < filter.min_impulse.unwrap_or(0.0) {
         return false;
     }
-    filter.layers.is_empty()
-        || damage
+    filter.layers.as_ref().is_none_or(|layers| {
+        damage
             .layer
             .as_ref()
-            .is_some_and(|layer| filter.layers.contains(layer))
+            .is_some_and(|layer| layers.contains(layer))
+    })
 }
 
 fn damage_amount(damage: &DestructionDamage, bond: &BondState) -> f32 {
@@ -886,7 +905,10 @@ struct AssemblyBodySnapshot {
 }
 
 impl NativeDestructionState {
-    pub(crate) fn reconcile(&mut self, bundle: &LoadedBundle) {
+    pub(crate) fn reconcile(
+        &mut self,
+        bundle: &LoadedBundle,
+    ) -> Result<(), DestructionRegistrationError> {
         let declarations = bundle
             .world
             .entities
@@ -900,19 +922,34 @@ impl NativeDestructionState {
             if self.registered.contains(&entity) {
                 continue;
             }
-            let Ok(config) = serde_json::from_value::<Destructible>(component) else {
-                continue;
-            };
+            let config = serde_json::from_value::<Destructible>(component).map_err(|error| {
+                DestructionRegistrationError {
+                    code: "TN_PHYSICS_DESTRUCTION_COMPONENT_INVALID",
+                    message: format!("Destructible '{entity}' is invalid: {error}"),
+                    path: format!("world/entities/{entity}/components/Destructible"),
+                }
+            })?;
             let manifest_path = bundle.bundle_path.join(&config.fracture_manifest);
-            let Ok(source) = fs::read_to_string(manifest_path) else {
-                continue;
-            };
-            let Ok(manifest) = serde_json::from_str::<FractureManifest>(&source) else {
-                continue;
-            };
-            if self.runtime.register(&entity, manifest, config).is_ok() {
-                self.registered.insert(entity);
-            }
+            let source = fs::read_to_string(&manifest_path).map_err(|error| {
+                DestructionRegistrationError {
+                    code: "TN_PHYSICS_DESTRUCTION_MANIFEST_MISSING",
+                    message: format!(
+                        "Destructible '{entity}' could not read its fracture manifest: {error}"
+                    ),
+                    path: config.fracture_manifest.clone(),
+                }
+            })?;
+            let manifest = serde_json::from_str::<FractureManifest>(&source).map_err(|error| {
+                DestructionRegistrationError {
+                    code: "TN_PHYSICS_DESTRUCTION_MANIFEST_INVALID",
+                    message: format!(
+                        "Destructible '{entity}' fracture manifest is invalid: {error}"
+                    ),
+                    path: config.fracture_manifest.clone(),
+                }
+            })?;
+            self.runtime.register(&entity, manifest, config)?;
+            self.registered.insert(entity);
         }
         let desired = bundle
             .world
@@ -929,7 +966,10 @@ impl NativeDestructionState {
         for entity in removed {
             self.runtime.unregister(&entity);
             self.registered.remove(&entity);
+            self.assembly_snapshots.remove(&entity);
+            self.intact_collision_retired.remove(&entity);
         }
+        Ok(())
     }
 
     pub(crate) fn queue_damage(&mut self, damage: DestructionDamage) -> bool {
@@ -972,28 +1012,38 @@ impl NativeDestructionState {
             else {
                 continue;
             };
-            for (assembly, impact) in [(left, right), (right, left)] {
+            let contact_point = pair
+                .manifolds
+                .iter()
+                .flat_map(|manifold| &manifold.data.solver_contacts)
+                .next()
+                .map(|contact| <[f32; 3]>::from(contact.point));
+            for (assembly, assembly_collider, impact) in
+                [(left, pair.collider1, right), (right, pair.collider2, left)]
+            {
                 let Some(state) = self.runtime.assemblies.get(&assembly.entity) else {
                     continue;
                 };
-                let Some(bond) = state
-                    .bonds
-                    .iter()
-                    .find_map(|(id, bond)| (!bond.broken).then_some(id.clone()))
-                else {
+                let origin = world
+                    .colliders
+                    .get(assembly_collider)
+                    .and_then(|collider| collider.parent())
+                    .and_then(|handle| world.bodies.get(handle))
+                    .map_or([0.0; 3], |body| body.translation().into());
+                let Some(bond) = contact_bond(state, origin, contact_point) else {
                     continue;
+                };
+                let (contact_a, contact_b) = if assembly.entity <= impact.entity {
+                    (&assembly.entity, &impact.entity)
+                } else {
+                    (&impact.entity, &assembly.entity)
                 };
                 contacts.push(DestructionDamage {
                     amount: None,
                     assembly: assembly.entity.clone(),
                     bond,
                     cause: DestructionCause {
-                        contact: Some(format!(
-                            "{}:{}:{}",
-                            assembly.entity,
-                            impact.entity,
-                            self.tick + 1
-                        )),
+                        contact: Some(format!("rapier:{contact_a}:{contact_b}")),
                         entity: Some(impact.entity.clone()),
                         kind: DestructionCauseKind::Contact,
                     },
@@ -1053,7 +1103,21 @@ impl NativeDestructionState {
     }
 
     pub(crate) fn allocated_piece_count(&self) -> usize {
-        self.pieces.len()
+        self.runtime
+            .assemblies
+            .values()
+            .flat_map(|assembly| assembly.pieces.values())
+            .filter(|piece| {
+                matches!(
+                    piece.lifecycle,
+                    PieceLifecycle::Active | PieceLifecycle::Sleeping
+                )
+            })
+            .count()
+    }
+
+    pub(crate) fn intact_collision_is_retired(&self, assembly: &str) -> bool {
+        self.intact_collision_retired.contains(assembly)
     }
 
     pub(crate) fn budget_debug_observations(&self) -> Vec<DestructionBudgetDebugObservation> {
@@ -1080,25 +1144,36 @@ impl NativeDestructionState {
     pub(crate) fn bond_debug_observations(
         &self,
         world: &PhysicsWorld,
+        handles: &BTreeMap<String, RigidBodyHandle>,
     ) -> Vec<DestructionBondDebugObservation> {
         let mut observations = Vec::new();
         for (assembly_id, assembly) in &self.runtime.assemblies {
             for (bond_id, bond) in &assembly.bonds {
-                let endpoints = bond.source.pieces.iter().filter_map(|piece| {
-                    let native = self.pieces.get(&(assembly_id.clone(), piece.clone()))?;
-                    let body = world.bodies.get(native.handle)?;
-                    Some(<[f32; 3]>::from(body.translation()))
+                let origin = handles
+                    .get(assembly_id)
+                    .and_then(|handle| world.bodies.get(*handle))
+                    .map_or([0.0; 3], |body| body.translation().into());
+                let endpoints = bond.source.pieces.clone().map(|piece_id| {
+                    self.pieces
+                        .get(&(assembly_id.clone(), piece_id.clone()))
+                        .and_then(|native| world.bodies.get(native.handle))
+                        .map_or_else(
+                            || {
+                                assembly.pieces.get(&piece_id).map_or(origin, |piece| {
+                                    add_position(origin, piece.source.local_position)
+                                })
+                            },
+                            |body| body.translation().into(),
+                        )
                 });
-                let endpoints = endpoints.collect::<Vec<_>>();
-                if let [from, to] = endpoints.as_slice() {
-                    observations.push(DestructionBondDebugObservation {
-                        assembly: assembly_id.clone(),
-                        bond: bond_id.clone(),
-                        broken: bond.broken,
-                        from: *from,
-                        to: *to,
-                    });
-                }
+                observations.push(DestructionBondDebugObservation {
+                    assembly: assembly_id.clone(),
+                    bond: bond_id.clone(),
+                    broken: bond.broken,
+                    from: endpoints[0],
+                    health: bond.health,
+                    to: endpoints[1],
+                });
             }
         }
         observations.sort_by(|left, right| {
@@ -1373,6 +1448,49 @@ impl NativeDestructionState {
             self.bond_joints.insert(key, handle);
         }
     }
+}
+
+fn contact_bond(
+    assembly: &AssemblyState,
+    origin: [f32; 3],
+    point: Option<[f32; 3]>,
+) -> Option<String> {
+    let healthy = assembly
+        .bonds
+        .iter()
+        .filter_map(|(id, bond)| (!bond.broken).then_some((id, bond)))
+        .collect::<Vec<_>>();
+    let Some(point) = point else {
+        return healthy.first().map(|(id, _)| (*id).clone());
+    };
+    let nearest_piece = assembly
+        .pieces
+        .values()
+        .min_by(|left, right| {
+            squared_distance(point, add_position(origin, left.source.local_position))
+                .total_cmp(&squared_distance(
+                    point,
+                    add_position(origin, right.source.local_position),
+                ))
+                .then(left.source.id.cmp(&right.source.id))
+        })
+        .map(|piece| piece.source.id.as_str());
+    healthy
+        .iter()
+        .find(|(_, bond)| {
+            nearest_piece
+                .is_some_and(|piece| bond.source.pieces.iter().any(|endpoint| endpoint == piece))
+        })
+        .or_else(|| healthy.first())
+        .map(|(id, _)| (*id).clone())
+}
+
+fn add_position(left: [f32; 3], right: [f32; 3]) -> [f32; 3] {
+    [left[0] + right[0], left[1] + right[1], left[2] + right[2]]
+}
+
+fn squared_distance(left: [f32; 3], right: [f32; 3]) -> f32 {
+    (left[0] - right[0]).powi(2) + (left[1] - right[1]).powi(2) + (left[2] - right[2]).powi(2)
 }
 
 fn piece_body_id(assembly: &str, piece: &str) -> String {

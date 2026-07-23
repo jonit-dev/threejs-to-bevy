@@ -4,7 +4,7 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION, validateBundle, type IWorldIr } from "@threenative/ir";
+import { PHYSICS_DEBUG_LIMITS, PHYSICS_OBSERVATION_TOLERANCE_REGISTRY_VERSION, validateBundle, type IPhysicsDebugCore, type IWorldIr } from "@threenative/ir";
 
 const root = resolve(fileURLToPath(new URL("../../../", import.meta.url)));
 const fixtureDir = resolve(root, "packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
@@ -15,7 +15,7 @@ export const ADVANCED_PHYSICS_DESTRUCTION_TRACE_VERSION = "0.1.0";
 
 type Runtime = "bevy" | "web";
 type Tolerance = { absolute: number; relative: number };
-type EventIdentity = { assembly?: string; bond?: string; piece?: string; policy?: string; tick: number; type: string };
+type EventIdentity = { assembly?: string; bond?: string; lifecycle?: string; piece?: string; policy?: string; tick: number; type: string };
 type Piece = { handle?: unknown; id: string; lifecycle: string; mass: number; position: number[]; velocity: number[] };
 type Physical = { assemblyCollisionActive: boolean; pieces: Piece[] };
 
@@ -51,7 +51,7 @@ export interface AdvancedPhysicsDestructionTrace {
   bundleHash: string;
   fixture: "advanced-physics-destruction";
   fixedDt: number;
-  impact: { physical: Physical; ticks: Array<{ events: EventIdentity[]; tick: number }> };
+  impact: { debug: IPhysicsDebugCore; physical: Physical; ticks: Array<{ events: EventIdentity[]; tick: number }> };
   regional: { brokenBonds: string[]; inactivePieces: string[]; physical: Physical };
   budget: { activePieces: number; eventTypes: string[]; policy: string };
   runtime: Runtime;
@@ -101,9 +101,17 @@ export function validateAdvancedPhysicsDestructionEvidence(
   exact(web.regional.brokenBonds, native.regional.brokenBonds, "regional/brokenBonds", "TN_VERIFY_PHYSICS_DESTRUCTION_REGIONAL_PARITY", diagnostics);
   exact(web.regional.inactivePieces, native.regional.inactivePieces, "regional/inactivePieces", "TN_VERIFY_PHYSICS_DESTRUCTION_REGIONAL_PARITY", diagnostics);
   comparePhysical(web.impact.physical, native.impact.physical, expected, "impact/physical", diagnostics);
+  compareDebug(web.impact.debug, native.impact.debug, diagnostics);
   comparePhysical(web.regional.physical, native.regional.physical, expected, "regional/physical", diagnostics);
   exact(web.budget, native.budget, "budget", "TN_VERIFY_PHYSICS_DESTRUCTION_BUDGET_PARITY", diagnostics);
   return diagnostics;
+}
+
+function compareDebug(web: IPhysicsDebugCore, native: IPhysicsDebugCore, diagnostics: DestructionEvidenceDiagnostic[]): void {
+  const identity = (core: IPhysicsDebugCore) => core.primitives.map(({ category, id, kind }) => ({ category, id, kind }));
+  exact(identity(web), identity(native), "impact/debug/primitives", "TN_VERIFY_PHYSICS_DESTRUCTION_DEBUG_PARITY", diagnostics);
+  if (web.primitives.length > PHYSICS_DEBUG_LIMITS.artifactPrimitives || native.primitives.length > PHYSICS_DEBUG_LIMITS.artifactPrimitives || web.telemetry.timings.length > PHYSICS_DEBUG_LIMITS.timings || native.telemetry.timings.length > PHYSICS_DEBUG_LIMITS.timings) push(diagnostics, "TN_VERIFY_PHYSICS_DESTRUCTION_DEBUG_BUDGET", "impact/debug", "Debug primitives or timings exceed the shared artifact budget.");
+  exact({ allocatedPieces: web.telemetry.allocatedPieces, contacts: web.telemetry.contacts, solverIterations: web.telemetry.solverIterations }, { allocatedPieces: native.telemetry.allocatedPieces, contacts: native.telemetry.contacts, solverIterations: native.telemetry.solverIterations }, "impact/debug/telemetry", "TN_VERIFY_PHYSICS_DESTRUCTION_DEBUG_TELEMETRY_PARITY", diagnostics);
 }
 
 function validateTrace(runtime: Runtime, trace: AdvancedPhysicsDestructionTrace, expected: AdvancedPhysicsDestructionExpected, diagnostics: DestructionEvidenceDiagnostic[]): void {
@@ -146,7 +154,6 @@ async function main(): Promise<void> {
   const world = JSON.parse(await readFile(resolve(fixtureDir, "world.ir.json"), "utf8")) as IWorldIr;
   const scenarios = JSON.parse(await readFile(resolve(fixtureDir, "destruction.scenarios.json"), "utf8")) as AdvancedPhysicsDestructionScenarios;
   const expected = JSON.parse(await readFile(resolve(fixtureDir, "destruction.expected.json"), "utf8")) as AdvancedPhysicsDestructionExpected;
-  const manifest = JSON.parse(await readFile(resolve(fixtureDir, scenarios.manifest), "utf8")) as unknown;
   diagnostics.push(...validateAdvancedPhysicsDestructionFixture(world, scenarios, expected));
   const validation = await validateBundle(fixtureDir);
   if (!validation.ok) push(diagnostics, "TN_VERIFY_PHYSICS_DESTRUCTION_FIXTURE_INVALID", "game.bundle", JSON.stringify(validation.diagnostics));
@@ -157,11 +164,11 @@ async function main(): Promise<void> {
   const traceWeb = runtime.traceAdvancedPhysicsDestruction;
   if (typeof traceWeb !== "function") push(diagnostics, "TN_VERIFY_PHYSICS_DESTRUCTION_WEB_TRACE_UNAVAILABLE", "packages/runtime-web-three", "The web adapter has not exposed the Phase 6 destruction trace entry point.");
   else {
-    web = await (traceWeb as (input: unknown) => Promise<AdvancedPhysicsDestructionTrace> | AdvancedPhysicsDestructionTrace)({ bundleHash, expected, fixtureDir, manifest, scenarios, sourceHash, world });
+    web = await (traceWeb as (input: unknown) => Promise<AdvancedPhysicsDestructionTrace> | AdvancedPhysicsDestructionTrace)({ fixtureDir });
     await writeJson(resolve(artifactDir, "web-trace.json"), web);
   }
   const nativePath = resolve(artifactDir, "native-trace.json");
-  const nativeRun = spawnSync("cargo", ["run", "-q", "-p", "threenative_runtime", "--bin", "threenative_physics_self_verification_trace", "--", fixtureDir, "advanced-physics-destruction", nativePath, sourceHash, bundleHash], { cwd: resolve(root, "runtime-bevy"), encoding: "utf8" });
+  const nativeRun = spawnSync("cargo", ["run", "-q", "-p", "threenative_runtime", "--bin", "threenative_physics_self_verification_trace", "--", fixtureDir, "advanced-physics-destruction", nativePath], { cwd: resolve(root, "runtime-bevy"), encoding: "utf8" });
   let native: AdvancedPhysicsDestructionTrace | undefined;
   if (nativeRun.status !== 0) push(diagnostics, "TN_VERIFY_PHYSICS_DESTRUCTION_NATIVE_TRACE_FAILED", "runtime-bevy", nativeRun.stderr || nativeRun.stdout || "Native destruction trace failed.");
   else try { native = JSON.parse(await readFile(nativePath, "utf8")) as AdvancedPhysicsDestructionTrace; } catch { push(diagnostics, "TN_VERIFY_PHYSICS_DESTRUCTION_NATIVE_TRACE_MISSING", "native-trace.json", "Native destruction trace is missing or invalid."); }
@@ -183,7 +190,7 @@ async function main(): Promise<void> {
   if (diagnostics.length > 0) process.exitCode = 1;
 }
 
-function eventIdentities(trace: AdvancedPhysicsDestructionTrace): EventIdentity[] { return trace.impact.ticks.flatMap((sample) => sample.events).map(({ assembly, bond, piece, policy, tick, type }) => ({ assembly, bond, piece, policy, tick, type })); }
+function eventIdentities(trace: AdvancedPhysicsDestructionTrace): EventIdentity[] { return trace.impact.ticks.flatMap((sample) => sample.events).map(({ assembly, bond, lifecycle, piece, policy, tick, type }) => ({ assembly, bond, lifecycle, piece, policy, tick, type })); }
 function compare(left: number, right: number, tolerance: Tolerance, path: string, code: string, diagnostics: DestructionEvidenceDiagnostic[]): void { if (!Number.isFinite(left) || !Number.isFinite(right) || Math.abs(left - right) > Math.max(tolerance.absolute, Math.max(Math.abs(left), Math.abs(right)) * tolerance.relative)) push(diagnostics, code, path, `Numeric values ${left} and ${right} exceed the owned tolerance.`); }
 function exact(left: unknown, right: unknown, path: string, code: string, diagnostics: DestructionEvidenceDiagnostic[]): void { if (stableJson(left) !== stableJson(right)) push(diagnostics, code, path, `Expected ${JSON.stringify(right)}, received ${JSON.stringify(left)}.`); }
 function validTolerance(value: Tolerance): boolean { return Number.isFinite(value.absolute) && value.absolute >= 0 && Number.isFinite(value.relative) && value.relative >= 0; }

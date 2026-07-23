@@ -1,31 +1,17 @@
 import type { Vec3 } from "./types.js";
+import physicsDebugRegistry from "./physicsDebugRegistry.json" with { type: "json" };
 
-export const PHYSICS_DEBUG_SCHEMA = "threenative.physics-debug-snapshot" as const;
-export const PHYSICS_DEBUG_VERSION = "0.1.0" as const;
+export const PHYSICS_DEBUG_SCHEMA = physicsDebugRegistry.schema as "threenative.physics-debug-snapshot";
+export const PHYSICS_DEBUG_VERSION = physicsDebugRegistry.version as "0.1.0";
 
-export const PHYSICS_DEBUG_CATEGORIES = [
-  "aero",
-  "bond",
-  "budget",
-  "center-of-mass",
-  "collider",
-  "contact",
-  "force",
-  "joint-load",
-  "piece",
-  "sleep",
-  "slip",
-  "suspension",
-  "wheel",
-] as const;
+export const PHYSICS_DEBUG_CATEGORIES = Object.freeze(physicsDebugRegistry.categories) as readonly ["aero", "bond", "budget", "center-of-mass", "collider", "contact", "force", "joint-load", "piece", "sleep", "slip", "suspension", "wheel"];
 
-export const PHYSICS_DEBUG_PRIMITIVE_KINDS = ["box", "line", "point", "sphere", "vector"] as const;
+export const PHYSICS_DEBUG_PRIMITIVE_KINDS = Object.freeze(physicsDebugRegistry.primitiveKinds) as readonly ["box", "line", "point", "sphere", "vector"];
 
 export const PHYSICS_DEBUG_LIMITS = Object.freeze({
-  artifactPrimitives: 16_384,
-  summaryPrimitives: 512,
-  timings: 256,
+  ...physicsDebugRegistry.limits,
 });
+export const PHYSICS_DEBUG_DEFAULTS = Object.freeze({ ...physicsDebugRegistry.defaults });
 
 export type PhysicsDebugCategory = (typeof PHYSICS_DEBUG_CATEGORIES)[number];
 export type PhysicsDebugPrimitiveKind = (typeof PHYSICS_DEBUG_PRIMITIVE_KINDS)[number];

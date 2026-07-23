@@ -32,6 +32,7 @@ type DestructionEvent =
   | { amount: number; assembly: string; bond: string; cause: IPhysicsDestructionCause; remainingHealth: number; tick: number; type: "damaged" }
   | { assembly: string; bond: string; cause: IPhysicsDestructionCause; tick: number; type: "bondBroken" }
   | { assembly: string; cause: IPhysicsDestructionCause; piece: string; tick: number; type: "pieceActivated" }
+  | { assembly: string; cause: IPhysicsDestructionCause; lifecycle: "despawned" | "sleeping"; piece: string; policy: IFractureManifest["budgets"]["overflowPolicy"]; tick: number; type: "pieceLifecycleChanged" }
   | { assembly: string; cause: IPhysicsDestructionCause; tick: number; type: "assemblyBroken" }
   | { assembly: string; cause: IPhysicsDestructionCause; piece: string; policy: IFractureManifest["budgets"]["overflowPolicy"]; tick: number; type: "budgetExceeded" };
 
@@ -182,13 +183,13 @@ export function observePhysicsDestruction(runtime: IPhysicsDestructionRuntime): 
   assemblies: Array<{ broken: boolean; id: string }>;
   bonds: Array<{ assembly: string; broken: boolean; health: number; id: string; pieces: readonly [string, string] }>;
   budgets: Array<{ activePieces: number; assembly: string; maximumActivePieces: number; policy: IFractureManifest["budgets"]["overflowPolicy"] }>;
-  pieces: Array<{ activationDepth: number; assembly: string; collider: IFractureManifest["pieces"][number]["collider"]; id: string; lifecycle: PieceLifecycle }>;
+  pieces: Array<{ activationDepth: number; assembly: string; collider: IFractureManifest["pieces"][number]["collider"]; id: string; lifecycle: PieceLifecycle; localPosition: readonly [number, number, number] }>;
 } {
   return {
     assemblies: [...runtime.assemblies].map(([id, assembly]) => ({ broken: assembly.assemblyBroken, id })).sort((left, right) => left.id.localeCompare(right.id)),
     bonds: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.bonds].map(([id, bond]) => ({ assembly, broken: bond.broken, health: round(bond.health), id, pieces: bond.source.pieces }))).sort(compareOwned),
     budgets: [...runtime.assemblies].map(([assembly, state]) => ({ activePieces: [...state.pieces.values()].filter((piece) => piece.lifecycle === "active" || piece.lifecycle === "sleeping").length, assembly, maximumActivePieces: effectiveAssemblyBudget(runtime, state), policy: state.manifest.budgets.overflowPolicy })).sort((left, right) => left.assembly.localeCompare(right.assembly)),
-    pieces: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.pieces].map(([id, piece]) => ({ activationDepth: piece.source.activationDepth, assembly, collider: piece.source.collider, id, lifecycle: piece.lifecycle }))).sort(compareOwned),
+    pieces: [...runtime.assemblies].flatMap(([assembly, state]) => [...state.pieces].map(([id, piece]) => ({ activationDepth: piece.source.activationDepth, assembly, collider: piece.source.collider, id, lifecycle: piece.lifecycle, localPosition: piece.source.localPosition }))).sort(compareOwned),
   };
 }
 
@@ -237,10 +238,11 @@ function activatePiece(runtime: IPhysicsDestructionRuntime, assembly: IAssemblyS
     const policy = assembly.manifest.budgets.overflowPolicy;
     events.push({ assembly: assembly.component.entity, cause, piece: piece.source.id, policy, tick, type: "budgetExceeded" });
     if (depthExceeded || policy === "reject-new") return;
-    const candidates = assemblyExceeded ? activePieces(assembly) : [...runtime.assemblies.values()].flatMap((item) => activePieces(item));
-    const oldest = candidates.sort((left, right) => (left.activatedAt ?? 0) - (right.activatedAt ?? 0) || left.source.id.localeCompare(right.source.id))[0];
+    const oldest = oldestActivePiece(runtime, assemblyExceeded ? assembly.component.entity : undefined);
     if (oldest === undefined) return;
-    oldest.lifecycle = policy === "sleep-oldest" ? "sleeping" : "despawned";
+    const lifecycle = policy === "sleep-oldest" ? "sleeping" : "despawned";
+    oldest.piece.lifecycle = lifecycle;
+    events.push({ assembly: oldest.assembly, cause, lifecycle, piece: oldest.piece.source.id, policy, tick, type: "pieceLifecycleChanged" });
   }
   piece.lifecycle = "active";
   piece.activatedAt = tick;
@@ -252,7 +254,7 @@ function cleanupPieces(runtime: IPhysicsDestructionRuntime, delta: number): void
   for (const assembly of runtime.assemblies.values()) {
     const timings = assembly.manifest.cleanup;
     const policy = assembly.component.cleanupPolicy ?? ((timings?.poolCapacity ?? 0) > 0 ? "pool" : timings?.despawnAfterSeconds !== undefined ? "despawn" : "sleep");
-    for (const piece of assembly.pieces.values()) {
+    for (const piece of [...assembly.pieces.values()].sort((left, right) => left.source.id.localeCompare(right.source.id))) {
       if (piece.lifecycle !== "active" && piece.lifecycle !== "sleeping") continue;
       piece.activeAge += delta;
       if (policy === "sleep" && piece.lifecycle === "active" && timings?.sleepAfterSeconds !== undefined && piece.activeAge >= timings.sleepAfterSeconds) piece.lifecycle = "sleeping";
@@ -265,6 +267,12 @@ function cleanupPieces(runtime: IPhysicsDestructionRuntime, delta: number): void
 }
 
 function activePieces(assembly: IAssemblyState): IPieceState[] { return [...assembly.pieces.values()].filter((piece) => piece.lifecycle === "active"); }
+function oldestActivePiece(runtime: IPhysicsDestructionRuntime, assemblyId?: string): { assembly: string; piece: IPieceState } | undefined {
+  return [...runtime.assemblies]
+    .filter(([id]) => assemblyId === undefined || id === assemblyId)
+    .flatMap(([assembly, state]) => activePieces(state).map((piece) => ({ assembly, piece })))
+    .sort((left, right) => (left.piece.activatedAt ?? 0) - (right.piece.activatedAt ?? 0) || left.assembly.localeCompare(right.assembly) || left.piece.source.id.localeCompare(right.piece.source.id))[0];
+}
 function materialDamageMultiplier(value: number | undefined): number { return value ?? 1; }
 function damageAmount(input: IPhysicsDestructionDamage, bond: IBondState): number {
   if (input.amount !== undefined) return Math.max(0, input.amount);

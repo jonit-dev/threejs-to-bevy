@@ -219,7 +219,7 @@ pub fn inspect_physics_body_mass(bundle: &LoadedBundle, entity_id: &str) -> Opti
         bundle,
         &entities,
         [0.0, -9.81, 0.0],
-        rapier_world_signature(&entities, [0.0, -9.81, 0.0]),
+        rapier_world_signature(bundle, &entities, [0.0, -9.81, 0.0]),
     );
     runtime
         .handles
@@ -237,7 +237,7 @@ pub fn inspect_physics_body_mass_properties(
         bundle,
         &entities,
         [0.0, -9.81, 0.0],
-        rapier_world_signature(&entities, [0.0, -9.81, 0.0]),
+        rapier_world_signature(bundle, &entities, [0.0, -9.81, 0.0]),
     );
     let body = runtime
         .handles
@@ -453,7 +453,7 @@ pub fn ensure_native_physics_runtime(
         .and_then(|config| config.physics.as_ref())
         .map(|physics| physics.gravity)
         .unwrap_or([0.0, -9.81, 0.0]);
-    let signature = rapier_world_signature(&entities, gravity);
+    let signature = rapier_world_signature(bundle, &entities, gravity);
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
         let mut caches = caches.borrow_mut();
@@ -1000,7 +1000,7 @@ fn step_rapier_bodies(
     let runtime_id = script_posed_entities as *const BTreeSet<String> as usize;
     RAPIER_CACHES.with(|caches| {
         let mut caches = caches.borrow_mut();
-        let signature = rapier_world_signature(entities, gravity);
+        let signature = rapier_world_signature(bundle, entities, gravity);
         if caches
             .get(&runtime_id)
             .is_none_or(|cache| cache.signature != signature)
@@ -1479,7 +1479,9 @@ impl PersistentRapierWorld {
             &mut Vec::new(),
         );
         let mut destruction_state = NativeDestructionState::default();
-        destruction_state.reconcile(bundle);
+        destruction_state
+            .reconcile(bundle)
+            .unwrap_or_else(|error| panic!("{error}"));
         Self {
             collider_owners,
             handles,
@@ -1534,7 +1536,9 @@ impl PersistentRapierWorld {
             &self.handles,
             &mut self.joint_state,
         );
-        self.destruction_state.reconcile(bundle);
+        self.destruction_state
+            .reconcile(bundle)
+            .unwrap_or_else(|error| panic!("{error}"));
         begin_joint_load_frame(&mut self.joint_state);
 
         for entity in entities.iter() {
@@ -1628,15 +1632,6 @@ impl PersistentRapierWorld {
             }
         }
 
-        let destruction_started = Instant::now();
-        let destruction_events = self.destruction_state.step(
-            &mut self.world,
-            &mut self.handles,
-            &mut self.collider_owners,
-            fixed_delta,
-        );
-        debug_timings.push(debug_timing("destruction", destruction_started));
-
         let initial_query_broad_phase = self.initial_query_broad_phase.take();
         let aerodynamics_started = Instant::now();
         crate::physics_aerodynamics::step_physics_aerodynamics(
@@ -1673,6 +1668,14 @@ impl PersistentRapierWorld {
         debug_timings.push(debug_timing("solver", solver_started));
         self.destruction_state
             .queue_contact_damage(&self.world, &self.collider_owners);
+        let destruction_started = Instant::now();
+        let destruction_events = self.destruction_state.step(
+            &mut self.world,
+            &mut self.handles,
+            &mut self.collider_owners,
+            fixed_delta,
+        );
+        debug_timings.push(debug_timing("destruction", destruction_started));
 
         for entity in entities.iter_mut() {
             let Some(handle) = self.handles.get(&entity.id) else {
@@ -1716,7 +1719,11 @@ impl PersistentRapierWorld {
         self.debug_telemetry = PhysicsDebugTelemetry {
             allocated_pieces: self.destruction_state.allocated_piece_count(),
             bodies: PhysicsDebugBodies { active, sleeping },
-            contacts: self.previous_pairs.len(),
+            contacts: self
+                .previous_pairs
+                .values()
+                .filter(|pair| pair.event == "CollisionEvent")
+                .count(),
             fixed_dt: fixed_delta,
             queries: self.debug_queries.replace(0),
             rebuilds: self.rebuilds,
@@ -1742,14 +1749,17 @@ impl PersistentRapierWorld {
             let position = body_position(&entity.id)
                 .or_else(|| entity.components.transform.as_ref()?.position)
                 .unwrap_or([0.0; 3]);
-            if let Some(handle) = self.handles.get(&entity.id)
+            if !self
+                .destruction_state
+                .intact_collision_is_retired(&entity.id)
+                && let Some(handle) = self.handles.get(&entity.id)
                 && let Some(body) = self.world.bodies.get(*handle)
             {
                 primitives.push(debug_point(
                     format!("center-of-mass:{}", entity.id),
                     "center-of-mass",
                     &entity.id,
-                    body.center_of_mass().into(),
+                    body.translation().into(),
                     None,
                 ));
                 primitives.push(debug_point(
@@ -1784,6 +1794,7 @@ impl PersistentRapierWorld {
             .world
             .contact_pairs()
             .filter(|pair| pair.has_any_active_contact())
+            .filter(|pair| pair.total_impulse_magnitude() > 0.0)
             .filter_map(|pair| {
                 let left = self.owner_for_collider(pair.collider1)?;
                 let right = self.owner_for_collider(pair.collider2)?;
@@ -1916,14 +1927,17 @@ impl PersistentRapierWorld {
                 Some(joint.force.hypot(joint.torque)),
             ));
         }
-        for bond in self.destruction_state.bond_debug_observations(&self.world) {
+        for bond in self
+            .destruction_state
+            .bond_debug_observations(&self.world, &self.handles)
+        {
             primitives.push(debug_line(
                 format!("bond:{}:{}", bond.assembly, bond.bond),
                 "bond",
                 &bond.assembly,
                 bond.from,
                 bond.to,
-                Some(if bond.broken { 0.0 } else { 1.0 }),
+                Some(if bond.broken { 0.0 } else { bond.health }),
             ));
         }
         for budget in self.destruction_state.budget_debug_observations() {
@@ -2295,7 +2309,11 @@ fn constrained_angular_velocity(entity: &SimulatedEntity) -> Option<[f32; 3]> {
     Some(angular_velocity)
 }
 
-fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u64 {
+fn rapier_world_signature(
+    bundle: &LoadedBundle,
+    entities: &[SimulatedEntity],
+    gravity: [f32; 3],
+) -> u64 {
     let mut signature = DefaultHasher::new();
     gravity.map(f32::to_bits).hash(&mut signature);
     for entity in entities {
@@ -2343,6 +2361,17 @@ fn rapier_world_signature(entities: &[SimulatedEntity], gravity: [f32; 3]) -> u6
             .map(f32::to_bits)
             .hash(&mut signature);
         entity.trigger.hash(&mut signature);
+        if let Some(source) = bundle
+            .world
+            .entities
+            .iter()
+            .find(|source| source.id == entity.id)
+            .and_then(|source| source.components.extra.get("Destructible"))
+        {
+            serde_json::to_string(source)
+                .unwrap_or_default()
+                .hash(&mut signature);
+        }
     }
     signature.finish()
 }

@@ -180,7 +180,7 @@ fn regional_activation_should_keep_unrelated_bound_pieces_in_the_retained_world(
 }
 
 #[test]
-fn retained_contact_impulse_should_queue_normalized_damage_for_the_next_tick() {
+fn retained_contact_impulse_should_apply_normalized_damage_in_the_contact_tick() {
     let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
     let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
@@ -214,6 +214,43 @@ fn retained_contact_impulse_should_queue_normalized_damage_for_the_next_tick() {
         "retained solver contact should route into bond damage"
     );
     dispose_native_physics_runtime(&runtime);
+}
+
+#[test]
+fn missing_native_fracture_manifest_should_fail_with_an_actionable_diagnostic() {
+    let fixture = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../../packages/ir/fixtures/conformance/advanced-physics-destruction/game.bundle");
+    let mut bundle = load_bundle(&fixture).expect("destruction fixture should load");
+    let wall = bundle
+        .world
+        .entities
+        .iter_mut()
+        .find(|entity| entity.id == "wall")
+        .expect("fixture wall should exist");
+    wall.components.extra.insert(
+        "Destructible".to_owned(),
+        serde_json::json!({ "fractureManifest": "fractures/missing.json" }),
+    );
+    let runtime = BTreeSet::new();
+
+    let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        ensure_native_physics_runtime(&bundle, &runtime);
+    }))
+    .expect_err("missing manifest should fail closed");
+    let message = panic
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| {
+            panic
+                .downcast_ref::<&str>()
+                .map(|value| (*value).to_owned())
+        })
+        .unwrap_or_default();
+    assert!(
+        message.contains("TN_PHYSICS_DESTRUCTION_MANIFEST_MISSING"),
+        "{message}"
+    );
+    assert!(message.contains("fractures/missing.json"), "{message}");
 }
 
 #[test]
@@ -262,7 +299,7 @@ fn contact_damage_should_honor_filters_thresholds_and_material_response() {
     let mut runtime = DestructionRuntime::new();
     let mut destructible = component();
     destructible.impact_filter = Some(ImpactFilter {
-        layers: vec!["projectile".to_owned()],
+        layers: Some(vec!["projectile".to_owned()]),
         min_impulse: Some(20.0),
     });
     let mut fixture = manifest(OverflowPolicy::RejectNew, 3, None);
@@ -283,6 +320,25 @@ fn contact_damage_should_honor_filters_thresholds_and_material_response() {
         event_names(&events),
         ["damaged", "bondBroken", "pieceActivated", "pieceActivated"]
     );
+}
+
+#[test]
+fn explicitly_empty_contact_layers_should_block_all_contact_damage() {
+    let mut runtime = DestructionRuntime::new();
+    let mut destructible = component();
+    destructible.impact_filter = Some(ImpactFilter {
+        layers: Some(Vec::new()),
+        min_impulse: None,
+    });
+    runtime
+        .register(
+            "wall",
+            manifest(OverflowPolicy::RejectNew, 3, None),
+            destructible,
+        )
+        .expect("manifest should register");
+    assert!(runtime.queue_damage(contact_damage(1, "bond.ab", 100.0, "projectile")));
+    assert!(runtime.step(1, 1.0 / 60.0).is_empty());
 }
 
 #[test]
@@ -336,6 +392,7 @@ fn overflow_eviction_should_replace_the_stable_oldest_piece_with_declared_lifecy
         assert_eq!(observation.pieces[0].lifecycle, expected);
         assert_eq!(observation.pieces[1].lifecycle, PieceLifecycle::Active);
         assert_eq!(budget_pieces(&events), ["piece.b"]);
+        assert!(events.iter().any(|event| matches!(event, DestructionEvent::PieceLifecycleChanged { lifecycle, piece, .. } if *lifecycle == expected && piece == "piece.a")));
     }
 }
 

@@ -3,6 +3,7 @@ use serde::Serialize;
 pub const MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES: usize = 16_384;
 pub const MAX_PHYSICS_DEBUG_SUMMARY_PRIMITIVES: usize = 512;
 pub const MAX_PHYSICS_DEBUG_TIMINGS: usize = 256;
+const DEFAULT_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES: usize = 4096;
 const DEFAULT_PHYSICS_DEBUG_SUMMARY_PRIMITIVES: usize = 128;
 const DEFAULT_PHYSICS_DEBUG_SUMMARY_TIMINGS: usize = 64;
 pub const PHYSICS_DEBUG_SCHEMA: &str = "threenative.physics-debug-snapshot";
@@ -93,16 +94,35 @@ pub struct PhysicsDebugDepth {
 
 impl PhysicsDebugSnapshot {
     pub fn bounded(
+        primitives: Vec<PhysicsDebugPrimitive>,
+        telemetry: PhysicsDebugTelemetry,
+    ) -> Self {
+        Self::bounded_with_limits(
+            primitives,
+            telemetry,
+            DEFAULT_PHYSICS_DEBUG_SUMMARY_PRIMITIVES,
+            DEFAULT_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES,
+            DEFAULT_PHYSICS_DEBUG_SUMMARY_TIMINGS,
+        )
+    }
+
+    pub fn bounded_with_limits(
         mut primitives: Vec<PhysicsDebugPrimitive>,
         mut telemetry: PhysicsDebugTelemetry,
+        summary_primitives: usize,
+        artifact_primitives: usize,
+        timings: usize,
     ) -> Self {
+        let summary_primitives = summary_primitives.min(MAX_PHYSICS_DEBUG_SUMMARY_PRIMITIVES);
+        let artifact_primitives = artifact_primitives.min(MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES);
+        let timings = timings.min(MAX_PHYSICS_DEBUG_TIMINGS);
         primitives.sort_by(|left, right| left.id.cmp(&right.id));
         telemetry
             .timings
             .sort_by(|left, right| left.system.cmp(&right.system));
         let total_primitives = primitives.len();
-        primitives.truncate(MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES);
-        telemetry.timings.truncate(MAX_PHYSICS_DEBUG_TIMINGS);
+        primitives.truncate(artifact_primitives);
+        telemetry.timings.truncate(timings);
         for primitive in &mut primitives {
             primitive.id.truncate(128);
             primitive.category.truncate(32);
@@ -125,20 +145,16 @@ impl PhysicsDebugSnapshot {
             omitted_primitives: total_primitives.saturating_sub(primitives.len()),
             primitives,
             telemetry,
-            truncated: total_primitives > MAX_PHYSICS_DEBUG_ARTIFACT_PRIMITIVES,
+            truncated: total_primitives > artifact_primitives,
         };
-        let summary_omitted =
-            total_primitives.saturating_sub(DEFAULT_PHYSICS_DEBUG_SUMMARY_PRIMITIVES);
-        let mut summary_telemetry = artifact.telemetry.clone();
-        summary_telemetry
-            .timings
-            .truncate(DEFAULT_PHYSICS_DEBUG_SUMMARY_TIMINGS);
+        let summary_omitted = total_primitives.saturating_sub(summary_primitives);
+        let summary_telemetry = artifact.telemetry.clone();
         let summary = PhysicsDebugDepth {
             omitted_primitives: summary_omitted,
             primitives: artifact
                 .primitives
                 .iter()
-                .take(DEFAULT_PHYSICS_DEBUG_SUMMARY_PRIMITIVES)
+                .take(summary_primitives)
                 .cloned()
                 .collect(),
             telemetry: summary_telemetry,
