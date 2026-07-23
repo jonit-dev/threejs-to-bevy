@@ -8,9 +8,12 @@
       "movementDistance": { "maxDelta": 30 },
       "resources": [
         "FlightState.takeoff",
+        "FlightState.gust",
         "FlightState.stall",
         "FlightState.recovered",
         "FlightState.landed",
+        "FlightState.objectiveStep",
+        "FlightState.events",
         "FlightState.retryCount"
       ]
     }
@@ -23,18 +26,21 @@
   "steps": [
     { "label": "runway", "waitTicks": 20, "screenshot": "01-runway" },
     { "label": "retry", "press": "KeyR", "holdTicks": 1, "release": true, "screenshot": "02-retry" },
-    { "label": "takeoff", "press": "KeyW", "holdTicks": 90, "release": true, "screenshot": "03-takeoff" },
-    { "label": "stall", "press": "ArrowUp", "holdTicks": 40, "release": true, "screenshot": "04-stall" },
-    { "label": "recovery", "press": "ArrowDown", "holdTicks": 40, "release": true, "screenshot": "05-recovery" },
-    { "label": "landing", "waitTicks": 100, "screenshot": "06-landing" }
+    { "label": "milestones-1-2-takeoff-and-gust", "press": "KeyW", "holdTicks": 90, "release": true, "screenshot": "03-takeoff" },
+    { "label": "milestone-3-stall", "press": "ArrowUp", "holdTicks": 40, "release": true, "screenshot": "04-stall" },
+    { "label": "milestone-4-recovery", "press": "ArrowDown", "holdTicks": 40, "release": true, "screenshot": "05-recovery" },
+    { "label": "milestone-5-landing", "waitTicks": 100, "screenshot": "06-landing" }
   ],
   "assert": {
     "movement": { "entity": "craft", "minDistance": 5, "maxDistance": 300 },
     "resources": [
       { "id": "FlightState", "path": "takeoff", "equals": true, "changed": true },
+      { "id": "FlightState", "path": "gust", "equals": true, "changed": true },
       { "id": "FlightState", "path": "stall", "equals": true, "changed": true },
       { "id": "FlightState", "path": "recovered", "equals": true, "changed": true },
       { "id": "FlightState", "path": "landed", "equals": true, "changed": true },
+      { "id": "FlightState", "path": "objectiveStep", "equals": 5, "changed": true },
+      { "id": "FlightState", "path": "events", "equals": ["retry", "takeoff", "gust", "stall", "recovery", "landing"], "changed": true },
       { "id": "FlightState", "path": "retryCount", "gte": 1, "changed": true }
     ],
     "diagnostics": {

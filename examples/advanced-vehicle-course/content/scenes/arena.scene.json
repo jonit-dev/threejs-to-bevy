@@ -954,6 +954,7 @@
         "jumpLaunched": false,
         "leftSurface": "",
         "mixedSurface": false,
+        "objectiveStep": 0,
         "previousPosition": [
           0,
           0.9,

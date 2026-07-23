@@ -353,11 +353,13 @@
       "id": "FlightState",
       "value": {
         "phase": "ready",
+        "events": [],
         "takeoff": false,
         "gust": false,
         "stall": false,
         "recovered": false,
         "landed": false,
+        "objectiveStep": 0,
         "retryCount": 0,
         "altitude": 2,
         "speed": 12

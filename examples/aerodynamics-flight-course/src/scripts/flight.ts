@@ -6,8 +6,10 @@ export function updateFlightCourse(context: ScriptContext): void {
 
   const state = context.resources.get("FlightState", {
     altitude: 2,
+    events: [] as string[],
     gust: false,
     landed: false,
+    objectiveStep: 0,
     phase: "ready",
     recovered: false,
     retryCount: 0,
@@ -21,8 +23,10 @@ export function updateFlightCourse(context: ScriptContext): void {
     context.physics.setAngularVelocity("craft", [0, 0, 0]);
     context.resources.set("FlightState", {
       altitude: 2,
+      events: ["retry"],
       gust: false,
       landed: false,
+      objectiveStep: 0,
       phase: "retry",
       recovered: false,
       retryCount: Number(state.retryCount ?? 0) + 1,
@@ -59,28 +63,24 @@ export function updateFlightCourse(context: ScriptContext): void {
   let stall = Boolean(state.stall);
   let recovered = Boolean(state.recovered);
   let landed = Boolean(state.landed);
-  let phase = String(state.phase ?? "ready");
+  let phase = throttle > 0 ? "launch" : String(state.phase ?? "ready");
 
   if (throttle > 0 && !takeoff) {
     context.physics.addForce("craft", [0, 650, -450]);
   }
   if (altitude > 4) {
     takeoff = true;
-    phase = "takeoff";
   }
   if (takeoff && transform.position[2] < -18) {
     gust = true;
-    phase = "gust";
   }
   if (takeoff && pitch > 0.5) {
     stall = true;
-    phase = "stall";
     context.physics.addTorque("craft", [280, 0, 0]);
     context.physics.addForce("craft", [0, -300, 0]);
   }
   if (stall && pitch < -0.5) {
     recovered = true;
-    phase = "recovery";
     context.physics.addTorque("craft", [-320, 0, 0]);
     context.physics.addForce("craft", [0, 420, 0]);
   }
@@ -88,17 +88,38 @@ export function updateFlightCourse(context: ScriptContext): void {
     context.physics.addForce("craft", [0, altitude > 2.5 ? -1200 : 300, 0]);
     if (altitude <= 2.5) {
       landed = true;
-      phase = "landed";
     } else {
       phase = "approach";
     }
   }
   if (altitude < -3) phase = "failed";
 
+  const milestones = [
+    { event: "takeoff", reached: takeoff, phase: "takeoff", step: 1 },
+    { event: "gust", reached: gust, phase: "gust", step: 2 },
+    { event: "stall", reached: stall, phase: "stall", step: 3 },
+    { event: "recovery", reached: recovered, phase: "recovery", step: 4 },
+    { event: "landing", reached: landed, phase: "landed", step: 5 },
+  ] as const;
+  const events = Array.isArray(state.events)
+    ? state.events.filter((entry): entry is string => typeof entry === "string")
+    : [];
+  let objectiveStep = 0;
+  for (const milestone of milestones) {
+    if (!milestone.reached) continue;
+    objectiveStep = milestone.step;
+    phase = milestone.phase;
+    if (!events.includes(milestone.event)) events.push(milestone.event);
+  }
+  if (recovered && !landed && pitch === 0 && throttle === 0) phase = "approach";
+  if (altitude < -3) phase = "failed";
+
   context.resources.patch("FlightState", {
     altitude,
+    events,
     gust,
     landed,
+    objectiveStep,
     phase,
     recovered,
     speed,

@@ -13,6 +13,7 @@
         "CourseState.events",
         "CourseState.jumped",
         "CourseState.mixedSurface",
+        "CourseState.objectiveStep",
         "CourseState.retryCount",
         "CourseState.status"
       ]
@@ -26,11 +27,11 @@
   "steps": [
     { "label": "settle", "waitTicks": 30, "screenshot": "01-grid" },
     { "label": "retry", "press": "KeyR", "holdTicks": 1, "release": true, "screenshot": "02-retry" },
-    { "label": "mixed-surface-and-ramp", "press": "KeyW", "holdTicks": 780, "release": false, "screenshot": "03-mixed-jump" },
-    { "label": "airborne", "press": "KeyW", "holdTicks": 300, "release": false },
-    { "label": "landing", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "04-landing" },
-    { "label": "collision-damage", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "05-collision" },
-    { "label": "finish", "press": "KeyW", "holdTicks": 600, "release": true, "screenshot": "06-finish" }
+    { "label": "milestone-1-mixed-surface", "press": "KeyW", "holdTicks": 780, "release": false, "screenshot": "03-mixed-jump" },
+    { "label": "milestone-2-airborne", "press": "KeyW", "holdTicks": 300, "release": false },
+    { "label": "milestone-2-landing", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "04-landing" },
+    { "label": "milestone-3-collision-damage", "press": "KeyW", "holdTicks": 300, "release": false, "screenshot": "05-collision" },
+    { "label": "milestone-4-finish", "press": "KeyW", "holdTicks": 600, "release": true, "screenshot": "06-finish" }
   ],
   "assert": {
     "movement": { "entity": "chassis", "minDistance": 1, "maxDistance": 300 },
@@ -38,6 +39,7 @@
       { "id": "CourseState", "path": "checkpoint", "equals": 3, "changed": true },
       { "id": "CourseState", "path": "damage", "equals": 25, "changed": true },
       { "id": "CourseState", "path": "mixedSurface", "equals": true },
+      { "id": "CourseState", "path": "objectiveStep", "equals": 4, "changed": true },
       { "id": "CourseState", "path": "jumped", "equals": true, "changed": true },
       { "id": "CourseState", "path": "collisionEntity", "equals": "damage-barrier", "changed": true },
       { "id": "CourseState", "path": "events", "equals": ["retry", "mixed-surface", "jump", "collision-damage", "finish"], "changed": true },

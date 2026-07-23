@@ -397,8 +397,11 @@
     {
       "id": "DestructionState",
       "value": {
+        "activePieceBudget": 4,
+        "events": [],
         "phase": "armed",
         "impact": false,
+        "objectiveStep": 0,
         "regionalBreak": false,
         "settled": false,
         "retryCount": 0

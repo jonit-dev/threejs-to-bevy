@@ -4,7 +4,7 @@
   "id": "flight-course-systems",
   "systems": [
     {
-      "id": "flight-course",
+      "id": "flight-course-milestones",
       "schedule": "fixedUpdate",
       "script": {
         "module": "src/scripts/flight.ts",

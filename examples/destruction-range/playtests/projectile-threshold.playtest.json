@@ -6,20 +6,30 @@
   "subject": "wall/piece.002",
   "parity": {
     "targets": ["web", "desktop"],
-    "compare": { "movementDistance": { "maxDelta": 4 } }
+    "compare": {
+      "movementDistance": { "maxDelta": 4 },
+      "resources": [
+        "DestructionState.activePieceBudget",
+        "DestructionState.events",
+        "DestructionState.objectiveStep"
+      ]
+    }
   },
   "warmupFrames": 15,
   "steps": [
-    { "label": "sub-threshold-projectile", "waitTicks": 1, "release": false, "screenshot": "01-sub-threshold-damage-only" },
-    { "label": "over-threshold-projectile", "waitTicks": 16, "release": false, "screenshot": "02-over-threshold-region-activated" },
-    { "label": "bounded-debris-settle", "waitTicks": 80, "release": false, "screenshot": "03-bounded-cleanup" }
+    { "label": "milestone-1-impact", "waitTicks": 1, "release": false, "screenshot": "01-sub-threshold-damage-only" },
+    { "label": "milestone-2-regional-break", "waitTicks": 16, "release": false, "screenshot": "02-over-threshold-region-activated" },
+    { "label": "milestone-3-bounded-settle", "waitTicks": 80, "release": false, "screenshot": "03-bounded-cleanup" }
   ],
   "assert": {
     "movement": { "entity": "wall/piece.002", "minDistance": 0.01, "maxDistance": 20 },
     "resources": [
       { "id": "DestructionState", "path": "impact", "equals": true },
       { "id": "DestructionState", "path": "regionalBreak", "equals": true },
-      { "id": "DestructionState", "path": "settled", "equals": true }
+      { "id": "DestructionState", "path": "settled", "equals": true },
+      { "id": "DestructionState", "path": "activePieceBudget", "equals": 4 },
+      { "id": "DestructionState", "path": "objectiveStep", "equals": 3, "changed": true },
+      { "id": "DestructionState", "path": "events", "equals": ["impact", "regional-break", "settled"], "changed": true }
     ],
     "diagnostics": {
       "runtimeReady": true,

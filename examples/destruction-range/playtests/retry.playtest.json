@@ -5,7 +5,7 @@
   "parity": {
     "targets": ["web", "desktop"],
     "compare": {
-      "resources": ["DestructionState.retryCount"]
+      "resources": ["DestructionState.events", "DestructionState.objectiveStep", "DestructionState.retryCount"]
     }
   },
   "steps": [
@@ -20,7 +20,9 @@
   ],
   "assert": {
     "resources": [
-      { "id": "DestructionState", "path": "retryCount", "gte": 1, "changed": true }
+      { "id": "DestructionState", "path": "retryCount", "gte": 1, "changed": true },
+      { "id": "DestructionState", "path": "objectiveStep", "equals": 0 },
+      { "id": "DestructionState", "path": "events", "equals": ["retry"], "changed": true }
     ],
     "diagnostics": {
       "runtimeReady": true,
