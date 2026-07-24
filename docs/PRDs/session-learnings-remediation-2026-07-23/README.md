@@ -13,7 +13,7 @@ documents, completed PRDs, and active PRDs before inclusion.
 | --- | --- | --- |
 | [PRD-001](../done/session-learnings-remediation-2026-07-23/PRD-001-flight-viability-and-realistic-proof.md) | Aerodynamic validation and plan-derived proof contracts | Complete: measured flight viability, focus-realistic input, and plan-derived objective-duration/diagnostic scenarios |
 | [PRD-002](PRD-002-runtime-transform-and-temporal-ownership.md) | Runtime transform composition and camera-history policy | Authored/runtime cosmetic transform composition, ocean recenter ownership, camera-safe motion blur |
-| [PRD-003](PRD-003-executable-projectiles-and-flight-kit.md) | Mechanic descriptors and script stdlib | Executable projectile block, reusable flight rig/effects/audio-edge/reticle conventions |
+| [PRD-003](../done/session-learnings-remediation-2026-07-23/PRD-003-executable-projectiles-and-flight-kit.md) | Mechanic descriptors and script stdlib | Complete: executable projectile block and reusable flight rig/audio-edge/propeller/reticle conventions |
 | [PRD-004](PRD-004-generator-regeneration-integrity.md) | Generator provenance and generated-asset reconciliation | Overwrite-policy preservation, exact animation reconciliation, stable initial state, duplicate-path diagnosis |
 | [PRD-005](../done/session-learnings-remediation-2026-07-23/PRD-005-safe-prototypes-and-agent-authoring-contract.md) | Plan-derived authoring transaction and generated agent guidance | Complete: non-destructive prototypes, process cleanup, capability/direct-edit truth, focused inner loops, compact CLI summaries |
 | [PRD-006](PRD-006-runtime-proof-cost-and-preview-freshness.md) | Runtime observation modes and preview module graph | Write-audit overhead, runtime-dist invalidation, freshness proof |
@@ -55,8 +55,8 @@ shows a render-scale requirement.
 1. PRD-005 is complete and prevents authoring commands from destroying existing
    work.
 2. PRD-001 is complete and makes vehicle configurations and their proof trustworthy.
-3. PRD-003 makes the advertised projectile block real, then promotes only
-   flight abstractions supported by two consumers.
+3. PRD-003 is complete: the advertised projectile block is executable and the
+   promoted flight abstractions have two consumers.
 4. PRD-004 closes generator rerun corruption.
 5. PRD-006 removes proof-mode overhead and stale runtime feedback.
 6. PRD-002 establishes transform/history ownership before more camera-relative

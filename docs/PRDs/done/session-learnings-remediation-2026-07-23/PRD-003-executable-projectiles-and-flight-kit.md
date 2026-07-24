@@ -168,7 +168,7 @@ Automated review follows every phase; manual playtest is additional for Phases
 - [x] FlightRig has two real consumers and independent direction tests.
 - [x] No helper exposes renderer/native handles or duplicates descriptor truth.
 - [x] Reticle follows camera projection rather than a CSS constant.
-- [ ] Focused tests, conformance, cookbook, docs, and both game playtests pass.
+- [x] Focused tests, conformance, cookbook, docs, and both game playtests pass.
 
 ## Verification evidence
 
@@ -255,3 +255,15 @@ Append commands and artifacts per phase.
   gameplay, visual, animation, movement, and diagnostic assertions at
   `/tmp/battle-flight-kit-input-web/summary.json`; its frame visibly contains
   the Pacific aircraft, ocean, combat HUD, and projected reticle.
+
+### Phase 6
+
+- The existing planner intent contract already owns flight cruise, pitch,
+  roll, force, and retry responsibilities; the existing playtest scaffold
+  derives exact flight proof from scene actions and resource observations, so
+  no second responsibility or proof registry was added.
+- `pnpm verify:conformance` and the complete `pnpm verify:cookbook` gate pass.
+  The latter verifies the new two-consumer `flight-rig` cookbook entry in the
+  same run as every existing authoring pattern.
+- Focused standard-library tests pass 57 cases, and the final Battle desktop
+  pitch proof passes at `/tmp/battle-flight-kit-pitch-native-final/summary.json`.

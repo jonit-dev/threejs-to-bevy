@@ -120,12 +120,15 @@ Current support:
   import allowlist.
 - Portable combat and flight math is available through pure state/value
   helpers: `ProjectileEx`, `GunneryEx`, `FxEx`, `HitTestEx`, `ShipFxEx`,
-  `GuidedFlightEx`, and `CoordinatedTurnEx`. Canonical unit tests pin pool
-  lifecycle, lead pursuit, hit boundaries, fireball/sinking envelopes, guided
-  steering, and constant-radius coordinated-turn behavior; the generated
-  stdlib bundle parity gate keeps the runtime-injected implementations aligned,
-  and the generator-owned runtime-export manifest drives the compiler import
-  allowlist without a second helper-name registry.
+  `GuidedFlightEx`, `CoordinatedTurnEx`, `FlightRig`, `AudioCueEx`,
+  `PropellerEx`, and `BoresightEx`. Canonical unit tests pin pool lifecycle,
+  lead pursuit, hit boundaries, fireball/sinking envelopes, control direction,
+  throttle and retry state, constant-radius turns, cue cadence, rotor blending,
+  and camera-space projection. The course and Battle of Pacific consume the
+  same FlightRig kernel with project-owned IDs and tuning. The generated stdlib
+  bundle parity gate keeps runtime-injected implementations aligned, and the
+  generator-owned runtime-export manifest drives the compiler import allowlist
+  without a second helper-name registry.
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
