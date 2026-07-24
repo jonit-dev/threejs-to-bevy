@@ -124,3 +124,67 @@ test("should expand tag selectors against authored world entities", () => {
     (error: unknown) => error instanceof CompilerError && error.code === "TN_IR_SYSTEM_COMMAND_SELECTOR_INVALID",
   );
 });
+
+test("should allow exact lifecycle commands for an entity produced by the same system", () => {
+  const emitted = ecsToIr({
+    toJSON: () => ({
+      componentSchemas: {},
+      entities: [],
+      eventSchemas: {},
+      resources: {},
+      resourceSchemas: {},
+      systems: [{
+        commands: [
+          { kind: "instantiate", prefab: "projectile.prefab", prefix: "projectile.runtime.0001" },
+          { entity: "projectile.runtime.0001.root", kind: "despawn" },
+        ],
+        eventReads: [],
+        eventWrites: [],
+        name: "projectile",
+        queries: [],
+        reads: [],
+        resourceReads: [],
+        resourceWrites: [],
+        services: [],
+        schedule: "fixedUpdate",
+        writes: [],
+      }],
+    }),
+  });
+
+  assert.deepEqual(emitted.systems.systems[0]?.commands, [
+    { kind: "instantiate", prefab: "projectile.prefab", prefix: "projectile.runtime.0001" },
+    { entity: "projectile.runtime.0001.root", kind: "despawn" },
+  ]);
+});
+
+test("should reject dynamic lifecycle commands outside the same system's exact instantiate prefixes", () => {
+  assert.throws(
+    () => ecsToIr({
+      toJSON: () => ({
+        componentSchemas: {},
+        entities: [],
+        eventSchemas: {},
+        resources: {},
+        resourceSchemas: {},
+        systems: [{
+          commands: [
+            { kind: "instantiate", prefab: "projectile.prefab", prefix: "projectile.runtime.0001" },
+            { entity: "projectile.runtime.other.root", kind: "despawn" },
+          ],
+          eventReads: [],
+          eventWrites: [],
+          name: "projectile",
+          queries: [],
+          reads: [],
+          resourceReads: [],
+          resourceWrites: [],
+          services: [],
+          schedule: "fixedUpdate",
+          writes: [],
+        }],
+      }),
+    }),
+    (error: unknown) => error instanceof CompilerError && error.code === "TN_IR_SYSTEM_COMMAND_SELECTOR_INVALID",
+  );
+});

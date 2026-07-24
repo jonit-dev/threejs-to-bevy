@@ -2,7 +2,7 @@ import type { IAuthoringRecipeComposition } from "@threenative/authoring";
 
 export type MechanicBlockId = "follow-camera" | "grid-step" | "occupancy-objective" | "physics-target" | "projectile" | "push-interaction" | "score" | "spawner" | "timer" | "trigger-sequence";
 export type SpatialMechanicBlockId = Extract<MechanicBlockId, "grid-step" | "occupancy-objective" | "push-interaction">;
-export type MechanicSourceOwner = "input" | "scene" | "scripts" | "systems" | "ui";
+export type MechanicSourceOwner = "input" | "prefabs" | "scene" | "scripts" | "systems" | "ui";
 export type MechanicBlockWriter = { kind: "builtin"; id: Exclude<MechanicBlockId, "grid-step" | "occupancy-objective" | "push-interaction"> } | { kind: "spatial" };
 
 export interface IMechanicInputPolicy {
@@ -43,7 +43,10 @@ export const MECHANIC_BLOCK_DESCRIPTORS: readonly IMechanicBlockDescriptor[] = [
     ...descriptor("score", "Add score, win, and retry state tied to named events.", "score", ["score", "win"], ["score-win-retry"], ["--resource", "--win-at"], ["scene", "scripts"]),
     inputPolicies: [{ action: "retry", activation: "pressed", discrete: true }],
   },
-  descriptor("projectile", "Add launcher input, projectile prefab, and physics metadata.", "projectile-impact", ["launch", "projectile", "shoot"], ["projectile-launch"], ["--launcher", "--projectile"], ["scene", "scripts"]),
+  {
+    ...descriptor("projectile", "Add an executable projectile lifecycle with portable spawn, impact, cooldown, and cleanup.", "projectile-impact", ["launch", "projectile", "shoot"], ["projectile-launch", "projectile-impact", "projectile-cleanup"], ["--launcher", "--projectile"], ["input", "prefabs", "scene", "scripts", "systems"]),
+    inputPolicies: [{ action: "launch", activation: "pressed", discrete: true, repeatPolicy: "cooldown" }],
+  },
   {
     ...descriptor("physics-target", "Add a visible set of dynamic collider targets for knockdown mechanics.", "physics-contact", ["dynamic-target", "knockdown", "physics-target"], ["physics-knockdown-target"], ["--count", "--prefix"], ["input", "scene", "scripts", "systems", "ui"]),
     mutationCommand: "tn add physics-target --count 5 --project . --json",

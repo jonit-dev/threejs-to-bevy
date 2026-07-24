@@ -87,16 +87,35 @@ export async function removeMechanicBlock(projectPath: string, blockId: string):
     await writeJson(resolve(projectPath, scenePath), scene);
   }
   const systemsPath = sourceFiles.find((file) => file.endsWith(".systems.json"));
-  if (systemsPath !== undefined && block === "timer") {
+  if (systemsPath !== undefined && (block === "timer" || block === "projectile")) {
     const systems = await readJsonObject(resolve(projectPath, systemsPath));
-    const countdownId = typeof details.countdownId === "string" ? details.countdownId : undefined;
-    systems.countdowns = arrayOfRecords(systems.countdowns).filter((countdown) => countdown.id !== countdownId);
+    if (block === "timer") {
+      const countdownId = typeof details.countdownId === "string" ? details.countdownId : undefined;
+      systems.countdowns = arrayOfRecords(systems.countdowns).filter((countdown) => countdown.id !== countdownId);
+    } else {
+      systems.systems = arrayOfRecords(systems.systems).filter((system) => system.id !== "run-projectile");
+    }
     await writeJson(resolve(projectPath, systemsPath), systems);
+  }
+  const inputPath = sourceFiles.find((file) => file.endsWith(".input.json"));
+  if (inputPath !== undefined && block === "projectile") {
+    const input = await readJsonObject(resolve(projectPath, inputPath));
+    input.actions = arrayOfRecords(input.actions).filter((action) => action.id !== "launch");
+    await writeJson(resolve(projectPath, inputPath), input);
   }
   const filesRemoved = [mechanicPath, `playtests/${definition.proofTemplateId}.playtest.json`];
   for (const file of sourceFiles.filter((file) => file.endsWith("mechanics.ts"))) {
     const removed = await removeMechanicScript(resolve(projectPath, file), block as "projectile" | "score");
     if (removed) filesRemoved.push(file);
+  }
+  if (block === "projectile" && typeof details.prefabPath === "string") {
+    await rm(resolve(projectPath, details.prefabPath), { force: true });
+    filesRemoved.push(details.prefabPath);
+  }
+  if (block === "projectile") {
+    const cooldownScenarioPath = "playtests/block-projectile-cooldown.playtest.json";
+    await rm(resolve(projectPath, cooldownScenarioPath), { force: true });
+    filesRemoved.push(cooldownScenarioPath);
   }
   await Promise.all(filesRemoved.slice(0, 2).map((file) => rm(resolve(projectPath, file), { force: true })));
   return {
@@ -135,6 +154,8 @@ function removeBlockSceneContent(scene: Record<string, unknown>, block: Mechanic
     resourceIds.add("ProjectilePhysics");
     resourceIds.add("ProjectileLauncher");
     if (typeof details.projectile === "string") prefabIds.add(`${details.projectile}.prefab`);
+    entityIds.add("projectile-impact-target");
+    entityIds.add("projectile.runtime.template");
   } else if (block === "physics-target") {
     for (const id of Array.isArray(details.targets) ? details.targets : []) if (typeof id === "string") entityIds.add(id);
     if (typeof details.prefab === "string") prefabIds.add(details.prefab);
@@ -276,20 +297,108 @@ async function addProjectileBlock(options: IMechanicBlockOptions): Promise<IMech
   const launcher = readFlag(options.args, "--launcher") ?? "player";
   const projectile = readFlag(options.args, "--projectile") ?? "projectile.basic";
   const scenePath = await resolveScenePath(options.projectPath);
+  const systemsPath = await resolveSystemsPath(options.projectPath, scenePath);
+  const inputPath = await resolveInputPath(options.projectPath, scenePath);
   const scene = await readJsonObject(resolve(options.projectPath, scenePath));
+  const systems = await readJsonObject(resolve(options.projectPath, systemsPath));
+  const input = await readJsonObject(resolve(options.projectPath, inputPath));
   const prefabs = arrayOfRecords(scene.prefabs);
+  const entities = arrayOfRecords(scene.entities);
   const resources = arrayOfRecords(scene.resources);
+  const prefabId = `${projectile}.prefab`;
+  const prefabPath = `content/prefabs/${projectile.replaceAll(/[^a-zA-Z0-9._-]/g, "-")}.prefab.json`;
+  await assertProjectileOwnersAvailable(options.projectPath, {
+    entities,
+    input,
+    prefabId,
+    prefabPath,
+    prefabs,
+    resources,
+    systems,
+  });
   scene.prefabs = prefabs;
+  scene.entities = entities;
   scene.resources = resources;
-  upsertPrefab(prefabs, `${projectile}.prefab`, "sphere", "#f97316");
+  const launcherEntity = entities.find((entity) => entity.id === launcher);
+  if (launcherEntity === undefined) {
+    throw new Error(`TN_ADD_PROJECTILE_LAUNCHER_MISSING: Launcher entity '${launcher}' does not exist in ${scenePath}. Add it or pass --launcher <entity-id>.`);
+  }
+  if (!isRecord(launcherEntity.transform) && !isRecord(readComponent(launcherEntity, "Transform"))) {
+    throw new Error(`TN_ADD_PROJECTILE_TRANSFORM_MISSING: Launcher entity '${launcher}' has no Transform in ${scenePath}. Add a transform before installing the projectile mechanic.`);
+  }
+  upsertPrefab(prefabs, prefabId, "sphere", "#f97316");
+  upsertEntity(entities, "projectile.runtime.template", prefabId, [0, -9999, 0], [0.001, 0.001, 0.001]);
+  const projectileTemplate = entities.find((entity) => entity.id === "projectile.runtime.template");
+  if (projectileTemplate !== undefined) {
+    projectileTemplate.components = { Visibility: { visible: false } };
+  }
+  upsertPhysicsTarget(entities, "projectile-impact-target", prefabId, [0, 0.35, 1.5]);
+  const impactTarget = entities.find((entity) => entity.id === "projectile-impact-target");
+  if (impactTarget !== undefined) {
+    impactTarget.components = {
+      Collider: { kind: "box", size: [1.2, 1.2, 0.4] },
+      RigidBody: { kind: "static" },
+    };
+    impactTarget.transform = { position: [0, 0.35, 1.5], scale: [1.2, 1.2, 0.4] };
+  }
   upsertResource(resources, "ProjectilePhysics", {
     collider: { kind: "sphere", radius: 0.18, trigger: false },
     rigidBody: { kind: "dynamic", mass: 0.25 },
   });
-  upsertResource(resources, "ProjectileLauncher", { cooldown: 0.35, input: "keyboard.Space", launcher, projectilePrefab: `${projectile}.prefab`, speed: 12 });
+  upsertResource(resources, "ProjectileLauncher", {
+    active: 0,
+    cooldown: 1,
+    cooldownRejected: 0,
+    despawned: 0,
+    fired: 0,
+    impacts: 0,
+    input: "launch",
+    launcher,
+    lifetime: 1.5,
+    projectilePrefab: prefabId,
+    speed: 12,
+    status: "ready",
+  });
+  const actions = arrayOfRecords(input.actions);
+  input.actions = actions;
+  upsertInputAction(actions, "launch", ["keyboard.Space"]);
+  const systemList = arrayOfRecords(systems.systems);
+  systems.systems = systemList;
+  upsertSystem(systemList, "run-projectile", "src/scripts/mechanics.ts", "updateProjectileBlock", {
+    commands: [
+      ...projectilePrefixes(8).map((prefix) => ({ kind: "instantiate", prefab: prefabId, prefix })),
+      ...projectilePrefixes(8).map((prefix) => ({ entity: `${prefix}.root`, kind: "despawn" })),
+    ],
+    resourceReads: ["ProjectileLauncher"],
+    resourceWrites: ["ProjectileLauncher"],
+    services: ["physics.raycast"],
+    writes: ["RigidBody", "Transform"],
+  });
+  await writeJson(resolve(options.projectPath, prefabPath), {
+    entities: [{
+      components: {
+        Collider: { kind: "sphere", radius: 0.18, trigger: false },
+        MeshRenderer: { material: "mat.player", mesh: "mesh.projectile.runtime.template" },
+        RigidBody: { gravityScale: 0, kind: "dynamic", mass: 0.25 },
+        Transform: { position: [0, -9999, 0], rotation: [0, 0, 0, 1], scale: [0.18, 0.18, 0.18] },
+      },
+      id: "root",
+      tags: ["projectile"],
+    }],
+    id: `${projectile}.prefab`,
+    schema: "threenative.prefab",
+    version: "0.1.0",
+  });
   await writeJson(resolve(options.projectPath, scenePath), scene);
+  await writeJson(resolve(options.projectPath, systemsPath), systems);
+  await writeJson(resolve(options.projectPath, inputPath), input);
   const scriptPath = await appendMechanicScript(options.projectPath, "projectile");
-  return writeBlockArtifacts(options.projectPath, "projectile", { launcher, projectile, scenePath }, [scenePath, scriptPath]);
+  const result = await writeBlockArtifacts(options.projectPath, "projectile", { inputPath, launcher, prefabPath, projectile, scenePath, systemsPath }, [inputPath, prefabPath, scenePath, scriptPath, systemsPath]);
+  await writeJson(resolve(options.projectPath, result.scenarioPath), projectileScenario(launcher));
+  const cooldownScenarioPath = "playtests/block-projectile-cooldown.playtest.json";
+  await writeJson(resolve(options.projectPath, cooldownScenarioPath), projectileCooldownScenario(launcher));
+  result.filesWritten = [...new Set([...result.filesWritten, cooldownScenarioPath])].sort();
+  return result;
 }
 
 async function addPhysicsTargetBlock(options: IMechanicBlockOptions): Promise<IMechanicBlockResult> {
@@ -428,7 +537,84 @@ async function appendMechanicScript(projectPath: string, block: "projectile" | "
 }
 `
       : `export function ${exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
-  context.state("ProjectileLauncher", { cooldown: 0.35, input: "keyboard.Space", projectilePrefab: "projectile.basic.prefab", speed: 12 });
+  const config = context.resources.get("ProjectileLauncher", {
+    active: 0, cooldown: 1, cooldownRejected: 0, despawned: 0, fired: 0,
+    impacts: 0, input: "launch", launcher: "player", lifetime: 1.5,
+    projectilePrefab: "projectile.basic.prefab", speed: 12, status: "ready"
+  });
+  const state = context.state("projectile-lifecycle", {
+    active: [] as Array<{ age: number; direction: [number, number, number]; id: string; initialized: boolean; position: [number, number, number]; rotation: [number, number, number, number] }>,
+    nextId: 1,
+    readyAt: 0
+  });
+  const dt = Math.max(0, context.time.fixedDelta);
+  const survivors: typeof state.active = [];
+  for (const projectile of state.active) {
+    projectile.age += dt;
+    const entity = context.entity(projectile.id);
+    if (entity) {
+      if (!projectile.initialized) {
+        entity.transform().setPose(projectile.position, projectile.rotation);
+        entity.patch("RigidBody", {
+          gravityScale: 0, kind: "dynamic", mass: 0.25,
+          velocity: [projectile.direction[0] * config.speed, projectile.direction[1] * config.speed, projectile.direction[2] * config.speed]
+        });
+        projectile.initialized = true;
+        survivors.push(projectile);
+        continue;
+      }
+      const position = entity.transform().position;
+      const hit = context.physics.raycast({
+        direction: projectile.direction,
+        ignore: [config.launcher, projectile.id],
+        maxDistance: Math.max(0.01, config.speed * dt),
+        origin: position
+      });
+      if (hit.hit) {
+        context.commands.despawn(projectile.id);
+        config.impacts += 1;
+        config.despawned += 1;
+        continue;
+      }
+    }
+    if (projectile.age >= config.lifetime) {
+      context.commands.despawn(projectile.id);
+      config.despawned += 1;
+      continue;
+    }
+    survivors.push(projectile);
+  }
+  state.active = survivors;
+  if (context.input.pressed(config.input)) {
+    if (context.time.elapsed < state.readyAt) {
+      config.cooldownRejected += 1;
+    } else {
+      const launcher = context.entity(config.launcher);
+      if (launcher) {
+        const transform = launcher.get<{ position?: [number, number, number]; rotation?: [number, number, number, number] }>("Transform", {});
+        const position = transform.position ?? launcher.transform().position;
+        const rotation = transform.rotation ?? [0, 0, 0, 1];
+        const [x, y, z, w] = rotation;
+        const direction: [number, number, number] = [
+          2 * (x * z + w * y),
+          2 * (y * z - w * x),
+          1 - 2 * (x * x + y * y)
+        ];
+        const prefix = \`projectile.runtime.\${String(state.nextId).padStart(4, "0")}\`;
+        const id = \`\${prefix}.root\`;
+        const result = context.commands.instantiate(config.projectilePrefab, prefix);
+        if (result.accepted) {
+          state.active.push({ age: 0, direction, id, initialized: false, position, rotation });
+          state.nextId = state.nextId >= 8 ? 1 : state.nextId + 1;
+          state.readyAt = context.time.elapsed + config.cooldown;
+          config.fired += 1;
+        }
+      }
+    }
+  }
+  config.active = state.active.length;
+  config.status = config.impacts > 0 ? "impact-cleaned" : config.despawned > 0 ? "expired-cleaned" : config.fired > 0 ? "flying" : "ready";
+  context.resources.patch("ProjectileLauncher", config);
 }
 `;
     await mkdir(resolve(absolutePath, ".."), { recursive: true });
@@ -609,11 +795,117 @@ function upsertInputAction(actions: Record<string, unknown>[], id: string, bindi
   else existing.bindings = bindings;
 }
 
-function upsertSystem(systems: Record<string, unknown>[], id: string, module: string, exportName: string): void {
-  const next = { id, script: { export: exportName, module }, source: "behavior-metadata" };
+function upsertSystem(systems: Record<string, unknown>[], id: string, module: string, exportName: string, metadata: Record<string, unknown> = {}): void {
+  const next = { ...metadata, id, script: { export: exportName, module }, source: "behavior-metadata" };
   const existing = systems.find((system) => system.id === id);
   if (existing === undefined) systems.push(next);
   else Object.assign(existing, next);
+}
+
+function readComponent(entity: Record<string, unknown>, component: string): unknown {
+  return isRecord(entity.components) ? entity.components[component] : undefined;
+}
+
+function projectilePrefixes(count: number): string[] {
+  return Array.from({ length: count }, (_, index) => `projectile.runtime.${String(index + 1).padStart(4, "0")}`);
+}
+
+async function assertProjectileOwnersAvailable(
+  projectPath: string,
+  owners: {
+    entities: Record<string, unknown>[];
+    input: Record<string, unknown>;
+    prefabId: string;
+    prefabPath: string;
+    prefabs: Record<string, unknown>[];
+    resources: Record<string, unknown>[];
+    systems: Record<string, unknown>;
+  },
+): Promise<void> {
+  const conflicts: string[] = [];
+  const ownedEntityIds = new Set(["projectile-impact-target", "projectile.runtime.template"]);
+  const ownedResourceIds = new Set(["ProjectileLauncher", "ProjectilePhysics"]);
+  if (owners.entities.some((entity) => typeof entity.id === "string" && ownedEntityIds.has(entity.id))) conflicts.push("scene entity");
+  if (owners.prefabs.some((prefab) => prefab.id === owners.prefabId)) conflicts.push(`scene prefab '${owners.prefabId}'`);
+  if (owners.resources.some((resource) => typeof resource.id === "string" && ownedResourceIds.has(resource.id))) conflicts.push("scene resource");
+  if (arrayOfRecords(owners.input.actions).some((action) => action.id === "launch")) conflicts.push("input action 'launch'");
+  if (arrayOfRecords(owners.systems.systems).some((system) => system.id === "run-projectile")) conflicts.push("system 'run-projectile'");
+  for (const relativePath of [
+    owners.prefabPath,
+    "content/mechanics/projectile.mechanic.json",
+    "playtests/block-projectile.playtest.json",
+    "playtests/block-projectile-cooldown.playtest.json",
+  ]) {
+    if (await pathExists(resolve(projectPath, relativePath))) conflicts.push(relativePath);
+  }
+  const mechanicsPath = resolve(projectPath, "src/scripts/mechanics.ts");
+  if (await pathExists(mechanicsPath) && /export\s+function\s+updateProjectileBlock\b/u.test(await readFile(mechanicsPath, "utf8"))) {
+    conflicts.push("script export 'updateProjectileBlock'");
+  }
+  if (conflicts.length > 0) {
+    throw new Error(`TN_ADD_PROJECTILE_OWNER_CONFLICT: Projectile installation would overwrite owned source: ${conflicts.join(", ")}. Remove or rename the conflicting source before retrying.`);
+  }
+}
+
+async function pathExists(path: string): Promise<boolean> {
+  try {
+    await readFile(path);
+    return true;
+  } catch (error) {
+    if (isRecord(error) && error.code === "ENOENT") return false;
+    throw error;
+  }
+}
+
+function projectileScenario(subject: string): Record<string, unknown> {
+  return {
+    artifacts: { console: true, effectLog: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      contacts: [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", minCount: 1, with: "projectile-impact-target" }],
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      resources: [
+        { gte: 1, id: "ProjectileLauncher", path: "fired" },
+        { gte: 1, id: "ProjectileLauncher", path: "impacts" },
+        { gte: 1, id: "ProjectileLauncher", path: "despawned" },
+        { equals: 0, id: "ProjectileLauncher", path: "active" },
+      ],
+    },
+    name: "block-projectile",
+    schemaVersion: 1,
+    steps: [
+      { holdFrames: 1, label: "fire-projectile", press: "Space", release: true },
+      ...Array.from({ length: 8 }, (_, index) => ({ label: `observe-travel-${index + 1}`, release: false, waitFrames: 1 })),
+      { label: "observe-impact-cleanup", release: false, waitFrames: 42 },
+    ],
+    subject,
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
+}
+
+function projectileCooldownScenario(subject: string): Record<string, unknown> {
+  return {
+    artifacts: { console: true, network: true, runtimeTrace: true, screenshots: "before-after" },
+    assert: {
+      diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
+      resources: [
+        { equals: 1, id: "ProjectileLauncher", path: "fired" },
+        { gte: 1, id: "ProjectileLauncher", path: "cooldownRejected" },
+      ],
+    },
+    name: "block-projectile-cooldown",
+    schemaVersion: 1,
+    steps: [
+      { holdFrames: 1, label: "first-fire", press: "Space", release: true },
+      { holdFrames: 1, label: "cooldown-negative-control", press: "Space", release: true },
+      { label: "observe-cooldown", release: false, waitFrames: 2 },
+    ],
+    subject,
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 5,
+  };
 }
 
 function upsertUiText(nodes: Record<string, unknown>[], id: string, text: string, top: number): void {

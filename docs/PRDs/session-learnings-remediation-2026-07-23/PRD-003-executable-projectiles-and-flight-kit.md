@@ -65,15 +65,15 @@ from camera data rather than copying the Pacific script.
 
 **Implementation:**
 
-- [ ] On configured input edge and expired cooldown, resolve launcher pose and
+- [x] On configured input edge and expired cooldown, resolve launcher pose and
   instantiate the declared prefab.
-- [ ] Apply direction, velocity, stable ID, and bounded lifetime; despawn on
+- [x] Apply direction, velocity, stable ID, and bounded lifetime; despawn on
   expiry and support declared impact behavior.
-- [ ] Fail actionably for missing launcher, prefab, Transform, or physics
+- [x] Fail actionably for missing launcher, prefab, Transform, or physics
   declaration.
-- [ ] Generate transition proof for fire/travel/impact/despawn plus cooldown
+- [x] Generate transition proof for fire/travel/impact/despawn plus cooldown
   negative control. Static resource assertions are insufficient.
-- [ ] Ensure remove reverses every owned source mutation.
+- [x] Ensure remove reverses every owned source mutation.
 
 ### Phase 2: Cross-adapter projectile proof
 
@@ -161,8 +161,8 @@ from camera data rather than copying the Pacific script.
 Automated review follows every phase; manual playtest is additional for Phases
 3 and 5.
 
-- [ ] `tn add projectile` produces observable firing, travel, impact, and cleanup.
-- [ ] Cooldown and invalid-source negative controls fail correctly.
+- [x] `tn add projectile` produces observable firing, travel, impact, and cleanup.
+- [x] Cooldown and invalid-source negative controls fail correctly.
 - [ ] Web/native projectile observations match.
 - [ ] FlightRig has two real consumers and independent direction tests.
 - [ ] No helper exposes renderer/native handles or duplicates descriptor truth.
@@ -172,3 +172,27 @@ Automated review follows every phase; manual playtest is additional for Phases
 ## Verification evidence
 
 Append commands and artifacts per phase.
+
+### Phase 1
+
+- `pnpm --filter @threenative/cli build`
+- Focused compiler selector tests pass for exact same-system dynamic lifecycle
+  IDs and reject sibling prefixes.
+- Focused CLI add/remove, collision-preflight, and transient contact-evidence
+  tests pass.
+- `pnpm verify:cookbook` - full gate passes.
+- Fresh generated project web proof:
+  `/tmp/tn-projectile-final-SNVroo/game/artifacts/playtest/block-projectile/latest`
+  - fire, retained raycast contact against the intended impact target, impact,
+    despawn, active-count, and diagnostics assertions pass.
+- Fresh generated cooldown proof:
+  `/tmp/tn-projectile-final-SNVroo/game/artifacts/playtest/block-projectile-cooldown/latest`
+  - one accepted fire and one cooldown rejection pass.
+- Projectile installation rejects source-owner collisions before any write;
+  removal reverses every owned mutation.
+- Runtime command authorization remains exact-ID based; generated dynamic
+  despawn IDs are compiler-validated descendants of declared instantiate
+  prefixes, without prefix-wide runtime authorization.
+- Desktop lifecycle currently fires but does not yet advance to impact/cleanup;
+  this remains the owning Phase 2 cross-adapter blocker and is not claimed as
+  complete.

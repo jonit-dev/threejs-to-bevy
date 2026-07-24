@@ -471,6 +471,37 @@ test("maximum movement distance should prove a blocked input attempt", () => {
   assert.equal(result.assertions.find((item) => item.id === "movement.maxDistance")?.pass, true);
 });
 
+test("contact assertions should consume step-series effects after transient entities despawn", () => {
+  const report = reportWithRuntimeDiagnostics("web", []);
+  report.observations!.effectLogSeries = [{
+    label: "projectile-impact",
+    snapshot: {
+      entries: [{
+        payload: {
+          request: { ignore: ["player", "projectile.runtime.0001.root"] },
+          result: { entityId: "projectile-impact-target", hit: true },
+        },
+        service: "physics.raycast",
+        system: "run-projectile",
+      }],
+    },
+    tick: 12,
+  }];
+  const scenario: IPlaytestScenario = {
+    assert: { contacts: [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", with: "projectile-impact-target" }] },
+    name: "projectile-impact",
+    schemaVersion: 1,
+    steps: [],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.assertions[0]?.pass, true);
+});
+
 test("occluded assertion should consume a successful physics raycast effect", () => {
   const report = reportWithRuntimeDiagnostics("web", []);
   report.effectLog = {

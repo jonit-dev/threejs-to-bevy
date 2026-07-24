@@ -125,12 +125,15 @@ function expandSystemSelectors(
 ): ExpandedEcsSystemSnapshot[] {
   return systems.map((system) => {
     const { commands: authoredCommands, delayedCommands: authoredDelayedCommands, ...systemWithoutCommands } = system;
+    const instantiatePrefixes = [...authoredCommands, ...(authoredDelayedCommands ?? []).map((declaration) => declaration.command)]
+      .filter((command): command is Extract<IrSystemCommand, { kind: "instantiate" }> => command.kind === "instantiate")
+      .map((command) => command.prefix);
     return {
       ...systemWithoutCommands,
-      commands: authoredCommands.flatMap((command, commandIndex) => expandCommandSelector(command, system.name, `commands/${commandIndex}`, entities)),
+      commands: authoredCommands.flatMap((command, commandIndex) => expandCommandSelector(command, system.name, `commands/${commandIndex}`, entities, instantiatePrefixes)),
       ...(authoredDelayedCommands === undefined ? {} : {
         delayedCommands: authoredDelayedCommands.flatMap((declaration, declarationIndex): NonNullable<ISystemsIr["systems"][number]["delayedCommands"]>[number][] => {
-        const expanded = expandCommandSelector(declaration.command, system.name, `delayedCommands/${declarationIndex}/command`, entities);
+        const expanded = expandCommandSelector(declaration.command, system.name, `delayedCommands/${declarationIndex}/command`, entities, instantiatePrefixes);
         return expanded.map((command, commandIndex) => ({
           cancelPolicy: declaration.cancelPolicy,
           command,
@@ -149,6 +152,7 @@ function expandCommandSelector(
   systemName: string,
   path: string,
   entities: ReadonlyArray<{ components: Record<string, Record<string, unknown>>; id: string; tags?: string[] }>,
+  instantiatePrefixes: readonly string[],
 ): IrSystemCommand[] {
   if (command.kind !== "despawn") {
     return [command as IrSystemCommand];
@@ -166,6 +170,14 @@ function expandCommandSelector(
     .map((entity) => entity.id)
     .sort();
   if (matches.length === 0) {
+    if (
+      selector.tag === undefined
+      && selector.entity !== undefined
+      && !selector.entity.includes("*")
+      && instantiatePrefixes.some((prefix) => selector.entity!.startsWith(`${prefix}.`))
+    ) {
+      return [{ entity: selector.entity, kind: "despawn" }];
+    }
     throw selectorError(systemName, path, `Despawn selector '${selector.tag === undefined ? selector.entity : `tag:${selector.tag}`}' did not match an authored entity.`);
   }
   return matches.map((entity) => ({ entity, kind: "despawn" }));

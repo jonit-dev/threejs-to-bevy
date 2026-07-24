@@ -484,12 +484,13 @@ export function evaluateRichPlaytestAssertions(input: {
   for (const assertion of scenarioAssertions.contacts ?? []) {
     const entity = assertion.entity ?? input.scenario.subject ?? input.report.entity;
     const tokens = [entity, assertion.with, assertion.kind].filter((item): item is string => item !== undefined);
-    const count = countMatchingEntries(input.report.effectLog, tokens);
+    const effectEvidence = mergeEffectLogs(input.report.effectLog, input.report.observations?.effectLogSeries);
+    const count = countMatchingEntries(effectEvidence, tokens);
     const minCount = assertion.minCount ?? 1;
     const pass = count >= minCount;
     assertions.push({ details: { count, entity, kind: assertion.kind, minCount, with: assertion.with }, id: `contact.${entity}`, pass });
     if (!pass) {
-      const partial = summarizeMatchingEntries(input.report.effectLog, [entity, assertion.with].filter((item): item is string => item !== undefined));
+      const partial = summarizeMatchingEntries(effectEvidence, [entity, assertion.with].filter((item): item is string => item !== undefined));
       diagnostics.push({
         artifactPath: "effect-log.json",
         code: "TN_PLAYTEST_CONTACT_NOT_OBSERVED",
@@ -907,6 +908,13 @@ function countMatchingEntries(effectLog: unknown, tokens: readonly string[]): nu
     const text = JSON.stringify(entry);
     return tokens.every((token) => text.includes(token));
   }).length;
+}
+
+function mergeEffectLogs(effectLog: unknown, series: IPlaytestObservations["effectLogSeries"]): { entries: unknown[] } {
+  return {
+    entries: [effectLog, ...(series ?? []).map((sample) => sample.snapshot)]
+      .flatMap((log) => isRecord(log) && Array.isArray(log.entries) ? log.entries : []),
+  };
 }
 
 function matchingOccludedRaycasts(effectLog: unknown, entity: string | undefined, target: string | undefined): number {
