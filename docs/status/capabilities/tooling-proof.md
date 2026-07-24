@@ -89,6 +89,13 @@ Current support:
   lifecycle classification from `examples/manifest.json`, reports explicit
   proof exemptions, fails unknown requirement keys, and drift-checks release
   enrollment/build-only policy against the owning manifest fields.
+- Generated-game QA proof enrollment reads committed scenario source rather
+  than trusting coverage labels alone. A plan-owned timed objective requires
+  its matching exact-tick scenario; an input-accepting web overlay requires a
+  `focused-dom` web scenario with an executable input step while retaining a
+  deterministic input scenario without web-only visual/window operations so it
+  can be replayed across web and desktop. Missing lanes fail with stable repair
+  commands.
 - `pnpm verify:cookbook` validates cookbook command/proof strings against the
   CLI registry, checks diagnostic cookbook references, bundles each script
   payload, and rejects empty exported systems before the authoring validation

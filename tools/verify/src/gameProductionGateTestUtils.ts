@@ -138,6 +138,8 @@ export async function currentTestSourceHash(projectPath: string): Promise<string
   const rows = [
     ...await testSourceHashRows(resolve(projectPath, "content"), "content"),
     ...await testSourceHashRows(resolve(projectPath, "src", "scripts"), join("src", "scripts")),
+    ...await testSourceHashRows(resolve(projectPath, "playtests"), "playtests"),
+    ...await testSourceHashFile(resolve(projectPath, "threenative.config.json"), "threenative.config.json"),
   ].sort((left, right) => left.path.localeCompare(right.path));
   const hash = createHash("sha256");
   for (const row of rows) {
@@ -145,6 +147,17 @@ export async function currentTestSourceHash(projectPath: string): Promise<string
     hash.update(row.hash);
   }
   return hash.digest("hex");
+}
+
+async function testSourceHashFile(path: string, relativePath: string): Promise<Array<{ hash: string; path: string }>> {
+  try {
+    const info = await stat(path);
+    return info.isFile()
+      ? [{ hash: createHash("sha256").update(await readFile(path)).digest("hex"), path: relativePath }]
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 async function testSourceHashRows(directory: string, relativeRoot: string): Promise<Array<{ hash: string; path: string }>> {

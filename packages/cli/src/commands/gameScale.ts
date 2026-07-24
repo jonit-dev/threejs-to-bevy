@@ -65,7 +65,7 @@ async function readRenderedEntitiesFromPreview(previewUrl: string): Promise<IGam
   try {
     const page = await browser.newPage({ viewport: { height: 720, width: 1280 } });
     await page.goto(previewUrl, { waitUntil: "domcontentloaded" });
-    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10_000 });
+    await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30_000 });
     const renderedEntities = await page.evaluate(() => {
       const ready = (globalThis as {
         __THREENATIVE_READY__?: {

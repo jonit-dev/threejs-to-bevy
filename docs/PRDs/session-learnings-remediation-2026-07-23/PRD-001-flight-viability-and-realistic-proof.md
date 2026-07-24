@@ -188,18 +188,30 @@ web/desktop scenarios for the aerodynamics reference project.
 
 **Files (max 5):**
 
-- `tools/verify/src/generatedGameQualityGate.ts` - duration/focus enrollment.
-- `tools/verify/src/generatedGameQualityGate.test.ts` - false-green controls.
+- `tools/verify/src/gameProductionGateProofs.ts` - duration/focus enrollment
+  in the existing generated-game proof owner (the proposed filename was stale).
+- `tools/verify/src/gameProductionGate.test.ts` and
+  `gameProductionGateTestUtils.ts` - false-green and freshness controls.
 - `docs/status/capabilities/physics.md` - viability boundary/evidence.
 - `docs/status/capabilities/tooling-proof.md` - proof modes/evidence.
 - `docs/STATUS.md` - one-line index updates.
 
+**QA-orchestration files (max 5):**
+
+- `packages/cli/src/commands/gameQaProof.ts` and `gameScore.test.ts` - retain
+  every requested committed scenario instead of truncating after five.
+- `packages/cli/src/commands/gameScale.ts` - use the established 30-second
+  runtime-readiness budget for large generated games.
+- `examples/battle-of-pacific/playtests/acceptance-destroy-samidare.playtest.json`
+  - observe the burning wreck before it leaves the camera without weakening
+  the visual threshold.
+
 **Implementation:**
 
-- [ ] Require one objective-duration scenario for objective-driven games.
-- [ ] Require one focus-realistic web proof when a web overlay accepts input.
-- [ ] Keep direct deterministic input as the cross-target conformance lane.
-- [ ] Add capability and quality-status notes if new systemic debt is found.
+- [x] Require one objective-duration scenario for objective-driven games.
+- [x] Require one focus-realistic web proof when a web overlay accepts input.
+- [x] Keep direct deterministic input as the cross-target conformance lane.
+- [x] Add capability and quality-status notes if new systemic debt is found.
 
 ## 5. Checkpoints and acceptance
 
@@ -270,6 +282,24 @@ Append per-phase commands, outputs, and artifact paths here during execution.
   The required independent Phase 3 review reran the CLI build and all four
   focused suites (86/86), inspected the labeled artifact samples, and returned
   clean.
+- Phase 4 (2026-07-24): the existing generated-game QA proof owner now reads
+  committed scenario source and rejects missing exact plan-duration,
+  `focused-dom` web-overlay, or deterministic cross-target lanes. Proof
+  freshness now hashes the same `content`, `src/scripts`, `playtests`, and
+  project-config inputs as the CLI proof manifest. The verifier suite passed
+  65/65; CLI game/QA tests passed 42/42; `pnpm check:docs` passed. A full
+  Battle QA refresh ran all ten `acceptance-*` scenarios with one current
+  source hash and returned `ok: true`; its scale, visual-quality, performance,
+  asset-budget generation, and UI-fit steps also passed. The run caught an old
+  destroyer scenario observing smoke after it had left the camera; moving the
+  observation earlier preserved the 40-pixel threshold and then passed all
+  9/9 assertions with zero diagnostics. Focused and deterministic lanes require
+  real key transitions, and the deterministic lane rejects web-only
+  visual/window operations; the required independent review reran the verifier
+  suite at 65/65 and returned clean. The broader strict release verifier
+  reports separate existing motion, warning/risk-cleanliness, asset-budget
+  freshness, and local credential findings; no local credential was read,
+  printed, modified, or staged.
   A fresh visible-browser checkpoint separately confirmed focused pitch/roll
   input while the aircraft remained in `CRUISE`, integrity 100, and
   `stall: false`; the aircraft advanced from z=-7.18 to z=-13.15 and a

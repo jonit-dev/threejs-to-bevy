@@ -86,6 +86,11 @@ Current support:
   every aerodynamic body was dynamically unstable regardless of tuning. Both
   runtimes carry a sinking-reads-positive-AoA regression test and the paired
   aerodynamics parity gate passes with the corrected convention.
+- Aerodynamic authoring validation now performs a conservative spawn-state
+  viability analysis before build: lift versus weight, thrust versus cruise
+  drag, combined damping, and stowed-control trim moments report measured,
+  actionable diagnostics or an explicit not-applicable reason. This is an
+  adapter-independent source check, not a replacement for flight playtests.
 - Phase 5 implements the bounded rich-joint contract on both
   adapters: ball, fixed, hinge, rope, slider, and suspension constraints;
   force/torque-capped motors; stable load observations; one-shot breaks with

@@ -43,7 +43,7 @@
     },
     {
       "label": "observe the burning sinking wreck",
-      "waitTicks": 40,
+      "waitTicks": 20,
       "screenshot": "02-destroyed"
     }
   ],

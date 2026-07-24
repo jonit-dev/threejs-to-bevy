@@ -342,8 +342,7 @@ async function discoverQaPlaytestScenarios(projectPath: string, pattern: string 
     .map((entry) => relative(projectPath, resolve(root, String(entry))))
     .filter((entry) => pathMatchesScenario(entry))
     .filter((entry) => matchesPlaytestGlob(entry, searchPattern))
-    .sort()
-    .slice(0, 5);
+    .sort();
 }
 
 function pathMatchesScenario(path: string): boolean {

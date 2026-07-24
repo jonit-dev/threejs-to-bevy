@@ -1392,6 +1392,44 @@ test("qa run-proof discovers playtest scenarios and records summaries", async ()
   }
 });
 
+test("qa run-proof does not truncate committed scenario coverage", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-game-qa-all-playtest-scenarios-"));
+  try {
+    await writePassingGameProject(root);
+    await mkdir(join(root, "playtests"), { recursive: true });
+    for (let index = 0; index < 7; index += 1) {
+      await writeFile(
+        join(root, `playtests/acceptance-${index}.playtest.json`),
+        JSON.stringify({ name: `acceptance-${index}`, schemaVersion: 1, steps: [{ waitFrames: 1 }] }),
+        "utf8",
+      );
+    }
+    const seenPlaytests: string[] = [];
+    const result = await gameCommand(
+      ["qa", "--project", root, "--run-proof", "--json"],
+      {
+        proofRunner: async (step) => {
+          if (step.command === "playtest") seenPlaytests.push(step.id);
+          return {
+            exitCode: 0,
+            stdout: `${JSON.stringify({
+              assertions: [],
+              code: step.command === "playtest" ? "TN_PLAYTEST_OK" : "TN_TEST_STEP_OK",
+              proofMetadata: { sourceHash: "source-hash" },
+              scenario: step.id.replace("playtest:", ""),
+            })}\n`,
+          };
+        },
+      },
+    );
+
+    assert.equal(result.exitCode, 0);
+    assert.deepEqual(seenPlaytests, Array.from({ length: 7 }, (_, index) => `playtest:acceptance-${index}`));
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("infers QA proof playtest arguments from project production proof commands", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-game-qa-proof-defaults-"));
   try {

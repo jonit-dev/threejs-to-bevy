@@ -1670,6 +1670,120 @@ test("accepts committed scenario proof with fresh manifest", async () => {
     });
 
     assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code.startsWith("TN_VERIFY_GAME_QA_SCENARIO_")), false);
+
+    await writeFile(join(root, "playtests/smoke.playtest.json"), `${JSON.stringify({ schemaVersion: 1, name: "smoke", subject: "player", steps: [{ press: "KeyA" }] }, null, 2)}\n`);
+    const stale = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath,
+      root,
+    });
+    assert.equal(stale.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_SCENARIO_PROOF_STALE"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("requires duration, focused-overlay, and deterministic conformance scenario enrollment", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-generated-game-scenario-enrollment-"));
+  try {
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "content/overlays"), { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({ schema: "threenative.scene", id: "arena" }, null, 2)}\n`);
+    await writeFile(join(root, "content/overlays/hud.overlays.json"), `${JSON.stringify({
+      schema: "threenative.overlays",
+      overlays: [{ id: "hud", input: "pointer", targetProfiles: ["web"] }],
+    }, null, 2)}\n`);
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      intentContract: {
+        acceptanceAssertions: [{
+          id: "timed-objective",
+          proof: { family: "objective-duration" },
+          required: true,
+        }],
+        objectiveDurationTicks: 1_800,
+      },
+    }, null, 2)}\n`);
+
+    const deterministic = {
+      acceptanceId: "timed-objective",
+      inputDelivery: "deterministic",
+      name: "timed-objective",
+      schemaVersion: 1,
+      steps: [{ release: false, waitTicks: 1_800 }],
+      target: "web",
+    };
+    await writeScenarioQaFixture(root, [deterministic]);
+    let result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath: join(root, "artifacts/game-production/verification-report.json"),
+      root,
+    });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_SCENARIO_MISSING"), false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_FOCUSED_INPUT_SCENARIO_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_DETERMINISTIC_INPUT_SCENARIO_MISSING"), true);
+
+    const focused = {
+      acceptanceId: "focused-input",
+      inputDelivery: "focused-dom",
+      name: "focused-input",
+      schemaVersion: 1,
+      steps: [{ press: "KeyF", release: true }],
+      target: "web",
+    };
+    const deterministicInput = {
+      ...deterministic,
+      name: "timed-objective-with-input",
+      steps: [{ release: false, waitTicks: 1_800 }, { press: "ArrowUp", release: true }],
+    };
+    const focusedWithoutInput = {
+      ...focused,
+      name: "focused-without-input",
+      steps: [{ release: false, waitTicks: 1 }],
+    };
+    await writeScenarioQaFixture(root, [deterministicInput, focusedWithoutInput]);
+    result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath: join(root, "artifacts/game-production/verification-report.json"),
+      root,
+    });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_SCENARIO_MISSING"), false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_FOCUSED_INPUT_SCENARIO_MISSING"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_DETERMINISTIC_INPUT_SCENARIO_MISSING"), false);
+
+    const deterministicWebOnly = {
+      ...deterministicInput,
+      assert: { visual: [{ region: { height: 10, width: 10, x: 0, y: 0 } }] },
+      name: "timed-objective-web-only",
+    };
+    await writeScenarioQaFixture(root, [deterministicWebOnly, focused]);
+    result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath: join(root, "artifacts/game-production/verification-report.json"),
+      root,
+    });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_DETERMINISTIC_INPUT_SCENARIO_MISSING"), true);
+
+    await writeScenarioQaFixture(root, [deterministicInput, focused]);
+    result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath: join(root, "artifacts/game-production/verification-report.json"),
+      root,
+    });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_SCENARIO_MISSING"), false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_FOCUSED_INPUT_SCENARIO_MISSING"), false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_DETERMINISTIC_INPUT_SCENARIO_MISSING"), false);
+
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      intentContract: { acceptanceAssertions: [], objectiveDurationTicks: 1_800 },
+    }, null, 2)}\n`);
+    await writeScenarioQaFixture(root, [deterministicInput, focused]);
+    result = await runGameProductionGate({
+      projects: [{ projectPath: ".", requireQaProof: true }],
+      reportPath: join(root, "artifacts/game-production/verification-report.json"),
+      root,
+    });
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_DESCRIPTOR_MISSING"), true);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -2073,6 +2187,61 @@ test("rejects generated-game QA sidecars with stale artifact byte sizes", async 
     await rm(root, { force: true, recursive: true });
   }
 });
+
+async function writeScenarioQaFixture(
+  root: string,
+  scenarios: Array<Record<string, unknown> & { name: string }>,
+): Promise<void> {
+  await mkdir(join(root, "playtests"), { recursive: true });
+  const artifacts = [];
+  for (const scenario of scenarios) {
+    const scenarioPath = `playtests/${scenario.name}.playtest.json`;
+    const artifactDirectory = `artifacts/playtest/${scenario.name}/latest`;
+    await mkdir(join(root, artifactDirectory), { recursive: true });
+    await writeFile(join(root, scenarioPath), `${JSON.stringify(scenario, null, 2)}\n`);
+    await writeFile(join(root, artifactDirectory, "summary.json"), "{}\n");
+    await writeFile(join(root, artifactDirectory, "manifest.json"), `${JSON.stringify({ pass: true, scenario: scenario.name }, null, 2)}\n`);
+    artifacts.push({ artifactDirectory, scenario, scenarioPath });
+  }
+  const sourceHash = await currentTestSourceHash(root);
+  const coverage = artifacts.map(({ artifactDirectory, scenario, scenarioPath }) => ({
+      artifactDirectory,
+      assertions: ["diagnostics"],
+      kind: "committed",
+      manifest: `${artifactDirectory}/manifest.json`,
+      path: scenarioPath,
+      proofSourceHash: sourceHash,
+      reproduceCommand: `tn playtest --project . --scenario ${scenarioPath} --stable-artifacts --json`,
+      scenario: scenario.name,
+      status: "passed",
+      stepId: `playtest:${scenario.name}`,
+      summary: `${artifactDirectory}/summary.json`,
+    }));
+  await writeFile(join(root, "artifacts/game-production/qa-report.json"), `${JSON.stringify({
+    blockers: [],
+    diagnostics: [],
+    mode: "qa",
+    ok: true,
+    proofRun: {
+      ok: true,
+      scenarioCoverage: { kind: "committed", scenarios: coverage },
+      steps: [
+        { id: "doctor", exitCode: 0 },
+        { id: "build", exitCode: 0 },
+        ...scenarios.map((scenario) => ({ id: `playtest:${scenario.name}`, exitCode: 0 })),
+        { id: "screenshot", exitCode: 0 },
+        { id: "mobile-viewport", exitCode: 0 },
+        { id: "record", exitCode: 0, code: "TN_GAME_QA_ARTIFACT_OK" },
+        { id: "visual-quality", exitCode: 0 },
+        { id: "performance", exitCode: 0 },
+        { id: "asset-budget", exitCode: 0 },
+        { id: "ui-fit", exitCode: 0 },
+      ],
+    },
+    release: { risks: [] },
+    schema: "threenative.game-quality-report",
+  }, null, 2)}\n`);
+}
 
 async function writeExampleManifest(
   root: string,

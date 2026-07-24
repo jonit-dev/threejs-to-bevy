@@ -463,6 +463,7 @@ export async function qaProofDiagnostics(projectPath: string, label: string): Pr
       }
     }
     diagnostics.push(...await scenarioCoverageDiagnostics(projectPath, proofRun, label, path));
+    diagnostics.push(...await scenarioEnrollmentDiagnostics(projectPath, proofRun, label, path));
     diagnostics.push(...await sidecarProofDiagnostics(projectPath, label));
     return diagnostics;
   } catch (error) {
@@ -544,6 +545,137 @@ async function scenarioCoverageDiagnostics(projectPath: string, proofRun: Record
     }
   }
   return diagnostics;
+}
+
+async function scenarioEnrollmentDiagnostics(projectPath: string, proofRun: Record<string, unknown>, label: string, path: string): Promise<VerificationDiagnostic[]> {
+  const coverage = isRecord(proofRun.scenarioCoverage) ? proofRun.scenarioCoverage : undefined;
+  const coveredScenarios = Array.isArray(coverage?.scenarios) ? coverage.scenarios.filter(isRecord) : [];
+  const scenarios: Array<{ path: string; source: Record<string, unknown> }> = [];
+  for (const covered of coveredScenarios) {
+    if (covered.kind !== "committed" || typeof covered.path !== "string") continue;
+    try {
+      const parsed = JSON.parse(await readFile(resolve(projectPath, covered.path), "utf8")) as unknown;
+      if (isRecord(parsed)) scenarios.push({ path: covered.path, source: parsed });
+    } catch {
+      // Missing/malformed committed scenarios are reported by scenarioCoverageDiagnostics.
+    }
+  }
+
+  const diagnostics: VerificationDiagnostic[] = [];
+  const durationRequirement = await readObjectiveDurationRequirement(projectPath);
+  if (durationRequirement !== undefined) {
+    if (durationRequirement.acceptanceIds.length === 0) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_DESCRIPTOR_MISSING",
+        message: `${label}: timed objective declares ${durationRequirement.ticks} ticks but has no required objective-duration acceptance descriptor.`,
+        path: "artifacts/game-production/plan.json/intentContract/acceptanceAssertions",
+        severity: "error",
+        suggestedFix: "Regenerate the game plan so its required acceptance assertions own the objective-duration proof, then scaffold and run that scenario.",
+      });
+    } else {
+      const durationScenario = scenarios.find(({ source }) =>
+        durationRequirement.acceptanceIds.includes(String(source.acceptanceId))
+        && Array.isArray(source.steps)
+        && source.steps.filter(isRecord).some((step) => step.waitTicks === durationRequirement.ticks || step.holdTicks === durationRequirement.ticks));
+      if (durationScenario === undefined) {
+        diagnostics.push({
+          code: "TN_VERIFY_GAME_QA_OBJECTIVE_DURATION_SCENARIO_MISSING",
+          message: `${label}: timed objective requires a committed scenario for [${durationRequirement.acceptanceIds.join(", ")}] with an exact ${durationRequirement.ticks}-tick step.`,
+          path: `${path}/proofRun/scenarioCoverage`,
+          severity: "error",
+          suggestedFix: "Run tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json, execute the generated objective-duration scenario, then rerun tn game qa --run-proof.",
+        });
+      }
+    }
+  }
+
+  if (await hasInputAcceptingWebOverlay(projectPath)) {
+    const focused = scenarios.some(({ source }) =>
+      source.target === "web"
+      && source.inputDelivery === "focused-dom"
+      && hasExecutableInputStep(source));
+    if (!focused) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_FOCUSED_INPUT_SCENARIO_MISSING",
+        message: `${label}: an input-accepting web overlay requires a committed web scenario with inputDelivery='focused-dom'.`,
+        path: `${path}/proofRun/scenarioCoverage`,
+        severity: "error",
+        suggestedFix: "Commit and run a web playtest scenario with inputDelivery='focused-dom', then rerun tn game qa --run-proof.",
+      });
+    }
+    const deterministic = scenarios.some(({ source }) => isPortableDeterministicInputScenario(source));
+    if (!deterministic) {
+      diagnostics.push({
+        code: "TN_VERIFY_GAME_QA_DETERMINISTIC_INPUT_SCENARIO_MISSING",
+        message: `${label}: focused web proof must retain a committed deterministic-input scenario for cross-target conformance.`,
+        path: `${path}/proofRun/scenarioCoverage`,
+        severity: "error",
+        suggestedFix: "Commit and run a deterministic playtest scenario that can be repeated with --target web and --target desktop, then rerun tn game qa --run-proof.",
+      });
+    }
+  }
+  return diagnostics;
+}
+
+function hasExecutableInputStep(scenario: Record<string, unknown>): boolean {
+  return Array.isArray(scenario.steps)
+    && scenario.steps.filter(isRecord).some((step) => typeof step.press === "string" && step.press.length > 0);
+}
+
+function isPortableDeterministicInputScenario(scenario: Record<string, unknown>): boolean {
+  const steps = Array.isArray(scenario.steps) ? scenario.steps.filter(isRecord) : [];
+  const assertions = isRecord(scenario.assert) ? scenario.assert : undefined;
+  return (scenario.inputDelivery === undefined || scenario.inputDelivery === "deterministic")
+    && (scenario.target === "web" || scenario.target === "desktop" || scenario.target === "bevy")
+    && steps.some((step) => typeof step.press === "string" && step.press.length > 0)
+    && steps.every((step) => step.window === undefined)
+    && (!Array.isArray(assertions?.visual) || assertions.visual.length === 0);
+}
+
+async function readObjectiveDurationRequirement(projectPath: string): Promise<{ acceptanceIds: string[]; ticks: number } | undefined> {
+  try {
+    const parsed = JSON.parse(await readFile(resolve(projectPath, "artifacts/game-production/plan.json"), "utf8")) as unknown;
+    if (!isRecord(parsed) || !isRecord(parsed.intentContract)) return undefined;
+    const ticks = parsed.intentContract.objectiveDurationTicks;
+    if (typeof ticks !== "number" || !Number.isInteger(ticks) || ticks <= 0) return undefined;
+    const assertions = Array.isArray(parsed.intentContract.acceptanceAssertions)
+      ? parsed.intentContract.acceptanceAssertions.filter(isRecord)
+      : [];
+    const acceptanceIds = assertions.flatMap((assertion) => {
+      const family = isRecord(assertion.proof) && typeof assertion.proof.family === "string"
+        ? assertion.proof.family
+        : "";
+      return assertion.required === true
+        && typeof assertion.id === "string"
+        && (family === "flight-cruise-duration" || family.includes("objective-duration"))
+        ? [assertion.id]
+        : [];
+    });
+    return { acceptanceIds, ticks };
+  } catch {
+    return undefined;
+  }
+}
+
+async function hasInputAcceptingWebOverlay(projectPath: string): Promise<boolean> {
+  const directory = resolve(projectPath, "content/overlays");
+  try {
+    const entries = await readdir(directory, { withFileTypes: true });
+    for (const entry of entries) {
+      if (!entry.isFile() || !entry.name.endsWith(".json")) continue;
+      const parsed = JSON.parse(await readFile(resolve(directory, entry.name), "utf8")) as unknown;
+      if (!isRecord(parsed) || !Array.isArray(parsed.overlays)) continue;
+      if (parsed.overlays.filter(isRecord).some((overlay) =>
+        overlay.input !== "none"
+        && Array.isArray(overlay.targetProfiles)
+        && overlay.targetProfiles.includes("web"))) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
 
 async function hasCommittedScenarioCoverage(projectPath: string, proofRun: Record<string, unknown>): Promise<boolean> {
@@ -916,6 +1048,8 @@ async function currentSourceHash(projectPath: string): Promise<string> {
   const rows = [
     ...await sourceHashRows(resolve(projectPath, "content"), "content"),
     ...await sourceHashRows(resolve(projectPath, "src", "scripts"), join("src", "scripts")),
+    ...await sourceHashRows(resolve(projectPath, "playtests"), "playtests"),
+    ...await sourceHashFile(resolve(projectPath, "threenative.config.json"), "threenative.config.json"),
   ].sort((left, right) => left.path.localeCompare(right.path));
   const hash = createHash("sha256");
   for (const row of rows) {
@@ -923,6 +1057,17 @@ async function currentSourceHash(projectPath: string): Promise<string> {
     hash.update(row.hash);
   }
   return hash.digest("hex");
+}
+
+async function sourceHashFile(path: string, relativePath: string): Promise<Array<{ hash: string; path: string }>> {
+  try {
+    const info = await stat(path);
+    return info.isFile()
+      ? [{ hash: createHash("sha256").update(await readFile(path)).digest("hex"), path: relativePath }]
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 async function sourceHashRows(directory: string, relativeRoot: string): Promise<Array<{ hash: string; path: string }>> {
