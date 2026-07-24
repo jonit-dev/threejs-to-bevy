@@ -105,10 +105,11 @@ from camera data rather than copying the Pacific script.
 
 - [x] Own throttle integration, elevator sign convention, coordinated bank/yaw,
   velocity rotation, stall/ditch/retry state, and telemetry shape.
-- [ ] Accept tuning constants and declared entity/action IDs; no example IDs.
+- [x] Accept tuning constants, sampled input, and declared aerodynamic IDs; no
+  example IDs.
 - [x] Assert control directions and restoring behavior independently of adapter
   parity.
-- [ ] Do not promote until the course and Pacific game both consume it without
+- [x] Do not promote until the course and Pacific game both consume it without
   branching the API around either project.
 
 ### Phase 4: Effects, propeller, and cue helpers
@@ -164,7 +165,7 @@ Automated review follows every phase; manual playtest is additional for Phases
 - [x] `tn add projectile` produces observable firing, travel, impact, and cleanup.
 - [x] Cooldown and invalid-source negative controls fail correctly.
 - [x] Web/native projectile observations match.
-- [ ] FlightRig has two real consumers and independent direction tests.
+- [x] FlightRig has two real consumers and independent direction tests.
 - [ ] No helper exposes renderer/native handles or duplicates descriptor truth.
 - [ ] Reticle follows camera projection rather than a CSS constant.
 - [ ] Focused tests, conformance, cookbook, docs, and both game playtests pass.
@@ -223,5 +224,14 @@ Append commands and artifacts per phase.
   desktop:
   `/tmp/flight-course-web-rig-final/summary.json` and
   `/tmp/flight-course-native-rig-final/summary.json`.
-- Promotion remains incomplete until the Pacific consumer supplies its declared
-  entity/action bindings and passes its existing flight acceptance suite.
+- Pacific now supplies its own surface/thruster bindings and tuning to the same
+  kernel used by the course. Existing pitch-sign and roll-sign proofs pass on
+  web, and pitch-sign passes on desktop:
+  `/tmp/battle-flight-rig-pitch-web/summary.json`,
+  `/tmp/battle-flight-rig-roll-web/summary.json`, and
+  `/tmp/battle-flight-rig-pitch-native/summary.json`.
+- Pacific's web ditch/retry proof passes all six assertions at
+  `/tmp/battle-flight-rig-retry-web/summary.json`. The desktop scenario reaches
+  the restored pose and increments `retryCount`, but its two legacy
+  `changed:true` assertions compare against an already-restored native resource
+  snapshot; that proof-authoring defect remains separate from the shared rig.

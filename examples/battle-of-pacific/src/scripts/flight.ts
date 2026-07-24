@@ -1,7 +1,7 @@
 import {
   CameraMath,
-  CoordinatedTurnEx,
   defineBehavior,
+  FlightRig,
   FxEx,
   GunneryEx,
   HitTestEx,
@@ -62,12 +62,6 @@ export const updatePacificFlight = defineBehavior(
     const MUSH_ALTITUDE = 22;
     const MUSH_SPEED = 24;
     const STALL_SPEED = 36;
-    const TURN_GAINS = {
-      pitchDamping: 30000,
-      rollDamping: 55000,
-      yawAuthority: 14000,
-      yawDamping: 25000
-    };
     const DESTROYER_EFFECTS = [
       "destroyer.fire.0",
       "destroyer.fire.1",
@@ -274,38 +268,12 @@ export const updatePacificFlight = defineBehavior(
     const pitch = context.input.getAxis("pitch");
     const roll = context.input.getAxis("roll");
     const yaw = context.input.getAxis("yaw");
-    context.physics.aerodynamics.setInputs("aircraft", {
-      surfaces: {
-        "aileron.left": roll,
-        "aileron.right": -roll,
-        elevator: -pitch,
-        flaps: control.flapsDown ? 1 : 0
-      },
-      thrusters: {
-        "wright-r1820": control.throttle
-      }
-    });
     const body = aircraft.get("RigidBody", {
       angularVelocity: [0, 0, 0],
       velocity: [0, 0, -72]
     });
     const angularVelocity = body.angularVelocity ?? [0, 0, 0];
-    // A/D fly a coordinated banked turn: yaw torque points the nose while the
-    // velocity vector is rotated with the turn (no sideslip energy loss), and
-    // the visual model banks cosmetically; the physics body never rolls.
-    const turn = Mathf.clamp(roll + yaw * 0.7, -1, 1);
     const velocityNow = body.velocity ?? [0, 0, -72];
-    const coordinatedTurn = CoordinatedTurnEx.step({
-      angularVelocity,
-      dt,
-      gains: TURN_GAINS,
-      turnInput: turn,
-      velocity: velocityNow
-    });
-    context.physics.addTorque("aircraft", coordinatedTurn.torque);
-    if (Math.abs(angularVelocity[1]) > 0.0005) {
-      context.physics.setLinearVelocity("aircraft", coordinatedTurn.velocity);
-    }
     // Wing guns: Space fires paired tracers from the wing roots that converge
     // on the aim point 500 m ahead. Tracer entities are a fixed authored pool
     // recycled by index; inactive rounds park far below the ocean.
@@ -638,6 +606,56 @@ export const updatePacificFlight = defineBehavior(
       }
     }
 
+    const flightPosition = aircraft.transform().position;
+    const flight = FlightRig.step(
+      {
+        elapsed: control.elapsed,
+        failed: control.prevFailed,
+        phase: control.prevFailed ? "ditched" : control.prevStall ? "stall" : "cruise",
+        retryCount: control.retryCount,
+        stall: control.prevStall,
+        throttle: control.throttle
+      },
+      { pitch, roll, yaw },
+      {
+        altitude: flightPosition[1],
+        angularVelocity,
+        dt,
+        integrity: control.playerIntegrity,
+        velocity: velocityNow
+      },
+      {
+        aileronLeft: "aileron.left",
+        aileronRight: "aileron.right",
+        elevator: "elevator",
+        thruster: "wright-r1820"
+      },
+      {
+        completeAfter: 45,
+        ditchAltitude: CRASH_ALTITUDE,
+        ditchMushAltitude: MUSH_ALTITUDE,
+        ditchMushSpeed: MUSH_SPEED,
+        elevatorSign: -1,
+        initialThrottle: 0.82,
+        stallSpeed: STALL_SPEED,
+        throttleRate: 0,
+        turnGains: {
+          pitchDamping: 30_000,
+          rollDamping: 55_000,
+          yawAuthority: 14_000,
+          yawDamping: 25_000
+        },
+        yawMix: 0.7
+      }
+    );
+    flight.controls.surfaces.flaps = control.flapsDown ? 1 : 0;
+    context.physics.aerodynamics.setInputs("aircraft", flight.controls);
+    context.physics.addTorque("aircraft", flight.torque);
+    if (Math.abs(angularVelocity[1]) > 0.0005) {
+      context.physics.setLinearVelocity("aircraft", flight.velocity);
+    }
+    control.elapsed = flight.state.elapsed;
+
     const bankTarget = roll * 0.45;
     control.visualBank += (bankTarget - control.visualBank) * Mathf.clamp(dt * 4, 0, 1);
     // Compose the cosmetic bank with the model's authored 180-degree yaw
@@ -707,15 +725,11 @@ export const updatePacificFlight = defineBehavior(
     });
     control.activeClip = clip;
     const position = aircraft.transform().position;
-    const velocity = body.velocity ?? [0, 0, -72];
-    const speed = Math.hypot(velocity[0], velocity[1], velocity[2]);
+    const speed = flight.telemetry.speed;
     const altitude = position[1];
-    const failed = control.playerIntegrity <= 0
-      || altitude < CRASH_ALTITUDE
-      || (altitude < MUSH_ALTITUDE && speed < MUSH_SPEED);
-    if (!failed) control.elapsed += dt;
-    const complete = control.elapsed >= 45;
-    const stall = speed < STALL_SPEED;
+    const failed = flight.telemetry.failed;
+    const complete = flight.telemetry.complete;
+    const stall = flight.telemetry.stall;
     // Fire warning/crash cues on the rising edge only, so they sound once per
     // event rather than every fixed tick the condition stays true.
     if (stall && !control.prevStall) context.audio.play("warning.stall");
