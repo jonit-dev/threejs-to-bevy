@@ -87,7 +87,8 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
       id?: string;
     };
     const projectileScenario = JSON.parse(await readFile(join(project, "playtests/block-projectile.playtest.json"), "utf8")) as {
-      assert?: { contacts?: Array<{ entity?: string; kind?: string; with?: string }>; resources?: Array<{ id?: string; path?: string }> };
+      assert?: { contacts?: Array<{ entity?: string; kind?: string; requiredOn?: string[]; with?: string }>; resources?: Array<{ id?: string; path?: string }> };
+      parity?: { resources?: string[]; targets?: string[] };
       steps?: Array<{ label?: string; press?: string; waitFrames?: number }>;
     };
     const cooldownScenario = JSON.parse(await readFile(join(project, "playtests/block-projectile-cooldown.playtest.json"), "utf8")) as {
@@ -121,8 +122,12 @@ test("should add all compositional mechanic blocks with proof scenarios", async 
     assert.equal(projectileScenario.steps?.some((step) => step.press === "Space"), true);
     assert.equal(projectileScenario.steps?.filter((step) => step.label?.startsWith("observe-travel-") && step.waitFrames === 1).length, 8);
     assert.equal(projectileScenario.steps?.some((step) => step.label === "observe-impact-cleanup" && (step.waitFrames ?? 0) > 1), true);
-    assert.deepEqual(projectileScenario.assert?.resources?.map((assertion) => assertion.path), ["fired", "impacts", "despawned", "active"]);
-    assert.deepEqual(projectileScenario.assert?.contacts, [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", minCount: 1, with: "projectile-impact-target" }]);
+    assert.deepEqual(projectileScenario.assert?.resources?.map((assertion) => assertion.path), ["fired", "impacts", "lastImpactEntity", "maxTravelDistance", "despawned", "active"]);
+    assert.deepEqual(projectileScenario.parity, {
+      resources: ["ProjectileLauncher.fired", "ProjectileLauncher.impacts", "ProjectileLauncher.lastImpactEntity", "ProjectileLauncher.maxTravelDistance", "ProjectileLauncher.despawned", "ProjectileLauncher.active"],
+      targets: ["web", "desktop"],
+    });
+    assert.deepEqual(projectileScenario.assert?.contacts, [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", minCount: 1, requiredOn: ["web"], with: "projectile-impact-target" }]);
     assert.equal(cooldownScenario.steps?.filter((step) => step.press === "Space").length, 2);
     assert.equal(cooldownScenario.assert?.resources?.some((assertion) => assertion.path === "fired" && assertion.equals === 1), true);
     assert.equal(cooldownScenario.assert?.resources?.some((assertion) => assertion.path === "cooldownRejected"), true);

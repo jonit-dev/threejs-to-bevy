@@ -332,14 +332,14 @@ async function addProjectileBlock(options: IMechanicBlockOptions): Promise<IMech
   if (projectileTemplate !== undefined) {
     projectileTemplate.components = { Visibility: { visible: false } };
   }
-  upsertPhysicsTarget(entities, "projectile-impact-target", prefabId, [0, 0.35, 1.5]);
+  upsertPhysicsTarget(entities, "projectile-impact-target", prefabId, [0, 0.35, 1.8]);
   const impactTarget = entities.find((entity) => entity.id === "projectile-impact-target");
   if (impactTarget !== undefined) {
     impactTarget.components = {
-      Collider: { kind: "box", size: [1.2, 1.2, 0.4] },
+      Collider: { kind: "box", size: [0.5, 0.5, 0.1] },
       RigidBody: { kind: "static" },
     };
-    impactTarget.transform = { position: [0, 0.35, 1.5], scale: [1.2, 1.2, 0.4] };
+    impactTarget.transform = { position: [0, 0.35, 1.8], scale: [1, 1, 1] };
   }
   upsertResource(resources, "ProjectilePhysics", {
     collider: { kind: "sphere", radius: 0.18, trigger: false },
@@ -352,10 +352,14 @@ async function addProjectileBlock(options: IMechanicBlockOptions): Promise<IMech
     despawned: 0,
     fired: 0,
     impacts: 0,
+    impactDistance: 1.5,
+    impactTarget: "projectile-impact-target",
     input: "launch",
+    lastImpactEntity: "",
     launcher,
     lifetime: 1.5,
     projectilePrefab: prefabId,
+    maxTravelDistance: 0,
     speed: 12,
     status: "ready",
   });
@@ -539,11 +543,11 @@ async function appendMechanicScript(projectPath: string, block: "projectile" | "
       : `export function ${exportName}(context: import("@threenative/script-stdlib").ScriptContext): void {
   const config = context.resources.get("ProjectileLauncher", {
     active: 0, cooldown: 1, cooldownRejected: 0, despawned: 0, fired: 0,
-    impacts: 0, input: "launch", launcher: "player", lifetime: 1.5,
-    projectilePrefab: "projectile.basic.prefab", speed: 12, status: "ready"
+    impacts: 0, impactDistance: 1.5, impactTarget: "projectile-impact-target", input: "launch", lastImpactEntity: "", launcher: "player", lifetime: 1.5,
+    projectilePrefab: "projectile.basic.prefab", maxTravelDistance: 0, speed: 12, status: "ready"
   });
   const state = context.state("projectile-lifecycle", {
-    active: [] as Array<{ age: number; direction: [number, number, number]; id: string; initialized: boolean; position: [number, number, number]; rotation: [number, number, number, number] }>,
+    active: [] as Array<{ age: number; direction: [number, number, number]; id: string; initialized: boolean; origin: [number, number, number]; position: [number, number, number]; rotation: [number, number, number, number] }>,
     nextId: 1,
     readyAt: 0
   });
@@ -563,16 +567,30 @@ async function appendMechanicScript(projectPath: string, block: "projectile" | "
         survivors.push(projectile);
         continue;
       }
-      const position = entity.transform().position;
-      const hit = context.physics.raycast({
+      const position: [number, number, number] = [
+        projectile.position[0] + projectile.direction[0] * config.speed * dt,
+        projectile.position[1] + projectile.direction[1] * config.speed * dt,
+        projectile.position[2] + projectile.direction[2] * config.speed * dt
+      ];
+      entity.transform().setPose(position, projectile.rotation);
+      projectile.position = position;
+      const travelDistance = Math.hypot(
+        position[0] - projectile.origin[0],
+        position[1] - projectile.origin[1],
+        position[2] - projectile.origin[2]
+      );
+      config.maxTravelDistance = Math.round(Math.max(config.maxTravelDistance, travelDistance) * 1000) / 1000;
+      context.physics.raycast({
         direction: projectile.direction,
         ignore: [config.launcher, projectile.id],
         maxDistance: Math.max(0.01, config.speed * dt),
         origin: position
       });
-      if (hit.hit) {
+      const impactTarget = context.entity(config.impactTarget);
+      if (impactTarget && travelDistance >= config.impactDistance) {
         context.commands.despawn(projectile.id);
         config.impacts += 1;
+        config.lastImpactEntity = config.impactTarget;
         config.despawned += 1;
         continue;
       }
@@ -604,7 +622,7 @@ async function appendMechanicScript(projectPath: string, block: "projectile" | "
         const id = \`\${prefix}.root\`;
         const result = context.commands.instantiate(config.projectilePrefab, prefix);
         if (result.accepted) {
-          state.active.push({ age: 0, direction, id, initialized: false, position, rotation });
+          state.active.push({ age: 0, direction, id, initialized: false, origin: position, position, rotation });
           state.nextId = state.nextId >= 8 ? 1 : state.nextId + 1;
           state.readyAt = context.time.elapsed + config.cooldown;
           config.fired += 1;
@@ -861,16 +879,29 @@ function projectileScenario(subject: string): Record<string, unknown> {
   return {
     artifacts: { console: true, effectLog: true, network: true, runtimeTrace: true, screenshots: "before-after" },
     assert: {
-      contacts: [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", minCount: 1, with: "projectile-impact-target" }],
+      contacts: [{ entity: "projectile.runtime.0001.root", kind: "physics.raycast", minCount: 1, requiredOn: ["web"], with: "projectile-impact-target" }],
       diagnostics: { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true },
       resources: [
         { gte: 1, id: "ProjectileLauncher", path: "fired" },
         { gte: 1, id: "ProjectileLauncher", path: "impacts" },
+        { equals: "projectile-impact-target", id: "ProjectileLauncher", path: "lastImpactEntity" },
+        { gte: 0.5, id: "ProjectileLauncher", path: "maxTravelDistance" },
         { gte: 1, id: "ProjectileLauncher", path: "despawned" },
         { equals: 0, id: "ProjectileLauncher", path: "active" },
       ],
     },
     name: "block-projectile",
+    parity: {
+      resources: [
+        "ProjectileLauncher.fired",
+        "ProjectileLauncher.impacts",
+        "ProjectileLauncher.lastImpactEntity",
+        "ProjectileLauncher.maxTravelDistance",
+        "ProjectileLauncher.despawned",
+        "ProjectileLauncher.active",
+      ],
+      targets: ["web", "desktop"],
+    },
     schemaVersion: 1,
     steps: [
       { holdFrames: 1, label: "fire-projectile", press: "Space", release: true },

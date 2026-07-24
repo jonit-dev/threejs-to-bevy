@@ -34,6 +34,43 @@ test("gameplay parity comparator should fail resource parity when requested path
   assert.equal(result.diagnostics[0]?.code, "TN_GAMEPLAY_PARITY_RESOURCE_DRIFT");
 });
 
+test("projectile parity should fail when input, cooldown, or collision lifecycle evidence is removed", () => {
+  const baseline = summary({
+    observations: {
+      resources: {
+        ProjectileLauncher: {
+          after: { cooldownRejected: 1, fired: 1, impacts: 1, lastImpactEntity: "projectile-impact-target" },
+        },
+      },
+    },
+  });
+  const resources = [
+    "ProjectileLauncher.fired",
+    "ProjectileLauncher.cooldownRejected",
+    "ProjectileLauncher.impacts",
+    "ProjectileLauncher.lastImpactEntity",
+  ];
+  for (const [path, value] of [
+    ["fired", 0],
+    ["cooldownRejected", 0],
+    ["impacts", 0],
+    ["lastImpactEntity", ""],
+  ] as const) {
+    const mutated = summary({
+      observations: {
+        resources: {
+          ProjectileLauncher: {
+            after: { cooldownRejected: 1, fired: 1, impacts: 1, lastImpactEntity: "projectile-impact-target", [path]: value },
+          },
+        },
+      },
+    });
+    const result = comparePlaytestParity(baseline, mutated, { resources });
+    assert.equal(result.pass, false, `${path} mutation should fail parity`);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_GAMEPLAY_PARITY_RESOURCE_DRIFT"), true);
+  }
+});
+
 test("gameplay parity comparator should fail contact parity when shared evidence is missing", () => {
   const result = comparePlaytestParity(
     summary({ assertions: [{ id: "contact.player", pass: true }] }),

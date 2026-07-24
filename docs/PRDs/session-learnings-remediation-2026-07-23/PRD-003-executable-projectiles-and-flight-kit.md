@@ -87,9 +87,9 @@ from camera data rather than copying the Pacific script.
 
 **Implementation:**
 
-- [ ] Compare causal spawn, velocity, impact, and despawn observations.
-- [ ] Use one registry-owned tolerance/rounding policy.
-- [ ] Negative controls must fail if input, cooldown, or collision is removed.
+- [x] Compare causal spawn, velocity, impact, and despawn observations.
+- [x] Use one registry-owned tolerance/rounding policy.
+- [x] Negative controls must fail if input, cooldown, or collision is removed.
 
 ### Phase 3: FlightRig core
 
@@ -163,7 +163,7 @@ Automated review follows every phase; manual playtest is additional for Phases
 
 - [x] `tn add projectile` produces observable firing, travel, impact, and cleanup.
 - [x] Cooldown and invalid-source negative controls fail correctly.
-- [ ] Web/native projectile observations match.
+- [x] Web/native projectile observations match.
 - [ ] FlightRig has two real consumers and independent direction tests.
 - [ ] No helper exposes renderer/native handles or duplicates descriptor truth.
 - [ ] Reticle follows camera projection rather than a CSS constant.
@@ -193,6 +193,19 @@ Append commands and artifacts per phase.
 - Runtime command authorization remains exact-ID based; generated dynamic
   despawn IDs are compiler-validated descendants of declared instantiate
   prefixes, without prefix-wide runtime authorization.
-- Desktop lifecycle currently fires but does not yet advance to impact/cleanup;
-  this remains the owning Phase 2 cross-adapter blocker and is not claimed as
-  complete.
+
+### Phase 2
+
+- The generated lifecycle now advances the portable Transform explicitly while
+  retaining declared rigid-body velocity and collider metadata. This closes
+  native travel without adapter-specific script branches.
+- The descriptor-owned proof quantizes observed travel to three decimals and
+  enrolls fired, travel-distance, exact impact target, impact, despawn, and
+  active-count resource paths in the existing generic parity comparator.
+- `xvfb-run -a tn parity playtest --project . --scenario
+  playtests/block-projectile.playtest.json --targets web,desktop
+  --stable-artifacts --json` passed with `TN_PARITY_PLAYTEST_OK` and no
+  diagnostics:
+  `/tmp/tn-projectile-final-wzKhyu/game/artifacts/gameplay-parity/playtests/block-projectile.playtest.parity.json`.
+- Focused parity-comparator mutations reject missing input fire,
+  cooldown-rejection, impact count, and exact collision-target evidence.

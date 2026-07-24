@@ -502,6 +502,23 @@ test("contact assertions should consume step-series effects after transient enti
   assert.equal(result.assertions[0]?.pass, true);
 });
 
+test("contact assertions should explicitly skip targets outside requiredOn", () => {
+  const report = reportWithRuntimeDiagnostics("bevy", []);
+  const scenario: IPlaytestScenario = {
+    assert: { contacts: [{ entity: "projectile", requiredOn: ["web"], with: "target" }] },
+    name: "web-contact",
+    schemaVersion: 1,
+    steps: [],
+    target: "desktop",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.deepEqual(result.diagnostics, []);
+  assert.deepEqual(result.assertions[0]?.details, { entity: "projectile", requiredOn: ["web"], skipped: true, target: "desktop" });
+});
+
 test("occluded assertion should consume a successful physics raycast effect", () => {
   const report = reportWithRuntimeDiagnostics("web", []);
   report.effectLog = {

@@ -75,6 +75,7 @@ export interface IPlaytestContactAssertion {
   entity?: string;
   kind?: string;
   minCount?: number;
+  requiredOn?: PlaytestTarget[];
   with?: string;
 }
 
@@ -640,6 +641,7 @@ function validateContactAssertion(value: unknown): IPlaytestContactAssertion | u
     ...(typeof value.entity === "string" ? { entity: value.entity } : {}),
     ...(typeof value.kind === "string" ? { kind: value.kind } : {}),
     ...(typeof value.minCount === "number" && Number.isFinite(value.minCount) ? { minCount: value.minCount } : {}),
+    ...(Array.isArray(value.requiredOn) ? { requiredOn: value.requiredOn.filter((item): item is PlaytestTarget => item === "web" || item === "desktop" || item === "bevy") } : {}),
     ...(typeof value.with === "string" ? { with: value.with } : {}),
   };
 }

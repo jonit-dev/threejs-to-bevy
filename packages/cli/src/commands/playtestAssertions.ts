@@ -483,6 +483,14 @@ export function evaluateRichPlaytestAssertions(input: {
   }
   for (const assertion of scenarioAssertions.contacts ?? []) {
     const entity = assertion.entity ?? input.scenario.subject ?? input.report.entity;
+    if (assertion.requiredOn !== undefined && !assertion.requiredOn.includes(input.scenario.target)) {
+      assertions.push({
+        details: { entity, requiredOn: assertion.requiredOn, skipped: true, target: input.scenario.target },
+        id: `contact.${entity}`,
+        pass: true,
+      });
+      continue;
+    }
     const tokens = [entity, assertion.with, assertion.kind].filter((item): item is string => item !== undefined);
     const effectEvidence = mergeEffectLogs(input.report.effectLog, input.report.observations?.effectLogSeries);
     const count = countMatchingEntries(effectEvidence, tokens);
