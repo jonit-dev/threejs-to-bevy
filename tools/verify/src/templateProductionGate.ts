@@ -53,6 +53,14 @@ export async function runTemplateProductionGate(options: TemplateProductionGateO
   const manifestsByTemplate = new Map(discoveredManifests.map((manifest) => [manifest.directoryName, manifest]));
   const diagnostics: VerificationDiagnostic[] = [];
   const steps: StepSummary[] = [];
+  if (fileExistsSyncSafe(resolve(root, "packages", "compiler", "package.json"))) {
+    diagnostics.push(...templateAgentGuidanceDiagnostics({
+      verifyPath: resolve(root, "templates", "_shared", "skills", "threenative-verify", "SKILL.md"),
+      verifyText: await readText(resolve(root, "templates", "_shared", "skills", "threenative-verify", "SKILL.md")),
+      workflowPath: resolve(root, "templates", "_shared", "skills", "threenative-workflow", "SKILL.md"),
+      workflowText: await readText(resolve(root, "templates", "_shared", "skills", "threenative-workflow", "SKILL.md")),
+    }));
+  }
 
   for (const templateName of templateNames) {
     const startedAtMs = Date.now();
@@ -97,6 +105,63 @@ export async function runTemplateProductionGate(options: TemplateProductionGateO
     reportPath,
     steps,
   };
+}
+
+export function templateAgentGuidanceDiagnostics(options: {
+  verifyPath: string;
+  verifyText: string;
+  workflowPath: string;
+  workflowText: string;
+}): VerificationDiagnostic[] {
+  const diagnostics: VerificationDiagnostic[] = [];
+  const verifyRequirements = [
+    "tn-guidance:focused-loop-v1",
+    "tn-guidance:failure-triage-v1",
+    "tn screenshot",
+    "tn parity visual",
+    "runtime-trace.json",
+    "tn authoring script check",
+    "tn iterate",
+    "Identical before/after traces",
+    "Served/local freshness mismatch",
+    "Physically impossible tuning",
+  ];
+  const missingVerify = verifyRequirements.filter((term) => !options.verifyText.includes(term));
+  const contradictoryVerify = [
+    "Default inner loop after gameplay/input/script/source changes",
+    "tn iterate --project . --json` is the default repair loop",
+    "Do not run validate, build, screenshot, or playtest separately",
+  ].filter((term) => options.verifyText.includes(term));
+  if (missingVerify.length > 0 || contradictoryVerify.length > 0) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_FOCUSED_LOOP_GUIDANCE_DRIFT",
+      message: `Shared verification guidance has focused-loop drift (missing: ${missingVerify.join(", ") || "none"}; contradictory: ${contradictoryVerify.join(", ") || "none"}).`,
+      path: options.verifyPath,
+      severity: "error",
+      suggestedFix: "Restore the visual, physics, script, and milestone decision table plus identical-trace, freshness, and impossible-physics triage.",
+    });
+  }
+
+  const workflowRequirements = [
+    "tn-guidance:ownership-v1",
+    "one owner",
+    "Independent domains",
+    "Do not run build",
+    "dev",
+    "iterate concurrently",
+    "Inspect the plan inventory",
+  ];
+  const missingWorkflow = workflowRequirements.filter((term) => !options.workflowText.includes(term));
+  if (missingWorkflow.length > 0) {
+    diagnostics.push({
+      code: "TN_TEMPLATE_AGENT_OWNERSHIP_GUIDANCE_DRIFT",
+      message: `Shared workflow guidance is missing inspection, ownership, or concurrency policy: ${missingWorkflow.join(", ")}.`,
+      path: options.workflowPath,
+      severity: "error",
+      suggestedFix: "Restore inspection-first assignment, one scene owner, independent content/script domains, and single-owner build/dev/iterate guidance.",
+    });
+  }
+  return diagnostics;
 }
 
 async function templateDiagnosticsFor(

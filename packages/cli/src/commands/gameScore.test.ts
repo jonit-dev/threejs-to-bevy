@@ -232,8 +232,13 @@ test("should keep frozen unfamiliar plan handoffs under 8 KiB with exact accepta
       assert.equal(result.exitCode, 0, fixture.goal);
       assert.ok(Buffer.byteLength(result.stdout, "utf8") < 8 * 1024, fixture.goal);
       assert.deepEqual(payload.requiredAcceptanceIds, fixture.acceptanceIds, fixture.goal);
-      assert.equal(typeof payload.nextAuthoringCommand, "string");
-      assert.equal(payload.nextInspectionCommand, undefined);
+      if (fixture.goal.startsWith("grid puzzle")) {
+        assert.equal(typeof payload.nextAuthoringCommand, "string");
+        assert.equal(payload.nextInspectionCommand, undefined);
+      } else {
+        assert.equal(payload.nextAuthoringCommand, undefined);
+        assert.equal(payload.nextInspectionCommand, "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json");
+      }
       assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
     } finally {
       await rm(root, { force: true, recursive: true });
@@ -725,6 +730,7 @@ test("should emit a plan-derived prototype command while keeping wave defense cu
       diagnostics: Array<{ code: string }>;
       intentContract: { id: string };
       nextAuthoringCommand?: string;
+      nextInspectionCommand?: string;
       planArtifactPath: string;
       proofCommands: string[];
       uncoveredResponsibilityIds: string[];
@@ -734,7 +740,8 @@ test("should emit a plan-derived prototype command while keeping wave defense cu
     assert.equal(result.exitCode, 0);
     assert.equal(payload.intentContract.id, "intent.wave-defense");
     assert.equal(payload.authoringMode, "custom-on-starter");
-    assert.equal(payload.nextAuthoringCommand, "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json");
+    assert.equal(payload.nextAuthoringCommand, undefined);
+    assert.equal(payload.nextInspectionCommand, "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json");
     assert.deepEqual(payload.proofCommands, [
       "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
       "tn iterate --project . --json",
@@ -755,6 +762,7 @@ test("should emit the same plan-derived prototype command for turn-based tactics
       authoringMode: string;
       intentContract: { id: string };
       nextAuthoringCommand?: string;
+      nextInspectionCommand?: string;
       nextProofCommand?: string;
     };
 
@@ -763,7 +771,8 @@ test("should emit the same plan-derived prototype command for turn-based tactics
     assert.equal(payload.intentContract.id, "intent.turn-based-tactics");
     const fullPlan = JSON.parse(await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")) as { intentContract: { prototype?: { id: string } } };
     assert.equal(fullPlan.intentContract.prototype?.id, "alternating-grid-single-pursuit");
-    assert.equal(payload.nextAuthoringCommand, "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json");
+    assert.equal(payload.nextAuthoringCommand, undefined);
+    assert.equal(payload.nextInspectionCommand, "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json");
     assert.equal(payload.nextProofCommand, "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json");
   } finally {
     await rm(root, { force: true, recursive: true });

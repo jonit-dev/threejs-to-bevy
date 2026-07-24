@@ -19,9 +19,12 @@ description: CLI-first structured source editing for ThreeNative projects. Use w
 - Before opening a full scene JSON file to inspect one object, use targeted
   scene inspection:
   `tn scene inspect <scene-id> --node <entity-or-resource-or-ui-id> --project . --json`.
-- Edit JSON directly only when no CLI operation covers the change. If you must
-  open a `content/**` file, first check `docs/API-CARD.md` for the matching
-  command shape.
+- Use a bounded CLI operation when one covers the change. Otherwise, editing
+  durable `content/**/*.json` directly is supported: preserve its
+  schema/version fields and stable IDs, then run
+  `tn authoring validate --project . --json`. `docs/API-CARD.md` is the
+  generated local capability and script boundary; do not infer a missing CLI
+  operation from undocumented repo internals.
 - Preserve schema/version fields and stable IDs unless asked to rename.
 
 ## Data-first game state
@@ -73,6 +76,15 @@ description: CLI-first structured source editing for ThreeNative projects. Use w
   function body. Keep helper logic inside the exported system or use supported
   named imports from `@threenative/script-stdlib`; do not rely on module-level
   local helpers being available in the generated script bundle.
+- Portable runtime entity lifecycle is supported through
+  `context.commands.spawn(id, components, tags)`,
+  `context.commands.instantiate(prefab, prefix)`, and
+  `context.commands.despawn(id)`. Declare the matching bounded command metadata
+  on `defineBehavior`; use stable IDs and authored prefab/component data.
+- These commands expose logical entities only. Scripts do not receive Three.js
+  objects, Bevy entities/resources, renderer or GPU handles, or imported-model
+  sub-node handles. Address authored entities, clips, assets, materials, and
+  components by stable ID.
 
 ## Direct-source constraints
 

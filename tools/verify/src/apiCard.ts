@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
+import { createCompactAuthoringProfile, type ICompactAuthoringProfile } from "@threenative/compiler";
 
 export interface ApiCardValidationResult {
   card: string;
@@ -17,15 +18,29 @@ export async function renderScriptApiCard(options: { root?: string } = {}): Prom
   return renderScriptApiCardFromSource(await readFile(sourcePath, "utf8"));
 }
 
-export function renderScriptApiCardFromSource(source: string): string {
+export function renderScriptApiCardFromSource(
+  source: string,
+  profile: ICompactAuthoringProfile = createCompactAuthoringProfile(),
+): string {
   const scriptContext = scriptContextBody(source);
   const entity = interfaceBody(source, "ScriptEntity");
   const transform = interfaceBody(source, "ScriptTransformFacade");
+  const capabilityLines = [
+    `- Services: ${compactServices(profile.capabilities.services)}.`,
+    `- Entity lifecycle: ${profile.capabilities.runtimeEntities.map((command) => `\`context.commands.${command}\``).join(", ")}.`,
+    `- Component commands: ${profile.capabilities.components.commands.map((command) => `\`${command}\``).join(", ")}; entity access: ${profile.capabilities.components.entity.map((command) => `\`${command}\``).join(", ")}.`,
+    `- Source edits: prefer ${profile.sourceEditing.preferred}; direct durable source is ${profile.sourceEditing.directDurableSource}; follow with ${profile.sourceEditing.requiredFollowup}.`,
+    "- Refresh project types with `tn types generate --project . --json`; prefer `defineBehavior(metadata, fn)` for referenced systems.",
+    "- Portable helpers include `Mathf`, `Vector2`, `Vector3`, `Quat`, `MaterialEx`, and `CameraMath`. Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.",
+    ...profile.rules.map((rule) => `- ${rule.instruction}`),
+    ...profile.explicitAbsences.map((absence) => `- Absent: ${absence.instruction}`),
+  ].join("\n");
   return `# ThreeNative API Card
 
-Compact local contract for generated-project agents. Prefer this card,
+Contract for agents. Prefer this card,
 \`tn cookbook <id> --json\`, and \`pnpm run iterate\` before reading repo
-package source.
+package source. \`tn authoring inspect --project . --json\` returns the canonical
+compiler-derived capability, lifecycle, direct-edit, and absence profile.
 
 ## ScriptContext
 
@@ -43,42 +58,18 @@ ${compactInterface("ScriptTransformFacade", transform)}
 
 ## Script Authoring Rules
 
-- Put durable behavior in \`src/scripts/**/*.ts\`; reference module/export from
-  \`content/**/*.json\`.
-- Refresh project types with \`tn types generate --project . --json\`; \`tn build\`
-  and \`tn dev --watch\` do this automatically.
-- Prefer \`defineBehavior(metadata, fn)\` for new systems. Put schedule,
-  access, services, and query metadata in code; keep systems JSON as
-  module/export attachments.
-- Read movement with \`context.input.getAxis("MoveX")\` /
-  \`context.input.getAxis("MoveZ")\` or \`context.input.getButton("<name>")\`.
-- Move entities through \`entity.transform().position\`,
-  \`setPosition([x, y, z])\`, or \`setPose(position, rotation)\`.
-- Use \`context.resources.get/set/patch\` for game state and HUD bindings.
-- If a script calls \`entity.patch("MeshRenderer", ...)\`, declare
-  \`writes: ["MeshRenderer"]\` in \`defineBehavior\`; transform movement declares
-  \`writes: ["Transform"]\`. \`writes\` are component names, not entity IDs.
-- Use \`context.time.fixedDelta\` for deterministic fixed-step movement.
-- Import portable helpers such as \`Mathf\`, \`Vector2\`, \`Vector3\`, \`Quat\`,
-  \`MaterialEx\`, and \`CameraMath\` from \`@threenative/script-stdlib\`.
-- Legacy aliases \`NumberEx\`, \`Vec2\`, and \`Vec3\` remain supported.
-- Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
-  from portable scripts.
+${capabilityLines}
 
 ## Structured Source Shapes
 
-- Scenes: \`content/scenes/*.scene.json\` own entities, transforms, components,
-  cameras, resources, UI bindings, and script references.
-  Perspective cameras use \`fovY\`; orthographic cameras use \`size\`.
+- Scenes: \`content/scenes/*.scene.json\` own entities, components, cameras,
+  resources, UI bindings, and script references.
 - Input: \`content/input/*.input.json\` uses \`keyboard.KeyW\`-style bindings;
   see \`docs/contracts/input-binding-syntax.md\` for the grammar.
 - Systems: \`content/systems/*.systems.json\` attaches script module/export
   entries. New access metadata should live in \`defineBehavior\`.
 - UI: \`content/ui/*.ui.json\` binds HUD text to resource paths such as
   \`GameState.score\`.
-- Typed spec: \`src/game.spec.ts\` is compiled by
-  \`tn authoring compile-typed-spec --json\`; HUD bindings use
-  \`{ node, resource: "GameState", fields: ["scoreText"] }\`.
 
 ## Actor Shortcuts
 
@@ -86,8 +77,6 @@ ${compactInterface("ScriptTransformFacade", transform)}
 tn actor list --project . --json
 tn actor add character --id hero --scene <scene> --project . --json
 tn actor add vehicle --id player.vehicle --scene <scene> --project . --json
-tn actor add pickup --id pickup.01 --scene <scene> --project . --json
-tn actor update hero --set speed=5 --project . --json
 \`\`\`
 
 ## Default Loop
@@ -97,11 +86,23 @@ pnpm run iterate
 tn playtest report --latest --scenario <name> --json
 tn cookbook player-move-wasd --json
 tn cookbook follow-camera --json
-tn cookbook hud-score-binding --json
-tn cookbook top-down-collector-recipe --json
-tn cookbook lane-runner-spawn --json
 \`\`\`
 `;
+}
+
+function compactServices(services: readonly string[]): string {
+  const groups = new Map<string, string[]>();
+  for (const service of services) {
+    const separator = service.lastIndexOf(".");
+    const owner = separator === -1 ? service : service.slice(0, separator);
+    const operation = separator === -1 ? "" : service.slice(separator + 1);
+    const operations = groups.get(owner) ?? [];
+    operations.push(operation);
+    groups.set(owner, operations);
+  }
+  return [...groups.entries()]
+    .map(([owner, operations]) => operations[0] === "" ? `\`${owner}\`` : `\`${owner}(${operations.join("/")})\``)
+    .join(", ");
 }
 
 export function validateApiCard(options: { card: string; source: string }): ApiCardValidationResult {

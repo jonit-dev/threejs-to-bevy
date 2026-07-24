@@ -119,9 +119,17 @@ Current support:
   successful execution from complete current-run prompt coverage.
 - Capability-selected interaction prototypes now give unsupported continuous
   pressure and alternating grid-pursuit plans one atomic custom-on-starter
-  command. The intent contract owns the profile and exact proof roles; applying
-  it replaces incompatible starter scenarios and can run the first iterate
-  proof in the same bounded command without promoting a prompt-specific recipe.
+  path. Plans now route through project inspection first. Exact untouched
+  starter files and empty destinations remain the automatic lane; any authored
+  durable owner outside the transaction blocks application and requires an
+  isolated destination. Authored target collisions return
+  `TN_AUTHORING_PROTOTYPE_COLLISION` with a hash-bound replacement plan and
+  require the exact reviewed target list. Staging stays in memory, publication
+  uses the authoring transaction journal, and provenance retains exact
+  preimages so proof rollback and later ownership-checked removal restore
+  replaced/deleted source rather than deleting its prior owner. An abandoned,
+  blocked, or failed prototype therefore cannot leak newly discoverable
+  `prototype.*` source into production.
 - The fresh three-prompt unfamiliar-game rerun attempted all 18 frozen slots.
   Sixteen emitted authoritative usage and all exceeded the 300,000-token cap;
   two hard-capped attempts lacked a final usage event, and five ThreeNative

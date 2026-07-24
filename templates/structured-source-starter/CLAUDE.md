@@ -11,6 +11,9 @@ Use `AGENTS.md` as the authoritative local instructions. Project skills in
 In short: use `tn cookbook search <query> --json` (or
 `tn cookbook list --json` to browse) before inventing patterns, then load a
 match with `tn cookbook show <id> --json`. Prefer `tn ... --json` commands over
-hand-editing JSON, keep durable edits in `content/**` and `src/scripts/**`,
-never repair generated bundle files, and run `tn iterate --project . --json`
-after changes.
+hand-editing JSON. When no bounded command covers the change, direct durable
+`content/**` editing is supported; preserve schema/version fields and stable
+IDs, then run authoring validation. Read `docs/API-CARD.md` for the generated
+ScriptContext capability and absence boundary, keep behavior in
+`src/scripts/**`, never repair generated bundle files, and run the narrow
+proof selected by `threenative-verify`.

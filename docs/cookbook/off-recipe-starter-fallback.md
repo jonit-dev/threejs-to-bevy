@@ -2,7 +2,6 @@
 id: off-recipe-starter-fallback
 goal: Continue from the structured-source starter when no promoted scaffold covers the requested game.
 category: authoring
-scriptPath: src/scripts/player.ts
 surfaces:
   - plan
   - scene
@@ -44,21 +43,6 @@ prompt-named recipe or a release claim.
 ## source-delta
 ```json
 {"artifacts/game-production/plan.json":{"authoringMode":"custom-on-starter","mutate":false}}
-```
-
-## script
-```ts
-import { defineBehavior } from "@threenative/script-stdlib";
-import type { ScriptContext } from "@threenative/script-stdlib";
-
-export const movePlayerToGoal = defineBehavior(
-  { id: "move-player-to-goal", schedule: "fixedUpdate", writes: ["Transform"] },
-  (context: ScriptContext): void => {
-    if (context.input.pressed("retry")) {
-      context.entity("player")?.transform().setPosition([0, 0, 0]);
-    }
-  },
-);
 ```
 
 ## proof

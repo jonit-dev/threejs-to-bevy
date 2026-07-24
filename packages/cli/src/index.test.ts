@@ -6,7 +6,7 @@ import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 import { CLI_COMMAND_DEFINITIONS, CLI_COMMAND_REGISTRY, UNMIGRATED_COMMAND_FAMILIES, dispatch, renderHelp } from "./index.js";
-import { findCommand } from "./commands/registry.js";
+import { defineCommandRegistry, findCommand } from "./commands/registry.js";
 
 test("should print help when requested", async () => {
   const result = await dispatch(["--help"]);
@@ -97,6 +97,115 @@ test("should keep CLI command metadata unique and help-covered", () => {
   for (const name of commandNames) {
     assert.match(help, new RegExp(`\\b${escapeRegExp(name)}\\b`), `CLI command '${name}' is missing from rendered help.`);
     assert.equal(CLI_COMMAND_DEFINITIONS[name]?.implemented, true, `CLI command '${name}' metadata is not marked implemented.`);
+  }
+});
+
+test("summary support is registry-derived and unsupported commands fail before dispatch", async () => {
+  const help = renderHelp();
+  const summaryCommands = Object.values(CLI_COMMAND_DEFINITIONS)
+    .filter((command) => command.output?.summary === true)
+    .map((command) => command.name)
+    .sort();
+
+  assert.deepEqual(summaryCommands, ["authoring", "build", "doctor", "iterate", "playtest", "validate"]);
+  assert.match(help, /--summary\s+Print a bounded JSON result for commands that declare summary support\./);
+  for (const name of summaryCommands) {
+    assert.match(help, new RegExp(`${escapeRegExp(name)}[\\s\\S]*?Supports: --summary`));
+  }
+
+  const unsupported = await dispatch(["help", "--summary"]);
+  const payload = JSON.parse(unsupported.stdout) as { code: string; command: string };
+  assert.equal(unsupported.exitCode, 2);
+  assert.equal(payload.code, "TN_COMMAND_SUMMARY_UNSUPPORTED");
+  assert.equal(payload.command, "help");
+});
+
+test("registry rejects falsely advertised summary support without a JSON contract", () => {
+  assert.throws(
+    () => defineCommandRegistry({
+      falseAdvertisement: {
+        description: "Human-only output.",
+        implemented: true,
+        output: { summary: true },
+        usage: "tn false-advertisement",
+      },
+    }),
+    /cannot advertise --summary without a JSON output contract/,
+  );
+});
+
+test("summary dispatch preserves deep JSON and exit behavior", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-summary-"));
+  try {
+    const summary = await dispatch(["validate", "--project", root, "--summary"]);
+    const deep = await dispatch(["validate", "--project", root, "--json"]);
+    const summaryPayload = JSON.parse(summary.stdout) as {
+      code: string;
+      diagnostics: Array<{ code: string }>;
+      schema: string;
+      status: string;
+    };
+    const deepPayload = JSON.parse(deep.stdout) as { code: string; message: string; path: string };
+
+    assert.equal(summary.exitCode, deep.exitCode);
+    assert.equal(summaryPayload.schema, "threenative.command-summary");
+    assert.equal(summaryPayload.status, "failed");
+    assert.equal(summaryPayload.code, "TN_VALIDATE_CONFIG_MISSING");
+    assert.equal(summaryPayload.diagnostics[0]?.code, "TN_VALIDATE_CONFIG_MISSING");
+    assert.equal(deepPayload.code, "TN_VALIDATE_CONFIG_MISSING");
+    assert.equal(typeof deepPayload.message, "string");
+    assert.equal(typeof deepPayload.path, "string");
+    assert.equal(Buffer.byteLength(summary.stdout, "utf8") < 4_096, true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("every advertised summary family dispatches a bounded canonical result", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-summary-families-"));
+  const cases: Array<{ argv: string[]; command: string }> = [
+    { argv: ["authoring", "validate", "--project", root, "--summary"], command: "authoring" },
+    { argv: ["build", "--project", root, "--summary"], command: "build" },
+    { argv: ["doctor", "--project", root, "--summary"], command: "doctor" },
+    { argv: ["iterate", "--project", root, "--summary"], command: "iterate" },
+    {
+      argv: ["playtest", "--project", root, "--scenario", "playtests/missing.playtest.json", "--summary"],
+      command: "playtest",
+    },
+    { argv: ["validate", "--project", root, "--summary"], command: "validate" },
+  ];
+  try {
+    for (const entry of cases) {
+      const result = await dispatch(entry.argv);
+      const payload = JSON.parse(result.stdout) as { code?: string; schema?: string; status?: string };
+      assert.equal(payload.schema, "threenative.command-summary", `${entry.command} summary schema`);
+      assert.equal(typeof payload.status, "string", `${entry.command} summary status`);
+      assert.equal(typeof payload.code, "string", `${entry.command} summary code`);
+      assert.equal(Buffer.byteLength(result.stdout, "utf8") < 4_096, true, `${entry.command} stdout budget`);
+    }
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("global summary dispatch does not consume playtest report's summary-path option", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-cli-playtest-report-summary-"));
+  try {
+    const result = await dispatch([
+      "playtest",
+      "report",
+      "--project",
+      root,
+      "--summary",
+      "artifacts/missing-summary.json",
+      "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { code: string; schema?: string };
+
+    assert.notEqual(payload.code, "TN_COMMAND_SUMMARY_UNSUPPORTED");
+    assert.notEqual(payload.schema, "threenative.command-summary");
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });
 

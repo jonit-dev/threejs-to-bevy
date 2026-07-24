@@ -19,8 +19,9 @@ import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { dirname, relative, resolve } from "node:path";
 
 import { type ICommandResult } from "../diagnostics.js";
-import { applyPlanDerivedPrototype } from "../game/prototypeAuthoring.js";
+import { applyPlanDerivedPrototype, removePlanDerivedPrototype } from "../game/prototypeAuthoring.js";
 import { listMechanicBlocks } from "../mechanicBlocks/registry.js";
+import { runOwnedCommand } from "../process/runCommand.js";
 
 const ITERATE_NOTICE = "Standalone authoring validation is subsumed by tn iterate --project . --json for the normal agent verify loop.";
 const ITERATE_NEXT = "tn iterate --project . --json";
@@ -30,6 +31,7 @@ export const AUTHORING_INSPECT_STDOUT_MAX_BYTES = 16 * 1024;
 
 interface IAuthoringCommandOptions {
   cwd?: string;
+  runPrototypeProof?: (projectPath: string) => Promise<ICommandResult>;
   stdin?: AsyncIterable<string | Uint8Array>;
 }
 
@@ -44,14 +46,6 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
   }
 
   if (subcommand === "script") {
-    if (normalizedArgv[1] === "scaffold" && readFlag(normalizedArgv, "--module") === undefined) {
-      const planPath = resolve(projectPath, "artifacts/game-production/plan.json");
-      const prototype = await applyPlanDerivedPrototype({ planPath, projectPath });
-      if (prototype.ok) {
-        const { iterateCommand } = await import("./iterate.js");
-        return iterateCommand(["--project", projectPath, "--json"], options.cwd ?? process.cwd());
-      }
-    }
     return authoringScriptCommand(normalizedArgv.slice(1), projectPath, json);
   }
 
@@ -65,10 +59,53 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
     if (!isWithinProject(projectPath, planPath)) {
       return renderInspectionError("TN_AUTHORING_PROTOTYPE_PLAN_PATH_INVALID", "Prototype plan must be inside the selected project.", json);
     }
-    const result = await applyPlanDerivedPrototype({ planPath, projectPath });
+    const result = normalizedArgv.includes("--remove")
+      ? await removePlanDerivedPrototype({ planPath, projectPath })
+      : await applyPlanDerivedPrototype({
+          planPath,
+          projectPath,
+          replaceTargets: readFlags(normalizedArgv, "--replace-target"),
+          reviewedPlanHash: readFlag(normalizedArgv, "--reviewed-plan-hash"),
+        });
     if (result.ok && normalizedArgv.includes("--run-proof")) {
-      const { iterateCommand } = await import("./iterate.js");
-      return iterateCommand(["--project", projectPath, "--json"], options.cwd ?? process.cwd());
+      let proof: ICommandResult;
+      try {
+        if (options.runPrototypeProof !== undefined) {
+          proof = await options.runPrototypeProof(projectPath);
+        } else {
+          const owned = await runOwnedCommand(
+            process.execPath,
+            [resolve(import.meta.dirname, "../index.js"), "iterate", "--project", projectPath, "--json"],
+            { cwd: options.cwd ?? process.cwd() },
+          );
+          proof = {
+            exitCode: owned.exitCode,
+            stderr: owned.stderr,
+            stdout: owned.stdout,
+          };
+        }
+      } catch (error) {
+        const rolledBack = await result.rollback?.() ?? false;
+        return renderPayload({
+          code: "TN_AUTHORING_PROTOTYPE_PROOF_FAILED",
+          diagnostics: [{ code: "TN_AUTHORING_PROTOTYPE_PROOF_FAILED", message: error instanceof Error ? error.message : String(error), severity: "error" }],
+          message: rolledBack ? "Prototype proof failed; the authoring transaction was rolled back." : "Prototype proof failed and rollback did not complete.",
+          ok: false,
+          rolledBack,
+        }, json, "Prototype proof failed.", 1);
+      }
+      if (proof.exitCode !== 0) {
+        const rolledBack = await result.rollback?.() ?? false;
+        return renderPayload({
+          code: "TN_AUTHORING_PROTOTYPE_PROOF_FAILED",
+          diagnostics: [{ code: "TN_AUTHORING_PROTOTYPE_PROOF_FAILED", message: "Prototype proof returned a failing result.", severity: "error" }],
+          message: rolledBack ? "Prototype proof failed; the authoring transaction was rolled back." : "Prototype proof failed and rollback did not complete.",
+          ok: false,
+          proof: parseJsonPayload(proof.stdout),
+          rolledBack,
+        }, json, "Prototype proof failed.", 1);
+      }
+      return proof;
     }
     return renderPayload(result, json, result.message, result.ok ? 0 : 1);
   }
@@ -619,6 +656,22 @@ function renderBatchError(code: string, message: string, json: boolean, exitCode
 function readFlag(argv: readonly string[], flag: string): string | undefined {
   const index = argv.indexOf(flag);
   return index === -1 ? undefined : argv[index + 1];
+}
+
+function readFlags(argv: readonly string[], flag: string): string[] {
+  const values: string[] = [];
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] === flag && argv[index + 1] !== undefined) values.push(argv[index + 1]!);
+  }
+  return values;
+}
+
+function parseJsonPayload(value: string): unknown {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return { output: value };
+  }
 }
 
 function resolveProjectPath(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): string {

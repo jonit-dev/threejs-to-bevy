@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { SCRIPT_HOST_SERVICE_MATRIX } from "@threenative/ir";
 
 import { createCompactAuthoringProfile } from "./authoringProfile.js";
 import { diagnosePortableSystem } from "./diagnostics.js";
@@ -23,6 +24,22 @@ test("should derive every compact rule from a diagnostic or public facade", asyn
   assert.deepEqual(profile.conventionalApis.discreteInput, ["pressed", "released"]);
   assert.equal(profile.conventionalApis.resources.includes("get"), true);
   assert.equal(profile.conventionalApis.transforms.includes("setPosition"), true);
+  assert.deepEqual(profile.capabilities.services, SCRIPT_HOST_SERVICE_MATRIX.map(({ service }) => service));
+  assert.deepEqual(profile.capabilities.runtimeEntities, ["spawn", "instantiate", "despawn"]);
+  assert.deepEqual(profile.capabilities.components, {
+    commands: ["addComponent", "removeComponent", "setComponent"],
+    entity: ["get", "has", "patch", "set"],
+    reflection: ["hooks", "type", "types"],
+  });
+  assert.deepEqual(profile.sourceEditing, {
+    directDurableSource: "supported-when-no-bounded-operation",
+    preferred: "bounded-cli",
+    requiredFollowup: "authoring-validation",
+  });
+  assert.equal(profile.explicitAbsences.some((entry) => entry.id === "renderer-native-and-model-sub-node-handles"), true);
+  for (const absence of profile.explicitAbsences) {
+    assert.equal(absence.diagnosticCodes.every((code) => compilerSources.includes(code)), true, absence.id);
+  }
 });
 
 test("should keep the compact authoring profile below its briefing budget", () => {

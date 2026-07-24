@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
-import { runTemplateProductionGate } from "./templateProductionGate.js";
+import { runTemplateProductionGate, templateAgentGuidanceDiagnostics } from "./templateProductionGate.js";
 
 const completeAgentGamePlan = `# Agent Game Plan
 
@@ -38,6 +38,52 @@ tn asset source get <asset-source-id> --json
 Record source URL, provenance URL, origin, license evidence, review status,
 downloaded date, conversion notes, and fallback notes.
 `;
+
+test("rejects shared agent guidance when focused loops or ownership policy drift", () => {
+  const diagnostics = templateAgentGuidanceDiagnostics({
+    verifyPath: "templates/_shared/skills/threenative-verify/SKILL.md",
+    verifyText: "Always run iterate.",
+    workflowPath: "templates/_shared/skills/threenative-workflow/SKILL.md",
+    workflowText: "Multiple agents may edit anything.",
+  });
+
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_FOCUSED_LOOP_GUIDANCE_DRIFT"), true);
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_AGENT_OWNERSHIP_GUIDANCE_DRIFT"), true);
+});
+
+test("rejects shared guidance that contains both focused routing and default-iterate advice", () => {
+  const verifyText = [
+    "tn-guidance:focused-loop-v1",
+    "tn-guidance:failure-triage-v1",
+    "tn screenshot",
+    "tn parity visual",
+    "runtime-trace.json",
+    "tn authoring script check",
+    "tn iterate",
+    "Identical before/after traces",
+    "Served/local freshness mismatch",
+    "Physically impossible tuning",
+    "tn iterate --project . --json` is the default repair loop",
+  ].join("\n");
+  const workflowText = [
+    "tn-guidance:ownership-v1",
+    "one owner",
+    "Independent domains",
+    "Do not run build",
+    "dev",
+    "iterate concurrently",
+    "Inspect the plan inventory",
+  ].join("\n");
+
+  const diagnostics = templateAgentGuidanceDiagnostics({
+    verifyPath: "verify.md",
+    verifyText,
+    workflowPath: "workflow.md",
+    workflowText,
+  });
+
+  assert.equal(diagnostics.some((diagnostic) => diagnostic.code === "TN_TEMPLATE_FOCUSED_LOOP_GUIDANCE_DRIFT"), true);
+});
 
 test("should reject a starter without the shared env example", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-template-production-env-"));

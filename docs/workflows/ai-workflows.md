@@ -18,32 +18,17 @@ The SDK and validator enforce correctness. MCP helps the agent discover the corr
 
 ## Authoring Contract
 
-Agents may generate code in two supported styles.
+Agents author durable structured source in `content/**/*.json` and portable
+behavior in `src/scripts/**/*.ts`. Prefer registry-backed `tn scene`, `tn ui`,
+`tn material`, and related bounded commands. When no command covers the change,
+direct editing of versioned durable JSON is supported, followed by
+`tn authoring validate --project . --json`.
 
-Three.js-like scene authoring:
-
-```ts
-const scene = new Scene();
-const enemy = new Mesh(
-  new BoxGeometry(1, 1, 1),
-  new MeshStandardMaterial({ color: "purple" })
-);
-enemy.position.set(3, 0.5, -5);
-scene.add(enemy);
-```
-
-ECS-first gameplay authoring:
-
-```ts
-world.spawn(
-  Transform.position(3, 0.5, -5),
-  MeshRenderer.box({ size: [1, 1, 1] }),
-  Material.standard({ color: "purple" }),
-  EnemyAI({ aggroRange: 10 })
-);
-```
-
-Agents must not assume arbitrary Three.js compatibility. They should use the supported ThreeNative SDK surface and run validation before presenting code as complete.
+Portable scripts use `ScriptContext`, `defineBehavior`, declared component
+access, and stable entity/resource IDs. They must not construct raw Three.js
+scenes, call raw ECS `world.spawn`, import Bevy/Rust or DOM/Node APIs, or edit
+generated bundles. Runtime entity lifecycle is available only through the
+portable `context.commands.spawn`, `instantiate`, and `despawn` facade.
 
 ## AI-Safe Generation Loop
 
@@ -87,10 +72,11 @@ Use task help when diagnosing a visual problem:
 - `tn help screenshot`: current still-frame proof path through `tn verify`.
 - `tn help record`: current motion proof path through multi-frame `tn verify`.
 
-`tn doctor` currently checks local project setup, required package scripts,
-source entrypoint, and bundle file presence. Runtime preview probing, dedicated
-screenshot capture, and video recording are future workflow surfaces and should
-not be claimed as implemented until their commands exist.
+`tn doctor` checks local project setup, required package scripts, source
+entrypoint, and bundle file presence. Use `tn screenshot`, `tn parity visual`,
+`tn verify`, and `tn record` for current preview and visual/motion proof; use
+their structured freshness diagnostics rather than assuming a served port owns
+the intended project.
 
 For local CLI usage:
 
@@ -111,6 +97,37 @@ tn profile --target android
 ```
 
 Agents should prefer the smallest target that proves the change. For most source edits, validation plus web preview is the first check. Runtime adapter work requires desktop native checks. Mobile-specific work requires mobile build or profile checks.
+
+## Focused Inner Loops
+
+Choose the proof from the kind of change instead of running the full production
+ladder after every edit.
+
+| Change | Focused loop | Failure evidence |
+| --- | --- | --- |
+| Visual, material, lighting, camera, or UI | Keep `tn dev --target web` live and use `tn screenshot ... --url <preview-url>`; use `tn parity visual ... --url <preview-url> --reference <path>` for a fixed reference | Screenshot, parity score, and preview freshness diagnostic |
+| Physics, collision, movement, or input | Run one committed `tn playtest --scenario playtests/<name>.playtest.json --stable-artifacts --json` | Compact observation first; runtime trace, contacts, or write audit only when referenced |
+| Script/type contract | Run project typecheck or `tn authoring script check --project . --json`, then the one scenario that invokes the export | Compiler diagnostic and focused scenario |
+| Integrated milestone | Run `tn iterate --project . --json` | Iterate report and its named follow-up |
+
+Three failure smells should stop speculative edits:
+
+- Identical before/after traces usually mean the input, script attachment,
+  schedule, or observed owner never participated. Prove that causal path before
+  changing assertions.
+- A served/local source or bundle mismatch invalidates visual evidence. Confirm
+  the project root, URL/port, mtimes, and bundle hash, restart the stale dev
+  process, and capture again.
+- Physically impossible tuning must be repaired in authored mass, gravity,
+  thrust/force, drag/damping, collider, or spawn data. Do not widen tolerances
+  or replace the mechanic with a scripted transform.
+
+For concurrent agent work, inspect source owners first. Assign one owner per
+scene JSON. Independent content, material, UI, input, and script files may be
+worked in parallel only after their stable-ID contract is agreed. A single
+agent owns the long-lived preview; never run build, dev, and iterate
+concurrently in the same project because they share generated output, ports,
+and freshness state.
 
 ## MCP Role
 

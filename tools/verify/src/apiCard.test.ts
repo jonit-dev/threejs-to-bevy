@@ -58,3 +58,13 @@ test("should include typegen behavior and actor shortcuts in the generated API c
   assert.match(card, /defineBehavior\(metadata, fn\)/);
   assert.match(card, /tn actor add character/);
 });
+
+test("should render capability, lifecycle, source-edit, and absence truth from the compiler profile", async () => {
+  const source = await readFile(scriptContextPath, "utf8");
+  const card = renderScriptApiCardFromSource(source);
+
+  assert.match(card, /context\.commands\.spawn/);
+  assert.match(card, /direct durable source is supported-when-no-bounded-operation/);
+  assert.match(card, /raw renderer\/native handles and imported model sub-node handles are not exposed/);
+  assert.match(card, /DOM, network, Node, filesystem, worker, and ambient timer APIs remain outside/);
+});

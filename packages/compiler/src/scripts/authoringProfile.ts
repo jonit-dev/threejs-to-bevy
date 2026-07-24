@@ -1,8 +1,12 @@
 import type {
+  ScriptCommandsFacade,
+  ScriptComponentsFacade,
+  ScriptEntity,
   ScriptInputFacade,
   ScriptResourcesFacade,
   ScriptTransformFacade,
 } from "@threenative/script-stdlib";
+import { SCRIPT_HOST_SERVICE_MATRIX, type IrSystemService } from "@threenative/ir";
 
 export interface ICompactAuthoringRule {
   diagnosticCodes: string[];
@@ -12,14 +16,33 @@ export interface ICompactAuthoringRule {
 }
 
 export interface ICompactAuthoringProfile {
+  capabilities: {
+    components: {
+      commands: Array<keyof ScriptCommandsFacade>;
+      entity: Array<keyof ScriptEntity>;
+      reflection: Array<keyof ScriptComponentsFacade>;
+    };
+    runtimeEntities: Array<keyof ScriptCommandsFacade>;
+    services: IrSystemService[];
+  };
   conventionalApis: {
     discreteInput: Array<keyof ScriptInputFacade>;
     heldInput: Array<keyof ScriptInputFacade>;
     resources: Array<keyof ScriptResourcesFacade>;
     transforms: Array<keyof ScriptTransformFacade>;
   };
+  explicitAbsences: Array<{
+    diagnosticCodes: string[];
+    id: string;
+    instruction: string;
+  }>;
   rules: ICompactAuthoringRule[];
   schema: "threenative.compact-authoring-profile";
+  sourceEditing: {
+    directDurableSource: "supported-when-no-bounded-operation";
+    preferred: "bounded-cli";
+    requiredFollowup: "authoring-validation";
+  };
   version: 1;
 }
 
@@ -27,6 +50,10 @@ const DISCRETE_INPUT_APIS = ["pressed", "released"] satisfies Array<keyof Script
 const HELD_INPUT_APIS = ["getButton", "getAxis", "getAxis2"] satisfies Array<keyof ScriptInputFacade>;
 const RESOURCE_APIS = ["get", "patch", "set"] satisfies Array<keyof ScriptResourcesFacade>;
 const TRANSFORM_APIS = ["position", "setPosition", "setPose", "setRotation"] satisfies Array<keyof ScriptTransformFacade>;
+const COMPONENT_ENTITY_APIS = ["get", "has", "patch", "set"] satisfies Array<keyof ScriptEntity>;
+const COMPONENT_REFLECTION_APIS = ["hooks", "type", "types"] satisfies Array<keyof ScriptComponentsFacade>;
+const COMPONENT_COMMAND_APIS = ["addComponent", "removeComponent", "setComponent"] satisfies Array<keyof ScriptCommandsFacade>;
+const RUNTIME_ENTITY_COMMANDS = ["spawn", "instantiate", "despawn"] satisfies Array<keyof ScriptCommandsFacade>;
 
 const COMPACT_RULES: readonly ICompactAuthoringRule[] = [
   {
@@ -57,14 +84,45 @@ const COMPACT_RULES: readonly ICompactAuthoringRule[] = [
 
 export function createCompactAuthoringProfile(): ICompactAuthoringProfile {
   return {
+    capabilities: {
+      components: {
+        commands: [...COMPONENT_COMMAND_APIS],
+        entity: [...COMPONENT_ENTITY_APIS],
+        reflection: [...COMPONENT_REFLECTION_APIS],
+      },
+      runtimeEntities: [...RUNTIME_ENTITY_COMMANDS],
+      services: SCRIPT_HOST_SERVICE_MATRIX.map(({ service }) => service),
+    },
     conventionalApis: {
       discreteInput: [...DISCRETE_INPUT_APIS],
       heldInput: [...HELD_INPUT_APIS],
       resources: [...RESOURCE_APIS],
       transforms: [...TRANSFORM_APIS],
     },
+    explicitAbsences: [
+      {
+        diagnosticCodes: ["TN_SCRIPT_RUNTIME_IMPORT_UNSUPPORTED"],
+        id: "renderer-native-and-model-sub-node-handles",
+        instruction: "Use stable entity, asset, clip, material, and component IDs; raw renderer/native handles and imported model sub-node handles are not exposed.",
+      },
+      {
+        diagnosticCodes: [
+          "TN_SCRIPT_DOM_API_UNSUPPORTED",
+          "TN_SCRIPT_NETWORK_API_UNSUPPORTED",
+          "TN_SCRIPT_NODE_API_UNSUPPORTED",
+          "TN_SCRIPT_TIMER_API_UNSUPPORTED",
+        ],
+        id: "platform-io",
+        instruction: "DOM, network, Node, filesystem, worker, and ambient timer APIs remain outside portable gameplay scripts.",
+      },
+    ],
     rules: COMPACT_RULES.map((rule) => ({ ...rule, diagnosticCodes: [...rule.diagnosticCodes] })),
     schema: "threenative.compact-authoring-profile",
+    sourceEditing: {
+      directDurableSource: "supported-when-no-bounded-operation",
+      preferred: "bounded-cli",
+      requiredFollowup: "authoring-validation",
+    },
     version: 1,
   };
 }

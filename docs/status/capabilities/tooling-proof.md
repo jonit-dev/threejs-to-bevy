@@ -5,6 +5,10 @@ and aggregate artifacts.
 
 Current support:
 
+- Registry-declared command families support a global `--summary` projection
+  with the original exit status, primary code, at most three diagnostics/fixes,
+  and bounded artifact pointers under 4 KiB. Deep `--json` remains unchanged;
+  unsupported or falsely advertised summary surfaces fail closed.
 - `tn iterate` for inner-loop validate/build/screenshot/playtest reports. By
   default it runs every `playtests/*.playtest.json` scenario in stable order
   and prints compact per-scenario assertion observations. Native/desktop
@@ -17,12 +21,16 @@ Current support:
   compiled bundle surfaces, and web scenarios can assert screenshot diffs,
   populated regions, and per-frame projected entity visibility.
 - `pnpm verify:emitted-commands` scaffolds the two maintained starters for five
-  archetype goals, executes every command and cookbook ID emitted by
-  `tn game plan`, requires one clean JSON object on stdout, and records the
-  behavioral `emittedCommandFailureRate` counter with a target of zero
-  unexpected failures. A fresh recipe scaffold may fail its emitted iterate or
-  movement proof only when a follow-up quality check confirms the structured
-  empty-system or missing-mutation proof diagnostic.
+  archetype goals plus wave-defense and turn-based prototype holdouts. It
+  executes every immediately actionable command and cookbook ID emitted by
+  `tn game plan`, including the inspection-to-prototype handoff, requires one
+  clean JSON object on stdout, and records both
+  `emittedCommandFailureRate` (zero unexpected failures) and
+  `emittedCommandDeferredCount`. A deferred proof command is reported
+  explicitly and accepted only when its structured payload accounts for every
+  required acceptance ID with no partial files, or when all iterate build,
+  visual, and gameplay steps passed and only prompt coverage remains. Movement
+  proof deferrals additionally require the follow-up quality diagnostic.
 - `pnpm verify:agent-io` for documented agent command stdout budgets; deep
   playtest logs remain in artifact files while stdout stays compact.
 - `pnpm verify:session-cost` replays scaffold-first paths in CI without LLM

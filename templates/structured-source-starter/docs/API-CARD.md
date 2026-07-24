@@ -1,8 +1,9 @@
 # ThreeNative API Card
 
-Compact local contract for generated-project agents. Prefer this card,
+Contract for agents. Prefer this card,
 `tn cookbook <id> --json`, and `pnpm run iterate` before reading repo
-package source.
+package source. `tn authoring inspect --project . --json` returns the canonical
+compiler-derived capability, lifecycle, direct-edit, and absence profile.
 
 ## ScriptContext
 
@@ -94,42 +95,28 @@ interface ScriptTransformFacade {
 
 ## Script Authoring Rules
 
-- Put durable behavior in `src/scripts/**/*.ts`; reference module/export from
-  `content/**/*.json`.
-- Refresh project types with `tn types generate --project . --json`; `tn build`
-  and `tn dev --watch` do this automatically.
-- Prefer `defineBehavior(metadata, fn)` for new systems. Put schedule,
-  access, services, and query metadata in code; keep systems JSON as
-  module/export attachments.
-- Read movement with `context.input.getAxis("MoveX")` /
-  `context.input.getAxis("MoveZ")` or `context.input.getButton("<name>")`.
-- Move entities through `entity.transform().position`,
-  `setPosition([x, y, z])`, or `setPose(position, rotation)`.
-- Use `context.resources.get/set/patch` for game state and HUD bindings.
-- If a script calls `entity.patch("MeshRenderer", ...)`, declare
-  `writes: ["MeshRenderer"]` in `defineBehavior`; transform movement declares
-  `writes: ["Transform"]`. `writes` are component names, not entity IDs.
-- Use `context.time.fixedDelta` for deterministic fixed-step movement.
-- Import portable helpers such as `Mathf`, `Vector2`, `Vector3`, `Quat`,
-  `MaterialEx`, and `CameraMath` from `@threenative/script-stdlib`.
-- Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
-- Do not import DOM, Node, filesystem, timer, network, Three.js, or Bevy APIs
-  from portable scripts.
+- Services: `animation(play/query/stop)`, `assets(load)`, `audio(play/query/stop)`, `camera(shake)`, `character(move)`, `effects(play)`, `navigation(path)`, `particles(burst/clear/emit/play/reset/start/stop)`, `persistence(delete/listSlots/load/save)`, `physics(addForce/addForceAtPoint/addTorque/applyAngularImpulse/applyImpulse/applyImpulseAtPoint/overlap/raycast/sensor/setAngularVelocity/setLinearVelocity/shapeCast)`, `physics.aerodynamics(setInputs)`, `physics.vehicle(setInputs)`, `picking(mesh/pointerRay)`, `scene(change/current/loadAdditive/pop/push/unload)`, `sequences(play/query/stop)`, `settings(export/get/import/set)`, `ui(actions/activate/focus/read/setDisabled/setValue)`.
+- Entity lifecycle: `context.commands.spawn`, `context.commands.instantiate`, `context.commands.despawn`.
+- Component commands: `addComponent`, `removeComponent`, `setComponent`; entity access: `get`, `has`, `patch`, `set`.
+- Source edits: prefer bounded-cli; direct durable source is supported-when-no-bounded-operation; follow with authoring-validation.
+- Refresh project types with `tn types generate --project . --json`; prefer `defineBehavior(metadata, fn)` for referenced systems.
+- Portable helpers include `Mathf`, `Vector2`, `Vector3`, `Quat`, `MaterialEx`, and `CameraMath`. Legacy aliases `NumberEx`, `Vec2`, and `Vec3` remain supported.
+- Use ScriptContext facades only; browser, DOM, Node, timer, network, Three.js, and Bevy handles are not portable.
+- Keep each referenced export self-contained: close over no module-local mutable state or helper declarations.
+- Declare every component and literal resource read/write on the owning system or defineBehavior metadata.
+- Absent: Use stable entity, asset, clip, material, and component IDs; raw renderer/native handles and imported model sub-node handles are not exposed.
+- Absent: DOM, network, Node, filesystem, worker, and ambient timer APIs remain outside portable gameplay scripts.
 
 ## Structured Source Shapes
 
-- Scenes: `content/scenes/*.scene.json` own entities, transforms, components,
-  cameras, resources, UI bindings, and script references.
-  Perspective cameras use `fovY`; orthographic cameras use `size`.
+- Scenes: `content/scenes/*.scene.json` own entities, components, cameras,
+  resources, UI bindings, and script references.
 - Input: `content/input/*.input.json` uses `keyboard.KeyW`-style bindings;
   see `docs/contracts/input-binding-syntax.md` for the grammar.
 - Systems: `content/systems/*.systems.json` attaches script module/export
   entries. New access metadata should live in `defineBehavior`.
 - UI: `content/ui/*.ui.json` binds HUD text to resource paths such as
   `GameState.score`.
-- Typed spec: `src/game.spec.ts` is compiled by
-  `tn authoring compile-typed-spec --json`; HUD bindings use
-  `{ node, resource: "GameState", fields: ["scoreText"] }`.
 
 ## Actor Shortcuts
 
@@ -137,8 +124,6 @@ interface ScriptTransformFacade {
 tn actor list --project . --json
 tn actor add character --id hero --scene <scene> --project . --json
 tn actor add vehicle --id player.vehicle --scene <scene> --project . --json
-tn actor add pickup --id pickup.01 --scene <scene> --project . --json
-tn actor update hero --set speed=5 --project . --json
 ```
 
 ## Default Loop
@@ -148,7 +133,4 @@ pnpm run iterate
 tn playtest report --latest --scenario <name> --json
 tn cookbook player-move-wasd --json
 tn cookbook follow-camera --json
-tn cookbook hud-score-binding --json
-tn cookbook top-down-collector-recipe --json
-tn cookbook lane-runner-spawn --json
 ```

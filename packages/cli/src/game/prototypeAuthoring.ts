@@ -1,6 +1,7 @@
-import { hashAuthoringTransactionBytes, publishAuthoringTransaction } from "@threenative/authoring";
-import { readFile } from "node:fs/promises";
-import { relative, resolve } from "node:path";
+import { hashAuthoringTransactionBytes, publishAuthoringTransaction, type AuthoringTransactionHash } from "@threenative/authoring";
+import { createHash } from "node:crypto";
+import { readdir, readFile } from "node:fs/promises";
+import { join, relative, resolve } from "node:path";
 
 import type { GamePrototypeProofRole, IGameAcceptanceAssertion, IGamePrototypeBinding } from "../commands/gamePlanTypes.js";
 
@@ -22,8 +23,13 @@ interface IPrototypeSource {
   ui: Record<string, unknown>;
 }
 
+interface IPrototypeOwnership {
+  appliedHash: string | null;
+  beforeBytes: Buffer | null;
+}
+
 export interface IPrototypeAuthoringResult {
-  code: "TN_AUTHORING_PROTOTYPE_UNSUPPORTED" | "TN_AUTHORING_PROTOTYPE_WRITTEN";
+  code: "TN_AUTHORING_PROTOTYPE_COLLISION" | "TN_AUTHORING_PROTOTYPE_PROOF_FAILED" | "TN_AUTHORING_PROTOTYPE_REMOVED" | "TN_AUTHORING_PROTOTYPE_UNSUPPORTED" | "TN_AUTHORING_PROTOTYPE_WRITTEN";
   diagnostics: Array<{ code: string; message: string; severity: "error" }>;
   filesWritten: string[];
   message: string;
@@ -35,6 +41,14 @@ export interface IPrototypeAuthoringResult {
     requiredAcceptanceIds: string[];
   };
   prototypeId?: string;
+  rollback?: () => Promise<boolean>;
+  replacementPlan?: {
+    blockingAuthoredPaths: string[];
+    files: Array<{ baseHash: string | null; change: "create" | "delete" | "replace"; nextHash: string | null; path: string }>;
+    nextCommand?: string;
+    planHash: string;
+    requiredReplaceTargets: string[];
+  };
 }
 
 const PROTOTYPES: Record<IGamePrototypeBinding["id"], () => IPrototypeSource> = {
@@ -42,7 +56,12 @@ const PROTOTYPES: Record<IGamePrototypeBinding["id"], () => IPrototypeSource> = 
   "continuous-arena-pooled-pressure": wavePrototype,
 };
 
-export async function applyPlanDerivedPrototype(options: { planPath: string; projectPath: string }): Promise<IPrototypeAuthoringResult> {
+export async function applyPlanDerivedPrototype(options: {
+  planPath: string;
+  projectPath: string;
+  replaceTargets?: readonly string[];
+  reviewedPlanHash?: string;
+}): Promise<IPrototypeAuthoringResult> {
   const plan = await readPlan(options.planPath);
   const binding = plan?.intentContract.prototype;
   if (plan === undefined || plan.authoringMode !== "custom-on-starter" || binding === undefined || !(binding.id in PROTOTYPES)) {
@@ -71,19 +90,76 @@ export async function applyPlanDerivedPrototype(options: { planPath: string; pro
     "playtests/native-smoke-movement.playtest.json",
     "playtests/smoke-movement.playtest.json",
   ].map((path) => ({ bytes: null, path }));
-  const pendingFiles = await Promise.all([...sourceFiles, ...proofFiles, ...replacedStarterScenarios].map(async (file) => {
+  const ownedOutputs = [...sourceFiles, ...proofFiles, ...replacedStarterScenarios];
+  const provenancePath = prototypeProvenancePath(binding.id);
+  const priorOwnership = await readPrototypeOwnership(options.projectPath, provenancePath);
+  const pendingOwnedFiles = await Promise.all(ownedOutputs.map(async (file) => {
     const existing = await readFile(resolve(options.projectPath, file.path)).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
     return existing === undefined && file.bytes === null
       ? undefined
-      : { ...file, baseHash: existing === undefined ? null : hashAuthoringTransactionBytes(existing) };
+      : { ...file, baseHash: existing === undefined ? null : hashAuthoringTransactionBytes(existing), beforeBytes: existing ?? null };
   }));
-  const files = pendingFiles.filter((file): file is Exclude<typeof file, undefined> => file !== undefined);
-  const publication = await publishAuthoringTransaction({ files, projectPath: options.projectPath });
+  const ownedFiles = pendingOwnedFiles.filter((file): file is Exclude<typeof file, undefined> => file !== undefined);
+  const provenance = jsonFile(provenancePath, {
+    files: ownedFiles.map((file) => {
+      const prior = priorOwnership.get(file.path);
+      const preservesPriorBaseline = prior !== undefined && prior.appliedHash === file.baseHash;
+      const beforeBytes = preservesPriorBaseline ? prior.beforeBytes : file.beforeBytes;
+      return {
+        appliedHash: file.bytes === null ? null : hashAuthoringTransactionBytes(file.bytes),
+        beforeBase64: beforeBytes === null ? null : beforeBytes.toString("base64"),
+        beforeHash: beforeBytes === null ? null : hashAuthoringTransactionBytes(beforeBytes),
+        path: file.path,
+      };
+    }).sort((left, right) => left.path.localeCompare(right.path)),
+    prototypeId: binding.id,
+    schema: "threenative.prototype-authoring-provenance",
+    version: "0.2.0",
+  });
+  const existingProvenance = await readFile(resolve(options.projectPath, provenancePath)).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
+  const files = [
+    ...ownedFiles,
+    {
+      ...provenance,
+      baseHash: existingProvenance === undefined ? null : hashAuthoringTransactionBytes(existingProvenance),
+      beforeBytes: existingProvenance ?? null,
+    },
+  ];
+  const collisions = await collisionPaths(files, options.projectPath, priorOwnership, provenancePath);
+  const blockingAuthoredPaths = await findBlockingAuthoredPaths(
+    options.projectPath,
+    new Set(ownedOutputs.map((file) => file.path)),
+    priorOwnership,
+  );
+  const replacementPlan = createReplacementPlan(files, collisions, blockingAuthoredPaths);
+  if (blockingAuthoredPaths.length > 0) {
+    return collision(
+      replacementPlan,
+      `Existing authored files outside the prototype transaction require an isolated destination: ${blockingAuthoredPaths.join(", ")}.`,
+    );
+  }
+  if (collisions.length > 0) {
+    const authorizedTargets = [...new Set(options.replaceTargets ?? [])].sort();
+    const reviewed = options.reviewedPlanHash === replacementPlan.planHash;
+    const targetsMatch = arraysEqual(authorizedTargets, collisions);
+    if (!reviewed || !targetsMatch) {
+      return collision(
+        replacementPlan,
+        reviewed
+          ? "The reviewed replacement targets do not exactly match the authored files that would be replaced."
+          : "Existing authored prototype targets require a reviewed replacement plan before mutation.",
+      );
+    }
+  }
+  const publication = await publishAuthoringTransaction({
+    files: files.map(({ baseHash, bytes, path }) => ({ baseHash, bytes, path })),
+    projectPath: options.projectPath,
+  });
   if (!publication.ok) {
     return unsupported("Prototype source publication failed atomically.");
   }
   const requiredAcceptanceIds = required.map((assertion) => assertion.id);
-  return {
+  const result: IPrototypeAuthoringResult = {
     code: "TN_AUTHORING_PROTOTYPE_WRITTEN",
     diagnostics: [],
     filesWritten: publication.filesWritten.map((path) => relative(options.projectPath, resolve(options.projectPath, path)).replaceAll("\\", "/")),
@@ -93,6 +169,212 @@ export async function applyPlanDerivedPrototype(options: { planPath: string; pro
     proofEnrollment: { enrolledAcceptanceIds: requiredAcceptanceIds, missingAcceptanceIds: [], requiredAcceptanceIds },
     prototypeId: binding.id,
   };
+  Object.defineProperty(result, "rollback", {
+    enumerable: false,
+    value: async () => {
+      const rollback = await publishAuthoringTransaction({
+        files: files.map((file) => ({
+          baseHash: file.bytes === null ? null : hashAuthoringTransactionBytes(file.bytes),
+          bytes: file.beforeBytes,
+          path: file.path,
+        })),
+        projectPath: options.projectPath,
+      });
+      return rollback.ok;
+    },
+  });
+  return result;
+}
+
+export async function removePlanDerivedPrototype(options: {
+  planPath: string;
+  projectPath: string;
+}): Promise<IPrototypeAuthoringResult> {
+  const plan = await readPlan(options.planPath);
+  const binding = plan?.intentContract.prototype;
+  if (binding === undefined || !(binding.id in PROTOTYPES)) {
+    return unsupported("The selected plan does not expose a removable prototype binding.");
+  }
+  const provenancePath = prototypeProvenancePath(binding.id);
+  const ownership = await readPrototypeOwnership(options.projectPath, provenancePath);
+  if (ownership.size === 0) {
+    return unsupported(`Prototype '${binding.id}' has no owned authoring transaction to remove.`);
+  }
+  const files: Array<{ baseHash: AuthoringTransactionHash | null; bytes: Buffer | null; path: string }> = [];
+  const changedPaths: string[] = [];
+  for (const [path, owned] of ownership) {
+    const existing = await readFile(resolve(options.projectPath, path)).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
+    const actualHash = existing === undefined ? null : hashAuthoringTransactionBytes(existing);
+    if (actualHash !== owned.appliedHash) {
+      changedPaths.push(path);
+      continue;
+    }
+    files.push({ baseHash: actualHash, bytes: owned.beforeBytes, path });
+  }
+  const provenanceBytes = await readFile(resolve(options.projectPath, provenancePath)).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
+  if (changedPaths.length > 0 || provenanceBytes === undefined) {
+    return unsupported(`Prototype removal refused because owned files changed or provenance is missing: ${changedPaths.join(", ") || provenancePath}.`);
+  }
+  files.push({ baseHash: hashAuthoringTransactionBytes(provenanceBytes), bytes: null, path: provenancePath });
+  const publication = await publishAuthoringTransaction({ files, projectPath: options.projectPath });
+  if (!publication.ok) return unsupported("Prototype removal failed atomically.");
+  return {
+    code: "TN_AUTHORING_PROTOTYPE_REMOVED",
+    diagnostics: [],
+    filesWritten: publication.filesWritten,
+    message: `Plan-derived prototype '${binding.id}' was removed from its owned files.`,
+    ok: true,
+    prototypeId: binding.id,
+  };
+}
+
+async function collisionPaths(
+  files: Array<{ baseHash: string | null; bytes: Buffer | null; path: string }>,
+  projectPath: string,
+  ownedFiles: ReadonlyMap<string, IPrototypeOwnership>,
+  provenancePath: string,
+): Promise<string[]> {
+  const collisions: string[] = [];
+  for (const file of files) {
+    if (file.baseHash === null) continue;
+    const existing = await readFile(resolve(projectPath, file.path));
+    if (file.bytes !== null && existing.equals(file.bytes)) continue;
+    if (file.path === provenancePath && ownedFiles.size > 0) continue;
+    if (ownedFiles.get(file.path)?.appliedHash === hashAuthoringTransactionBytes(existing)) continue;
+    const starter = await readStarterFile(file.path);
+    if (starter !== undefined && existing.equals(starter)) continue;
+    collisions.push(file.path);
+  }
+  return collisions.sort();
+}
+
+async function readPrototypeOwnership(projectPath: string, provenancePath: string): Promise<Map<string, IPrototypeOwnership>> {
+  try {
+    const value = JSON.parse(await readFile(resolve(projectPath, provenancePath), "utf8")) as {
+      files?: Array<{ appliedHash?: unknown; beforeBase64?: unknown; beforeHash?: unknown; path?: unknown }>;
+      schema?: unknown;
+    };
+    if (value.schema !== "threenative.prototype-authoring-provenance" || !Array.isArray(value.files)) return new Map();
+    return new Map(value.files.flatMap((file) => {
+      if (
+        typeof file.path !== "string"
+        || !isSafeProjectPath(file.path)
+        || (typeof file.appliedHash !== "string" && file.appliedHash !== null)
+        || (typeof file.beforeBase64 !== "string" && file.beforeBase64 !== null)
+        || (typeof file.beforeHash !== "string" && file.beforeHash !== null)
+      ) {
+        return [];
+      }
+      const beforeBytes = file.beforeBase64 === null ? null : Buffer.from(file.beforeBase64, "base64");
+      if ((beforeBytes === null ? null : hashAuthoringTransactionBytes(beforeBytes)) !== file.beforeHash) return [];
+      return [[file.path, { appliedHash: file.appliedHash, beforeBytes }] as const];
+    }));
+  } catch (error) {
+    if (isMissing(error) || error instanceof SyntaxError) return new Map();
+    throw error;
+  }
+}
+
+function isSafeProjectPath(path: string): boolean {
+  const normalized = path.replaceAll("\\", "/");
+  return normalized !== ""
+    && !normalized.startsWith("/")
+    && !normalized.split("/").includes("..");
+}
+
+function prototypeProvenancePath(prototypeId: IGamePrototypeBinding["id"]): string {
+  return `.threenative/authoring/prototypes/${prototypeId}.provenance.json`;
+}
+
+function createReplacementPlan(
+  files: Array<{ baseHash: string | null; bytes: Buffer | null; path: string }>,
+  requiredReplaceTargets: string[],
+  blockingAuthoredPaths: string[],
+): NonNullable<IPrototypeAuthoringResult["replacementPlan"]> {
+  const rows = files.map((file) => ({
+    baseHash: file.baseHash,
+    change: file.baseHash === null ? "create" as const : file.bytes === null ? "delete" as const : "replace" as const,
+    nextHash: file.bytes === null ? null : hashAuthoringTransactionBytes(file.bytes),
+    path: file.path,
+  })).sort((left, right) => left.path.localeCompare(right.path));
+  const planHash = createHash("sha256").update(JSON.stringify({ blockingAuthoredPaths, files: rows })).digest("hex");
+  const targetArgs = requiredReplaceTargets.map((path) => ` --replace-target ${path}`).join("");
+  return {
+    blockingAuthoredPaths,
+    files: rows,
+    ...(blockingAuthoredPaths.length === 0
+      ? { nextCommand: `tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --reviewed-plan-hash ${planHash}${targetArgs} --run-proof --json` }
+      : {}),
+    planHash,
+    requiredReplaceTargets,
+  };
+}
+
+async function findBlockingAuthoredPaths(
+  projectPath: string,
+  outputPaths: ReadonlySet<string>,
+  priorOwnership: ReadonlyMap<string, IPrototypeOwnership>,
+): Promise<string[]> {
+  const paths = await durableProjectFiles(projectPath);
+  const blockers: string[] = [];
+  for (const path of paths) {
+    if (outputPaths.has(path)) continue;
+    const existing = await readFile(resolve(projectPath, path));
+    if (priorOwnership.get(path)?.appliedHash === hashAuthoringTransactionBytes(existing)) continue;
+    const starter = await readStarterFile(path);
+    if (starter !== undefined && starter.equals(existing)) continue;
+    blockers.push(path);
+  }
+  return blockers.sort();
+}
+
+async function durableProjectFiles(projectPath: string): Promise<string[]> {
+  const files: string[] = [];
+  await collectFiles(resolve(projectPath, "content"), "content", files, (path) => path.endsWith(".json"));
+  await collectFiles(resolve(projectPath, "src/scripts"), "src/scripts", files, (path) => path.endsWith(".ts"));
+  await collectFiles(resolve(projectPath, "playtests"), "playtests", files, (path) => path.endsWith(".playtest.json"));
+  return files.sort();
+}
+
+async function collectFiles(
+  absoluteDirectory: string,
+  relativeDirectory: string,
+  files: string[],
+  include: (path: string) => boolean,
+): Promise<void> {
+  const entries = await readdir(absoluteDirectory, { withFileTypes: true }).catch((error: unknown) =>
+    isMissing(error) ? [] : Promise.reject(error));
+  for (const entry of entries) {
+    const relativePath = `${relativeDirectory}/${entry.name}`;
+    if (entry.isDirectory()) {
+      await collectFiles(join(absoluteDirectory, entry.name), relativePath, files, include);
+    } else if (entry.isFile() && include(relativePath)) {
+      files.push(relativePath);
+    }
+  }
+}
+
+async function readStarterFile(path: string): Promise<Buffer | undefined> {
+  const templatePath = resolve(import.meta.dirname, "../template-files/structured-source-starter", path);
+  return readFile(templatePath).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
+}
+
+function collision(
+  replacementPlan: NonNullable<IPrototypeAuthoringResult["replacementPlan"]>,
+  message: string,
+): IPrototypeAuthoringResult {
+  return {
+    code: "TN_AUTHORING_PROTOTYPE_COLLISION",
+    diagnostics: [{ code: "TN_AUTHORING_PROTOTYPE_COLLISION", message, severity: "error" }],
+    filesWritten: [],
+    message,
+    ok: false,
+    replacementPlan,
+  };
+}
+
+function arraysEqual(left: readonly string[], right: readonly string[]): boolean {
+  return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 async function readPlan(path: string): Promise<IPrototypePlan | undefined> {

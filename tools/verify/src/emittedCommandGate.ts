@@ -9,6 +9,7 @@ import { runCommand, summarize, type StepSummary, type VerificationDiagnostic } 
 interface IEmittedCommandCaseResult {
   archetype: string;
   commandCount: number;
+  deferredCommandCount: number;
   failedCommandCount: number;
   failureRate: number;
   goal: string;
@@ -17,6 +18,8 @@ interface IEmittedCommandCaseResult {
 
 interface IGamePlanPayload {
   archetypeSuggestions: Array<{ command: string }>;
+  authoringMode: "bounded-match" | "custom-on-starter";
+  intentContract: { prototype?: { id: string } };
   mechanicDecomposition: Array<{ command?: string; cookbookId?: string }>;
   proofCommands: string[];
   steps: Array<{ apply: boolean; recipe?: string; recipeArgs?: Record<string, unknown>; recipeProofCommands?: string[] }>;
@@ -28,6 +31,8 @@ const ARCHETYPE_GOALS = [
   { archetype: "first-person", goal: "first-person maze escape" },
   { archetype: "side-scroller", goal: "side-scroller lane runner" },
   { archetype: "racing", goal: "checkpoint kart race with laps and retry" },
+  { archetype: "wave-defense", goal: "enemy wave defense where a defender protects a base" },
+  { archetype: "turn-based-tactics", goal: "turn-based tactics with unit selection and an enemy turn" },
 ] as const;
 
 const TEMPLATES = ["structured-source-starter", "racing-kit-rally-starter"] as const;
@@ -66,7 +71,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
         steps.push({ ...summarize(create), name: `${caseId}: create` });
         if (create.exitCode !== 0) {
           diagnostics.push(commandFailure(caseId, "create", create.exitCode, create.stderr || create.stdout));
-          cases.push({ archetype: goalCase.archetype, commandCount: 0, failedCommandCount: 1, failureRate: 1, goal: goalCase.goal, template });
+          cases.push({ archetype: goalCase.archetype, commandCount: 0, deferredCommandCount: 0, failedCommandCount: 1, failureRate: 1, goal: goalCase.goal, template });
           continue;
         }
 
@@ -82,12 +87,41 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
         const plan = parsePlan(planResult.stdout);
         if (planResult.exitCode !== 0 || plan === undefined) {
           diagnostics.push(commandFailure(caseId, "plan", planResult.exitCode, planResult.stderr || planResult.stdout || "Plan stdout was not valid JSON."));
-          cases.push({ archetype: goalCase.archetype, commandCount: 0, failedCommandCount: 1, failureRate: 1, goal: goalCase.goal, template });
+          cases.push({ archetype: goalCase.archetype, commandCount: 0, deferredCommandCount: 0, failedCommandCount: 1, failureRate: 1, goal: goalCase.goal, template });
           continue;
         }
 
         let failedCommandCount = 0;
+        let deferredCommandCount = 0;
+        let workflowCommandCount = 0;
+        const workflowCommands: string[] = [];
+        if (plan.authoringMode === "custom-on-starter" && plan.intentContract.prototype !== undefined) {
+          const inspectCommand = "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json";
+          const inspectResult = await runCommand({
+            args: [cliPath, ...emittedCommandArgs(inspectCommand)!],
+            command: process.execPath,
+            cwd: projectPath,
+            env: { ...process.env, INIT_CWD: projectPath },
+            name: `${caseId}: prototype inspection`,
+            timeoutMs: 120_000,
+          });
+          workflowCommandCount += 1;
+          steps.push({ ...summarize(inspectResult), name: `${caseId}: prototype inspection` });
+          const inspection = parseJsonObject(inspectResult.stdout);
+          const nextAuthoringCommand = inspection === undefined ? undefined : inspection.nextAuthoringCommand;
+          if (
+            inspectResult.exitCode !== 0
+            || typeof nextAuthoringCommand !== "string"
+            || emittedCommandArgs(nextAuthoringCommand) === undefined
+          ) {
+            failedCommandCount += 1;
+            diagnostics.push(commandFailure(caseId, inspectCommand, inspectResult.exitCode, inspectResult.stderr || inspectResult.stdout || "Inspection did not emit a concrete nextAuthoringCommand."));
+          } else {
+            workflowCommands.push(nextAuthoringCommand);
+          }
+        }
         const emittedCommands = [
+          ...workflowCommands,
           ...plan.mechanicDecomposition.flatMap((entry) => entry.command === undefined ? [] : [entry.command]),
           ...plan.archetypeSuggestions.map((entry) => entry.command),
           ...plan.steps
@@ -139,6 +173,11 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
           });
           steps.push({ ...summarize(result), name });
           if (result.exitCode !== 0 && isAcceptedScaffoldProofFailure(command, result.stdout)) {
+            if (!command.includes("--expect-moved")) {
+              recordDeferredCommand(diagnostics, caseId, command);
+              deferredCommandCount += 1;
+              continue;
+            }
             const scoreResult = await runCommand({
               args: [cliPath, "game", "score", "--project", ".", "--json"],
               command: process.execPath,
@@ -149,6 +188,8 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
             });
             steps.push({ ...summarize(scoreResult), name: `${caseId}: scaffold proof quality check` });
             if (scoreResult.exitCode !== 0 && hasScaffoldProofDiagnostic(scoreResult.stdout)) {
+              recordDeferredCommand(diagnostics, caseId, command);
+              deferredCommandCount += 1;
               continue;
             }
           }
@@ -159,9 +200,10 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
         }
         cases.push({
           archetype: goalCase.archetype,
-          commandCount: emittedCommands.length,
+          commandCount: emittedCommands.length + workflowCommandCount,
+          deferredCommandCount,
           failedCommandCount,
-          failureRate: emittedCommands.length === 0 ? 0 : failedCommandCount / emittedCommands.length,
+          failureRate: emittedCommands.length + workflowCommandCount === 0 ? 0 : failedCommandCount / (emittedCommands.length + workflowCommandCount),
           goal: goalCase.goal,
           template,
         });
@@ -179,6 +221,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
     artifacts: {
       cases,
       emittedCommandCount: cases.reduce((total, item) => total + item.commandCount, 0),
+      emittedCommandDeferredCount: cases.reduce((total, item) => total + item.deferredCommandCount, 0),
       emittedCommandFailureCount: cases.reduce((total, item) => total + item.failedCommandCount, 0),
       emittedCommandFailureRate: failureRate(cases),
       ...(keepProjects ? { projectRoot: tempRoot } : {}),
@@ -196,6 +239,16 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
   return { cases, diagnostics, ok, reportPath, steps };
 }
 
+function recordDeferredCommand(diagnostics: VerificationDiagnostic[], caseId: string, command: string): void {
+  diagnostics.push({
+    code: "TN_EMITTED_COMMAND_DEFERRED",
+    message: `${caseId}: '${command}' stopped at a fully described unmet proof prerequisite.`,
+    severity: "warning",
+    step: command,
+    suggestedFix: "Complete the reported acceptance-proof prerequisite, then rerun the same emitted command.",
+  });
+}
+
 function emittedCommandArgs(command: string): string[] | undefined {
   if (!command.startsWith("tn ") || command.includes("<") || command.includes("...") || /["']/u.test(command)) {
     return undefined;
@@ -209,6 +262,15 @@ function parsePlan(stdout: string): IGamePlanPayload | undefined {
     return Array.isArray(value.archetypeSuggestions) && Array.isArray(value.mechanicDecomposition) && Array.isArray(value.proofCommands) && Array.isArray(value.steps)
       ? value as IGamePlanPayload
       : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function parseJsonObject(stdout: string): Record<string, unknown> | undefined {
+  try {
+    const value = JSON.parse(stdout) as unknown;
+    return isRecord(value) ? value : undefined;
   } catch {
     return undefined;
   }
@@ -314,17 +376,52 @@ function isJsonObject(stdout: string): boolean {
 export function isAcceptedScaffoldProofFailure(command: string, stdout: string): boolean {
   const isIterateProof = command === "tn iterate --project . --json";
   const isMovementProof = command.startsWith("tn playtest ") && command.includes("--expect-moved");
-  if (!isIterateProof && !isMovementProof) {
+  const isPlanScaffoldProof = command === "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json";
+  if (!isIterateProof && !isMovementProof && !isPlanScaffoldProof) {
     return false;
   }
   try {
     const value = JSON.parse(stdout) as Record<string, unknown>;
-    return isIterateProof
-      ? value.code === "TN_ITERATE_FAILED"
+    return isPlanScaffoldProof
+      ? isCompleteUnsupportedPlanScaffold(value)
+      : isIterateProof
+      ? isPromptCoverageOnlyIterateFailure(value)
       : value.schema === "threenative.playtest-summary" && value.pass === false;
   } catch {
     return false;
   }
+}
+
+function isCompleteUnsupportedPlanScaffold(value: Record<string, unknown>): boolean {
+  const diagnostics = Array.isArray(value.diagnostics) ? value.diagnostics : [];
+  const filesWritten = Array.isArray(value.filesWritten) ? value.filesWritten : [];
+  const enrollment = isRecord(value.proofEnrollment) ? value.proofEnrollment : {};
+  const enrolled = Array.isArray(enrollment.enrolledAcceptanceIds) ? enrollment.enrolledAcceptanceIds : [];
+  const missing = Array.isArray(enrollment.missingAcceptanceIds) ? enrollment.missingAcceptanceIds : [];
+  const required = Array.isArray(enrollment.requiredAcceptanceIds) ? enrollment.requiredAcceptanceIds : [];
+  return value.code === "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED"
+    && filesWritten.length === 0
+    && diagnostics.length > 0
+    && diagnostics.every((diagnostic) => isRecord(diagnostic)
+      && diagnostic.code === "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED"
+      && diagnostic.severity === "error"
+      && typeof diagnostic.acceptanceId === "string"
+      && typeof diagnostic.missingCapability === "string")
+    && enrolled.length === 0
+    && required.length > 0
+    && missing.length === required.length
+    && required.every((acceptanceId) => missing.includes(acceptanceId));
+}
+
+function isPromptCoverageOnlyIterateFailure(value: Record<string, unknown>): boolean {
+  const verdicts = isRecord(value.verdicts) ? value.verdicts : {};
+  const steps = Array.isArray(value.steps) ? value.steps : [];
+  return value.code === "TN_ITERATE_FAILED"
+    && value.promptCoverage === "fail"
+    && verdicts.gameplay === "pass"
+    && verdicts.visual === "pass"
+    && steps.length > 0
+    && steps.every((step) => isRecord(step) && step.status === "pass");
 }
 
 export function hasScaffoldProofDiagnostic(stdout: string): boolean {

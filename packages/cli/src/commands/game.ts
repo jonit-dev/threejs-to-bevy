@@ -1144,16 +1144,19 @@ function compactGamePlanForStdout(plan: IGamePlan, planArtifactPath: string): Re
     ? "tn recipe apply spatial-grid-objective --project . --json"
     : coverageComplete && isPhysicsTargetGoal(plan.goal)
     ? plan.mechanicDecomposition.find((row) => row.command?.includes("physics-target"))?.command
-    : !coverageComplete && plan.intentContract.prototype !== undefined
-      ? "tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json"
     : !coverageComplete || matchedKit === undefined
       ? undefined
       : plan.mechanicDecomposition[0]?.command;
+  const nextInspectionCommand = !coverageComplete && plan.intentContract.prototype !== undefined
+    ? "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json"
+    : nextAuthoringCommand === undefined
+      ? "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json"
+      : undefined;
   return {
     code: plan.code,
     message: "Full game plan written to artifacts/game-production/plan.json.",
     nextAuthoringCommand,
-    nextInspectionCommand: nextAuthoringCommand === undefined ? "tn authoring inspect --project . --plan artifacts/game-production/plan.json --json" : undefined,
+    nextInspectionCommand,
     nextIterateCommand: "tn iterate --project . --json",
     nextProofCommand: "tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json",
     stopAfterCommandWhenScenarioEmitted: nextAuthoringCommand !== undefined,

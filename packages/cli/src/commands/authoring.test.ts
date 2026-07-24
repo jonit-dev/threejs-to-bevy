@@ -153,7 +153,11 @@ test("should expose and apply a plan-derived holdout prototype with exact proof 
     try {
       await mkdir(join(root, "artifacts/game-production"), { recursive: true });
       await mkdir(join(root, "playtests"), { recursive: true });
-      await writeFile(join(root, "playtests/smoke-movement.playtest.json"), "{}\n");
+      const starterSmoke = await readFile(new URL("../template-files/structured-source-starter/playtests/smoke-movement.playtest.json", import.meta.url));
+      await writeFile(
+        join(root, "playtests/smoke-movement.playtest.json"),
+        starterSmoke,
+      );
       await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
         authoringMode: "custom-on-starter",
         coveredResponsibilityIds: [],
@@ -207,6 +211,12 @@ test("should expose and apply a plan-derived holdout prototype with exact proof 
       assert.equal(validate.exitCode, 0, validate.stdout);
       const check = await authoringCommand(["script", "check", "--module", "src/scripts/prototype.ts", "--project", root, "--json"]);
       assert.equal(check.exitCode, 0, check.stdout);
+      await access(join(root, ".threenative/authoring/prototypes", `${fixture.prototypeId}.provenance.json`));
+      const remove = await authoringCommand(["prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--remove", "--json"]);
+      assert.equal(remove.exitCode, 0, remove.stdout);
+      await assert.rejects(readFile(join(root, "src/scripts/prototype.ts")), /ENOENT/u);
+      await assert.rejects(readFile(join(root, ".threenative/authoring/prototypes", `${fixture.prototypeId}.provenance.json`)), /ENOENT/u);
+      assert.deepEqual(await readFile(join(root, "playtests/smoke-movement.playtest.json")), starterSmoke);
     } finally {
       await rm(root, { force: true, recursive: true });
     }
@@ -231,6 +241,141 @@ test("authoring prototype rejects unsupported or non-custom plans without mutati
     assert.equal(result.exitCode, 1);
     assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_UNSUPPORTED");
     assert.deepEqual(await readdir(root), before);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("authoring prototype stages authored collisions and requires the exact reviewed plan and targets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-prototype-collision-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    const authoredScene = `${JSON.stringify({ entities: [{ id: "authored.hero" }], id: "arena", schema: "threenative.scene" }, null, 2)}\n`;
+    await writeFile(join(root, "content/scenes/arena.scene.json"), authoredScene);
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "custom-on-starter",
+      intentContract: {
+        acceptanceAssertions: [{ description: "render", id: "webgl-canvas", kind: "progress", required: true }],
+        id: "intent.wave-defense",
+        prototype: { id: "continuous-arena-pooled-pressure", proofRoles: { "webgl-canvas": "canvas" } },
+        requiredCapabilities: [],
+      },
+      schema: "threenative.game-plan",
+    }, null, 2)}\n`);
+
+    const staged = await authoringCommand(["prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--json"]);
+    const stagedPayload = JSON.parse(staged.stdout) as {
+      code: string;
+      replacementPlan: { nextCommand: string; planHash: string; requiredReplaceTargets: string[] };
+    };
+    assert.equal(staged.exitCode, 1);
+    assert.equal(stagedPayload.code, "TN_AUTHORING_PROTOTYPE_COLLISION");
+    assert.deepEqual(stagedPayload.replacementPlan.requiredReplaceTargets, ["content/scenes/arena.scene.json"]);
+    assert.match(stagedPayload.replacementPlan.nextCommand, /--reviewed-plan-hash [a-f0-9]{64}/u);
+    assert.equal(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8"), authoredScene);
+    await assert.rejects(access(join(root, "content/input/prototype.input.json")), /ENOENT/u);
+
+    const wrongTarget = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root,
+      "--reviewed-plan-hash", stagedPayload.replacementPlan.planHash,
+      "--replace-target", "content/scenes/not-arena.scene.json", "--json",
+    ]);
+    assert.equal(wrongTarget.exitCode, 1);
+    assert.equal(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8"), authoredScene);
+
+    const applied = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root,
+      "--reviewed-plan-hash", stagedPayload.replacementPlan.planHash,
+      "--replace-target", "content/scenes/arena.scene.json", "--json",
+    ]);
+    assert.equal(applied.exitCode, 0, applied.stdout);
+    assert.notEqual(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8"), authoredScene);
+
+    const removed = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--remove", "--json",
+    ]);
+    assert.equal(removed.exitCode, 0, removed.stdout);
+    assert.equal(await readFile(join(root, "content/scenes/arena.scene.json"), "utf8"), authoredScene);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("authoring prototype blocks authored projects whose owners are outside its transaction", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-prototype-project-collision-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    const authoredPath = join(root, "content/scenes/battle.scene.json");
+    const authoredScene = `${JSON.stringify({ entities: [{ id: "battle.hero" }], id: "battle", schema: "threenative.scene" }, null, 2)}\n`;
+    await writeFile(authoredPath, authoredScene);
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "custom-on-starter",
+      intentContract: {
+        acceptanceAssertions: [{ description: "render", id: "webgl-canvas", kind: "progress", required: true }],
+        id: "intent.wave-defense",
+        prototype: { id: "continuous-arena-pooled-pressure", proofRoles: { "webgl-canvas": "canvas" } },
+        requiredCapabilities: [],
+      },
+      schema: "threenative.game-plan",
+    }, null, 2)}\n`);
+
+    const result = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      filesWritten: string[];
+      replacementPlan: { blockingAuthoredPaths: string[]; nextCommand?: string };
+    };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_COLLISION");
+    assert.deepEqual(payload.filesWritten, []);
+    assert.deepEqual(payload.replacementPlan.blockingAuthoredPaths, ["content/scenes/battle.scene.json"]);
+    assert.equal(payload.replacementPlan.nextCommand, undefined);
+    assert.equal(await readFile(authoredPath, "utf8"), authoredScene);
+    await assert.rejects(access(join(root, "content/scenes/arena.scene.json")), /ENOENT/u);
+    await assert.rejects(access(join(root, "src/scripts/prototype.ts")), /ENOENT/u);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("authoring prototype restores every preimage when its owned proof fails", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-prototype-proof-rollback-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await mkdir(join(root, "playtests"), { recursive: true });
+    const starterScene = await readFile(new URL("../template-files/structured-source-starter/content/scenes/arena.scene.json", import.meta.url));
+    const starterScenario = await readFile(new URL("../template-files/structured-source-starter/playtests/smoke-movement.playtest.json", import.meta.url));
+    await writeFile(join(root, "content/scenes/arena.scene.json"), starterScene);
+    await writeFile(join(root, "playtests/smoke-movement.playtest.json"), starterScenario);
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "custom-on-starter",
+      intentContract: {
+        acceptanceAssertions: [{ description: "render", id: "webgl-canvas", kind: "progress", required: true }],
+        id: "intent.wave-defense",
+        prototype: { id: "continuous-arena-pooled-pressure", proofRoles: { "webgl-canvas": "canvas" } },
+        requiredCapabilities: [],
+      },
+      schema: "threenative.game-plan",
+    }, null, 2)}\n`);
+
+    const result = await authoringCommand(
+      ["prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--run-proof", "--json"],
+      { runPrototypeProof: async () => ({ exitCode: 1, stdout: `${JSON.stringify({ code: "TN_ITERATE_FAILED" })}\n` }) },
+    );
+    const payload = JSON.parse(result.stdout) as { code: string; rolledBack: boolean };
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_PROOF_FAILED");
+    assert.equal(payload.rolledBack, true);
+    assert.deepEqual(await readFile(join(root, "content/scenes/arena.scene.json")), starterScene);
+    assert.deepEqual(await readFile(join(root, "playtests/smoke-movement.playtest.json")), starterScenario);
+    await assert.rejects(access(join(root, "src/scripts/prototype.ts")), /ENOENT/u);
+    await assert.rejects(access(join(root, ".threenative/authoring/prototypes/continuous-arena-pooled-pressure.provenance.json")), /ENOENT/u);
   } finally {
     await rm(root, { force: true, recursive: true });
   }
@@ -310,6 +455,46 @@ test("should scaffold a bundler-legal self-contained behavior from project IDs",
     assert.equal(checkPayload.code, "TN_AUTHORING_SCRIPT_CHECK_OK");
     assert.equal(checkPayload.ok, true);
     assert.deepEqual(checkPayload.diagnostics, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("script scaffold never implicitly applies a plan-derived prototype", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-script-no-prototype-"));
+  try {
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await mkdir(join(root, "content/input"), { recursive: true });
+    await mkdir(join(root, "content/scenes"), { recursive: true });
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "custom-on-starter",
+      intentContract: {
+        acceptanceAssertions: [{ description: "Render.", id: "webgl-canvas", kind: "progress", required: true }],
+        id: "intent.wave-defense",
+        prototype: { id: "continuous-arena-pooled-pressure", proofRoles: { "webgl-canvas": "canvas" } },
+      },
+      schema: "threenative.game-plan",
+    })}\n`);
+    await writeFile(join(root, "content/scenes/arena.scene.json"), `${JSON.stringify({
+      entities: [{ id: "player.actual" }],
+      id: "arena",
+      resources: [{ id: "GameState" }],
+      schema: "threenative.scene",
+    })}\n`);
+    await writeFile(join(root, "content/input/game.input.json"), `${JSON.stringify({
+      actions: [{ bindings: ["keyboard.KeyR"], id: "retry.actual" }],
+      id: "game-input",
+      schema: "threenative.input",
+    })}\n`);
+
+    const result = await authoringCommand(["script", "scaffold", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 0);
+    assert.equal(payload.code, "TN_AUTHORING_SCRIPT_SCAFFOLDED");
+    await access(join(root, "src/scripts/customBehavior.ts"));
+    await assert.rejects(access(join(root, "src/scripts/prototype.ts")), /ENOENT/u);
+    await assert.rejects(access(join(root, ".threenative/authoring/prototypes/continuous-arena-pooled-pressure.provenance.json")), /ENOENT/u);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

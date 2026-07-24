@@ -4,10 +4,33 @@ import test from "node:test";
 import { hasScaffoldProofDiagnostic, isAcceptedScaffoldProofFailure } from "./emittedCommandGate.js";
 
 test("should recognize only structured scaffold proof failures", () => {
-  const failedIterate = JSON.stringify({ code: "TN_ITERATE_FAILED" });
+  const failedIterate = JSON.stringify({
+    code: "TN_ITERATE_FAILED",
+    promptCoverage: "fail",
+    steps: [{ id: "playtest", status: "pass" }],
+    verdicts: { gameplay: "pass", visual: "pass" },
+  });
+  const unsupportedPlanScaffold = JSON.stringify({
+    code: "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED",
+    diagnostics: [{
+      acceptanceId: "retry-path",
+      code: "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED",
+      missingCapability: "retry-input",
+      severity: "error",
+    }],
+    filesWritten: [],
+    proofEnrollment: {
+      enrolledAcceptanceIds: [],
+      missingAcceptanceIds: ["retry-path"],
+      requiredAcceptanceIds: ["retry-path"],
+    },
+  });
   assert.equal(isAcceptedScaffoldProofFailure("tn iterate --project . --json", failedIterate), true);
   assert.equal(isAcceptedScaffoldProofFailure("tn playtest --project . --entity player --press KeyW --frames 30 --expect-moved --json", JSON.stringify({ pass: false, schema: "threenative.playtest-summary" })), true);
+  assert.equal(isAcceptedScaffoldProofFailure("tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json", unsupportedPlanScaffold), true);
   assert.equal(isAcceptedScaffoldProofFailure("tn build --project . --json", failedIterate), false);
+  assert.equal(isAcceptedScaffoldProofFailure("tn playtest scaffold --from-plan artifacts/game-production/plan.json --project . --json", JSON.stringify({ code: "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED" })), false);
+  assert.equal(isAcceptedScaffoldProofFailure("tn iterate --project . --json", JSON.stringify({ code: "TN_ITERATE_FAILED", promptCoverage: "fail" })), false);
   assert.equal(isAcceptedScaffoldProofFailure("tn playtest --project . --entity player --press KeyW --frames 30 --expect-moved --json", JSON.stringify({ pass: true, schema: "threenative.playtest-summary" })), false);
   assert.equal(isAcceptedScaffoldProofFailure("tn iterate --project . --json", "not-json"), false);
 });

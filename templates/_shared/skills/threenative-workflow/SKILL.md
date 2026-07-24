@@ -46,6 +46,23 @@ tn iterate --project . --json
    or script and rerun; read `threenative-verify` only when the compact iterate
    diagnostic requires deeper guidance.
 
+<!-- tn-guidance:ownership-v1 -->
+
+## Ownership and concurrency
+
+- Inspect the plan inventory and targeted scene nodes before assigning edits.
+  Give each scene document one owner; two agents must not concurrently edit the
+  same `content/scenes/*.scene.json`.
+- Independent domains may proceed in parallel when their files do not overlap:
+  for example one owner can change a content document while another changes a
+  project script, provided their shared IDs and attachment contract were agreed
+  first. Keep material, UI, input, and script ownership explicit in the plan.
+- One agent owns the long-lived preview and proof process. Do not run build,
+  dev, or iterate concurrently in the same project because they share generated
+  output, preview ports, and freshness state.
+- Before handoff, report owned files, stable IDs/contracts changed, the last
+  focused proof, and whether a dev process is still running.
+
 ## Technical-debt guardrails
 
 - Extend the owning source document, script, manifest, or contract. Do not

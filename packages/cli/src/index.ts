@@ -42,6 +42,7 @@ import { typesCommand } from "./commands/types.js";
 import { toolCommand } from "./commands/tool.js";
 import { worldCommand } from "./commands/world.js";
 import { type ICommandResult } from "./diagnostics.js";
+import { projectCommandResultSummary } from "./resultProjection.js";
 import { ASSET_CREATION_STRATEGY_MCP_DESCRIPTOR, MODEL_PROVIDER_MCP_DESCRIPTORS, assetCreationStrategy, blenderMcpOutcomeCoverage, modelProviderRegistry } from "./modelProviders/registry.js";
 import { defineCommandRegistry, findCommand, renderCommandHelp, unmigratedCommandNames, type ICommandDefinition } from "./commands/registry.js";
 export type { CommandMcpToolName, ICommandMcpAdapterDefinition } from "./commands/registry.js";
@@ -111,8 +112,9 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   authoring: {
     description: "Inspect, validate, and atomically mutate structured authoring source documents.",
     implemented: true,
+    output: { summary: true },
     subcommands: ["batch", "compile-typed-spec", "inspect", "prototype", "script", "validate"],
-    usage: "tn authoring inspect [--project <path>] [--plan <plan.json>] [--json]\n              tn authoring validate [--project <path>] [--json]\n              tn authoring prototype --from-plan <plan.json> [--project <path>] [--run-proof] [--json]\n              tn authoring compile-typed-spec [--entry <src/game.spec.ts>] [--project <path>] [--json]\n              tn authoring batch plan --file <path|-> [--project <path>] [--json]\n              tn authoring batch apply --file <path|-> [--project <path>] [--json]\n              tn authoring script scaffold [--module src/scripts/<name>.ts] [--export <name>] [--entity <id>] [--resource <id>] [--input <id>] [--project <path>] [--json]\n              tn authoring script check [--module src/scripts/<name>.ts] [--export <name>] [--project <path>] [--json]",
+    usage: "tn authoring inspect [--project <path>] [--plan <plan.json>] [--json]\n              tn authoring validate [--project <path>] [--json]\n              tn authoring prototype --from-plan <plan.json> [--project <path>] [--reviewed-plan-hash <sha256> --replace-target <path>...] [--run-proof|--remove] [--json]\n              tn authoring compile-typed-spec [--entry <src/game.spec.ts>] [--project <path>] [--json]\n              tn authoring batch plan --file <path|-> [--project <path>] [--json]\n              tn authoring batch apply --file <path|-> [--project <path>] [--json]\n              tn authoring script scaffold [--module src/scripts/<name>.ts] [--export <name>] [--entity <id>] [--resource <id>] [--input <id>] [--project <path>] [--json]\n              tn authoring script check [--module src/scripts/<name>.ts] [--export <name>] [--project <path>] [--json]",
   },
   bake: {
     description: "Bake deterministic portable lighting data into durable content.",
@@ -145,6 +147,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   iterate: {
     description: "Run validate, build, screenshot, and optional playtest as one agent iteration loop.",
     implemented: true,
+    output: { summary: true },
     usage: "tn iterate [--project <path>] [--scenario playtests/<name>.playtest.json] [--native] [--audit-writes] [--skip-playtest|--visual-only] [--keep] [--json]",
   },
   look: {
@@ -188,17 +191,20 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   doctor: {
     description: "Inspect project setup, scripts, source entrypoint, and bundle files with actionable diagnostics.",
     implemented: true,
+    output: { summary: true },
     usage: "tn doctor [--project <path>] [--json]",
   },
   validate: {
     description: "Validate a game bundle or project.",
     implemented: true,
+    output: { summary: true },
     usage: "tn validate [--project <path>] [--bundle <path>] [--json]",
   },
   build: {
     description: "Compile supported TypeScript source into game.bundle.",
     handler: buildCommand,
     implemented: true,
+    output: { summary: true },
     usage: "tn build [--project <path>] [--json]",
   },
   bundle: {
@@ -259,6 +265,7 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",
     implemented: true,
+    output: { summary: true },
     usage: "tn playtest --project <path> --entity <id> --press <KeyboardEvent.code> --frames <n> [--expect-moved] [--expect-axis x|y|z|+x|-x|+y|-y|+z|-z] [--follow <entityId>] [--debug] [--effects stdout] [--audit-writes] [--json]\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json [--out <dir>] [--stable-artifacts] [--target web|desktop|bevy] [--headless] [--viewport 1280x720] [--audit-writes] [--json]\n             tn playtest report --project <path> --latest --scenario <name> --json\n             tn playtest report --project <path> --summary artifacts/playtest/<name>/latest/summary.json --json\n             tn playtest --project <path> --scenario playtests/<name>.playtest.json --watch [--max-runs <n>] [--fail-fast] [--pass-once] [--json]\n             tn playtest --project <path> --discover --json\n             tn playtest --project <path> --suggest-scenario smoke-movement --json\n             tn playtest schema --json\n             tn playtest scaffold --assert <movement|pickup|win-state|retry> [--project <path>] [--json]",
   },
   prove: {
@@ -405,11 +412,42 @@ export async function dispatch(argv: readonly string[]): Promise<ICommandResult>
   }
 
   const commandArgv = normalizedArgv.slice(1);
+  const summaryIndex = globalSummaryFlagIndex(commandName, commandArgv);
+  if (summaryIndex !== -1) {
+    if (command.output?.summary !== true) {
+      return {
+        exitCode: 2,
+        stdout: `${JSON.stringify({
+          code: "TN_COMMAND_SUMMARY_UNSUPPORTED",
+          command: commandName,
+          message: `Command '${commandName}' does not declare --summary support.`,
+          severity: "error",
+        })}\n`,
+      };
+    }
+    const deepArgv = commandArgv.filter((_, index) => index !== summaryIndex);
+    if (!deepArgv.includes("--json")) deepArgv.push("--json");
+    const deepResult = command.handler !== undefined
+      ? await command.handler(deepArgv)
+      : await legacyDispatch(commandName, deepArgv, command, [commandName, ...deepArgv]);
+    return projectCommandResultSummary(deepResult);
+  }
+
   if (command.handler !== undefined) {
     return command.handler(commandArgv);
   }
-
   return legacyDispatch(commandName, commandArgv, command, normalizedArgv);
+}
+
+function globalSummaryFlagIndex(commandName: string, argv: readonly string[]): number {
+  for (let index = 0; index < argv.length; index += 1) {
+    if (argv[index] !== "--summary") continue;
+    if (commandName === "playtest" && argv[0] === "report" && typeof argv[index + 1] === "string" && !argv[index + 1]!.startsWith("--")) {
+      continue;
+    }
+    return index;
+  }
+  return -1;
 }
 
 async function legacyDispatch(commandName: string, commandArgv: readonly string[], command: ICommandDefinition, normalizedArgv: readonly string[]): Promise<ICommandResult> {

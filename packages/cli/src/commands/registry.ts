@@ -37,6 +37,9 @@ export interface ICommandDefinition {
   handler?: CommandHandler;
   implemented: boolean;
   name: string;
+  output?: {
+    summary?: boolean;
+  };
   subcommands?: readonly string[];
   usage: string;
 }
@@ -44,6 +47,11 @@ export interface ICommandDefinition {
 type CommandDefinitionInput = Omit<ICommandDefinition, "name">;
 
 export function defineCommandRegistry<T extends Record<string, CommandDefinitionInput>>(definitions: T): Record<keyof T & string, ICommandDefinition> {
+  for (const [name, definition] of Object.entries(definitions)) {
+    if (definition.output?.summary === true && !definition.usage.includes("--json")) {
+      throw new Error(`CLI command '${name}' cannot advertise --summary without a JSON output contract.`);
+    }
+  }
   return Object.fromEntries(Object.entries(definitions).map(([name, definition]) => [name, { ...definition, name }])) as Record<keyof T & string, ICommandDefinition>;
 }
 
@@ -65,8 +73,11 @@ export function unmigratedCommandNames(commands: Record<string, ICommandDefiniti
 
 export function renderCommandHelp(commands: Record<string, ICommandDefinition>): string {
   const commandRows = commandEntries(commands)
-    .map((command) => `  ${command.name.padEnd(10)} ${command.description}\n              ${command.usage}`)
+    .map((command) => `  ${command.name.padEnd(10)} ${command.description}\n              ${command.usage}${command.output?.summary === true ? "\n              Supports: --summary" : ""}`)
     .join("\n");
+  const summaryOption = commandEntries(commands).some((command) => command.output?.summary === true)
+    ? "\n  --summary     Print a bounded JSON result for commands that declare summary support."
+    : "";
 
   return `ThreeNative CLI
 
@@ -78,6 +89,6 @@ ${commandRows}
 
 Global options:
   --help, -h    Print this help.
-  --json        Print machine-readable diagnostics where supported.
+  --json        Print machine-readable diagnostics where supported.${summaryOption}
 `;
 }
