@@ -1,7 +1,7 @@
 # Session Learnings Remediation (2026-07-23)
 
 This bundle converts the still-open findings in
-[`SESSION-LEARNINGS.md`](../../../SESSION-LEARNINGS.md) into implementation
+[`SESSION-LEARNINGS.md`](../../../../SESSION-LEARNINGS.md) into implementation
 work. Every finding was checked against the current source, tests, status
 documents, completed PRDs, and active PRDs before inclusion.
 
@@ -11,14 +11,14 @@ documents, completed PRDs, and active PRDs before inclusion.
 
 | PRD | Durable owner | Open findings |
 | --- | --- | --- |
-| [PRD-001](../done/session-learnings-remediation-2026-07-23/PRD-001-flight-viability-and-realistic-proof.md) | Aerodynamic validation and plan-derived proof contracts | Complete: measured flight viability, focus-realistic input, and plan-derived objective-duration/diagnostic scenarios |
-| [PRD-002](../done/session-learnings-remediation-2026-07-23/PRD-002-runtime-transform-and-temporal-ownership.md) | Runtime transform composition and camera-history policy | Complete: declared cosmetic composition, private ocean recenter ownership, and camera-safe temporal history |
-| [PRD-003](../done/session-learnings-remediation-2026-07-23/PRD-003-executable-projectiles-and-flight-kit.md) | Mechanic descriptors and script stdlib | Complete: executable projectile block and reusable flight rig/audio-edge/propeller/reticle conventions |
-| [PRD-004](../done/session-learnings-remediation-2026-07-23/PRD-004-generator-regeneration-integrity.md) | Generator provenance and generated-asset reconciliation | Complete: overwrite-policy preservation, exact animation reconciliation, stable initial state, and duplicate-path repair |
-| [PRD-005](../done/session-learnings-remediation-2026-07-23/PRD-005-safe-prototypes-and-agent-authoring-contract.md) | Plan-derived authoring transaction and generated agent guidance | Complete: non-destructive prototypes, process cleanup, capability/direct-edit truth, focused inner loops, compact CLI summaries |
-| [PRD-006](../done/session-learnings-remediation-2026-07-23/PRD-006-runtime-proof-cost-and-preview-freshness.md) | Runtime observation modes and preview module graph | Complete: bounded normal/full audit cost, live runtime reload, executed-build freshness proof |
-| [PRD-007](../done/session-learnings-remediation-2026-07-23/PRD-007-portable-shader-expression-grammar-v2.md) | Versioned portable shader IR | Closed at promotion gate: no second shipped material requires expression composition |
-| [PRD-008](../done/session-learnings-remediation-2026-07-23/PRD-008-runtime-audio-playback-control.md) | Portable audio service contract | Complete: bounded active-playback volume/pitch targets, matching failure semantics, real web/native sink mutation, and continuous Battle engine modulation |
+| [PRD-001](PRD-001-flight-viability-and-realistic-proof.md) | Aerodynamic validation and plan-derived proof contracts | Complete: measured flight viability, focus-realistic input, and plan-derived objective-duration/diagnostic scenarios |
+| [PRD-002](PRD-002-runtime-transform-and-temporal-ownership.md) | Runtime transform composition and camera-history policy | Complete: declared cosmetic composition, private ocean recenter ownership, and camera-safe temporal history |
+| [PRD-003](PRD-003-executable-projectiles-and-flight-kit.md) | Mechanic descriptors and script stdlib | Complete: executable projectile block and reusable flight rig/audio-edge/propeller/reticle conventions |
+| [PRD-004](PRD-004-generator-regeneration-integrity.md) | Generator provenance and generated-asset reconciliation | Complete: overwrite-policy preservation, exact animation reconciliation, stable initial state, and duplicate-path repair |
+| [PRD-005](PRD-005-safe-prototypes-and-agent-authoring-contract.md) | Plan-derived authoring transaction and generated agent guidance | Complete: non-destructive prototypes, process cleanup, capability/direct-edit truth, focused inner loops, compact CLI summaries |
+| [PRD-006](PRD-006-runtime-proof-cost-and-preview-freshness.md) | Runtime observation modes and preview module graph | Complete: bounded normal/full audit cost, live runtime reload, executed-build freshness proof |
+| [PRD-007](PRD-007-portable-shader-expression-grammar-v2.md) | Versioned portable shader IR | Closed at promotion gate: no second shipped material requires expression composition |
+| [PRD-008](PRD-008-runtime-audio-playback-control.md) | Portable audio service contract | Complete: bounded active-playback volume/pitch targets, matching failure semantics, real web/native sink mutation, and continuous Battle engine modulation |
 
 ## Excluded: already fixed
 
@@ -38,7 +38,7 @@ documents, completed PRDs, and active PRDs before inclusion.
 ## Excluded: already owned by active PRDs
 
 The following remain open but already have an explicit implementation owner in
-[`visual-parity-pacific-mastery-2026-07-23.md`](../visual-parity-pacific-mastery-2026-07-23.md):
+[`visual-parity-pacific-mastery-2026-07-23.md`](../../visual-parity-pacific-mastery-2026-07-23.md):
 
 - Source-backed Blender recipes adding primitive parts.
 - Universal grouping of special Three.js mapped objects.

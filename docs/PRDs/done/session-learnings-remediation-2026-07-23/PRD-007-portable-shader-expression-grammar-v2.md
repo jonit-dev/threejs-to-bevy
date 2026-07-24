@@ -80,7 +80,7 @@ samples and images.
 
 **Files (max 5):**
 
-- `docs/PRDs/session-learnings-remediation-2026-07-23/PRD-007-portable-shader-expression-grammar-v2.md` - record evidence.
+- `docs/PRDs/done/session-learnings-remediation-2026-07-23/PRD-007-portable-shader-expression-grammar-v2.md` - record evidence.
 - `packages/ir/fixtures/portable-shader-v2/README.md` - requirements.
 - `docs/status/capabilities/rendering.md` - retain private-shader boundary.
 

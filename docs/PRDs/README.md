@@ -6,17 +6,6 @@ milestone batches. For current implementation status, read
 
 ## Active Initiatives
 
-### Session Learnings Remediation (2026-07-23)
-
-The [session-learnings remediation bundle](session-learnings-remediation-2026-07-23/README.md)
-rechecks the Battle-of-Pacific session findings against current source and
-plans only the residual work: flight viability and realistic proof, layered
-runtime transforms and camera-safe temporal history, executable projectile and
-flight authoring helpers, generator rerun integrity, non-destructive
-prototypes/agent guidance, proof-cost and runtime-preview freshness, a
-forcing-function-gated portable shader grammar, and live audio playback
-control. Fixed findings and work already owned by the active Pacific visual
-PRDs are explicitly excluded.
 
 ### Off-Recipe Authoring Efficiency (2026-07-15)
 
@@ -29,6 +18,16 @@ iterate completion, and an 18-session equal-proof rerun against compliant
 vanilla Three.js.
 
 ## Completed Initiatives
+
+### Session Learnings Remediation (2026-07-23; completed 2026-07-24)
+
+The [completed session-learnings remediation bundle](done/session-learnings-remediation-2026-07-23/README.md)
+addresses the residual Battle-of-Pacific session findings: flight viability
+and realistic proof, layered runtime transforms and camera-safe temporal
+history, executable projectile and flight authoring helpers, generator rerun
+integrity, non-destructive prototypes/agent guidance, proof-cost and
+runtime-preview freshness, the forcing-function-gated portable shader
+decision, and live audio playback control.
 
 ### Advanced Physics for Major Games (2026-07-22)
 

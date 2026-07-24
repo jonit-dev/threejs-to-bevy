@@ -111,7 +111,7 @@ console artifacts show no audio errors.
   establish that contract is needed.
 - [ ] Treat runtime observation/audit overhead as a first-class suspect. Route
   a systemic fix through
-  `session-learnings-remediation-2026-07-23/PRD-006-runtime-proof-cost-and-preview-freshness.md`.
+  `done/session-learnings-remediation-2026-07-23/PRD-006-runtime-proof-cost-and-preview-freshness.md`.
 - [ ] Iterate remaining hotspots until `tn performance proof --target web`
   reports ≥ 55 fps p95 at 1080p; record every A/B row.
 - [ ] Guard: parity score must not drop more than 0.03 for any accepted perf
@@ -167,7 +167,7 @@ handoff.md; iterate 7/7.
   rule).
 - [ ] Regenerate the GLB. Do not hand-clean the known assets-doc merge and
   `initialState` corruption as completion evidence; execute or depend on
-  `session-learnings-remediation-2026-07-23/PRD-004-generator-regeneration-integrity.md`.
+  `done/session-learnings-remediation-2026-07-23/PRD-004-generator-regeneration-integrity.md`.
 - [ ] Material pass on the aircraft: verify source GLB textures carry
   metalness/roughness; tune sun intensity/exposure so the livery reads like
   the reference (dark glossy navy with legible insignia).
