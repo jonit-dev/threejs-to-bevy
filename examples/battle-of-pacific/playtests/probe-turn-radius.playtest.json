@@ -1,0 +1,73 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "probe-turn-radius",
+  "name": "probe-turn-radius",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "aircraft",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "cruise",
+      "waitTicks": 60
+    },
+    {
+      "label": "constant right turn 1",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "constant right turn 2",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "constant right turn 3",
+      "press": "KeyD",
+      "holdFrames": 60,
+      "release": true
+    },
+    {
+      "label": "settle",
+      "waitTicks": 60
+    }
+  ],
+  "assert": {
+    "movement": {
+      "axis": "x",
+      "entity": "aircraft",
+      "minDistance": 140,
+      "maxDistance": 550
+    },
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "phase",
+        "equals": "PATROL COMPLETE"
+      },
+      {
+        "id": "FlightState",
+        "path": "airspeedKnots",
+        "gte": 160
+      }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "none",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}
