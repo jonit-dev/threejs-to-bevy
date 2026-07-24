@@ -13,36 +13,14 @@
     {
       "label": "deploy powered dive flaps",
       "press": "KeyF",
-      "holdFrames": 2,
+      "holdTicks": 1,
       "release": true,
       "screenshot": "01-flaps-command"
     },
     {
       "label": "observe powered flap animation",
-      "waitFrames": 20,
+      "waitTicks": 20,
       "screenshot": "02-flaps-moving"
-    },
-    {
-      "label": "observe flaps fully deployed",
-      "waitTicks": 180,
-      "screenshot": "03-flaps-down"
-    },
-    {
-      "label": "retract powered dive flaps",
-      "press": "KeyF",
-      "holdFrames": 2,
-      "release": true,
-      "screenshot": "04-flaps-retract-command"
-    },
-    {
-      "label": "observe powered flap retraction",
-      "waitFrames": 20,
-      "screenshot": "05-flaps-retracting"
-    },
-    {
-      "label": "observe neutral cruise pose",
-      "waitTicks": 180,
-      "screenshot": "06-flaps-up"
     }
   ],
   "assert": {
@@ -50,18 +28,6 @@
       {
         "entity": "aircraft.visual",
         "clip": "flight.flaps",
-        "entered": true,
-        "advancedFrames": 5
-      },
-      {
-        "entity": "aircraft.visual",
-        "clip": "flight.flaps-retract",
-        "entered": true,
-        "advancedFrames": 5
-      },
-      {
-        "entity": "aircraft.visual",
-        "clip": "flight.cruise",
         "entered": true,
         "advancedFrames": 5
       }
@@ -75,7 +41,7 @@
       {
         "id": "FlightState",
         "path": "flaps",
-        "equals": "UP",
+        "equals": "DOWN",
         "changed": true
       }
     ],

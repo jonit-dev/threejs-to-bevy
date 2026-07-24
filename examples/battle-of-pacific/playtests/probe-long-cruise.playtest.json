@@ -8,6 +8,21 @@
     "height": 720
   },
   "subject": "aircraft",
+  "setup": {
+    "entities": [
+      { "entity": "enemy.zero", "position": [50000, 50000, 50000] },
+      { "entity": "enemy.zero.1", "position": [51000, 50000, 50000] },
+      { "entity": "enemy.zero.2", "position": [52000, 50000, 50000] },
+      { "entity": "enemy.zero.3", "position": [53000, 50000, 50000] },
+      { "entity": "enemy.zero.4", "position": [54000, 50000, 50000] },
+      { "entity": "enemy.zero.5", "position": [55000, 50000, 50000] },
+      { "entity": "enemy.zero.6", "position": [56000, 50000, 50000] },
+      { "entity": "enemy.zero.7", "position": [57000, 50000, 50000] },
+      { "entity": "enemy.samidare", "position": [50000, 0, 50000] },
+      { "entity": "enemy.samidare.2", "position": [52000, 0, 50000] },
+      { "entity": "enemy.samidare.3", "position": [54000, 0, 50000] }
+    ]
+  },
   "warmupFrames": 10,
   "steps": [
     { "label": "cruise 5s", "waitTicks": 300 },
