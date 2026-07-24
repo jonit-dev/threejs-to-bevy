@@ -83,6 +83,7 @@ interface IBlenderRecipe {
   animations?: IBlenderRecipeAnimation[];
   budgets: Record<string, unknown>;
   id: string;
+  materials?: Array<{ id: string; normalTexture?: string; texture?: string }>;
   operations?: Array<
     | { kind: "decimate"; ratio: number }
     | { kind: "split-by-axis"; negative: string; node: string; positive: string }
@@ -171,6 +172,21 @@ export async function runBlenderGenerator(
     const sourceDiagnostics = inspectSourceDiagnostics(recipe, sourceInspection);
     if (sourceDiagnostics.length > 0) return failure(options, sourceDiagnostics);
   }
+  const texturePaths: Record<string, string> = {};
+  const textureHashes: string[] = [];
+  const textureRelatives = [...new Set((recipe.materials ?? []).flatMap((material) => [material.texture, material.normalTexture].filter((value): value is string => typeof value === "string")))].sort();
+  for (const textureRelative of textureRelatives) {
+    try {
+      const projectRealPath = await realpath(projectPath);
+      const textureAbsolute = await realpath(resolve(projectPath, textureRelative));
+      const containedRelative = relative(projectRealPath, textureAbsolute);
+      if (containedRelative.startsWith("..") || resolve(projectRealPath, containedRelative) !== textureAbsolute) throw new Error("texture resolves outside the project");
+      textureHashes.push(sha256(await readFile(textureAbsolute)));
+      texturePaths[textureRelative] = textureAbsolute;
+    } catch (error) {
+      return failure(options, [diagnostic(generator.recipe, "TN_BLENDER_TEXTURE_READ_FAILED", `Could not read contained Blender texture '${textureRelative}': ${errorMessage(error)}`, "Restore the project-local PNG/JPEG below assets/ (source CC0 sets via `tn asset source search`) and rerun authoring validation.")]);
+    }
+  }
   const outputRelative = generator.outputs[0]!;
   const outputAbsolute = resolve(projectPath, outputRelative);
   const destinationSnapshot = await snapshot(outputAbsolute);
@@ -179,7 +195,7 @@ export async function runBlenderGenerator(
   const assetSnapshot = await snapshot(assetFile);
   const runnerHash = sha256(runnerBytes);
   const sourceHash = sourceBytes === undefined ? "" : sha256(sourceBytes);
-  const inputHash = sha256(Buffer.from(`${canonicalJson(recipe)}\0${sourceHash}\0${runnerHash}\0${status.version}`, "utf8"));
+  const inputHash = sha256(Buffer.from(`${canonicalJson(recipe)}\0${sourceHash}\0${textureHashes.join(",")}\0${runnerHash}\0${status.version}`, "utf8"));
   if (generator.outputHash === undefined && generator.overwritePolicy !== "replace" && destinationSnapshot !== undefined) {
     return failure(options, [diagnostic(generatorFile, "TN_GENERATOR_OUTPUT_CONFLICT", `Generator '${generator.id}' does not own the existing output '${outputRelative}'.`, "Move the manual asset or record overwritePolicy 'replace' after review.")], inputHash);
   }
@@ -196,7 +212,7 @@ export async function runBlenderGenerator(
   let promoted = false;
   try {
     await mkdir(dirname(stagingPath), { recursive: true });
-    await writeFile(jobPath, `${JSON.stringify({ outputPath: stagingPath, recipePath: recipeAbsolute, resultPath, ...(sourceAbsolute === undefined ? {} : { sourcePath: sourceAbsolute }) }, null, 2)}\n`, "utf8");
+    await writeFile(jobPath, `${JSON.stringify({ outputPath: stagingPath, recipePath: recipeAbsolute, resultPath, ...(sourceAbsolute === undefined ? {} : { sourcePath: sourceAbsolute }), ...(Object.keys(texturePaths).length === 0 ? {} : { texturePaths }) }, null, 2)}\n`, "utf8");
     const args = ["--background", "--factory-startup", "--disable-autoexec", "--python-exit-code", "1", "--python", dependencies.runnerPath, "--", "--job", jobPath] as const;
     let processResult: IProcessResult;
     try {

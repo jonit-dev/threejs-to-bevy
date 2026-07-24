@@ -1,0 +1,980 @@
+{
+  "id": "structures.garrison-camp",
+  "inputHash": "sha256:701d2d5b699b701290e95b6f753eb95f7e18feff530a06f9baa97f2dc3fd6bda",
+  "lastRun": {
+    "completedAt": "2026-07-24T05:56:35.925Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/structures.garrison-camp.glb",
+      "content/assets/structures.garrison-camp.assets.json",
+      "content/generators/structures.garrison-camp.generator.json"
+    ],
+    "inputHash": "sha256:701d2d5b699b701290e95b6f753eb95f7e18feff530a06f9baa97f2dc3fd6bda",
+    "inspection": {
+      "animationClips": [],
+      "bounds": {
+        "center": [
+          1,
+          5.43264,
+          -2.613091
+        ],
+        "max": [
+          22.5,
+          13.049999833106995,
+          16.5
+        ],
+        "min": [
+          -20.5,
+          -2.1847207528351658,
+          -21.72618178058545
+        ],
+        "size": [
+          43,
+          15.234721,
+          38.226182
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 309.6,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 77.4
+        },
+        "collider": {
+          "height": 15.234721,
+          "radiusForXZ": 21.5
+        },
+        "fitScales": {
+          "targetHeight2m": 0.131279,
+          "targetLength4m": 0.093023,
+          "targetWidth1m": 0.023256
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "too-large",
+          "widthToLaneRatio": 12.285714
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 84,
+        "animations": 0,
+        "buffers": 1,
+        "images": 5,
+        "materials": 9,
+        "meshes": 26,
+        "nodes": 26,
+        "scenes": 1,
+        "textures": 7,
+        "triangles": 1182
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "normal-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "diffuse-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "normal-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "diffuse-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "diffuse-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "TN_ASSET_GAMEPLAY_TOO_LARGE",
+          "message": "Model width is larger than expected for a 3.5m gameplay lane; consider down-scaling or widening authored gameplay units.",
+          "severity": "warning"
+        }
+      ],
+      "file": {
+        "byteSize": 3549464,
+        "path": "assets/generated/structures.garrison-camp.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:structures.garrison-camp.glb.staging-1973698-1784872594994-2d2d4cba4ef84",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "materials": [
+              "material:metal.gun"
+            ],
+            "mesh": "mesh:aa.barrel.10.mesh",
+            "name": "aa.barrel.10",
+            "path": "/aa.barrel.10",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.4460149109363556,
+                -0.22957530617713928,
+                0.11950933933258057,
+                0.8567866683006287
+              ],
+              "scale": [
+                0.2800000011920929,
+                4.199999809265137,
+                0.2800000011920929
+              ],
+              "translation": [
+                -15.649999618530273,
+                2.700000047683716,
+                12.12600040435791
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.gun"
+            ],
+            "mesh": "mesh:aa.barrel.6.mesh",
+            "name": "aa.barrel.6",
+            "path": "/aa.barrel.6",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.4339017868041992,
+                0.3033755421638489,
+                -0.15792731940746307,
+                0.8335175514221191
+              ],
+              "scale": [
+                0.2800000011920929,
+                4.199999809265137,
+                0.2800000011920929
+              ],
+              "translation": [
+                17.836000442504883,
+                2.700000047683716,
+                9.996000289916992
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete.dark"
+            ],
+            "mesh": "mesh:aa.base.4.mesh",
+            "name": "aa.base.4",
+            "path": "/aa.base.4",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                2.5999999046325684,
+                1,
+                2.5999999046325684
+              ],
+              "translation": [
+                17,
+                0.5,
+                9
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete.dark"
+            ],
+            "mesh": "mesh:aa.base.8.mesh",
+            "name": "aa.base.8",
+            "path": "/aa.base.8",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                2.5999999046325684,
+                1,
+                2.5999999046325684
+              ],
+              "translation": [
+                -15,
+                0.5,
+                11
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.gun"
+            ],
+            "mesh": "mesh:aa.mount.5.mesh",
+            "name": "aa.mount.5",
+            "path": "/aa.mount.5",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                1.399999976158142,
+                0.8999999761581421,
+                1.399999976158142
+              ],
+              "translation": [
+                17,
+                1.350000023841858,
+                9
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.gun"
+            ],
+            "mesh": "mesh:aa.mount.9.mesh",
+            "name": "aa.mount.9",
+            "path": "/aa.mount.9",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                1.399999976158142,
+                0.8999999761581421,
+                1.399999976158142
+              ],
+              "translation": [
+                -15,
+                1.350000023841858,
+                11
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:sandbag"
+            ],
+            "mesh": "mesh:aa.ring.3.mesh",
+            "name": "aa.ring.3",
+            "path": "/aa.ring.3",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                11,
+                5,
+                11
+              ],
+              "translation": [
+                17,
+                0.5,
+                9
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:sandbag"
+            ],
+            "mesh": "mesh:aa.ring.7.mesh",
+            "name": "aa.ring.7",
+            "path": "/aa.ring.7",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                11,
+                5,
+                11
+              ],
+              "translation": [
+                -15,
+                0.5,
+                11
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete"
+            ],
+            "mesh": "mesh:bunker.0.mesh",
+            "name": "bunker.0",
+            "path": "/bunker.0",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                15,
+                3.5999999046325684,
+                10
+              ],
+              "translation": [
+                0,
+                1.7000000476837158,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete.dark"
+            ],
+            "mesh": "mesh:bunker.roof.2.mesh",
+            "name": "bunker.roof.2",
+            "path": "/bunker.roof.2",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                15.800000190734863,
+                0.5,
+                10.800000190734863
+              ],
+              "translation": [
+                0,
+                3.619999885559082,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete.dark"
+            ],
+            "mesh": "mesh:bunker.slit.1.mesh",
+            "name": "bunker.slit.1",
+            "path": "/bunker.slit.1",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                10,
+                0.699999988079071,
+                0.5
+              ],
+              "translation": [
+                0,
+                2.200000047683716,
+                -5.099999904632568
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:crate.a.23.mesh",
+            "name": "crate.a.23",
+            "path": "/crate.a.23",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                1.399999976158142,
+                1.399999976158142,
+                1.399999976158142
+              ],
+              "translation": [
+                6.5,
+                0.699999988079071,
+                6.5
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:crate.b.24.mesh",
+            "name": "crate.b.24",
+            "path": "/crate.b.24",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                0.20791172981262207,
+                0,
+                0.9781476855278015
+              ],
+              "scale": [
+                1.399999976158142,
+                1.399999976158142,
+                1.399999976158142
+              ],
+              "translation": [
+                8.199999809265137,
+                0.699999988079071,
+                6.900000095367432
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:crate.c.25.mesh",
+            "name": "crate.c.25",
+            "path": "/crate.c.25",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                -0.10452845692634583,
+                0,
+                0.9945219159126282
+              ],
+              "scale": [
+                1.3000000715255737,
+                1.2000000476837158,
+                1.3000000715255737
+              ],
+              "translation": [
+                7.300000190734863,
+                2,
+                6.699999809265137
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:flag.white"
+            ],
+            "mesh": "mesh:flag.cloth.21.mesh",
+            "name": "flag.cloth.21",
+            "path": "/flag.cloth.21",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                2.4000000953674316,
+                1.5,
+                0.07999999821186066
+              ],
+              "translation": [
+                -2.700000047683716,
+                8.300000190734863,
+                -8
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:flag.red"
+            ],
+            "mesh": "mesh:flag.disc.22.mesh",
+            "name": "flag.disc.22",
+            "path": "/flag.disc.22",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.7071068286895752,
+                0,
+                0,
+                0.7071068286895752
+              ],
+              "scale": [
+                0.8999999761581421,
+                0.05999999865889549,
+                0.8999999761581421
+              ],
+              "translation": [
+                -2.700000047683716,
+                8.300000190734863,
+                -8.020000457763672
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:flag.pole.20.mesh",
+            "name": "flag.pole.20",
+            "path": "/flag.pole.20",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.1599999964237213,
+                9,
+                0.1599999964237213
+              ],
+              "translation": [
+                -4,
+                4.5,
+                -8
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:canvas.olive"
+            ],
+            "mesh": "mesh:tent.17.mesh",
+            "name": "tent.17",
+            "path": "/tent.17",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.04000131040811539,
+                0.09657171368598938,
+                0.380587100982666,
+                0.9188185334205627
+              ],
+              "scale": [
+                3.6000001430511475,
+                3.5999996662139893,
+                6.000000476837158
+              ],
+              "translation": [
+                8,
+                1.0499999523162842,
+                -14
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:canvas.olive"
+            ],
+            "mesh": "mesh:tent.18.mesh",
+            "name": "tent.18",
+            "path": "/tent.18",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.2931525409221649,
+                0.7077327370643616,
+                0.24598421156406403,
+                0.5938583612442017
+              ],
+              "scale": [
+                3.5999996662139893,
+                3.5999996662139893,
+                5
+              ],
+              "translation": [
+                14,
+                1.0499999523162842,
+                -10
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:canvas.olive"
+            ],
+            "mesh": "mesh:tent.19.mesh",
+            "name": "tent.19",
+            "path": "/tent.19",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.02669464610517025,
+                -0.0644465833902359,
+                0.38175126910209656,
+                0.921629011631012
+              ],
+              "scale": [
+                3.5999999046325684,
+                3.5999999046325684,
+                5
+              ],
+              "translation": [
+                3,
+                1.0499999523162842,
+                -19
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:tower.cab.15.mesh",
+            "name": "tower.cab.15",
+            "path": "/tower.cab.15",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                4.800000190734863,
+                2.5999999046325684,
+                4.800000190734863
+              ],
+              "translation": [
+                -16,
+                10.100000381469727,
+                -12
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:tower.leg.11.mesh",
+            "name": "tower.leg.11",
+            "path": "/tower.leg.11",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.4000000059604645,
+                9.199999809265137,
+                0.4000000059604645
+              ],
+              "translation": [
+                -17.700000762939453,
+                4.599999904632568,
+                -13.699999809265137
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:tower.leg.12.mesh",
+            "name": "tower.leg.12",
+            "path": "/tower.leg.12",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.4000000059604645,
+                9.199999809265137,
+                0.4000000059604645
+              ],
+              "translation": [
+                -14.300000190734863,
+                4.599999904632568,
+                -13.699999809265137
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:tower.leg.13.mesh",
+            "name": "tower.leg.13",
+            "path": "/tower.leg.13",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.4000000059604645,
+                9.199999809265137,
+                0.4000000059604645
+              ],
+              "translation": [
+                -17.700000762939453,
+                4.599999904632568,
+                -10.300000190734863
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:wood.tower"
+            ],
+            "mesh": "mesh:tower.leg.14.mesh",
+            "name": "tower.leg.14",
+            "path": "/tower.leg.14",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.4000000059604645,
+                9.199999809265137,
+                0.4000000059604645
+              ],
+              "translation": [
+                -14.300000190734863,
+                4.599999904632568,
+                -10.300000190734863
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:canvas.olive"
+            ],
+            "mesh": "mesh:tower.roof.16.mesh",
+            "name": "tower.roof.16",
+            "path": "/tower.roof.16",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                6.199999809265137,
+                1.7000000476837158,
+                6.199999809265137
+              ],
+              "translation": [
+                -16,
+                12.199999809265137,
+                -12
+              ]
+            }
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            0.2199999988079071,
+            0.23499999940395355,
+            0.2199999988079071,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.6000000238418579,
+          "metallicRoughnessTexture": false,
+          "name": "metal.gun",
+          "roughness": 0.550000011920929
+        },
+        {
+          "baseColor": [
+            0.3799999952316284,
+            0.3720000088214874,
+            0.3449999988079071,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "concrete.dark",
+          "roughness": 0.9200000166893005
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "sandbag",
+          "roughness": 0.949999988079071
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "concrete",
+          "roughness": 0.8999999761581421
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "wood.tower",
+          "roughness": 0.8999999761581421
+        },
+        {
+          "baseColor": [
+            0.9200000166893005,
+            0.8999999761581421,
+            0.8600000143051147,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "flag.white",
+          "roughness": 0.800000011920929
+        },
+        {
+          "baseColor": [
+            0.7799999713897705,
+            0.10999999940395355,
+            0.10000000149011612,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "flag.red",
+          "roughness": 0.800000011920929
+        },
+        {
+          "baseColor": [
+            0.5,
+            0.5199999809265137,
+            0.5299999713897705,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.699999988079071,
+          "metallicRoughnessTexture": false,
+          "name": "metal.mast",
+          "roughness": 0.5
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "canvas.olive",
+          "roughness": 0.949999988079071
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            1,
+            -2.613091
+          ],
+          "max": [
+            22.5,
+            16.5
+          ],
+          "min": [
+            -20.5,
+            -21.72618178058545
+          ],
+          "size": [
+            43,
+            38.226182
+          ]
+        },
+        "originCorrection": [
+          -1,
+          -5.43264,
+          2.613091
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          1,
+          -2.613091
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -1,
+                -5.43264,
+                2.613091
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                2.613091,
+                -5.43264,
+                1
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                1,
+                -5.43264,
+                -2.613091
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -2.613091,
+                -5.43264,
+                -1
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            43,
+            38.226182
+          ],
+          "halfExtents": [
+            21.5,
+            19.113091
+          ],
+          "suggestedCellSize": 43
+        },
+        "y": {
+          "center": 5.43264,
+          "max": 13.049999833106995,
+          "min": -2.1847207528351658,
+          "size": 15.234721
+        }
+      },
+      "namedNodes": [
+        "aa.barrel.10",
+        "aa.barrel.6",
+        "aa.base.4",
+        "aa.base.8",
+        "aa.mount.5",
+        "aa.mount.9",
+        "aa.ring.3",
+        "aa.ring.7",
+        "bunker.0",
+        "bunker.roof.2",
+        "bunker.slit.1",
+        "crate.a.23",
+        "crate.b.24",
+        "crate.c.25",
+        "flag.cloth.21",
+        "flag.disc.22",
+        "flag.pole.20",
+        "tent.17",
+        "tent.18",
+        "tent.19",
+        "tower.cab.15",
+        "tower.leg.11",
+        "tower.leg.12",
+        "tower.leg.13",
+        "tower.leg.14",
+        "tower.roof.16"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:170c611a7f105fa90d82d7c1f90caf5619b0a78be02181593e5fe3f8fa62c16d",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:1e33172c33f3779844f78cbf23f0c1a86b4fa6a35ea5c5d15b67959d01305bdb",
+    "startedAt": "2026-07-24T05:56:34.994Z"
+  },
+  "outputHash": "sha256:170c611a7f105fa90d82d7c1f90caf5619b0a78be02181593e5fe3f8fa62c16d",
+  "outputs": [
+    "assets/generated/structures.garrison-camp.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/structures.garrison-camp.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

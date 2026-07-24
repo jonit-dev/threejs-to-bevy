@@ -1,0 +1,228 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "structures.radar-station",
+  "budgets": {
+    "maxOutputBytes": 8388608,
+    "maxPolygons": 12000
+  },
+  "materials": [
+    {
+      "id": "concrete",
+      "roughness": 0.9,
+      "texture": "assets/imported/polyhaven/concrete/diffuse-1k.jpg",
+      "normalTexture": "assets/imported/polyhaven/concrete/normal-1k.jpg",
+      "textureScale": 2.5
+    },
+    {
+      "id": "concrete.dark",
+      "baseColor": [
+        0.38,
+        0.372,
+        0.345,
+        1
+      ],
+      "metallic": 0,
+      "roughness": 0.92
+    },
+    {
+      "id": "metal.mast",
+      "baseColor": [
+        0.5,
+        0.52,
+        0.53,
+        1
+      ],
+      "metallic": 0.7,
+      "roughness": 0.5
+    },
+    {
+      "id": "metal.gun",
+      "baseColor": [
+        0.22,
+        0.235,
+        0.22,
+        1
+      ],
+      "metallic": 0.6,
+      "roughness": 0.55
+    },
+    {
+      "id": "sandbag",
+      "roughness": 0.95,
+      "texture": "assets/imported/polyhaven/hessian_230/diffuse-1k.jpg",
+      "normalTexture": "assets/imported/polyhaven/hessian_230/normal-1k.jpg",
+      "textureScale": 6
+    }
+  ],
+  "parts": [
+    {
+      "id": "hut.0",
+      "primitive": "cube",
+      "material": "concrete",
+      "position": [
+        0,
+        1.55,
+        0
+      ],
+      "scale": [
+        8,
+        3.1,
+        6
+      ],
+      "modifiers": [
+        {
+          "kind": "bevel",
+          "width": 0.35,
+          "segments": 2
+        }
+      ]
+    },
+    {
+      "id": "hut.roof.1",
+      "primitive": "cube",
+      "material": "concrete.dark",
+      "position": [
+        0,
+        3.15,
+        0
+      ],
+      "scale": [
+        8.6,
+        0.4,
+        6.6
+      ]
+    },
+    {
+      "id": "mast.2",
+      "primitive": "cylinder",
+      "material": "metal.mast",
+      "position": [
+        7,
+        7,
+        -2
+      ],
+      "scale": [
+        0.55,
+        14,
+        0.55
+      ],
+      "segments": 10
+    },
+    {
+      "id": "mast.cross.a.3",
+      "primitive": "cube",
+      "material": "metal.mast",
+      "position": [
+        7,
+        5,
+        -2
+      ],
+      "scale": [
+        3.4,
+        0.22,
+        0.22
+      ],
+      "rotation": [
+        0,
+        45,
+        0
+      ]
+    },
+    {
+      "id": "mast.cross.b.4",
+      "primitive": "cube",
+      "material": "metal.mast",
+      "position": [
+        7,
+        9,
+        -2
+      ],
+      "scale": [
+        3,
+        0.22,
+        0.22
+      ],
+      "rotation": [
+        0,
+        -45,
+        0
+      ]
+    },
+    {
+      "id": "dish.5",
+      "primitive": "cone",
+      "material": "metal.gun",
+      "position": [
+        7,
+        14.6,
+        -2
+      ],
+      "scale": [
+        7,
+        2.4,
+        7
+      ],
+      "rotation": [
+        64,
+        30,
+        0
+      ],
+      "segments": 16
+    },
+    {
+      "id": "dish.feed.6",
+      "primitive": "cylinder",
+      "material": "metal.mast",
+      "position": [
+        7,
+        15.3,
+        -2
+      ],
+      "scale": [
+        0.2,
+        3.4,
+        0.2
+      ],
+      "rotation": [
+        64,
+        30,
+        0
+      ],
+      "segments": 8
+    },
+    {
+      "id": "ring.7",
+      "primitive": "torus",
+      "material": "sandbag",
+      "position": [
+        0,
+        0.45,
+        0
+      ],
+      "scale": [
+        17,
+        4.4,
+        15
+      ],
+      "segments": 22,
+      "rings": 8
+    },
+    {
+      "id": "aerial.8",
+      "primitive": "cylinder",
+      "material": "metal.mast",
+      "position": [
+        -3,
+        4.6,
+        1.8
+      ],
+      "scale": [
+        0.12,
+        3,
+        0.12
+      ],
+      "segments": 6
+    }
+  ]
+}

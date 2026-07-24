@@ -17,7 +17,11 @@ Current support:
   --provider blender --recipe <path-or-json>`. Recipes support `cube`, `sphere`,
   `cylinder`, `cone`, and `torus`; PBR materials; flat/smooth shading;
   `array`/`bevel`/`boolean`/`mirror`/`solidify`; `join`/`parent`;
-  position/rotation/scale tracks; and linear/step interpolation. Raw Python,
+  position/rotation/scale tracks; and linear/step interpolation. Generated
+  materials may reference contained project-local PNG/JPEG base-color and
+  normal maps with a bounded UV tiling factor (`texture`, `normalTexture`,
+  `textureScale`); texture bytes participate in the rerun input hash and CC0
+  sets are sourced through the curated asset catalog. Raw Python,
   remote recipe inputs, and unbounded operations are rejected.
 - The same Blender recipe owner supports animation-only re-export of one
   self-contained project-local source GLB. Tracks use exact unique imported

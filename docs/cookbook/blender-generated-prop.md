@@ -59,6 +59,29 @@ the cross-host recipe set with `pnpm verify:blender-host`. The runtime-aware
 materials and rejects fallback-only white evidence; the turntable remains an
 isolated asset proof rather than a final-scene composition claim.
 
+## Textured materials
+
+Recipe materials may reference project-local PNG/JPEG textures instead of a
+flat `baseColor`:
+
+```json
+{"id": "wall.concrete", "roughness": 0.9, "texture": "assets/imported/polyhaven/concrete_wall_008/diffuse-1k.jpg", "normalTexture": "assets/imported/polyhaven/concrete_wall_008/normal-1k.png", "textureScale": 3}
+```
+
+- `texture` feeds base color (it replaces `baseColor` on export), and
+  `normalTexture` adds a tangent-space normal map; both must live below
+  `assets/` and outside `assets/generated/`, and remote URLs are rejected.
+- `textureScale` tiles the primitive's default UVs (e.g. `3` repeats the map
+  three times per face span). Textures embed into the exported GLB, so size
+  them against `maxOutputBytes` (1K JPEGs are usually enough for props).
+- Source textures come from the curated CC0 catalog: search with
+  `tn asset source search --query "concrete texture" --json` (Poly Haven and
+  ambientCG texture-set records), open the record with
+  `tn asset source get <id> --json`, download the chosen diffuse/normal maps at
+  1K-2K into `assets/imported/<source>/<slug>/`, and record a `provenance.json`
+  beside them with the record id, URL, and license (all Poly Haven/ambientCG
+  sets are CC0).
+
 ## Existing GLB animation variant
 
 To animate a model rather than generate primitives, first import it so the

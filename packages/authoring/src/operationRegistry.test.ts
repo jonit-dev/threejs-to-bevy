@@ -541,6 +541,48 @@ test("should reject contradictory Blender recipe metadata and polygon estimates"
   }
 });
 
+test("should accept contained material textures and reject unsafe texture fields", async () => {
+  const root = await createRegistryProject();
+  try {
+    const textured = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "prop.crate",
+        output: "assets/generated/prop.crate.glb",
+        recipe: validBlenderRecipe({
+          materials: [{ id: "paint", roughness: 0.8, texture: "assets/imported/polyhaven/concrete/diffuse.jpg", normalTexture: "assets/imported/polyhaven/concrete/normal.png", textureScale: 4 }],
+        }),
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    const invalid = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "prop.bad",
+        output: "assets/generated/prop.bad.glb",
+        recipe: validBlenderRecipe({
+          id: "prop.bad",
+          materials: [
+            { id: "escape", baseColor: [1, 1, 1, 1], texture: "assets/../secrets.png" },
+            { id: "generated", baseColor: [1, 1, 1, 1], texture: "assets/generated/loop.png" },
+            { id: "remote", baseColor: [1, 1, 1, 1], texture: "https://example.com/tex.png" },
+            { id: "scale", baseColor: [1, 1, 1, 1], texture: "assets/imported/ok.png", textureScale: 0 },
+          ],
+          parts: [{ id: "body", primitive: "cube", material: "escape" }],
+        }),
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(textured.ok, true, JSON.stringify(textured.diagnostics));
+    assert.equal(invalid.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_PATH_INVALID" && item.path === "/materials/0/texture"), true);
+    assert.equal(invalid.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_PATH_INVALID" && item.path === "/materials/1/texture"), true);
+    assert.equal(invalid.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_REMOTE_URL_FORBIDDEN" && item.path === "/materials/2/texture"), true);
+    assert.equal(invalid.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_SCALE_INVALID" && item.path === "/materials/3/textureScale"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should validate bounded articulated animation and post-operation references", async () => {
   const root = await createRegistryProject();
   try {

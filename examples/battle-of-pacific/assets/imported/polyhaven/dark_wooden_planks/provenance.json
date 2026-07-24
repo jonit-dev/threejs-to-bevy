@@ -1,0 +1,13 @@
+{
+  "source": "polyhaven",
+  "catalogRecord": "polyhaven-texture-dark-wooden-planks",
+  "asset": "Dark Wooden Planks",
+  "slug": "dark_wooden_planks",
+  "license": "CC0-1.0",
+  "url": "https://polyhaven.com/a/dark_wooden_planks",
+  "files": {
+    "diffuse-1k.jpg": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/dark_wooden_planks/dark_wooden_planks_diff_1k.jpg"
+  },
+  "importedOn": "2026-07-23",
+  "usage": "Blender recipe textures for garrison/radar structures"
+}

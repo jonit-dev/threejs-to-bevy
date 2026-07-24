@@ -1,0 +1,524 @@
+{
+  "id": "structures.radar-station",
+  "inputHash": "sha256:d92f89c4d96b2a795683dd7dd63eec72e6fe577ecbd6ac020f1257d637205baa",
+  "lastRun": {
+    "completedAt": "2026-07-24T05:56:38.679Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/structures.radar-station.glb",
+      "content/assets/structures.radar-station.assets.json",
+      "content/generators/structures.radar-station.generator.json"
+    ],
+    "inputHash": "sha256:d92f89c4d96b2a795683dd7dd63eec72e6fe577ecbd6ac020f1257d637205baa",
+    "inspection": {
+      "animationClips": [],
+      "bounds": {
+        "center": [
+          1.418757,
+          9.085913,
+          0
+        ],
+        "max": [
+          11.33751463879924,
+          18.27182511831737,
+          7.4236612021923065
+        ],
+        "min": [
+          -8.5,
+          -0.10000002384185791,
+          -7.4236612021923065
+        ],
+        "size": [
+          19.837515,
+          18.371825,
+          14.847322
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 142.830108,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 35.707527
+        },
+        "collider": {
+          "height": 18.371825,
+          "radiusForXZ": 9.918757
+        },
+        "fitScales": {
+          "targetHeight2m": 0.108862,
+          "targetLength4m": 0.201638,
+          "targetWidth1m": 0.05041
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "too-large",
+          "widthToLaneRatio": 5.667861
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 33,
+        "animations": 0,
+        "buffers": 1,
+        "images": 4,
+        "materials": 5,
+        "meshes": 9,
+        "nodes": 9,
+        "scenes": 1,
+        "textures": 4,
+        "triangles": 514
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "normal-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "diffuse-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "normal-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "diffuse-1k"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "TN_ASSET_GAMEPLAY_TOO_LARGE",
+          "message": "Model width is larger than expected for a 3.5m gameplay lane; consider down-scaling or widening authored gameplay units.",
+          "severity": "warning"
+        }
+      ],
+      "file": {
+        "byteSize": 2795384,
+        "path": "assets/generated/structures.radar-station.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:structures.radar-station.glb.staging-1973974-1784872597829-59309280dd90a",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:aerial.8.mesh",
+            "name": "aerial.8",
+            "path": "/aerial.8",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.11999999731779099,
+                3,
+                0.11999999731779099
+              ],
+              "translation": [
+                -3,
+                4.599999904632568,
+                1.7999999523162842
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.gun"
+            ],
+            "mesh": "mesh:dish.5.mesh",
+            "name": "dish.5",
+            "path": "/dish.5",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5118626952171326,
+                0.21949099004268646,
+                -0.13715320825576782,
+                0.8191515803337097
+              ],
+              "scale": [
+                6.999999523162842,
+                2.4000000953674316,
+                7
+              ],
+              "translation": [
+                7,
+                14.600000381469727,
+                -2
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:dish.feed.6.mesh",
+            "name": "dish.feed.6",
+            "path": "/dish.feed.6",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5118626952171326,
+                0.21949097514152527,
+                -0.13715316355228424,
+                0.8191515803337097
+              ],
+              "scale": [
+                0.20000000298023224,
+                3.4000000953674316,
+                0.20000000298023224
+              ],
+              "translation": [
+                7,
+                15.300000190734863,
+                -2
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete"
+            ],
+            "mesh": "mesh:hut.0.mesh",
+            "name": "hut.0",
+            "path": "/hut.0",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                8,
+                3.0999999046325684,
+                6
+              ],
+              "translation": [
+                0,
+                1.5499999523162842,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:concrete.dark"
+            ],
+            "mesh": "mesh:hut.roof.1.mesh",
+            "name": "hut.roof.1",
+            "path": "/hut.roof.1",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                8.600000381469727,
+                0.4000000059604645,
+                6.599999904632568
+              ],
+              "translation": [
+                0,
+                3.1500000953674316,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:mast.2.mesh",
+            "name": "mast.2",
+            "path": "/mast.2",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.550000011920929,
+                14,
+                0.550000011920929
+              ],
+              "translation": [
+                7,
+                7,
+                -2
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:mast.cross.a.3.mesh",
+            "name": "mast.cross.a.3",
+            "path": "/mast.cross.a.3",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                0.3826834261417389,
+                0,
+                0.9238795638084412
+              ],
+              "scale": [
+                3.4000000953674316,
+                0.2199999988079071,
+                0.2199999988079071
+              ],
+              "translation": [
+                7,
+                5,
+                -2
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal.mast"
+            ],
+            "mesh": "mesh:mast.cross.b.4.mesh",
+            "name": "mast.cross.b.4",
+            "path": "/mast.cross.b.4",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                -0.3826834559440613,
+                0,
+                0.9238795638084412
+              ],
+              "scale": [
+                2.999999761581421,
+                0.2199999988079071,
+                0.2199999988079071
+              ],
+              "translation": [
+                7,
+                9,
+                -2
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:sandbag"
+            ],
+            "mesh": "mesh:ring.7.mesh",
+            "name": "ring.7",
+            "path": "/ring.7",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                17,
+                4.400000095367432,
+                15
+              ],
+              "translation": [
+                0,
+                0.44999998807907104,
+                0
+              ]
+            }
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            0.5,
+            0.5199999809265137,
+            0.5299999713897705,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.699999988079071,
+          "metallicRoughnessTexture": false,
+          "name": "metal.mast",
+          "roughness": 0.5
+        },
+        {
+          "baseColor": [
+            0.2199999988079071,
+            0.23499999940395355,
+            0.2199999988079071,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0.6000000238418579,
+          "metallicRoughnessTexture": false,
+          "name": "metal.gun",
+          "roughness": 0.550000011920929
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "concrete",
+          "roughness": 0.8999999761581421
+        },
+        {
+          "baseColor": [
+            0.3799999952316284,
+            0.3720000088214874,
+            0.3449999988079071,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "concrete.dark",
+          "roughness": 0.9200000166893005
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "sandbag",
+          "roughness": 0.949999988079071
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            1.418757,
+            0
+          ],
+          "max": [
+            11.33751463879924,
+            7.4236612021923065
+          ],
+          "min": [
+            -8.5,
+            -7.4236612021923065
+          ],
+          "size": [
+            19.837515,
+            14.847322
+          ]
+        },
+        "originCorrection": [
+          -1.418757,
+          -9.085913,
+          0
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          1.418757,
+          0
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -1.418757,
+                -9.085913,
+                0
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                -9.085913,
+                1.418757
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                1.418757,
+                -9.085913,
+                0
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0,
+                -9.085913,
+                -1.418757
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            19.837515,
+            14.847322
+          ],
+          "halfExtents": [
+            9.918757,
+            7.423661
+          ],
+          "suggestedCellSize": 19.837515
+        },
+        "y": {
+          "center": 9.085913,
+          "max": 18.27182511831737,
+          "min": -0.10000002384185791,
+          "size": 18.371825
+        }
+      },
+      "namedNodes": [
+        "aerial.8",
+        "dish.5",
+        "dish.feed.6",
+        "hut.0",
+        "hut.roof.1",
+        "mast.2",
+        "mast.cross.a.3",
+        "mast.cross.b.4",
+        "ring.7"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:3e9d1424b7fc5405ea7c1f7110d9ccfbecd3acd6c9dd504a10ee48128f35d5e4",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:1e33172c33f3779844f78cbf23f0c1a86b4fa6a35ea5c5d15b67959d01305bdb",
+    "startedAt": "2026-07-24T05:56:37.829Z"
+  },
+  "outputHash": "sha256:3e9d1424b7fc5405ea7c1f7110d9ccfbecd3acd6c9dd504a10ee48128f35d5e4",
+  "outputs": [
+    "assets/generated/structures.radar-station.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/structures.radar-station.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

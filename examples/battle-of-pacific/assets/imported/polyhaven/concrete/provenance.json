@@ -1,0 +1,14 @@
+{
+  "source": "polyhaven",
+  "catalogRecord": "polyhaven-texture-concrete",
+  "asset": "Concrete",
+  "slug": "concrete",
+  "license": "CC0-1.0",
+  "url": "https://polyhaven.com/a/concrete",
+  "files": {
+    "diffuse-1k.jpg": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete/concrete_diff_1k.jpg",
+    "normal-1k.jpg": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/concrete/concrete_nor_gl_1k.jpg"
+  },
+  "importedOn": "2026-07-23",
+  "usage": "Blender recipe textures for garrison/radar structures"
+}

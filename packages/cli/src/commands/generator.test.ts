@@ -446,6 +446,45 @@ test("generator run passes a contained source GLB to Blender and hashes its byte
   }
 });
 
+test("generator run resolves contained material textures and fails on missing ones", async () => {
+  const root = await createBlenderGeneratorProject();
+  try {
+    const recipePath = join(root, "content", "generators", "robot.recipe.json");
+    const recipe = JSON.parse(await readFile(recipePath, "utf8")) as { materials: Array<Record<string, unknown>> };
+    recipe.materials[0]!.texture = "assets/imported/paint/diffuse.jpg";
+    recipe.materials[0]!.textureScale = 3;
+    await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`, "utf8");
+
+    const missing = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: successfulBlenderDependencies([]) });
+    const missingPayload = JSON.parse(missing.stdout) as { diagnostics: Array<{ code: string }> };
+    assert.equal(missing.exitCode, 1);
+    assert.equal(missingPayload.diagnostics[0]?.code, "TN_BLENDER_TEXTURE_READ_FAILED");
+
+    await mkdir(join(root, "assets", "imported", "paint"), { recursive: true });
+    await writeFile(join(root, "assets", "imported", "paint", "diffuse.jpg"), "texture-bytes-v1", "utf8");
+    let observedJob: Record<string, unknown> | undefined;
+    const dependencies = successfulBlenderDependencies([]);
+    const baseRunProcess = dependencies.runProcess!;
+    dependencies.runProcess = async (executable, args, options) => {
+      observedJob = JSON.parse(await readFile(args.at(-1)!, "utf8")) as Record<string, unknown>;
+      return baseRunProcess(executable, args, options);
+    };
+    const first = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    assert.equal(first.exitCode, 0, first.stdout);
+    const texturePaths = observedJob?.texturePaths as Record<string, string> | undefined;
+    assert.ok(texturePaths?.["assets/imported/paint/diffuse.jpg"]?.endsWith(join("assets", "imported", "paint", "diffuse.jpg")));
+
+    await writeFile(join(root, "assets", "imported", "paint", "diffuse.jpg"), "texture-bytes-v2", "utf8");
+    const second = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    assert.equal(second.exitCode, 0, second.stdout);
+    const firstHash = (JSON.parse(first.stdout) as { inputHash: string }).inputHash;
+    const secondHash = (JSON.parse(second.stdout) as { inputHash: string }).inputHash;
+    assert.notEqual(secondHash, firstHash);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("generator run preserves prior output and provenance when Blender exits non-zero", async () => {
   const root = await createBlenderGeneratorProject();
   try {

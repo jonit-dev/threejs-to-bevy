@@ -1246,12 +1246,23 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
       diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Blender recipe material id '${id}' must be unique.`, id, ["unique material ids"]));
     }
     if (id !== undefined) materialIds.add(id);
-    validateBlenderColor(diagnostics, file, `${path}/baseColor`, material.baseColor, !sourceMode);
+    validateBlenderColor(diagnostics, file, `${path}/baseColor`, material.baseColor, !sourceMode && material.texture === undefined);
     validateBlenderUnitNumber(diagnostics, file, `${path}/metallic`, material.metallic, false);
     validateBlenderUnitNumber(diagnostics, file, `${path}/roughness`, material.roughness, false);
     validateBlenderColor(diagnostics, file, `${path}/emissive`, material.emissive, false);
     if (material.alphaMode !== undefined) validateEnumString(diagnostics, file, `${path}/alphaMode`, material.alphaMode, new Set(["blend", "mask", "opaque"]), "material alpha mode", "Use 'blend', 'mask', or 'opaque'.");
     validateOptionalBoolean(diagnostics, file, `${path}/doubleSided`, material.doubleSided, "material doubleSided must be a boolean.");
+    for (const field of ["texture", "normalTexture"] as const) {
+      if (material[field] === undefined) continue;
+      if (sourceMode) {
+        diagnostics.push(blenderRecipeDiagnostic(file, `${path}/${field}`, "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_PATH_INVALID", "Source-backed Blender recipe material overrides cannot declare textures; bake them into the source GLB instead.", material[field], ["baseColor", "metallic", "roughness", "emissive", "alphaMode", "doubleSided"]));
+        continue;
+      }
+      validateBlenderTexturePath(diagnostics, file, `${path}/${field}`, material[field]);
+    }
+    if (material.textureScale !== undefined && (typeof material.textureScale !== "number" || !Number.isFinite(material.textureScale) || material.textureScale <= 0 || material.textureScale > 1000)) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/textureScale`, "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_SCALE_INVALID", "Material textureScale must be a finite number greater than 0 and at most 1000.", material.textureScale, ["positive UV tiling factor, e.g. 4"]));
+    }
   });
 
   const parts = Array.isArray(data.parts) ? data.parts : [];
@@ -1583,6 +1594,10 @@ function rejectUnsafeBlenderRecipeFields(diagnostics: IAuthoringDiagnostic[], fi
 
 function validateBlenderRecipePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
   if (typeof value !== "string" || !/^content\/generators\/[a-z][a-z0-9._-]*\.recipe\.json$/.test(value) || value.includes("..")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_PATH_INVALID", "Blender recipe path must be contained under content/generators/ and end in .recipe.json.", value, ["content/generators/<generator-id>.recipe.json"]));
+}
+
+function validateBlenderTexturePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {
+  if (typeof value !== "string" || !/^assets\/(?!generated\/)[A-Za-z0-9._/-]+\.(?:png|jpe?g)$/u.test(value) || value.includes("..") || value.includes("\\")) diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_TEXTURE_PATH_INVALID", "Blender recipe textures must be project-local PNG/JPEG images below assets/ and outside assets/generated/ (source CC0 sets via `tn asset source search`).", value, ["assets/imported/<source>/<map>.jpg", "assets/textures/<map>.png"]));
 }
 
 function validateBlenderSourcePath(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): void {

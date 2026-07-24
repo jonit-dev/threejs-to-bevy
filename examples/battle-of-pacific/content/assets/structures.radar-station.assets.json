@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "structures.radar-station",
+      "path": "assets/generated/structures.radar-station.glb",
+      "source": "generator:structures.radar-station",
+      "type": "model"
+    }
+  ],
+  "id": "structures.radar-station",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

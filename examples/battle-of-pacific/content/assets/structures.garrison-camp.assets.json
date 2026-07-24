@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "structures.garrison-camp",
+      "path": "assets/generated/structures.garrison-camp.glb",
+      "source": "generator:structures.garrison-camp",
+      "type": "model"
+    }
+  ],
+  "id": "structures.garrison-camp",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

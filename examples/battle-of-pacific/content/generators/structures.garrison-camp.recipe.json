@@ -1,0 +1,554 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "structures.garrison-camp",
+  "budgets": {
+    "maxOutputBytes": 8388608,
+    "maxPolygons": 12000
+  },
+  "materials": [
+    {
+      "id": "concrete",
+      "roughness": 0.9,
+      "texture": "assets/imported/polyhaven/concrete/diffuse-1k.jpg",
+      "normalTexture": "assets/imported/polyhaven/concrete/normal-1k.jpg",
+      "textureScale": 2.5
+    },
+    {
+      "id": "concrete.dark",
+      "baseColor": [
+        0.38,
+        0.372,
+        0.345,
+        1
+      ],
+      "metallic": 0,
+      "roughness": 0.92
+    },
+    {
+      "id": "sandbag",
+      "roughness": 0.95,
+      "texture": "assets/imported/polyhaven/hessian_230/diffuse-1k.jpg",
+      "normalTexture": "assets/imported/polyhaven/hessian_230/normal-1k.jpg",
+      "textureScale": 6
+    },
+    {
+      "id": "metal.gun",
+      "baseColor": [
+        0.22,
+        0.235,
+        0.22,
+        1
+      ],
+      "metallic": 0.6,
+      "roughness": 0.55
+    },
+    {
+      "id": "wood.tower",
+      "roughness": 0.9,
+      "texture": "assets/imported/polyhaven/dark_wooden_planks/diffuse-1k.jpg",
+      "textureScale": 1.5
+    },
+    {
+      "id": "canvas.olive",
+      "roughness": 0.95,
+      "texture": "assets/imported/polyhaven/hessian_230/diffuse-1k.jpg",
+      "normalTexture": "assets/imported/polyhaven/hessian_230/normal-1k.jpg",
+      "textureScale": 3
+    },
+    {
+      "id": "metal.mast",
+      "baseColor": [
+        0.5,
+        0.52,
+        0.53,
+        1
+      ],
+      "metallic": 0.7,
+      "roughness": 0.5
+    },
+    {
+      "id": "flag.white",
+      "baseColor": [
+        0.92,
+        0.9,
+        0.86,
+        1
+      ],
+      "metallic": 0,
+      "roughness": 0.8
+    },
+    {
+      "id": "flag.red",
+      "baseColor": [
+        0.78,
+        0.11,
+        0.1,
+        1
+      ],
+      "metallic": 0,
+      "roughness": 0.8
+    }
+  ],
+  "parts": [
+    {
+      "id": "bunker.0",
+      "primitive": "cube",
+      "material": "concrete",
+      "position": [
+        0,
+        1.7,
+        0
+      ],
+      "scale": [
+        15,
+        3.6,
+        10
+      ],
+      "modifiers": [
+        {
+          "kind": "bevel",
+          "width": 0.5,
+          "segments": 2
+        }
+      ]
+    },
+    {
+      "id": "bunker.slit.1",
+      "primitive": "cube",
+      "material": "concrete.dark",
+      "position": [
+        0,
+        2.2,
+        -5.1
+      ],
+      "scale": [
+        10,
+        0.7,
+        0.5
+      ]
+    },
+    {
+      "id": "bunker.roof.2",
+      "primitive": "cube",
+      "material": "concrete.dark",
+      "position": [
+        0,
+        3.62,
+        0
+      ],
+      "scale": [
+        15.8,
+        0.5,
+        10.8
+      ],
+      "modifiers": [
+        {
+          "kind": "bevel",
+          "width": 0.24,
+          "segments": 1
+        }
+      ]
+    },
+    {
+      "id": "aa.ring.3",
+      "primitive": "torus",
+      "material": "sandbag",
+      "position": [
+        17,
+        0.5,
+        9
+      ],
+      "scale": [
+        11,
+        5,
+        11
+      ],
+      "segments": 20,
+      "rings": 8
+    },
+    {
+      "id": "aa.base.4",
+      "primitive": "cylinder",
+      "material": "concrete.dark",
+      "position": [
+        17,
+        0.5,
+        9
+      ],
+      "scale": [
+        2.6,
+        1,
+        2.6
+      ],
+      "segments": 14
+    },
+    {
+      "id": "aa.mount.5",
+      "primitive": "cube",
+      "material": "metal.gun",
+      "position": [
+        17,
+        1.35,
+        9
+      ],
+      "scale": [
+        1.4,
+        0.9,
+        1.4
+      ]
+    },
+    {
+      "id": "aa.barrel.6",
+      "primitive": "cylinder",
+      "material": "metal.gun",
+      "position": [
+        17.836,
+        2.7,
+        9.996
+      ],
+      "scale": [
+        0.28,
+        4.2,
+        0.28
+      ],
+      "rotation": [
+        55,
+        40,
+        0
+      ],
+      "segments": 10
+    },
+    {
+      "id": "aa.ring.7",
+      "primitive": "torus",
+      "material": "sandbag",
+      "position": [
+        -15,
+        0.5,
+        11
+      ],
+      "scale": [
+        11,
+        5,
+        11
+      ],
+      "segments": 20,
+      "rings": 8
+    },
+    {
+      "id": "aa.base.8",
+      "primitive": "cylinder",
+      "material": "concrete.dark",
+      "position": [
+        -15,
+        0.5,
+        11
+      ],
+      "scale": [
+        2.6,
+        1,
+        2.6
+      ],
+      "segments": 14
+    },
+    {
+      "id": "aa.mount.9",
+      "primitive": "cube",
+      "material": "metal.gun",
+      "position": [
+        -15,
+        1.35,
+        11
+      ],
+      "scale": [
+        1.4,
+        0.9,
+        1.4
+      ]
+    },
+    {
+      "id": "aa.barrel.10",
+      "primitive": "cylinder",
+      "material": "metal.gun",
+      "position": [
+        -15.65,
+        2.7,
+        12.126
+      ],
+      "scale": [
+        0.28,
+        4.2,
+        0.28
+      ],
+      "rotation": [
+        55,
+        -30,
+        0
+      ],
+      "segments": 10
+    },
+    {
+      "id": "tower.leg.11",
+      "primitive": "cylinder",
+      "material": "wood.tower",
+      "position": [
+        -17.7,
+        4.6,
+        -13.7
+      ],
+      "scale": [
+        0.4,
+        9.2,
+        0.4
+      ],
+      "segments": 8
+    },
+    {
+      "id": "tower.leg.12",
+      "primitive": "cylinder",
+      "material": "wood.tower",
+      "position": [
+        -14.3,
+        4.6,
+        -13.7
+      ],
+      "scale": [
+        0.4,
+        9.2,
+        0.4
+      ],
+      "segments": 8
+    },
+    {
+      "id": "tower.leg.13",
+      "primitive": "cylinder",
+      "material": "wood.tower",
+      "position": [
+        -17.7,
+        4.6,
+        -10.3
+      ],
+      "scale": [
+        0.4,
+        9.2,
+        0.4
+      ],
+      "segments": 8
+    },
+    {
+      "id": "tower.leg.14",
+      "primitive": "cylinder",
+      "material": "wood.tower",
+      "position": [
+        -14.3,
+        4.6,
+        -10.3
+      ],
+      "scale": [
+        0.4,
+        9.2,
+        0.4
+      ],
+      "segments": 8
+    },
+    {
+      "id": "tower.cab.15",
+      "primitive": "cube",
+      "material": "wood.tower",
+      "position": [
+        -16,
+        10.1,
+        -12
+      ],
+      "scale": [
+        4.8,
+        2.6,
+        4.8
+      ]
+    },
+    {
+      "id": "tower.roof.16",
+      "primitive": "cone",
+      "material": "canvas.olive",
+      "position": [
+        -16,
+        12.2,
+        -12
+      ],
+      "scale": [
+        6.2,
+        1.7,
+        6.2
+      ],
+      "segments": 10
+    },
+    {
+      "id": "tent.17",
+      "primitive": "cube",
+      "material": "canvas.olive",
+      "position": [
+        8,
+        1.05,
+        -14
+      ],
+      "scale": [
+        3.6,
+        3.6,
+        6
+      ],
+      "rotation": [
+        0,
+        12,
+        45
+      ]
+    },
+    {
+      "id": "tent.18",
+      "primitive": "cube",
+      "material": "canvas.olive",
+      "position": [
+        14,
+        1.05,
+        -10
+      ],
+      "scale": [
+        3.6,
+        3.6,
+        5
+      ],
+      "rotation": [
+        0,
+        100,
+        45
+      ]
+    },
+    {
+      "id": "tent.19",
+      "primitive": "cube",
+      "material": "canvas.olive",
+      "position": [
+        3,
+        1.05,
+        -19
+      ],
+      "scale": [
+        3.6,
+        3.6,
+        5
+      ],
+      "rotation": [
+        0,
+        -8,
+        45
+      ]
+    },
+    {
+      "id": "flag.pole.20",
+      "primitive": "cylinder",
+      "material": "metal.mast",
+      "position": [
+        -4,
+        4.5,
+        -8
+      ],
+      "scale": [
+        0.16,
+        9,
+        0.16
+      ],
+      "segments": 8
+    },
+    {
+      "id": "flag.cloth.21",
+      "primitive": "cube",
+      "material": "flag.white",
+      "position": [
+        -2.7,
+        8.3,
+        -8
+      ],
+      "scale": [
+        2.4,
+        1.5,
+        0.08
+      ]
+    },
+    {
+      "id": "flag.disc.22",
+      "primitive": "cylinder",
+      "material": "flag.red",
+      "position": [
+        -2.7,
+        8.3,
+        -8.02
+      ],
+      "scale": [
+        0.9,
+        0.06,
+        0.9
+      ],
+      "rotation": [
+        90,
+        0,
+        0
+      ],
+      "segments": 14
+    },
+    {
+      "id": "crate.a.23",
+      "primitive": "cube",
+      "material": "wood.tower",
+      "position": [
+        6.5,
+        0.7,
+        6.5
+      ],
+      "scale": [
+        1.4,
+        1.4,
+        1.4
+      ]
+    },
+    {
+      "id": "crate.b.24",
+      "primitive": "cube",
+      "material": "wood.tower",
+      "position": [
+        8.2,
+        0.7,
+        6.9
+      ],
+      "scale": [
+        1.4,
+        1.4,
+        1.4
+      ],
+      "rotation": [
+        0,
+        24,
+        0
+      ]
+    },
+    {
+      "id": "crate.c.25",
+      "primitive": "cube",
+      "material": "wood.tower",
+      "position": [
+        7.3,
+        2,
+        6.7
+      ],
+      "scale": [
+        1.3,
+        1.2,
+        1.3
+      ],
+      "rotation": [
+        0,
+        -12,
+        0
+      ]
+    }
+  ]
+}

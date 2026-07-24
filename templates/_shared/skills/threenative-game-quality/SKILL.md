@@ -34,6 +34,14 @@ surfaces.
    `tn tool install blender --accept-download --json`; it is an
    authoring-only tool, and the recipe contract does not accept arbitrary
    Blender Python, add-ons, or remote recipes.
+
+   Recipe materials support project-local textures (`texture`,
+   `normalTexture`, `textureScale`) for surfaces where flat colors read as
+   toy-like. Source CC0 maps from the curated catalog:
+   `tn asset source search --query "<surface> texture" --json` lists Poly
+   Haven/ambientCG texture-set records; download the chosen diffuse/normal
+   maps (1K-2K) into `assets/imported/<source>/<slug>/` with a
+   `provenance.json` recording the record id, URL, and license.
 5. Primitives only as the last fallback, for prototype or runtime fallback
    fields.
 

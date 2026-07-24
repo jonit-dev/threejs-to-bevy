@@ -1,0 +1,14 @@
+{
+  "source": "polyhaven",
+  "catalogRecord": "polyhaven-texture-hessian-230",
+  "asset": "Hessian 230",
+  "slug": "hessian_230",
+  "license": "CC0-1.0",
+  "url": "https://polyhaven.com/a/hessian_230",
+  "files": {
+    "diffuse-1k.jpg": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_230/hessian_230_diff_1k.jpg",
+    "normal-1k.jpg": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/hessian_230/hessian_230_nor_gl_1k.jpg"
+  },
+  "importedOn": "2026-07-23",
+  "usage": "Blender recipe textures for garrison/radar structures"
+}

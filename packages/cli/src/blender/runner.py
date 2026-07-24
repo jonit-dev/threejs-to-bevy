@@ -49,6 +49,36 @@ def rotation_to_blender(value):
     return (TO_BLENDER @ desired @ TO_BLENDER.inverted()).to_euler("XYZ")
 
 
+def attach_material_textures(material, row, texture_paths):
+    node = material.node_tree.nodes.get("Principled BSDF")
+    if node is None:
+        return
+    texture = row.get("texture")
+    if texture is not None:
+        image_node = material.node_tree.nodes.new("ShaderNodeTexImage")
+        image_node.image = bpy.data.images.load(texture_paths[texture])
+        material.node_tree.links.new(image_node.outputs["Color"], node.inputs["Base Color"])
+        if row.get("alphaMode", "opaque") == "opaque":
+            image_node.image.alpha_mode = "NONE"
+    normal_texture = row.get("normalTexture")
+    if normal_texture is not None:
+        normal_image_node = material.node_tree.nodes.new("ShaderNodeTexImage")
+        normal_image_node.image = bpy.data.images.load(texture_paths[normal_texture])
+        normal_image_node.image.colorspace_settings.name = "Non-Color"
+        normal_map_node = material.node_tree.nodes.new("ShaderNodeNormalMap")
+        material.node_tree.links.new(normal_image_node.outputs["Color"], normal_map_node.inputs["Color"])
+        material.node_tree.links.new(normal_map_node.outputs["Normal"], node.inputs["Normal"])
+
+
+def scale_part_uvs(obj, factor):
+    layer = obj.data.uv_layers.active
+    if layer is None:
+        return
+    for item in layer.data:
+        item.uv[0] *= factor
+        item.uv[1] *= factor
+
+
 def create_material(row):
     material = bpy.data.materials.new(name=row["id"])
     material.diffuse_color = tuple(row.get("baseColor", [1.0, 1.0, 1.0])[:3]) + (
@@ -459,12 +489,20 @@ def run(job_path):
             override_source_material(row)
         apply_source_operations(recipe, objects)
     else:
-        materials = {row["id"]: create_material(row) for row in sorted(recipe.get("materials", []), key=lambda item: item["id"])}
+        texture_paths = job.get("texturePaths", {})
+        material_rows = {row["id"]: row for row in recipe.get("materials", [])}
+        materials = {}
+        for row in sorted(recipe.get("materials", []), key=lambda item: item["id"]):
+            materials[row["id"]] = create_material(row)
+            attach_material_textures(materials[row["id"]], row, texture_paths)
         objects = {}
         for part in sorted(recipe["parts"], key=lambda item: item["id"]):
             obj = add_primitive(part)
             if part.get("material") is not None:
                 obj.data.materials.append(materials[part["material"]])
+                texture_scale = material_rows[part["material"]].get("textureScale")
+                if texture_scale is not None:
+                    scale_part_uvs(obj, float(texture_scale))
             objects[part["id"]] = obj
         for part in sorted(recipe["parts"], key=lambda item: item["id"]):
             obj = objects[part["id"]]
