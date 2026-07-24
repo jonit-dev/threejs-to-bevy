@@ -1,4 +1,5 @@
-import { evaluateAerodynamicForces, resolveAerodynamicWind, type IAerodynamicBodyComponent, type IAerodynamicObservation, type IScriptAerodynamicsInputs, type IWorldIr, type Quat, type Vec3 } from "@threenative/ir";
+import type { IAerodynamicBodyComponent, IAerodynamicObservation, IScriptAerodynamicsInputs, IWorldIr, Quat, Vec3 } from "@threenative/ir";
+import { evaluateAerodynamicForces, resolveAerodynamicWind } from "@threenative/ir/aerodynamicViability";
 
 import { applyLivePhysicsAtPoint } from "./physics.js";
 import type { IWebInputState } from "./input.js";

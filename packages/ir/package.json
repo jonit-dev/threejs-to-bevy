@@ -12,6 +12,14 @@
       "types": "./dist/bundlePaths.d.ts",
       "default": "./dist/bundlePaths.js"
     },
+    "./aerodynamicViability": {
+      "types": "./dist/aerodynamicViability.d.ts",
+      "default": "./dist/aerodynamicViability.js"
+    },
+    "./bevyCatalogResiduals": {
+      "types": "./dist/bevyCatalogResiduals.d.ts",
+      "default": "./dist/bevyCatalogResiduals.js"
+    },
     "./conformance": {
       "types": "./dist/conformance.d.ts",
       "default": "./dist/conformance.js"
@@ -47,6 +55,10 @@
     "./runtimeDiagnostics": {
       "types": "./dist/runtimeDiagnostics.d.ts",
       "default": "./dist/runtimeDiagnostics.js"
+    },
+    "./runtimeTraces": {
+      "types": "./dist/runtimeTraces.d.ts",
+      "default": "./dist/runtimeTraces.js"
     },
     "./shaderCodegen": {
       "types": "./dist/shaderCodegen.d.ts",

@@ -1,6 +1,3 @@
-import { realpath } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
-
 import { validateBundleRelativePath } from "./bundlePaths.js";
 import type { ITargetProfile } from "./types.js";
 import type { IIrDiagnostic } from "./validate.js";
@@ -120,6 +117,27 @@ export async function validateDistributionProjectPaths(
   path = "content/distribution.json",
 ): Promise<IIrDiagnostic[]> {
   if (!isRecord(value) || !isRecord(value.app)) return [];
+  const [{ realpath }, { isAbsolute, relative, resolve, sep }] = await Promise.all([
+    import("node:fs/promises"),
+    import("node:path"),
+  ]);
+  const nearestExistingPath = async (path: string): Promise<string> => {
+    let candidate = path;
+    while (true) {
+      try {
+        return await realpath(candidate);
+      } catch (error) {
+        if (!isMissingPathError(error)) throw error;
+        const parent = resolve(candidate, "..");
+        if (parent === candidate) throw error;
+        candidate = parent;
+      }
+    }
+  };
+  const pathIsInside = (root: string, candidate: string): boolean => {
+    const pathFromRoot = relative(root, candidate);
+    return pathFromRoot === "" || (pathFromRoot !== ".." && !pathFromRoot.startsWith(`..${sep}`) && !isAbsolute(pathFromRoot));
+  };
   const diagnostics: IIrDiagnostic[] = [];
   const canonicalRoot = await realpath(projectRoot);
   for (const field of ["icons", "splash"] as const) {
@@ -390,25 +408,6 @@ function allowedDiagnostic(code: string, path: string, message: string, allowed:
     ...diagnostic(code, path, message),
     fix: { allowed, instruction: `Choose one of: ${allowed.join(", ")}.` },
   };
-}
-
-async function nearestExistingPath(path: string): Promise<string> {
-  let candidate = path;
-  while (true) {
-    try {
-      return await realpath(candidate);
-    } catch (error) {
-      if (!isMissingPathError(error)) throw error;
-      const parent = resolve(candidate, "..");
-      if (parent === candidate) throw error;
-      candidate = parent;
-    }
-  }
-}
-
-function pathIsInside(root: string, candidate: string): boolean {
-  const path = relative(root, candidate);
-  return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
 }
 
 function isMissingPathError(error: unknown): error is NodeJS.ErrnoException {

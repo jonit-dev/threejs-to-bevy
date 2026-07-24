@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { buildRuntimeTraceBundleFromConformanceReport, generatePortableShaderMaterial } from "@threenative/ir";
 import { resolveCascadeShadowProfile } from "@threenative/ir/runtimeConfig";
+import { buildRuntimeTraceBundleFromConformanceReport } from "@threenative/ir/runtimeTraces";
+import { generatePortableShaderMaterial } from "@threenative/ir/shaderCodegen";
 import type {
   IAssetIr,
   IAudioIr,

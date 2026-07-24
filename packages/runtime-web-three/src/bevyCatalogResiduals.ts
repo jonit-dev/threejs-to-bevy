@@ -1,4 +1,5 @@
-import { diagnoseBevyCatalogResidualDeclarations, targetProfileOutputDiagnostic, type BevyCatalogTargetProfileOutput, type IIrDiagnostic, type IRuntimeDiagnostic, type IWorldEntity, type IWorldIr } from "@threenative/ir";
+import type { BevyCatalogTargetProfileOutput, IIrDiagnostic, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
+import { diagnoseBevyCatalogResidualDeclarations, targetProfileOutputDiagnostic } from "@threenative/ir/bevyCatalogResiduals";
 
 export interface IWebQueryCombinationObservation {
   a: string;
