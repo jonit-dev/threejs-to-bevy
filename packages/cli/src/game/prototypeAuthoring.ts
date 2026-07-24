@@ -2,6 +2,7 @@ import { hashAuthoringTransactionBytes, publishAuthoringTransaction, type Author
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join, relative, resolve } from "node:path";
+import { isDeepStrictEqual } from "node:util";
 
 import type { GamePrototypeProofRole, IGameAcceptanceAssertion, IGamePrototypeBinding } from "../commands/gamePlanTypes.js";
 
@@ -73,24 +74,22 @@ export async function applyPlanDerivedPrototype(options: {
     return unsupported(`Prototype proof roles are missing for acceptance IDs: ${missingRoles.join(", ")}.`);
   }
   const source = PROTOTYPES[binding.id]();
+  const entryConfigFile = await prototypeEntryConfigFile(options.projectPath);
   const sourceFiles = [
     jsonFile("content/input/prototype.input.json", source.input),
     jsonFile("content/scenes/arena.scene.json", source.scene),
     jsonFile("content/systems/prototype.systems.json", source.systems),
     jsonFile("content/ui/prototype.ui.json", source.ui),
     { bytes: Buffer.from(source.script, "utf8"), path: "src/scripts/prototype.ts" },
+    ...(entryConfigFile === undefined ? [] : [entryConfigFile]),
   ];
   const proofFiles = required.map((assertion) => jsonFile(
     `playtests/acceptance-${assertion.id}.playtest.json`,
     prototypeScenario(binding.id, assertion.id, binding.proofRoles[assertion.id]!),
   ));
-  const replacedStarterScenarios = [
-    "playtests/camera-follow.playtest.json",
-    "playtests/hud-resource.playtest.json",
-    "playtests/native-smoke-movement.playtest.json",
-    "playtests/smoke-movement.playtest.json",
-  ].map((path) => ({ bytes: null, path }));
-  const ownedOutputs = [...sourceFiles, ...proofFiles, ...replacedStarterScenarios];
+  const prototypeOutputPaths = new Set([...sourceFiles, ...proofFiles].map((file) => file.path));
+  const suspendedStarterFiles = await maintainedStarterSuspensions(options.projectPath, prototypeOutputPaths);
+  const ownedOutputs = [...sourceFiles, ...proofFiles, ...suspendedStarterFiles];
   const provenancePath = prototypeProvenancePath(binding.id);
   const priorOwnership = await readPrototypeOwnership(options.projectPath, provenancePath);
   const pendingOwnedFiles = await Promise.all(ownedOutputs.map(async (file) => {
@@ -357,9 +356,44 @@ async function matchesMaintainedStarterFile(path: string, existing: Buffer): Pro
     const templatePath = resolve(import.meta.dirname, "../template-files", template, path);
     const starter = await readFile(templatePath).catch((error: unknown) =>
       isMissing(error) ? undefined : Promise.reject(error));
-    if (starter !== undefined && starter.equals(existing)) return true;
+    if (starter === undefined) continue;
+    if (starter.equals(existing)) return true;
+    if (path.endsWith(".json")) {
+      try {
+        if (isDeepStrictEqual(JSON.parse(starter.toString("utf8")), JSON.parse(existing.toString("utf8")))) {
+          return true;
+        }
+      } catch (error) {
+        if (!(error instanceof SyntaxError)) throw error;
+      }
+    }
   }
   return false;
+}
+
+async function maintainedStarterSuspensions(
+  projectPath: string,
+  prototypeOutputPaths: ReadonlySet<string>,
+): Promise<Array<{ bytes: null; path: string }>> {
+  const suspensions: Array<{ bytes: null; path: string }> = [];
+  for (const path of await durableProjectFiles(projectPath)) {
+    if (prototypeOutputPaths.has(path)) continue;
+    const existing = await readFile(resolve(projectPath, path));
+    if (await matchesMaintainedStarterFile(path, existing)) {
+      suspensions.push({ bytes: null, path });
+    }
+  }
+  return suspensions;
+}
+
+async function prototypeEntryConfigFile(projectPath: string): Promise<{ bytes: Buffer; path: string } | undefined> {
+  const path = "threenative.config.json";
+  const existing = await readFile(resolve(projectPath, path), "utf8").catch((error: unknown) =>
+    isMissing(error) ? undefined : Promise.reject(error));
+  if (existing === undefined) return undefined;
+  const config = JSON.parse(existing) as Record<string, unknown>;
+  if (config.entry === "content/scenes/arena.scene.json") return undefined;
+  return jsonFile(path, { ...config, entry: "content/scenes/arena.scene.json" });
 }
 
 function collision(
@@ -465,7 +499,8 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
     return {
       ...common,
       assert: { diagnostics: cleanDiagnostics(), hud: [{ id: "hud.status", textIncludes: "failed" }], resources: [{ equals: 0, id: "PrototypeState", path: "baseHealth" }] },
-      steps: [{ label: "allow pooled pressure to reach base", waitFrames: 12 }],
+      setup: { entities: [{ entity: "enemy.01", position: [0, 0.65, 3.4] }] },
+      steps: [{ label: "allow pooled pressure to breach base", waitFrames: 4 }],
     };
   }
   if (role === "opponent-turn") {
@@ -607,7 +642,7 @@ export const updatePrototype = defineBehavior(
     const targetsRequired = wave + 1;
     if (baseHealth > 0) enemyPosition = [enemyPosition[0], 0.65, enemyPosition[2] + context.time.fixedDelta * (3.2 + (difficulty - 1) * 0.8)];
     if (enemyPosition[2] >= 3.5) {
-      baseHealth = Math.max(0, baseHealth - 50);
+      baseHealth = Math.max(0, baseHealth - 100);
       enemyPosition = [0, 0.65, -2];
       statusText = baseHealth <= 0 ? "Base failed - press R" : "Base hit";
     }

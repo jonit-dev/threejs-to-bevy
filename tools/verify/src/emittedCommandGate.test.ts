@@ -1,7 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { hasScaffoldProofDiagnostic, isAcceptedScaffoldProofFailure } from "./emittedCommandGate.js";
+import {
+  emittedCommandTimeoutMs,
+  hasScaffoldProofDiagnostic,
+  isAcceptedScaffoldProofFailure,
+  selectEmittedWorkflowCommands,
+} from "./emittedCommandGate.js";
+
+test("should give complete milestone iteration a bounded four-minute budget", () => {
+  assert.equal(emittedCommandTimeoutMs("tn iterate --project . --json"), 240_000);
+  assert.equal(emittedCommandTimeoutMs("tn build --project . --json"), 120_000);
+});
+
+test("should stop after an inspection-selected prototype with included proof", () => {
+  assert.deepEqual(
+    selectEmittedWorkflowCommands(
+      ["tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json"],
+      ["tn recipe apply kinematic-character --scene stale --entity stale --project . --json"],
+    ),
+    ["tn authoring prototype --from-plan artifacts/game-production/plan.json --project . --run-proof --json"],
+  );
+  assert.deepEqual(selectEmittedWorkflowCommands([], ["tn build --project . --json"]), ["tn build --project . --json"]);
+});
 
 test("should recognize only structured scaffold proof failures", () => {
   const failedIterate = JSON.stringify({

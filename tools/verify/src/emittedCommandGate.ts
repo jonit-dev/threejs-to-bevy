@@ -120,8 +120,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
             workflowCommands.push(nextAuthoringCommand);
           }
         }
-        const emittedCommands = [
-          ...workflowCommands,
+        const planCommands = [
           ...plan.mechanicDecomposition.flatMap((entry) => entry.command === undefined ? [] : [entry.command]),
           ...plan.archetypeSuggestions.map((entry) => entry.command),
           ...plan.steps
@@ -143,6 +142,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
           ...plan.proofCommands,
           ...plan.mechanicDecomposition.flatMap((entry) => entry.cookbookId === undefined ? [] : [`tn cookbook show ${entry.cookbookId} --json`]),
         ];
+        const emittedCommands = selectEmittedWorkflowCommands(workflowCommands, planCommands);
         for (const [index, command] of emittedCommands.entries()) {
           const args = emittedCommandArgs(command);
           const name = `${caseId}: emitted ${index + 1}`;
@@ -169,7 +169,7 @@ export async function runEmittedCommandGate(root = process.cwd()): Promise<{
             cwd: projectPath,
             env: { ...process.env, INIT_CWD: projectPath },
             name,
-            timeoutMs: 120_000,
+            timeoutMs: emittedCommandTimeoutMs(command),
           });
           steps.push({ ...summarize(result), name });
           if (result.exitCode !== 0 && isAcceptedScaffoldProofFailure(command, result.stdout)) {
@@ -254,6 +254,18 @@ function emittedCommandArgs(command: string): string[] | undefined {
     return undefined;
   }
   return command.trim().split(/\s+/u).slice(1);
+}
+
+export function emittedCommandTimeoutMs(command: string): number {
+  const args = emittedCommandArgs(command);
+  return args?.[0] === "iterate" ? 240_000 : 120_000;
+}
+
+export function selectEmittedWorkflowCommands(
+  prototypeWorkflowCommands: readonly string[],
+  planCommands: readonly string[],
+): string[] {
+  return [...(prototypeWorkflowCommands.length > 0 ? prototypeWorkflowCommands : planCommands)];
 }
 
 function parsePlan(stdout: string): IGamePlanPayload | undefined {

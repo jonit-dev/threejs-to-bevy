@@ -204,6 +204,7 @@ test("should expose and apply a plan-derived holdout prototype with exact proof 
         assert.deepEqual(input.actions.filter((action) => action.id.startsWith("attack-")).map((action) => action.bindings[0]), ["keyboard.Space", "pointer.0"]);
         assert.deepEqual(progression.assert.resources.map((assertion) => assertion.path), ["wave", "difficulty", "targetsRequired"]);
         assert.match(script, /pointerAttackCount/u);
+        assert.match(script, /baseHealth - 100/u);
         assert.match(script, /difficulty - 1/u);
       }
 
@@ -227,6 +228,10 @@ test("authoring prototype recognizes every maintained untouched starter", async 
   const root = await mkdtemp(join(tmpdir(), "tn-authoring-racing-starter-"));
   try {
     await cp(new URL("../template-files/racing-kit-rally-starter/", import.meta.url), root, { recursive: true });
+    const configPath = join(root, "threenative.config.json");
+    const normalizedConfig = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
+    await writeFile(configPath, `${JSON.stringify(normalizedConfig, null, 2)}\n`);
+    const originalConfig = await readFile(join(root, "threenative.config.json"));
     await mkdir(join(root, "artifacts/game-production"), { recursive: true });
     await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
       authoringMode: "custom-on-starter",
@@ -252,6 +257,20 @@ test("authoring prototype recognizes every maintained untouched starter", async 
     assert.equal(result.exitCode, 0, result.stdout);
     assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_WRITTEN");
     assert.equal(payload.replacementPlan, undefined);
+    assert.equal(
+      (JSON.parse(await readFile(join(root, "threenative.config.json"), "utf8")) as { entry: string }).entry,
+      "content/scenes/arena.scene.json",
+    );
+    await assert.rejects(readFile(join(root, "content/systems/rally.systems.json")), /ENOENT/u);
+    await assert.rejects(readFile(join(root, "src/scripts/racing.ts")), /ENOENT/u);
+
+    const remove = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--remove", "--json",
+    ]);
+    assert.equal(remove.exitCode, 0, remove.stdout);
+    assert.deepEqual(await readFile(join(root, "threenative.config.json")), originalConfig);
+    await access(join(root, "content/systems/rally.systems.json"));
+    await access(join(root, "src/scripts/racing.ts"));
   } finally {
     await rm(root, { force: true, recursive: true });
   }
