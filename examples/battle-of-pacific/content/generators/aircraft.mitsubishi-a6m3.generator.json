@@ -1,15 +1,15 @@
 {
   "id": "aircraft.mitsubishi-a6m3",
-  "inputHash": "sha256:e1070b0c60aa8925bf8565d0930437d9ba0fb1bb798593ef90a18abc5dbd36d5",
+  "inputHash": "sha256:918e9087957df281825b4f4f3c862bdc7846e4af30088ffa84ad7da4382f2721",
   "lastRun": {
-    "completedAt": "2026-07-24T02:26:38.295Z",
+    "completedAt": "2026-07-24T05:06:12.430Z",
     "diagnostics": [],
     "filesWritten": [
       "assets/generated/aircraft.mitsubishi-a6m3.glb",
       "content/assets/aircraft.mitsubishi-a6m3.assets.json",
       "content/generators/aircraft.mitsubishi-a6m3.generator.json"
     ],
-    "inputHash": "sha256:e1070b0c60aa8925bf8565d0930437d9ba0fb1bb798593ef90a18abc5dbd36d5",
+    "inputHash": "sha256:918e9087957df281825b4f4f3c862bdc7846e4af30088ffa84ad7da4382f2721",
     "inspection": {
       "animationClips": [
         {
@@ -21,7 +21,7 @@
       "bounds": {
         "center": [
           0.002674,
-          0,
+          0.000001,
           0.000062
         ],
         "max": [
@@ -31,12 +31,12 @@
         ],
         "min": [
           -5.562078554416075,
-          -1.665154589100348,
+          -1.6651538738446596,
           -4.519267388846609
         ],
         "size": [
           11.129505,
-          3.33031,
+          3.330309,
           9.038658
         ],
         "source": "accessor-min-max"
@@ -49,7 +49,7 @@
           "recommendedDistance": 20.033109
         },
         "collider": {
-          "height": 3.33031,
+          "height": 3.330309,
           "radiusForXZ": 5.564752
         },
         "fitScales": {
@@ -71,7 +71,7 @@
         "images": 8,
         "materials": 73,
         "meshes": 73,
-        "nodes": 306,
+        "nodes": 307,
         "scenes": 1,
         "textures": 16,
         "triangles": 14540
@@ -139,12 +139,12 @@
         }
       ],
       "file": {
-        "byteSize": 1063148,
+        "byteSize": 1063308,
         "path": "assets/generated/aircraft.mitsubishi-a6m3.glb",
         "type": "glb"
       },
       "gltf": {
-        "assetId": "asset:aircraft.mitsubishi-a6m3.glb.staging-1140569-1784859995458-8f8edbf1fd97b",
+        "assetId": "asset:aircraft.mitsubishi-a6m3.glb.staging-1686610-1784869569634-4f557c1fe940a",
         "customAttributes": [],
         "materials": [],
         "morphTargets": [],
@@ -3102,15 +3102,35 @@
             "spawnedHandleEligible": true
           },
           {
-            "name": "VINT",
+            "name": "VINT.ThreeNativePivot",
             "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
-            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT",
-            "spawnedHandleEligible": true
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.503818988800049,
+                -3.8503990173339844
+              ]
+            }
+          },
+          {
+            "name": "VINT",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                3.503819704055786,
+                3.850399971008301
+              ]
+            }
           },
           {
             "name": "Object_279",
-            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT",
-            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT/Object_279",
             "spawnedHandleEligible": true,
             "transform": {
               "translation": [
@@ -3122,8 +3142,8 @@
           },
           {
             "name": "VINT-FACES",
-            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279",
-            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT/Object_279",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT/Object_279/VINT-FACES",
             "spawnedHandleEligible": true
           },
           {
@@ -3132,8 +3152,8 @@
             ],
             "mesh": "mesh:VINT-FACES",
             "name": "VINT-FACES.001",
-            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES",
-            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES/VINT-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT/Object_279/VINT-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT.ThreeNativePivot/VINT/Object_279/VINT-FACES/VINT-FACES.001",
             "spawnedHandleEligible": true
           },
           {
@@ -4150,7 +4170,7 @@
         },
         "originCorrection": [
           -0.002674,
-          0,
+          -0.000001,
           -0.000062
         ],
         "pivotOffsetFromFootprintCenter": [
@@ -4162,7 +4182,7 @@
             {
               "entityPositionForFootprintCenterAtOrigin": [
                 -0.002674,
-                0,
+                -0.000001,
                 -0.000062
               ],
               "yawDegrees": 0,
@@ -4171,7 +4191,7 @@
             {
               "entityPositionForFootprintCenterAtOrigin": [
                 -0.000062,
-                0,
+                -0.000001,
                 0.002674
               ],
               "yawDegrees": 90,
@@ -4180,7 +4200,7 @@
             {
               "entityPositionForFootprintCenterAtOrigin": [
                 0.002674,
-                0,
+                -0.000001,
                 0.000062
               ],
               "yawDegrees": 180,
@@ -4189,7 +4209,7 @@
             {
               "entityPositionForFootprintCenterAtOrigin": [
                 0.000062,
-                0,
+                -0.000001,
                 -0.002674
               ],
               "yawDegrees": 270,
@@ -4209,10 +4229,10 @@
           "suggestedCellSize": 11.129505
         },
         "y": {
-          "center": 0,
+          "center": 0.000001,
           "max": 1.6651551699846396,
-          "min": -1.665154589100348,
-          "size": 3.33031
+          "min": -1.6651538738446596,
+          "size": 3.330309
         }
       },
       "namedNodes": [
@@ -4402,6 +4422,7 @@
         "VINT",
         "VINT-FACES",
         "VINT-FACES.001",
+        "VINT.ThreeNativePivot",
         "VOZD_ZAB",
         "VOZD_ZAB-FACES",
         "VOZD_ZAB-FACES.001",
@@ -4525,13 +4546,13 @@
       ]
     },
     "ok": true,
-    "outputHash": "sha256:15b4ef0eac96c81bf81b1ae0c681e18c2fc43e7b1dfe00eca3d440590a0b460f",
+    "outputHash": "sha256:3fa87e7dc6b735aa6f4a068bcd7a3375e10bbf648458d606f42a42284f73c181",
     "provider": "blender",
     "providerVersion": "4.5.11",
     "runnerHash": "sha256:a19dec84992bc87e4650cb99a201a084b984562a0fa9ddd93bfa589a267bdb09",
-    "startedAt": "2026-07-24T02:26:35.459Z"
+    "startedAt": "2026-07-24T05:06:09.634Z"
   },
-  "outputHash": "sha256:15b4ef0eac96c81bf81b1ae0c681e18c2fc43e7b1dfe00eca3d440590a0b460f",
+  "outputHash": "sha256:3fa87e7dc6b735aa6f4a068bcd7a3375e10bbf648458d606f42a42284f73c181",
   "outputs": [
     "assets/generated/aircraft.mitsubishi-a6m3.glb"
   ],

@@ -26,6 +26,11 @@
       "tracks": [
         {
           "node": "VINT",
+          "pivot": [
+            0,
+            -0.131815,
+            -4.141992
+          ],
           "property": "rotation",
           "keyframes": [
             {
