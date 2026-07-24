@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { access, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Readable } from "node:stream";
@@ -220,6 +220,40 @@ test("should expose and apply a plan-derived holdout prototype with exact proof 
     } finally {
       await rm(root, { force: true, recursive: true });
     }
+  }
+});
+
+test("authoring prototype recognizes every maintained untouched starter", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-authoring-racing-starter-"));
+  try {
+    await cp(new URL("../template-files/racing-kit-rally-starter/", import.meta.url), root, { recursive: true });
+    await mkdir(join(root, "artifacts/game-production"), { recursive: true });
+    await writeFile(join(root, "artifacts/game-production/plan.json"), `${JSON.stringify({
+      authoringMode: "custom-on-starter",
+      intentContract: {
+        acceptanceAssertions: [
+          { description: "render", id: "webgl-canvas", kind: "progress", required: true },
+          { description: "input", id: "defender-input", kind: "interaction", required: true },
+        ],
+        id: "intent.wave-defense",
+        prototype: {
+          id: "continuous-arena-pooled-pressure",
+          proofRoles: { "defender-input": "primary-input", "webgl-canvas": "canvas" },
+        },
+        requiredCapabilities: [],
+      },
+      schema: "threenative.game-plan",
+    }, null, 2)}\n`);
+
+    const result = await authoringCommand([
+      "prototype", "--from-plan", "artifacts/game-production/plan.json", "--project", root, "--json",
+    ]);
+    const payload = JSON.parse(result.stdout) as { code: string; replacementPlan?: unknown };
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.code, "TN_AUTHORING_PROTOTYPE_WRITTEN");
+    assert.equal(payload.replacementPlan, undefined);
+  } finally {
+    await rm(root, { force: true, recursive: true });
   }
 });
 

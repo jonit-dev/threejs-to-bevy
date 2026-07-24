@@ -184,6 +184,7 @@ interface IPlanProofIds {
   gridStep?: number;
   hud?: string;
   objective?: string;
+  objectiveHasProgress: boolean;
   rightKey?: string;
   retryKey?: string;
   targetCount?: number;
@@ -292,6 +293,7 @@ function missingPlanCapability(family: GameProofAssertionFamily, ids: IPlanProof
   if ((family === "movement" || family === "blocked-movement" || family === "push-only" || family === "objective-progress") && ids.rightKey === undefined) return "movement-input";
   if (family === "push-only" && ids.crate === undefined) return "pushable-entity";
   if ((family === "objective-progress" || family === "win-state" || family === "retry") && ids.objective === undefined) return "objective-resource";
+  if ((family === "objective-progress" || family === "win-state" || family === "retry") && !ids.objectiveHasProgress) return "objective-progress-field";
   if ((family === "objective-progress" || family === "win-state") && ids.hud === undefined) return "objective-hud";
   if (family === "state-change" && ids.objective === undefined) return "state-resource";
   if (family === "state-change" && ids.hud === undefined) return "state-hud";
@@ -330,6 +332,7 @@ async function discoverPlanProofIds(projectPath: string): Promise<IPlanProofIds>
     gridStep: numberValue(grid.step),
     hud: stringId(nodes.find((node) => /spatial|progress|target|status|health|turn/iu.test(String(node.id)))?.id) ?? stringId(nodes[0]?.id),
     objective: stringId(objectiveResource?.id),
+    objectiveHasProgress: numberValue(objectiveValue.progress) !== undefined,
     rightKey: actionKey(actions, "grid-right") ?? actionKey(actions, "move-right"),
     retryKey: actionKey(actions, "retry"),
     targetCount: numberValue(objectiveValue.targetCount),

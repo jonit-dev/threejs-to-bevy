@@ -141,6 +141,40 @@ test("should scaffold interaction state changes from a plan", async () => {
   }
 });
 
+test("should reject plan scaffolds whose discovered objective has no executable progress field", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-plan-progress-shape-"));
+  try {
+    await writeSpatialPlanFixture(root);
+    const scenePath = join(root, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as {
+      resources: Array<{ id: string; value: Record<string, unknown> }>;
+    };
+    scene.resources = scene.resources.map((resource) =>
+      resource.id === "ObjectiveLive"
+        ? { id: "RaceState", value: { checkpointCount: 5, nextCheckpoint: 0 } }
+        : resource);
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
+
+    const result = await playtestScaffoldCommand([
+      "--from-plan", "artifacts/game-production/plan.json", "--project", ".", "--json",
+    ], root);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      diagnostics: Array<{ missingCapability: string }>;
+      filesWritten: string[];
+    };
+    const playtests = await readdir(join(root, "playtests")).catch(() => []);
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_PLAYTEST_PLAN_ASSERTION_UNSUPPORTED");
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.missingCapability === "objective-progress-field"), true);
+    assert.deepEqual(payload.filesWritten, []);
+    assert.deepEqual(playtests, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeSpatialPlanFixture(root: string, unsupported = false): Promise<void> {
   const write = async (path: string, value: unknown) => {
     await mkdir(join(root, path, ".."), { recursive: true });

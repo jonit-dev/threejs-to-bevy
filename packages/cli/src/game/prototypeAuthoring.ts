@@ -241,8 +241,7 @@ async function collisionPaths(
     if (file.bytes !== null && existing.equals(file.bytes)) continue;
     if (file.path === provenancePath && ownedFiles.size > 0) continue;
     if (ownedFiles.get(file.path)?.appliedHash === hashAuthoringTransactionBytes(existing)) continue;
-    const starter = await readStarterFile(file.path);
-    if (starter !== undefined && existing.equals(starter)) continue;
+    if (await matchesMaintainedStarterFile(file.path, existing)) continue;
     collisions.push(file.path);
   }
   return collisions.sort();
@@ -321,8 +320,7 @@ async function findBlockingAuthoredPaths(
     if (outputPaths.has(path)) continue;
     const existing = await readFile(resolve(projectPath, path));
     if (priorOwnership.get(path)?.appliedHash === hashAuthoringTransactionBytes(existing)) continue;
-    const starter = await readStarterFile(path);
-    if (starter !== undefined && starter.equals(existing)) continue;
+    if (await matchesMaintainedStarterFile(path, existing)) continue;
     blockers.push(path);
   }
   return blockers.sort();
@@ -354,9 +352,14 @@ async function collectFiles(
   }
 }
 
-async function readStarterFile(path: string): Promise<Buffer | undefined> {
-  const templatePath = resolve(import.meta.dirname, "../template-files/structured-source-starter", path);
-  return readFile(templatePath).catch((error: unknown) => isMissing(error) ? undefined : Promise.reject(error));
+async function matchesMaintainedStarterFile(path: string, existing: Buffer): Promise<boolean> {
+  for (const template of ["structured-source-starter", "racing-kit-rally-starter"]) {
+    const templatePath = resolve(import.meta.dirname, "../template-files", template, path);
+    const starter = await readFile(templatePath).catch((error: unknown) =>
+      isMissing(error) ? undefined : Promise.reject(error));
+    if (starter !== undefined && starter.equals(existing)) return true;
+  }
+  return false;
 }
 
 function collision(
