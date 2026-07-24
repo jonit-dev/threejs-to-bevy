@@ -79,7 +79,7 @@ export async function authoringCommand(argv: readonly string[], options: IAuthor
             { cwd: options.cwd ?? process.cwd() },
           );
           proof = {
-            exitCode: owned.exitCode,
+            exitCode: owned.timedOut || owned.interruptedBy !== undefined ? 1 : owned.exitCode,
             stderr: owned.stderr,
             stdout: owned.stdout,
           };

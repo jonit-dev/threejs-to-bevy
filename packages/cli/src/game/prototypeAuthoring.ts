@@ -476,8 +476,8 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
           : [{ changed: true, id: "PrototypeState" }],
       },
       steps: wave
-        ? [{ holdTicks: 1, label: "reset defense", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 6, label: "move defender", press: "KeyD", release: true }, { holdTicks: 1, label: "attack target", press: "Space", release: true }]
-        : [{ holdTicks: 1, label: "reset encounter", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "select unit", press: "Enter", release: true }, { holdTicks: 1, label: "move selected unit", press: "KeyW", release: true }],
+        ? [{ holdTicks: 1, label: "reset defense", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 6, label: "move defender", press: "KeyD", release: true }, { holdTicks: 1, label: "pointer attack target", press: "pointer.0", release: true }]
+        : [{ holdTicks: 1, label: "reset encounter", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "pointer select unit", press: "pointer.0", release: true }, { holdTicks: 1, label: "move selected unit", press: "KeyW", release: true }],
     };
   }
   if (role === "progression") {
@@ -550,7 +550,7 @@ function wavePrototype(): IPrototypeSource {
       { bindings: ["keyboard.KeyD", "keyboard.ArrowRight"], id: "move-right" },
       { bindings: ["keyboard.Space"], id: "attack-keyboard" },
       { bindings: ["pointer.0"], id: "attack-pointer" },
-      { bindings: ["keyboard.KeyR", "pointer.0"], id: "retry" },
+      { bindings: ["keyboard.KeyR"], id: "retry" },
     ], [{ id: "MoveX", negative: ["keyboard.KeyA", "keyboard.ArrowLeft"], positive: ["keyboard.KeyD", "keyboard.ArrowRight"] }]),
     scene: sceneDocument(
       [
@@ -582,7 +582,7 @@ function tacticsPrototype(): IPrototypeSource {
       { bindings: ["keyboard.Enter", "keyboard.Space", "pointer.0"], id: "select-unit" },
       { bindings: ["keyboard.KeyW", "keyboard.ArrowUp"], id: "move-up" },
       { bindings: ["keyboard.KeyD", "keyboard.ArrowRight"], id: "move-right" },
-      { bindings: ["keyboard.KeyR", "pointer.0"], id: "retry" },
+      { bindings: ["keyboard.KeyR"], id: "retry" },
     ], []),
     scene: sceneDocument(
       [...cells, entity("objective", "prefab.objective", [0, 0.35, 0], [0.55, 0.55, 0.55]), entity("player.unit", "prefab.player", [0, 0.65, 2], [0.7, 0.9, 0.7]), entity("enemy.unit", "prefab.enemy", [2, 0.65, 2], [0.7, 0.9, 0.7]), camera([0, 7.5, 7.5], [-0.72, 0, 0])],

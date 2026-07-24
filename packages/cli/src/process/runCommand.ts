@@ -65,13 +65,15 @@ export async function runOwnedCommand(
       terminateProcessTree(child, interruptedBy ?? "SIGTERM");
       forceTimer = setTimeout(() => {
         terminateProcessTree(child, "SIGKILL");
-        resolve({
-          exitCode: exitCode ?? 1,
-          ...(interruptedBy === undefined ? {} : { interruptedBy }),
-          stderr,
-          stdout,
-          timedOut,
-        });
+        setTimeout(() => {
+          resolve({
+            exitCode: interruptedBy === undefined ? exitCode ?? 1 : exitCode === null || exitCode === 0 ? 1 : exitCode,
+            ...(interruptedBy === undefined ? {} : { interruptedBy }),
+            stderr,
+            stdout,
+            timedOut,
+          });
+        }, 50);
       }, 100);
     };
     child.once("error", (error) => {
@@ -82,7 +84,11 @@ export async function runOwnedCommand(
       unregisterSignals();
       reject(error);
     });
-    child.once("close", finish);
+    // A descendant can inherit the leader's stdout/stderr handles and keep the
+    // ChildProcess "close" event pending after the leader has exited. Start
+    // owned-tree cleanup from the leader's exit so a successful leader cannot
+    // turn a bounded proof into a false timeout success.
+    child.once("exit", finish);
   });
 }
 

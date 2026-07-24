@@ -33,6 +33,12 @@ hashes or source mtimes differ, restart the stale preview before capturing
 evidence. If the authored mass/force/thrust/drag/collider budget is physically
 impossible, repair that source instead of weakening the proof.
 
+Scenario `press` values accept keyboard codes such as `KeyD` and web pointer
+buttons such as `pointer.0`. Use the actual control named by the acceptance
+contract; do not treat a keyboard-only scenario as proof that pointer input is
+reachable. Keep retry on a distinct binding unless the runtime behavior makes
+that binding explicitly outcome-contextual.
+
 Assign one owner per scene document. Independent content and script files may
 be edited concurrently only after their stable IDs agree. One agent owns the
 preview; do not run build, dev, or iterate concurrently in one project.

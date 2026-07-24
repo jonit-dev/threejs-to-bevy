@@ -19,7 +19,9 @@ Current support:
 - `tn playtest schema --json` exposes the executable assertion/step/setup DSL
   from the assertion registry, and `tn playtest scaffold --assert
   <movement|pickup|win-state|retry> --json` writes loader-valid proof-bar
-  scenarios without engine-source lookup.
+  scenarios without engine-source lookup. Web scenario `press` steps accept
+  both keyboard event codes and `pointer.0` through `pointer.4`, so acceptance
+  proof can exercise pointer bindings directly.
 - Command-first mutation coverage includes scene transforms, scene
   prefab/entity operations, UI binding, material editing, prefab material
   assignment, and compositional mechanic blocks; direct `content/**` edits

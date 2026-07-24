@@ -115,15 +115,20 @@ test("owned command drains descendants after a successful group leader", async (
     ].join("");
     const leader = [
       "const { spawn } = require('node:child_process');",
-      `spawn(process.execPath, ['-e', ${JSON.stringify(descendant)}], { stdio: 'ignore' }).unref();`,
+      `spawn(process.execPath, ['-e', ${JSON.stringify(descendant)}], { stdio: ['ignore', 1, 2] }).unref();`,
     ].join("");
+    const startedAt = Date.now();
     const result = await runOwnedCommand(process.execPath, ["-e", leader], {
       cwd: root,
-      timeoutMs: 5_000,
+      timeoutMs: 500,
     });
+    const elapsedMs = Date.now() - startedAt;
     await new Promise((resolve) => setTimeout(resolve, 450));
 
     assert.equal(result.exitCode, 0);
+    assert.equal(result.timedOut, false);
+    assert.equal(result.interruptedBy, undefined);
+    assert.ok(elapsedMs < 500, `leader exit cleanup took ${elapsedMs}ms`);
     await assert.rejects(access(lateMarker), /ENOENT/u);
   } finally {
     await rm(root, { force: true, recursive: true });

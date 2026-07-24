@@ -1,5 +1,7 @@
 # PRD-005: Safe Prototypes and Agent Authoring Contract
 
+Status: Complete (2026-07-24)
+
 `Complexity: 9 -> HIGH mode` (`+3` 10+ files, `+2` complex transactional and
 process state, `+2` multi-package, `+2` new output/guidance contract)
 
@@ -75,12 +77,12 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Auto-apply only to a recognized untouched starter or empty destination.
-- [ ] Existing authored content yields a non-mutating plan/diff and stable
+- [x] Auto-apply only to a recognized untouched starter or empty destination.
+- [x] Existing authored content yields a non-mutating plan/diff and stable
   `TN_AUTHORING_PROTOTYPE_COLLISION`.
-- [ ] Require explicit target files and reviewed replacement token/hash to
+- [x] Require explicit target files and reviewed replacement token/hash to
   replace authored owners.
-- [ ] Never instruct agents to mutate before inspecting project owners.
+- [x] Never instruct agents to mutate before inspecting project owners.
 
 ### Phase 2: Atomic publication and discovery isolation
 
@@ -94,10 +96,10 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Publish all prototype source and scenarios as one bounded batch.
-- [ ] A staged/abandoned prototype cannot be auto-discovered into production.
-- [ ] Remove/replace operates only on files and hashes owned by the transaction.
-- [ ] Negative controls prove no partial or stray `prototype.*` document remains.
+- [x] Publish all prototype source and scenarios as one bounded batch.
+- [x] A staged/abandoned prototype cannot be auto-discovered into production.
+- [x] Remove/replace operates only on files and hashes owned by the transaction.
+- [x] Negative controls prove no partial or stray `prototype.*` document remains.
 
 ### Phase 3: Proof process lifecycle
 
@@ -111,9 +113,9 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Close proof, preview, Vite, and source watchers on every exit path.
-- [ ] Test startup failure, timeout, SIGTERM, proof failure, and success.
-- [ ] Assert no child later recreates rolled-back source.
+- [x] Close proof, preview, Vite, and source watchers on every exit path.
+- [x] Test startup failure, timeout, SIGTERM, proof failure, and success.
+- [x] Assert no child later recreates rolled-back source.
 
 ### Phase 4: Canonical capability and direct-edit guidance
 
@@ -127,11 +129,11 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Generate or remove the missing API-card reference; one canonical artifact
+- [x] Generate or remove the missing API-card reference; one canonical artifact
   lists services, components, and explicit absences.
-- [ ] State: use bounded CLI when available; otherwise direct durable
+- [x] State: use bounded CLI when available; otherwise direct durable
   `content/**` editing plus validation is supported.
-- [ ] Include current spawn/instantiate/despawn truth and renderer/sub-node
+- [x] Include current spawn/instantiate/despawn truth and renderer/sub-node
   boundaries.
 
 ### Phase 5: Focused inner-loop routing and triage
@@ -146,12 +148,12 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Route visuals to screenshot/parity against live dev, physics to one
+- [x] Route visuals to screenshot/parity against live dev, physics to one
   scenario plus runtime trace, scripts to typecheck/focused playtest, and
   milestones to iterate.
-- [ ] Add triage for identical traces, served/local freshness mismatch, and
+- [x] Add triage for identical traces, served/local freshness mismatch, and
   physically impossible tuning.
-- [ ] Template agent file ownership: one scene owner, independent content/script
+- [x] Template agent file ownership: one scene owner, independent content/script
   domains, no concurrent build/dev/iterate.
 
 ### Phase 6: Registry-backed compact CLI result
@@ -166,12 +168,12 @@ result points to deep artifacts.
 
 **Implementation:**
 
-- [ ] Define canonical `--summary` semantics: status, primary code, top three
+- [x] Define canonical `--summary` semantics: status, primary code, top three
   diagnostics/fixes, and artifact pointers while preserving exit behavior.
-- [ ] Commands declare support in the owning registry; help and dispatch derive
+- [x] Commands declare support in the owning registry; help and dispatch derive
   from it.
-- [ ] Deep JSON remains available without duplicating computation.
-- [ ] Add representative stdout budgets and reject falsely advertised support.
+- [x] Deep JSON remains available without duplicating computation.
+- [x] Add representative stdout budgets and reject falsely advertised support.
 
 ### Phase 7: Status and completion gates
 
@@ -188,16 +190,67 @@ result points to deep artifacts.
 Automated reviewer after every phase. Manual review of staged replacement UX is
 additional after Phases 1 and 2.
 
-- [ ] Existing authored scenes are never overwritten without reviewed consent.
-- [ ] Failed/interrupted proof leaves no files, child processes, watchers, or
+- [x] Existing authored scenes are never overwritten without reviewed consent.
+- [x] Failed/interrupted proof leaves no files, child processes, watchers, or
   ports.
-- [ ] Stray prototype docs cannot join production discovery.
-- [ ] Capability/direct-edit guidance is generated and truthful.
-- [ ] Inner-loop selection and failure-smell triage are consistent.
-- [ ] Summary output is registry-derived and bounded.
-- [ ] Adapter-surface, emitted-command, template, cookbook, docs, and CLI tests
+- [x] Stray prototype docs cannot join production discovery.
+- [x] Capability/direct-edit guidance is generated and truthful.
+- [x] Inner-loop selection and failure-smell triage are consistent.
+- [x] Summary output is registry-derived and bounded.
+- [x] Adapter-surface, emitted-command, template, cookbook, docs, and CLI tests
   pass.
 
 ## Verification evidence
 
-Append transaction diffs, cleanup checks, stdout sizes, and gate artifacts.
+Completed 2026-07-24.
+
+- Transaction and rollback coverage:
+  `node --test packages/cli/dist/commands/authoring.test.js` passed 18/18,
+  including starter recognition, whole-project collision detection, exact
+  review token/target enforcement, failed-proof preimage restoration, and
+  removal of only transaction-owned files.
+- Process lifecycle coverage:
+  `node --test packages/cli/dist/process/runCommand.test.js` passed 7/7,
+  including startup failure, SIGTERM, timeout, resistant descendants,
+  successful-leader inherited-stdio descendant drain, and listener-port
+  release. Interruption/timeout now forces a nonzero proof result even when the
+  group leader exited zero.
+- Compact-output coverage: the combined focused CLI suite passed 50/50.
+  `resultProjection.test.js` includes an adversarial multibyte/escaped stdout
+  budget, while registry/index tests prove derived support and unchanged exit
+  behavior.
+- Generated guidance and template drift coverage:
+  `templateProductionGate.test.js` and `emittedCommandGate.test.js` passed
+  14/14; maintained-template production validation reported zero diagnostics.
+- Aggregate emitted-command proof:
+  `pnpm verify:emitted-commands` passed all 14 template/archetype cases and 204
+  emitted commands with zero failures. The first aggregate run caught
+  rendered-frame timing races in the wave and tactics prototypes; their
+  scenarios now reset shared state and use exact `holdTicks`/`waitTicks`.
+  Both failing cases then passed twice consecutively before the green aggregate
+  rerun. Report:
+  `tools/verify/artifacts/emitted-commands/verification-report.json`.
+- Independent completion review found and closed two high-severity gaps:
+  leader-exit cleanup no longer waits for descendant-held stdio, and retry no
+  longer shadows `pointer.0`. The wave-defense and turn-based focused emitted
+  cases both passed with their primary acceptance scenario issuing a real
+  `pointer.0` event. The full aggregate was then rerun after those fixes and
+  retained the canonical 14-case, 204-command, zero-failure report with 20
+  explicit deferred prerequisites.
+- Reusable workflow proof: `pnpm verify:cookbook` passed every entry with zero
+  diagnostics. Report:
+  `tools/verify/artifacts/cookbook/verification-report.json`.
+- Adapter and documentation proof: `pnpm verify:adapter-surfaces` passed 2/2
+  and `pnpm check:docs` passed.
+- Battle of Pacific noninterference: a valid custom prototype request against
+  the authored project returned `TN_AUTHORING_PROTOTYPE_COLLISION`, wrote no
+  files, and left the durable-source aggregate SHA-256 unchanged
+  (`48a9a0fa...e2e45a` before and after).
+- Battle of Pacific regression proof: authoring validation, typecheck, and build
+  passed. Web input/flap animation, objective progress, fail/retry, isolated
+  30-second cruise, and the committed turn-radius probe passed. Desktop
+  commands completed with the documented
+  `TN_PLAYTEST_NATIVE_HEADLESS_UNSUPPORTED` waiver; they are not claimed as
+  graphical native evidence. The final live preview at
+  `http://127.0.0.1:5173` reported runtime ready, scene `pacific-flight`, 158
+  entities, phase `CRUISE`, integrity 100, and the Samidare objective.

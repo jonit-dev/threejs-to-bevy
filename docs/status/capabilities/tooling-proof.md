@@ -14,7 +14,8 @@ Current support:
   and prints compact per-scenario assertion observations. Native/desktop
   scenarios are opt-in with `--native`; skipped native scenarios are reported
   as structured information rather than making the default web loop
-  environment-dependent.
+  environment-dependent. Web scenario input steps synthesize both keyboard
+  codes and `pointer.0` through `pointer.4`.
 - `tn iterate --visual-only` reports independent visual/gameplay verdicts and
   skips stale gameplay scenarios without changing the default full-gate
   verdict. Playtest proof bundles omit missing paths, discovery is grounded in

@@ -95,10 +95,10 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
     },
     steps: [
       {
-        description: "A playtest step presses a KeyboardEvent.code for fixed ticks, or uses kind wait for an explicit no-input interval.",
+        description: "A playtest step presses a KeyboardEvent.code or pointer button for fixed ticks, or uses kind wait for an explicit no-input interval.",
         fields: [
           { description: "Optional explicit step kind. wait never synthesizes a keyboard key.", name: "kind", type: "input | wait" },
-          { description: "KeyboardEvent.code to press, for example KeyW, KeyD, Space, or KeyR.", name: "press", type: "string" },
+          { description: "KeyboardEvent.code or pointer button to press, for example KeyW, Space, or pointer.0.", name: "press", type: "string" },
           { description: "Frames to hold the key before release.", name: "holdFrames", type: "positive integer" },
           { description: "Exact fixed simulation ticks to hold the key. Browser proofs step the paused runtime directly when supported.", name: "holdTicks", type: "positive integer" },
           { description: "Whether to release the pressed key after holdFrames. Defaults to true.", name: "release", type: "boolean" },

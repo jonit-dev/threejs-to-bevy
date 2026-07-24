@@ -1335,7 +1335,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         }
       }
       if (step.press !== undefined) {
-        await dispatchKeyboardCode(page, "keydown", step.press);
+        await dispatchPlaytestInput(page, "down", step.press);
         const holdTicks = playtestStepHoldTicks(step, options.frames);
         if (step.holdTicks !== undefined) {
           await advanceWebFixedTicks(page, holdTicks);
@@ -1346,7 +1346,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
           });
         }
         if (step.release) {
-          await dispatchKeyboardCode(page, "keyup", step.press);
+          await dispatchPlaytestInput(page, "up", step.press);
         }
         completedTicks += holdTicks;
       }
@@ -1706,6 +1706,24 @@ async function dispatchKeyboardCode(page: import("playwright").Page, type: "keyd
     },
     { code, key: keyboardKeyFromCode(code), type },
   );
+}
+
+async function dispatchPlaytestInput(page: import("playwright").Page, type: "down" | "up", control: string): Promise<void> {
+  const pointer = /^pointer\.([0-4])$/u.exec(control);
+  if (pointer !== null) {
+    await page.evaluate(
+      ({ button, eventType }) => {
+        const browserGlobal = globalThis as unknown as {
+          dispatchEvent(event: unknown): boolean;
+          PointerEvent: new (type: string, init: Record<string, unknown>) => unknown;
+        };
+        browserGlobal.dispatchEvent(new browserGlobal.PointerEvent(eventType, { bubbles: true, button, buttons: eventType === "pointerdown" ? 1 << button : 0 }));
+      },
+      { button: Number(pointer[1]), eventType: type === "down" ? "pointerdown" : "pointerup" },
+    );
+    return;
+  }
+  await dispatchKeyboardCode(page, type === "down" ? "keydown" : "keyup", control);
 }
 
 function keyboardKeyFromCode(code: string): string {

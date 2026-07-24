@@ -199,15 +199,22 @@ test("should expose and apply a plan-derived holdout prototype with exact proof 
 
       if (fixture.prototypeId === "continuous-arena-pooled-pressure") {
         const input = JSON.parse(await readFile(join(root, "content/input/prototype.input.json"), "utf8")) as { actions: Array<{ bindings: string[]; id: string }> };
+        const primary = JSON.parse(await readFile(join(root, "playtests/acceptance-defender-input.playtest.json"), "utf8")) as { assert: { resources: Array<{ path?: string }> }; steps: Array<{ press?: string }> };
         const progression = JSON.parse(await readFile(join(root, "playtests/acceptance-wave-progression.playtest.json"), "utf8")) as { assert: { resources: Array<{ path?: string }> }; steps: Array<{ press?: string }> };
         const script = await readFile(join(root, "src/scripts/prototype.ts"), "utf8");
         assert.deepEqual(input.actions.filter((action) => action.id.startsWith("attack-")).map((action) => action.bindings[0]), ["keyboard.Space", "pointer.0"]);
+        assert.deepEqual(input.actions.find((action) => action.id === "retry")?.bindings, ["keyboard.KeyR"]);
+        assert.equal(primary.steps.some((step) => step.press === "pointer.0"), true);
         assert.deepEqual(progression.assert.resources.map((assertion) => assertion.path), ["wave", "difficulty", "targetsRequired"]);
         assert.equal(progression.steps[0]?.press, "KeyR");
         assert.match(script, /pointerAttackCount/u);
         assert.match(script, /baseHealth - 100/u);
         assert.match(script, /difficulty - 1/u);
       } else {
+        const input = JSON.parse(await readFile(join(root, "content/input/prototype.input.json"), "utf8")) as { actions: Array<{ bindings: string[]; id: string }> };
+        const primary = JSON.parse(await readFile(join(root, "playtests/acceptance-unit-selection-movement.playtest.json"), "utf8")) as { steps: Array<{ press?: string }> };
+        assert.deepEqual(input.actions.find((action) => action.id === "retry")?.bindings, ["keyboard.KeyR"]);
+        assert.equal(primary.steps.some((step) => step.press === "pointer.0"), true);
         for (const acceptanceId of fixture.acceptanceIds.filter((id) => id !== "webgl-canvas")) {
           const scenario = JSON.parse(await readFile(join(root, `playtests/acceptance-${acceptanceId}.playtest.json`), "utf8")) as { steps: Array<{ press?: string }> };
           assert.equal(scenario.steps[0]?.press, "KeyR", `${acceptanceId} must reset shared preview state before acting`);
