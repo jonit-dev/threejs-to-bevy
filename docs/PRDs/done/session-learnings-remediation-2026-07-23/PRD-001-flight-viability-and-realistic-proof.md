@@ -218,12 +218,12 @@ web/desktop scenarios for the aerodynamics reference project.
 After every phase, spawn `prd-work-reviewer` with this PRD path and phase
 number. Phases 2 and 3 also require manual visible-browser review.
 
-- [ ] Impossible flight configurations fail at author time with measured fixes.
-- [ ] A stable configuration passes without adapter-specific exceptions.
-- [ ] A real focus failure is caught by a committed scenario.
-- [ ] Objective duration, axis signs, and force trace are plan-derived.
-- [ ] Web and desktop scenario evidence passes.
-- [ ] `pnpm verify:conformance`, `pnpm verify:cookbook`, `pnpm check:docs`, and
+- [x] Impossible flight configurations fail at author time with measured fixes.
+- [x] A stable configuration passes without adapter-specific exceptions.
+- [x] A real focus failure is caught by a committed scenario.
+- [x] Objective duration, axis signs, and force trace are plan-derived.
+- [x] Web and desktop scenario evidence passes.
+- [x] `pnpm verify:conformance`, `pnpm verify:cookbook`, `pnpm check:docs`, and
   the generated-game quality gate pass.
 
 ## Verification evidence
