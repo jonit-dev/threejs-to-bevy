@@ -476,8 +476,8 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
           : [{ changed: true, id: "PrototypeState" }],
       },
       steps: wave
-        ? [{ holdFrames: 4, label: "move defender", press: "KeyD", release: true }, { holdFrames: 1, label: "attack target", press: "Space", release: true }]
-        : [{ holdFrames: 1, label: "select unit", press: "Enter", release: true }, { holdFrames: 1, label: "move selected unit", press: "KeyW", release: true }],
+        ? [{ holdTicks: 1, label: "reset defense", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 6, label: "move defender", press: "KeyD", release: true }, { holdTicks: 1, label: "attack target", press: "Space", release: true }]
+        : [{ holdTicks: 1, label: "reset encounter", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "select unit", press: "Enter", release: true }, { holdTicks: 1, label: "move selected unit", press: "KeyW", release: true }],
     };
   }
   if (role === "progression") {
@@ -492,7 +492,7 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
           { gte: 3, id: "PrototypeState", path: "targetsRequired" },
         ],
       },
-      steps: [{ holdFrames: 1, label: "attack first target", press: "Space", release: true }, { waitFrames: 2 }, { holdFrames: 1, label: "clear wave", press: "Space", release: true }],
+      steps: [{ holdTicks: 1, label: "reset defense", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "attack first target", press: "Space", release: true }, { waitTicks: 2 }, { holdTicks: 1, label: "clear wave", press: "Space", release: true }],
     };
   }
   if (role === "failure") {
@@ -500,14 +500,14 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
       ...common,
       assert: { diagnostics: cleanDiagnostics(), hud: [{ id: "hud.status", textIncludes: "failed" }], resources: [{ equals: 0, id: "PrototypeState", path: "baseHealth" }] },
       setup: { entities: [{ entity: "enemy.01", position: [0, 0.65, 3.4] }] },
-      steps: [{ label: "allow pooled pressure to breach base", waitFrames: 4 }],
+      steps: [{ label: "allow pooled pressure to breach base", waitTicks: 4 }],
     };
   }
   if (role === "opponent-turn") {
     return {
       ...common,
       assert: { diagnostics: cleanDiagnostics(), movement: { entity: "enemy.unit", minDistance: 0.5 }, resources: [{ gte: 2, id: "PrototypeState", path: "turn" }] },
-      steps: [{ holdFrames: 1, label: "select unit", press: "Enter", release: true }, { holdFrames: 1, label: "commit move and enemy turn", press: "KeyW", release: true }],
+      steps: [{ holdTicks: 1, label: "reset encounter", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "select unit", press: "Enter", release: true }, { holdTicks: 1, label: "commit move and enemy turn", press: "KeyW", release: true }],
       subject: "enemy.unit",
     };
   }
@@ -516,12 +516,14 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
       ...common,
       assert: { diagnostics: cleanDiagnostics(), hud: [{ id: "hud.status", textIncludes: "Victory" }], resources: [{ equals: 1, id: "PrototypeState", path: "failureCount" }, { equals: 1, id: "PrototypeState", path: "victoryCount" }] },
       steps: [
-        { holdFrames: 1, label: "select for failure route", press: "Enter", release: true },
-        { holdFrames: 1, label: "enter enemy threat", press: "KeyD", release: true },
-        { holdFrames: 1, label: "retry encounter", press: "KeyR", release: true },
-        { holdFrames: 1, label: "select for objective route", press: "Enter", release: true },
-        { holdFrames: 1, label: "advance objective", press: "KeyW", release: true },
-        { holdFrames: 1, label: "reach objective", press: "KeyW", release: true },
+        { holdTicks: 1, label: "reset encounter", press: "KeyR", release: true },
+        { waitTicks: 1 },
+        { holdTicks: 1, label: "select for failure route", press: "Enter", release: true },
+        { holdTicks: 1, label: "enter enemy threat", press: "KeyD", release: true },
+        { holdTicks: 1, label: "retry encounter", press: "KeyR", release: true },
+        { holdTicks: 1, label: "select for objective route", press: "Enter", release: true },
+        { holdTicks: 1, label: "advance objective", press: "KeyW", release: true },
+        { holdTicks: 1, label: "reach objective", press: "KeyW", release: true },
       ],
     };
   }
@@ -536,8 +538,8 @@ function prototypeScenario(prototypeId: IGamePrototypeBinding["id"], acceptanceI
     },
     setup: { entities: [{ entity: actor, position: [1, 0.65, wave ? 2.8 : 2] }] },
     steps: wave
-      ? [{ holdFrames: 1, label: "reset defense", press: "KeyR", release: true }]
-      : [{ holdFrames: 1, label: "select unit", press: "Enter", release: true }, { holdFrames: 1, label: "reach failure", press: "KeyD", release: true }, { holdFrames: 1, label: "reset encounter", press: "KeyR", release: true }],
+      ? [{ holdTicks: 1, label: "reset defense", press: "KeyR", release: true }]
+      : [{ holdTicks: 1, label: "reset encounter", press: "KeyR", release: true }, { waitTicks: 1 }, { holdTicks: 1, label: "select unit", press: "Enter", release: true }, { holdTicks: 1, label: "reach failure", press: "KeyD", release: true }, { holdTicks: 1, label: "reset after failure", press: "KeyR", release: true }],
   };
 }
 
