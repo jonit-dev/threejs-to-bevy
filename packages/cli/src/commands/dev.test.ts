@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import test from "node:test";
@@ -63,6 +64,29 @@ test("should start web dev server for valid bundle", async () => {
       await result.server?.close();
     }
   } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should close the dev watcher when the requested web port is occupied", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-dev-port-in-use-"));
+  const occupied = createServer();
+  try {
+    await cp("../../templates/structured-source-starter", root, { recursive: true });
+    await new Promise<void>((resolveListen) => occupied.listen(0, "127.0.0.1", resolveListen));
+    const address = occupied.address();
+    assert.equal(typeof address, "object");
+    const requestedPort = typeof address === "object" && address !== null ? address.port : 0;
+
+    const result = await devCommand(["--target", "web", "--watch", "--port", String(requestedPort), "--json"], root);
+    const payload = JSON.parse(result.stdout) as { code: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_DEV_PORT_IN_USE");
+    assert.equal(result.watcher, undefined);
+    assert.equal(result.server, undefined);
+  } finally {
+    await new Promise<void>((resolveClose) => occupied.close(() => resolveClose()));
     await rm(root, { force: true, recursive: true });
   }
 });

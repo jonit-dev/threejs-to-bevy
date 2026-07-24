@@ -21,6 +21,14 @@
     {
       "asset": "water-splash",
       "id": "crash.splash"
+    },
+    {
+      "asset": "engine-start",
+      "id": "engine.start"
+    },
+    {
+      "asset": "engine-stop",
+      "id": "engine.stop"
     }
   ],
   "version": "0.1.0"

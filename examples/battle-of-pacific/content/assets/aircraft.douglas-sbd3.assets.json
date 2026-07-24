@@ -43,6 +43,14 @@
           {
             "clip": "flight.rudder-right",
             "id": "flight.rudder-right"
+          },
+          {
+            "clip": "flight.roll-left",
+            "id": "flight.roll-left"
+          },
+          {
+            "clip": "flight.roll-right",
+            "id": "flight.roll-right"
           }
         ]
       },
@@ -96,6 +104,16 @@
           "id": "flight.rudder-right",
           "loop": true,
           "sourceClip": "flight.rudder-right"
+        },
+        {
+          "id": "flight.roll-left",
+          "loop": true,
+          "sourceClip": "flight.roll-left"
+        },
+        {
+          "id": "flight.roll-right",
+          "loop": true,
+          "sourceClip": "flight.roll-right"
         }
       ],
       "id": "aircraft.douglas-sbd3",

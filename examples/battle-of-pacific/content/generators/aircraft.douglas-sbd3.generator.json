@@ -1,15 +1,15 @@
 {
   "id": "aircraft.douglas-sbd3",
-  "inputHash": "sha256:26f73f703015aee66736ec88ab448089d6473632508b122327f8fd45def53a7a",
+  "inputHash": "sha256:7cdd78b497f2c6af5893cd993d0197ba3c01ad6562d5e83945f48267180d5be6",
   "lastRun": {
-    "completedAt": "2026-07-23T19:43:45.490Z",
+    "completedAt": "2026-07-24T01:36:03.106Z",
     "diagnostics": [],
     "filesWritten": [
       "assets/generated/aircraft.douglas-sbd3.glb",
       "content/assets/aircraft.douglas-sbd3.assets.json",
       "content/generators/aircraft.douglas-sbd3.generator.json"
     ],
-    "inputHash": "sha256:26f73f703015aee66736ec88ab448089d6473632508b122327f8fd45def53a7a",
+    "inputHash": "sha256:7cdd78b497f2c6af5893cd993d0197ba3c01ad6562d5e83945f48267180d5be6",
     "inspection": {
       "animationClips": [
         {
@@ -50,6 +50,16 @@
         {
           "channels": 3,
           "name": "flight.pitch-up",
+          "samplers": 3
+        },
+        {
+          "channels": 3,
+          "name": "flight.roll-left",
+          "samplers": 3
+        },
+        {
+          "channels": 3,
+          "name": "flight.roll-right",
           "samplers": 3
         },
         {
@@ -110,13 +120,13 @@
       },
       "code": "TN_ASSET_INSPECT_OK",
       "counts": {
-        "accessors": 98,
-        "animations": 10,
+        "accessors": 102,
+        "animations": 12,
         "buffers": 1,
         "images": 61,
         "materials": 21,
-        "meshes": 22,
-        "nodes": 46,
+        "meshes": 23,
+        "nodes": 49,
         "scenes": 1,
         "textures": 63,
         "triangles": 10416
@@ -496,12 +506,12 @@
       ],
       "diagnostics": [],
       "file": {
-        "byteSize": 11018448,
+        "byteSize": 11056224,
         "path": "assets/generated/aircraft.douglas-sbd3.glb",
         "type": "glb"
       },
       "gltf": {
-        "assetId": "asset:aircraft.douglas-sbd3.glb.staging-3357910-1784835824140-5f66ba9bcc719",
+        "assetId": "asset:aircraft.douglas-sbd3.glb.staging-922069-1784856961643-12a95a90fe20f",
         "customAttributes": [],
         "materials": [],
         "morphTargets": [],
@@ -603,12 +613,6 @@
             "path": "/Sketchfab_model/Collada visual scene group/Circle.004_Circle.026.ThreeNativePivot",
             "spawnedHandleEligible": true,
             "transform": {
-              "rotation": [
-                0,
-                -0.17364822328090668,
-                0,
-                0.9848078489303589
-              ],
               "translation": [
                 0,
                 0,
@@ -625,7 +629,7 @@
               "translation": [
                 0,
                 0,
-                0.6400039792060852
+                0.6400039196014404
               ]
             }
           },
@@ -776,14 +780,64 @@
             "spawnedHandleEligible": true
           },
           {
+            "name": "aileron.negative-x.ThreeNativePivot",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.negative-x.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.04776998981833458,
+                0.20471996068954468
+              ]
+            }
+          },
+          {
             "materials": [
               "material:Material_009"
             ],
-            "mesh": "mesh:defaultMaterial.007",
-            "name": "defaultMaterial_node_5",
+            "mesh": "mesh:aileron.negative-x.mesh",
+            "name": "aileron.negative-x",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.negative-x.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.negative-x.ThreeNativePivot/aileron.negative-x",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                0.047770000994205475,
+                -0.20472002029418945
+              ]
+            }
+          },
+          {
+            "name": "aileron.positive-x.ThreeNativePivot",
             "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002",
-            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/defaultMaterial_node_5",
-            "spawnedHandleEligible": true
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.positive-x.ThreeNativePivot",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.04776998981833458,
+                0.20471996068954468
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:Material_009"
+            ],
+            "mesh": "mesh:aileron.positive-x.mesh",
+            "name": "aileron.positive-x",
+            "parentPath": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.positive-x.ThreeNativePivot",
+            "path": "/Sketchfab_model/Collada visual scene group/Plane.001_Plane.002/aileron.positive-x.ThreeNativePivot/aileron.positive-x",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                0.047770000994205475,
+                -0.20472002029418945
+              ]
+            }
           },
           {
             "name": "Plane.002_Plane.005",
@@ -797,12 +851,6 @@
             "path": "/Sketchfab_model/Collada visual scene group/Plane.002_Plane.005/defaultMaterial_node_2.ThreeNativePivot",
             "spawnedHandleEligible": true,
             "transform": {
-              "rotation": [
-                0.13052621483802795,
-                0,
-                0,
-                0.9914448857307434
-              ],
               "translation": [
                 0,
                 0.011329934932291508,
@@ -822,7 +870,7 @@
             "transform": {
               "translation": [
                 0,
-                -0.011329932138323784,
+                -0.011329937726259232,
                 0.6175790429115295
               ]
             }
@@ -833,12 +881,6 @@
             "path": "/Sketchfab_model/Collada visual scene group/Plane.003_Plane.004.ThreeNativePivot",
             "spawnedHandleEligible": true,
             "transform": {
-              "rotation": [
-                -0.30070576071739197,
-                0,
-                0,
-                0.9537169933319092
-              ],
               "translation": [
                 0,
                 -0.07564198225736618,
@@ -939,12 +981,6 @@
             "path": "/Sketchfab_model/Collada visual scene group/Plane.008_Plane.010/defaultMaterial_node_1.ThreeNativePivot",
             "spawnedHandleEligible": true,
             "transform": {
-              "rotation": [
-                0.13052621483802795,
-                0,
-                0,
-                0.9914448857307434
-              ],
               "translation": [
                 0,
                 0.011329934932291508,
@@ -964,7 +1000,7 @@
             "transform": {
               "translation": [
                 0,
-                -0.011329932138323784,
+                -0.011329937726259232,
                 0.6175790429115295
               ]
             }
@@ -1055,7 +1091,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_007",
           "roughness": 1
@@ -1068,7 +1104,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_006",
           "roughness": 1
@@ -1094,7 +1130,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_011",
           "roughness": 1
@@ -1120,7 +1156,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_017",
           "roughness": 1
@@ -1133,7 +1169,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_018",
           "roughness": 1
@@ -1211,7 +1247,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_015",
           "roughness": 1
@@ -1224,7 +1260,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_010",
           "roughness": 1
@@ -1250,7 +1286,7 @@
             1
           ],
           "baseColorTexture": true,
-          "metallic": 1,
+          "metallic": 0,
           "metallicRoughnessTexture": true,
           "name": "Material_012",
           "roughness": 1
@@ -1370,6 +1406,10 @@
         "Plane.006_Plane.008",
         "Plane.008_Plane.010",
         "Sketchfab_model",
+        "aileron.negative-x",
+        "aileron.negative-x.ThreeNativePivot",
+        "aileron.positive-x",
+        "aileron.positive-x.ThreeNativePivot",
         "defaultMaterial",
         "defaultMaterial_node",
         "defaultMaterial_node_0",
@@ -1389,7 +1429,6 @@
         "defaultMaterial_node_2.ThreeNativePivot",
         "defaultMaterial_node_3",
         "defaultMaterial_node_4",
-        "defaultMaterial_node_5",
         "defaultMaterial_node_6",
         "defaultMaterial_node_7",
         "defaultMaterial_node_8",
@@ -1397,13 +1436,13 @@
       ]
     },
     "ok": true,
-    "outputHash": "sha256:ea54549d569ce2c103955d69ff19f2ec2d0123bceebfaf107a9908f8b65f0089",
+    "outputHash": "sha256:18afcb2567efab9ae60dc3560e084303314b7ed500999aab7d0c7265d469a4ce",
     "provider": "blender",
     "providerVersion": "4.5.11",
-    "runnerHash": "sha256:084235afb49bf32a95000bed5508e7296fd80724c729a26a0f5f98aa89ca589d",
-    "startedAt": "2026-07-23T19:43:44.140Z"
+    "runnerHash": "sha256:11667c9d0e5ad46efe870c07cd7a5e56e3f68ace11351cfdc29238dbedf8227a",
+    "startedAt": "2026-07-24T01:36:01.643Z"
   },
-  "outputHash": "sha256:ea54549d569ce2c103955d69ff19f2ec2d0123bceebfaf107a9908f8b65f0089",
+  "outputHash": "sha256:18afcb2567efab9ae60dc3560e084303314b7ed500999aab7d0c7265d469a4ce",
   "outputs": [
     "assets/generated/aircraft.douglas-sbd3.glb"
   ],

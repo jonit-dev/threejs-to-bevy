@@ -75,19 +75,32 @@ tn model-test assets/generated/aircraft.animated.glb --angles 0,90,180,270 --jso
 
 Source-backed tracks use exact unique node names. Position and rotation values
 are local offsets from the imported pose; scale values multiply imported scale.
+An optional `materials` array patches named imported materials without
+replacing the material or its unpatched texture maps. Use it for bounded source corrections such as
+`{"id":"Paint","metallic":0,"roughness":0.65}` when inspection shows that an
+imported factor does not match the authored painted surface. Material names
+must match the imported GLB exactly.
 For detached surfaces whose imported origins do not sit on the hinge, a
 rotation track may add `"pivot":[x,y,z]` in the source model's authored Y-up
 coordinates. Blender creates an exported parent pivot while preserving the
 surface's rest pose. Pivots are source-rotation-only and one node must use the
 same pivot across clips. The provider rejects external GLB dependencies,
 missing or duplicate targets, conflicting pivots, clip-name collisions, and
-mixtures of `source` with generated materials/parts/operations.
+mixtures of `source` with generated parts.
+
+When two real disconnected control surfaces are packed into one imported mesh,
+the source recipe may separate them without creating replacement geometry:
+`{"kind":"split-by-axis","node":"Ailerons","axis":"x","threshold":0,"negative":"aileron.left","positive":"aileron.right"}`.
+The threshold uses authored Y-up coordinates and must not intersect a vertex or
+face. Output ids must be unique, and animation tracks may target those outputs.
+No other operation is accepted in source mode.
 
 The retained Douglas SBD-3 example uses this contract for rigid wing-flap
-deployment, paired elevator pitch, and rudder yaw, while the propeller rotates
-on a measured shaft pivot. Treat mesh nodes split only by material as one rigid
-assembly and target their shared parent; do not infer independent mechanisms
-from overlapping bounds:
+deployment, paired elevator pitch, rudder yaw, and inverse roll ailerons, while
+the propeller rotates on a measured shaft pivot. The ailerons are two existing
+disconnected surfaces separated from one imported mesh by their x-axis sign.
+Treat mesh nodes split only by material as one rigid assembly and target their
+shared parent; do not infer independent mechanisms from overlapping bounds:
 
 ```bash
 tn generator run aircraft.douglas-sbd3 --project . --json

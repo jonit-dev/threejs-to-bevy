@@ -30,18 +30,18 @@ test("should start web dev server for valid bundle", async () => {
   }
 });
 
-test("should report the actual fallback port when the requested port is occupied", async () => {
+test("should refuse to start when the explicitly requested port is occupied", async () => {
   const occupied = createServer();
   await new Promise<void>((resolveListen) => occupied.listen(0, "127.0.0.1", resolveListen));
   const address = occupied.address();
   assert.equal(typeof address, "object");
   const requestedPort = typeof address === "object" && address !== null ? address.port : 0;
-  const preview = await startWebPreview({ bundlePath: resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"), port: requestedPort, silent: true });
   try {
-    assert.notEqual(new URL(preview.url).port, String(requestedPort));
-    assert.equal((await fetch(new URL("/bundle/manifest.json", preview.url))).ok, true);
+    await assert.rejects(
+      startWebPreview({ bundlePath: resolve(process.cwd(), "../ir/fixtures/cube-scene/game.bundle"), port: requestedPort, silent: true }),
+      (error: unknown) => error instanceof Error && /port/i.test(error.message),
+    );
   } finally {
-    await preview.close();
     await new Promise<void>((resolveClose) => occupied.close(() => resolveClose()));
   }
 });

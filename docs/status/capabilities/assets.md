@@ -22,14 +22,18 @@ Current support:
 - The same Blender recipe owner supports animation-only re-export of one
   self-contained project-local source GLB. Tracks use exact unique imported
   node names and local transform offsets; source rotation tracks may declare an
-  authored Y-up hinge pivot. Source bytes participate in the input hash,
+  authored Y-up hinge pivot. A bounded `split-by-axis` operation can separate
+  existing disconnected mesh halves across a strict authored-space threshold
+  into two animation targets without adding polygons. Source bytes participate
+  in the input hash,
   existing clips are retained, and external dependencies, generated/source
   mode mixtures, missing or ambiguous targets, conflicting pivots, clip
-  collisions, symlink escape, and missing staged clips fail closed. The
-  Douglas SBD-3 acceptance asset retains 22 meshes, 10,416 triangles, and
-  authored materials while adding independently inspected `propeller.spin`,
-  rigid hinged `flaps.deploy`, paired `elevator.pitch`, and `rudder.yaw`
-  clips. User visual review caught and corrected an initial false assumption
+  collisions, split intersections/output collisions, symlink escape, and
+  missing staged clips fail closed. The Douglas SBD-3 acceptance asset retains
+  10,416 triangles and authored materials while adding independently inspected
+  `propeller.spin`, rigid hinged `flaps.deploy`, paired `elevator.pitch`,
+  `rudder.yaw`, and inverse left/right aileron roll clips. User visual review
+  caught and corrected an initial false assumption
   that two overlapping flap material components were independent panels.
 - Reviewed project-local img2threejs factories can generate one named,
   textured `THREE.Group` through `tn asset generate <id> --provider

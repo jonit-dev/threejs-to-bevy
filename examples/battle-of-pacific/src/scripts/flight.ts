@@ -36,6 +36,9 @@ export const updatePacificFlight = defineBehavior(
     const control = context.state("pacific-flight-control", {
       activeClip: "",
       enginePlaybackId: "",
+      engineStartAt: -1,
+      engineBand: -1,
+      engineBandChangedAt: 0,
       elapsed: 0,
       flapTransitionUntil: 0,
       flapsDown: false,
@@ -64,14 +67,18 @@ export const updatePacificFlight = defineBehavior(
     const retryRequested = context.input.pressed("retry") || restartFromOverlay;
 
     // The music is session ambience, while the engine follows the aircraft
-    // lifecycle. Keep the radial engine well behind the music and flight cues.
+    // lifecycle. The radial engine is the aircraft's presence and must read
+    // clearly over the music bed without masking flight cues.
     if (!control.musicStarted) {
-      context.audio.play("music.battle", { loop: true, volume: 0.5 });
+      context.audio.play("music.battle", { loop: true, volume: 0.35 });
       control.musicStarted = true;
     }
-    if (control.enginePlaybackId === "" && (!control.prevFailed || retryRequested)) {
-      const engine = context.audio.play("engine.loop", { loop: true, volume: 0.22 });
-      if (engine.accepted) control.enginePlaybackId = engine.playbackId;
+    // The engine spools up rather than snapping on: a start one-shot leads and
+    // the sustained loop fades in ~1s later so the drone "catches" on spawn or
+    // retry instead of appearing at full power.
+    if (control.enginePlaybackId === "" && control.engineStartAt < 0 && (!control.prevFailed || retryRequested)) {
+      context.audio.play("engine.start", { volume: 0.75 });
+      control.engineStartAt = context.time.elapsed;
     }
     if (retryRequested) {
       aircraft.patch("Transform", {
@@ -99,6 +106,49 @@ export const updatePacificFlight = defineBehavior(
       control.throttle = Mathf.clamp(control.throttle - dt * 0.22, 0, 1);
     }
 
+    // Bring the sustained loop in once the spool-up has taken hold, voiced at
+    // the current throttle band.
+    if (control.engineStartAt >= 0 && context.time.elapsed >= control.engineStartAt + 1) {
+      const band = Mathf.clamp(Math.floor(control.throttle / 0.2), 0, 4);
+      const t = (band + 0.5) * 0.2;
+      const engine = context.audio.play("engine.loop", {
+        loop: true,
+        volume: 0.45 + 0.35 * t,
+        pitch: 0.85 + 0.35 * t
+      });
+      if (engine.accepted) {
+        control.enginePlaybackId = engine.playbackId;
+        control.engineBand = band;
+        control.engineBandChangedAt = context.time.elapsed;
+      }
+      control.engineStartAt = -1;
+    }
+    // Throttle-reactive engine: re-voice the loop per throttle band with
+    // hysteresis (cross a band edge by >0.04, no more than once per 0.7s) so the
+    // drone rises and falls with power without chattering at a boundary. The
+    // same recorded loop is reused; only its rate and level change.
+    if (control.enginePlaybackId !== "" && control.engineBand >= 0) {
+      const rawBand = Mathf.clamp(Math.floor(control.throttle / 0.2), 0, 4);
+      let switchTo = -1;
+      if (rawBand > control.engineBand && control.throttle >= (control.engineBand + 1) * 0.2 + 0.04) {
+        switchTo = rawBand;
+      } else if (rawBand < control.engineBand && control.throttle <= control.engineBand * 0.2 - 0.04) {
+        switchTo = rawBand;
+      }
+      if (switchTo >= 0 && context.time.elapsed - control.engineBandChangedAt >= 0.7) {
+        const t = (switchTo + 0.5) * 0.2;
+        context.audio.stop(control.enginePlaybackId);
+        const engine = context.audio.play("engine.loop", {
+          loop: true,
+          volume: 0.45 + 0.35 * t,
+          pitch: 0.85 + 0.35 * t
+        });
+        control.enginePlaybackId = engine.accepted ? engine.playbackId : "";
+        control.engineBand = switchTo;
+        control.engineBandChangedAt = context.time.elapsed;
+      }
+    }
+
     const toggleFlaps = context.input.pressed("flaps")
       || context.events.read("flight:toggle-flaps").length > 0;
     if (toggleFlaps && context.time.elapsed >= control.flapTransitionUntil) {
@@ -113,8 +163,8 @@ export const updatePacificFlight = defineBehavior(
     const yaw = context.input.getAxis("yaw");
     context.physics.aerodynamics.setInputs("aircraft", {
       surfaces: {
-        "aileron.left": 0,
-        "aileron.right": 0,
+        "aileron.left": roll,
+        "aileron.right": -roll,
         elevator: -pitch,
         flaps: control.flapsDown ? 1 : 0
       },
@@ -326,6 +376,9 @@ export const updatePacificFlight = defineBehavior(
     } else if (control.flapsDown) {
       clip = "flight.flaps-down";
       clipSpeed = propSpeed;
+    } else if (Math.abs(roll) > 0.18) {
+      clip = roll > 0 ? "flight.roll-right" : "flight.roll-left";
+      clipSpeed = propSpeed;
     } else if (Math.abs(pitch) > 0.18) {
       clip = pitch > 0 ? "flight.pitch-up" : "flight.pitch-down";
       clipSpeed = propSpeed;
@@ -340,7 +393,6 @@ export const updatePacificFlight = defineBehavior(
       speed: clipSpeed
     });
     control.activeClip = clip;
-
     const position = aircraft.transform().position;
     const velocity = body.velocity ?? [0, 0, -72];
     const speed = Math.hypot(velocity[0], velocity[1], velocity[2]);
@@ -354,8 +406,16 @@ export const updatePacificFlight = defineBehavior(
     if (stall && !control.prevStall) context.audio.play("warning.stall");
     control.prevStall = stall;
     if (failed && control.enginePlaybackId !== "") {
+      // Ditching cuts the running engine and spools it down to silence.
       context.audio.stop(control.enginePlaybackId);
       control.enginePlaybackId = "";
+      context.audio.play("engine.stop", { volume: 0.75 });
+    }
+    if (failed) {
+      // Cancel any spool-up still in flight and reset the throttle banding so
+      // the next retry starts the engine cleanly from scratch.
+      control.engineStartAt = -1;
+      control.engineBand = -1;
     }
     if (failed && !control.prevFailed) context.audio.play("crash.splash");
     control.prevFailed = failed;

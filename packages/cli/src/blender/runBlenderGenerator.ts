@@ -83,6 +83,12 @@ interface IBlenderRecipe {
   animations?: IBlenderRecipeAnimation[];
   budgets: Record<string, unknown>;
   id: string;
+  operations?: Array<{
+    kind: "split-by-axis";
+    negative: string;
+    node: string;
+    positive: string;
+  }>;
   source?: string;
 }
 
@@ -321,6 +327,22 @@ function inspectSourceDiagnostics(recipe: IBlenderRecipe, inspection: IInspectio
   }
   const nodeCounts = new Map<string, number>();
   for (const name of inspection.namedNodes ?? []) nodeCounts.set(name, (nodeCounts.get(name) ?? 0) + 1);
+  for (const operation of recipe.operations ?? []) {
+    if (operation.kind !== "split-by-axis") continue;
+    const matches = nodeCounts.get(operation.node) ?? 0;
+    if (matches !== 1) {
+      diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_OPERATION_NODE_UNRESOLVED", `Source split target '${operation.node}' resolved to ${matches} source nodes; exactly one is required.`, "Use an exact unique mesh node name reported by 'tn asset inspect <source.glb> --json'."));
+      continue;
+    }
+    for (const output of [operation.negative, operation.positive]) {
+      if ((nodeCounts.get(output) ?? 0) > 0) {
+        diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_OPERATION_OUTPUT_COLLISION", `Source split output '${output}' collides with an existing or prior output node.`, "Choose unique output ids for each separated source surface."));
+      }
+    }
+    nodeCounts.delete(operation.node);
+    nodeCounts.set(operation.negative, 1);
+    nodeCounts.set(operation.positive, 1);
+  }
   const clipNames = new Set((inspection.animationClips ?? []).map((clip) => clip.name));
   for (const clip of recipe.animations ?? []) {
     if (clipNames.has(clip.id)) diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_ANIMATION_COLLISION", `Animation clip '${clip.id}' already exists in the source GLB.`, "Rename the new recipe clip so retained source clips remain unambiguous."));

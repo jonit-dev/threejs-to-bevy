@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, createWebResizeLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, requiresWebFixedLoop, uiTargetClassForViewport, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createColliderDebugMaterial, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, createWebResizeLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, requiresWebFixedLoop, uiTargetClassForViewport, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -29,6 +29,15 @@ test("should route dotted legacy overlay names to canonical colon names", () => 
 test("should retain the fixed loop for dynamic physics without authored systems", () => {
   assert.equal(requiresWebFixedLoop({ entities: [{ components: { RigidBody: { kind: "dynamic" } }, id: "car" }], schema: "threenative.world", version: "0.1.0" }), true);
   assert.equal(requiresWebFixedLoop({ entities: [{ components: { RigidBody: { kind: "static" } }, id: "ground" }], schema: "threenative.world", version: "0.1.0" }), false);
+});
+
+test("should keep collider debug wireframes from painting through rendered surfaces", () => {
+  const material = createColliderDebugMaterial();
+
+  assert.equal(material.depthTest, true);
+  assert.equal(material.depthWrite, false);
+  assert.equal(material.transparent, true);
+  assert.equal(material.wireframe, true);
 });
 
 test("should preserve canonical overlay event names when queueing them for scripts", () => {

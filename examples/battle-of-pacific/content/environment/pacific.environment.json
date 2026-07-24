@@ -8,24 +8,28 @@
     "sun": {
       "id": "sun.pacific",
       "color": "#fff1d0",
-      "direction": [-0.48, -0.72, -0.5],
+      "direction": [
+        -0.48,
+        -0.72,
+        -0.5
+      ],
       "intensity": 4.2,
       "castsShadow": true
     },
     "ambient": {
       "color": "#b9cbd5",
-      "intensity": 0.55,
+      "intensity": 0.75,
       "mode": "constant"
     },
     "fog": {
       "enabled": true,
       "mode": "exponential",
-      "color": "#b9c8cf",
+      "color": "#a0afbe",
       "density": 0.00016
     },
     "sky": {
-      "color": "#9db5c2",
-      "horizonColor": "#d5dde0"
+      "color": "#3f78b2",
+      "horizonColor": "#a0afbe"
     },
     "colorManagement": {
       "exposure": 1.12,
@@ -51,8 +55,8 @@
       {
         "id": "pacific-sky",
         "kind": "texture",
-        "format": "png",
-        "path": "assets/imported/polyhaven/pacific-sky/environment.png"
+        "format": "jpeg",
+        "path": "assets/imported/polyhaven/kloofendal-48d-puresky/environment.jpg"
       }
     ]
   },
@@ -65,8 +69,8 @@
       {
         "id": "pacific-sky",
         "kind": "texture",
-        "format": "png",
-        "path": "assets/imported/polyhaven/pacific-sky/environment.png"
+        "format": "jpeg",
+        "path": "assets/imported/polyhaven/kloofendal-48d-puresky/environment.jpg"
       }
     ]
   }

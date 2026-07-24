@@ -10,6 +10,7 @@ import os
 import sys
 import traceback
 
+import bmesh
 import bpy
 from mathutils import Euler, Matrix, Vector
 
@@ -72,6 +73,44 @@ def create_material(row):
     if alpha_mode != "opaque":
         material.surface_render_method = "DITHERED"
     material.use_backface_culling = not bool(row.get("doubleSided", False))
+    return material
+
+
+def override_source_material(row):
+    material = bpy.data.materials.get(row["id"])
+    if material is None:
+        raise ValueError("source material was not found: " + row["id"])
+    node = material.node_tree.nodes.get("Principled BSDF") if material.use_nodes else None
+    if "baseColor" in row:
+        color = tuple(row["baseColor"][:3]) + (
+            float(row["baseColor"][3]) if len(row["baseColor"]) == 4 else 1.0,
+        )
+        material.diffuse_color = color
+        if node is not None:
+            node.inputs["Base Color"].default_value = color
+    if "metallic" in row:
+        material.metallic = float(row["metallic"])
+        if node is not None:
+            socket = node.inputs["Metallic"]
+            for link in list(socket.links):
+                material.node_tree.links.remove(link)
+            socket.default_value = material.metallic
+    if "roughness" in row:
+        material.roughness = float(row["roughness"])
+        if node is not None:
+            socket = node.inputs["Roughness"]
+            for link in list(socket.links):
+                material.node_tree.links.remove(link)
+            socket.default_value = material.roughness
+    if "emissive" in row and node is not None:
+        emissive = tuple(row["emissive"][:3]) + (1.0,)
+        emission_input = node.inputs.get("Emission Color") or node.inputs.get("Emission")
+        if emission_input is not None:
+            emission_input.default_value = emissive
+    if row.get("alphaMode", "opaque") != "opaque":
+        material.surface_render_method = "DITHERED"
+    if "doubleSided" in row:
+        material.use_backface_culling = not bool(row["doubleSided"])
     return material
 
 
@@ -143,6 +182,72 @@ def apply_operations(recipe, objects):
             objects[row["id"]] = selected[0]
         else:
             raise ValueError("unsupported operation: " + str(row["kind"]))
+
+
+def authored_coordinate(coordinate, axis):
+    """Read a Blender-local mesh coordinate in the recipe's authored Y-up space."""
+    if axis == "x":
+        return float(coordinate.x)
+    if axis == "y":
+        return float(coordinate.z)
+    return -float(coordinate.y)
+
+
+def retain_source_split_side(obj, axis, threshold, positive):
+    mesh = obj.data
+    editable = bmesh.new()
+    editable.from_mesh(mesh)
+    removed = [
+        vertex
+        for vertex in editable.verts
+        if (authored_coordinate(vertex.co, axis) > threshold) != positive
+    ]
+    bmesh.ops.delete(editable, geom=removed, context="VERTS")
+    if not editable.verts or not editable.faces:
+        editable.free()
+        raise ValueError("source split produced an empty mesh: " + obj.name)
+    editable.to_mesh(mesh)
+    editable.free()
+    mesh.update()
+
+
+def apply_source_operations(recipe, objects):
+    for row in recipe.get("operations", []):
+        if row["kind"] != "split-by-axis":
+            raise ValueError("unsupported source operation: " + str(row["kind"]))
+        source_name = row["node"]
+        source = objects[source_name]
+        if source.type != "MESH":
+            raise ValueError("source split target is not a mesh: " + source_name)
+        if source.animation_data is not None:
+            raise ValueError("source split target already owns animation data: " + source_name)
+        negative_name = row["negative"]
+        positive_name = row["positive"]
+        if bpy.data.objects.get(negative_name) is not None or bpy.data.objects.get(positive_name) is not None:
+            raise ValueError("source split output name collides with an imported node")
+        axis = row["axis"]
+        threshold = float(row["threshold"])
+        epsilon = 1e-6
+        for polygon in source.data.polygons:
+            coordinates = [authored_coordinate(source.data.vertices[index].co, axis) for index in polygon.vertices]
+            if any(abs(value - threshold) <= epsilon for value in coordinates):
+                raise ValueError("source split threshold intersects a mesh vertex: " + source_name)
+            if min(coordinates) < threshold < max(coordinates):
+                raise ValueError("source split threshold intersects a mesh face: " + source_name)
+
+        positive = source.copy()
+        positive.data = source.data.copy()
+        for collection in source.users_collection:
+            collection.objects.link(positive)
+        source.name = negative_name
+        source.data.name = negative_name + ".mesh"
+        positive.name = positive_name
+        positive.data.name = positive_name + ".mesh"
+        retain_source_split_side(source, axis, threshold, False)
+        retain_source_split_side(positive, axis, threshold, True)
+        del objects[source_name]
+        objects[negative_name] = source
+        objects[positive_name] = positive
 
 
 def relative_transform(data_path, value, baseline):
@@ -217,6 +322,17 @@ def action_fcurves(action):
     return curves
 
 
+def restore_animation_baselines(scene, animated_objects, baselines):
+    """Disable NLA scene evaluation and restore each object's authored pose."""
+    for name, obj in animated_objects.items():
+        if obj.animation_data is not None:
+            obj.animation_data.action = None
+            for track in obj.animation_data.nla_tracks:
+                track.mute = True
+        obj.matrix_basis = baselines[name]["matrix_basis"]
+    scene.frame_set(scene.frame_start)
+
+
 def add_animations(recipe, objects, relative=False):
     scene = bpy.context.scene
     scene.render.fps = 30
@@ -225,6 +341,7 @@ def add_animations(recipe, objects, relative=False):
     baselines = {
         name: {
             "location": obj.location.copy(),
+            "matrix_basis": obj.matrix_basis.copy(),
             "rotation_euler": obj.matrix_basis.to_quaternion(),
             "scale": obj.scale.copy(),
         }
@@ -273,6 +390,13 @@ def add_animations(recipe, objects, relative=False):
         for obj in touched:
             if obj.animation_data is not None:
                 obj.animation_data.use_nla = True
+    # NLA strips are retained so Blender's ACTIONS exporter can associate the
+    # shared clip with every animated object. Mute their scene evaluation and
+    # restore the authored bind pose before export; otherwise overlapping
+    # frame-zero strips bake the first frame of the last clip into the GLB node
+    # transforms (for example, neutral flaps/rudders export deflected).
+    restore_animation_baselines(scene, animated_objects, baselines)
+    bpy.context.view_layer.update()
 
 
 def import_source(source_path):
@@ -304,6 +428,9 @@ def run(job_path):
     materials = {}
     if source_path is not None:
         objects = import_source(source_path)
+        for row in sorted(recipe.get("materials", []), key=lambda item: item["id"]):
+            override_source_material(row)
+        apply_source_operations(recipe, objects)
     else:
         materials = {row["id"]: create_material(row) for row in sorted(recipe.get("materials", []), key=lambda item: item["id"])}
         objects = {}

@@ -674,7 +674,15 @@ test("should accept bounded source GLB animation recipes and reject mixed genera
   const root = await createRegistryProject();
   const sourceRecipe = validBlenderRecipe({
     id: "aircraft",
-    materials: undefined,
+    materials: [{ id: "Paint", metallic: 0, roughness: 0.65 }],
+    operations: [{
+      axis: "x",
+      kind: "split-by-axis",
+      negative: "aileron.left",
+      node: "Ailerons",
+      positive: "aileron.right",
+      threshold: 0,
+    }],
     parts: undefined,
     source: "assets/source/aircraft.glb",
     animations: [{
@@ -710,6 +718,22 @@ test("should accept bounded source GLB animation recipes and reject mixed genera
     });
     assert.equal(mixed.ok, false);
     assert.equal(mixed.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_SOURCE_MODE_INVALID" && item.path === "/parts"), true);
+
+    const unsupportedOperation = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "aircraft.unsupported-operation",
+        output: "assets/generated/aircraft.unsupported-operation.glb",
+        recipe: {
+          ...sourceRecipe,
+          id: "aircraft.unsupported-operation",
+          operations: [{ kind: "join", id: "joined", inputs: ["Ailerons", "Propeller"] }],
+        },
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(unsupportedOperation.ok, false);
+    assert.equal(unsupportedOperation.diagnostics.some((item) => item.code === "TN_AUTHORING_COMPONENT_VALUE_INVALID" && item.path === "/operations/0/kind"), true);
 
     const traversal = await dispatchAuthoringOperation({
       args: {

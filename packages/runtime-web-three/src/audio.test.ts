@@ -176,6 +176,32 @@ test("audio element sink should play bundle local one shots and loops", () => {
   assert.deepEqual(elements.map((element) => element.currentTime), [0, 0]);
 });
 
+test("audio element sink should rate-shift playback when a command carries pitch", () => {
+  const elements: FakeAudioElement[] = [];
+  const sink = createWebAudioElementSink(
+    "/game.bundle",
+    {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "engine.loop", kind: "audio", format: "ogg", path: "assets/engine-loop.ogg" }],
+    },
+    () => {
+      const element = new FakeAudioElement();
+      elements.push(element);
+      return element;
+    },
+  );
+
+  sink.queue({ asset: "engine.loop", id: "engine.loop#1", kind: "loop", pitch: 1.2, volume: 0.75 });
+  sink.queue({ asset: "engine.loop", id: "engine.loop#2", kind: "loop", volume: 0.75 });
+
+  assert.equal(elements[0]?.playbackRate, 1.2);
+  assert.equal(elements[0]?.preservesPitch, false);
+  // A command without pitch leaves the element at its default rate/pitch handling.
+  assert.equal(elements[1]?.playbackRate, 1);
+  assert.equal(elements[1]?.preservesPitch, true);
+});
+
 test("audio element sink should diagnose missing audio assets", () => {
   const sink = createWebAudioElementSink("/game.bundle", {
     schema: "threenative.assets",
@@ -286,11 +312,171 @@ test("should play and stop declared logical audio", () => {
   assert.deepEqual(query, stop);
 });
 
+test("audio element sink should retry autoplay-blocked playback on the first user gesture", async () => {
+  const elements: RejectingAudioElement[] = [];
+  const gestureTarget = new FakeGestureTarget();
+  const sink = createWebAudioElementSink(
+    "/game.bundle",
+    {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "arena.music", kind: "audio", format: "mp3", path: "assets/arena.mp3" }],
+    },
+    () => {
+      const element = new RejectingAudioElement(autoplayPolicyError());
+      elements.push(element);
+      return element;
+    },
+    gestureTarget,
+  );
+
+  sink.queue({ asset: "arena.music", id: "music.arena", kind: "loop", volume: 0.4 });
+  await flushMicrotasks();
+
+  assert.equal(sink.diagnostics[0]?.code, "TN_AUDIO_PLAYBACK_DEFERRED");
+  assert.equal(sink.diagnostics[0]?.severity, "warning");
+  assert.deepEqual([...gestureTarget.listeners.keys()].sort(), ["keydown", "pointerdown"]);
+
+  elements[0]!.rejection = undefined;
+  gestureTarget.fire("keydown");
+  await flushMicrotasks();
+
+  assert.equal(elements[0]?.plays, 2);
+  assert.equal(gestureTarget.listeners.size, 0);
+  assert.equal(sink.diagnostics.length, 1);
+});
+
+test("audio element sink should keep reporting non-autoplay playback rejections", async () => {
+  const gestureTarget = new FakeGestureTarget();
+  const sink = createWebAudioElementSink(
+    "/game.bundle",
+    {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "hit.sound", kind: "audio", format: "wav", path: "assets/hit.wav" }],
+    },
+    () => new RejectingAudioElement(new Error("decode failure")),
+    gestureTarget,
+  );
+
+  sink.queue({ asset: "hit.sound", id: "sound.hit", kind: "oneShot" });
+  await flushMicrotasks();
+
+  assert.equal(sink.diagnostics[0]?.code, "TN_AUDIO_PLAYBACK_REJECTED");
+  assert.equal(gestureTarget.listeners.size, 0);
+});
+
+test("audio element sink should drop pending gesture retries on stop and dispose", async () => {
+  const elements: RejectingAudioElement[] = [];
+  const gestureTarget = new FakeGestureTarget();
+  const audio = {
+    schema: "threenative.audio" as const,
+    version: "0.1.0" as const,
+    music: [{ id: "music.arena", asset: "arena.music", autoplay: false, loop: true }],
+    oneShots: [],
+  };
+  const sink = createWebAudioElementSink(
+    "/game.bundle",
+    {
+      schema: "threenative.assets",
+      version: "0.1.0",
+      assets: [{ id: "arena.music", kind: "audio", format: "mp3", path: "assets/arena.mp3" }],
+    },
+    () => {
+      const element = new RejectingAudioElement(autoplayPolicyError());
+      elements.push(element);
+      return element;
+    },
+    gestureTarget,
+  );
+
+  sink.handleServices([{
+    payload: {
+      request: { options: { loop: true }, soundId: "music.arena" },
+      result: { accepted: true, kind: "loop", loop: true, playbackId: "music.arena#1", soundId: "music.arena", status: "playing" },
+    },
+    service: "audio.play",
+  }], audio);
+  await flushMicrotasks();
+  sink.handleServices([{
+    payload: {
+      request: { playbackId: "music.arena#1" },
+      result: { accepted: true, kind: "loop", loop: true, playbackId: "music.arena#1", soundId: "music.arena", status: "stopped" },
+    },
+    service: "audio.stop",
+  }], audio);
+
+  gestureTarget.fire("pointerdown");
+  await flushMicrotasks();
+  assert.equal(elements[0]?.plays, 1);
+
+  sink.dispose();
+  assert.equal(gestureTarget.listeners.size, 0);
+});
+
+function autoplayPolicyError(): Error {
+  const error = new Error("play() failed because the user didn't interact with the document first.");
+  error.name = "NotAllowedError";
+  return error;
+}
+
+async function flushMicrotasks(): Promise<void> {
+  await Promise.resolve();
+  await Promise.resolve();
+}
+
+class FakeGestureTarget {
+  listeners = new Map<string, Set<() => void>>();
+
+  addEventListener(type: string, listener: () => void): void {
+    const bucket = this.listeners.get(type) ?? new Set<() => void>();
+    bucket.add(listener);
+    this.listeners.set(type, bucket);
+  }
+
+  removeEventListener(type: string, listener: () => void): void {
+    const bucket = this.listeners.get(type);
+    bucket?.delete(listener);
+    if (bucket?.size === 0) this.listeners.delete(type);
+  }
+
+  fire(type: string): void {
+    for (const listener of [...(this.listeners.get(type) ?? [])]) {
+      listener();
+    }
+  }
+}
+
+class RejectingAudioElement implements IWebAudioElement {
+  currentTime = 0;
+  loop = false;
+  plays = 0;
+  pauses = 0;
+  rejection: Error | undefined;
+  src = "";
+  volume = 1;
+
+  constructor(rejection: Error) {
+    this.rejection = rejection;
+  }
+
+  play(): Promise<void> {
+    this.plays += 1;
+    return this.rejection === undefined ? Promise.resolve() : Promise.reject(this.rejection);
+  }
+
+  pause(): void {
+    this.pauses += 1;
+  }
+}
+
 class FakeAudioElement implements IWebAudioElement {
   currentTime = 0;
   loop = false;
   plays = 0;
   pauses = 0;
+  playbackRate = 1;
+  preservesPitch = true;
   src = "";
   volume = 1;
 

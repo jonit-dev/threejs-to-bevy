@@ -7,7 +7,6 @@ import { advanceWebDelayedCommands, createSystemContext, webSystemRuntimeStateFo
 import { applySystemEffects } from "./effects.js";
 import { appendSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./log.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
-import type { IRuntimeWriteObservation } from "@threenative/ir";
 import { enqueuePresentationEffects } from "../presentation.js";
 import type { IThreeWorld } from "../mapWorld.js";
 
@@ -24,7 +23,6 @@ export interface ISystemRunResult {
   entries: ISystemEffectLogEntry[];
   resourceObservations: IResourceObservation[];
   services: import("./contextTypes.js").IQueuedServiceCall[];
-  writeObservations: IRuntimeWriteObservation[];
 }
 
 export async function runSchedule(options: {
@@ -103,7 +101,7 @@ export async function runSchedule(options: {
     options.resourceObservations.push(...resourceObservations);
   }
   diagnostics.push(...runtimeState.writeLedger.diagnostics(options.tick ?? 0));
-  return { commands: [], diagnostics, entries, resourceObservations, services: [], writeObservations: runtimeState.writeLedger.observations() };
+  return { commands: [], diagnostics, entries, resourceObservations, services: [] };
 }
 
 async function runSystem(
@@ -136,7 +134,7 @@ async function runSystem(
   },
 ): Promise<ISystemRunResult> {
   if (system.script === undefined) {
-    return { commands: [], diagnostics: [], entries: [], resourceObservations: [], services: [], writeObservations: [] };
+    return { commands: [], diagnostics: [], entries: [], resourceObservations: [], services: [] };
   }
   const fn = readSystemFunction(options.module, system.script.exportName);
   const resourceObservations: IResourceObservation[] = declaredResourceObservations(system, options);
@@ -190,7 +188,7 @@ async function runSystem(
   if (options.effectLog !== undefined) {
     appendSystemEffectLog(options.effectLog, result.entries);
   }
-  return { commands, diagnostics: [...contextDiagnostics, ...result.diagnostics], entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), services, writeObservations: [] };
+  return { commands, diagnostics: [...contextDiagnostics, ...result.diagnostics], entries: result.entries, resourceObservations: dedupeResourceObservations(resourceObservations), services };
 }
 
 function declaredResourceObservations(system: IIrSystemDeclaration, options: { frame?: number; tick?: number; world: IWorldIr }): IResourceObservation[] {

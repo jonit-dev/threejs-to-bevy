@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "engine-start",
+      "path": "assets/generated/audio/engine-start.ogg",
+      "source": "derived:engine-loop (ffmpeg spool-up ramp)",
+      "type": "audio"
+    }
+  ],
+  "id": "engine-start",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

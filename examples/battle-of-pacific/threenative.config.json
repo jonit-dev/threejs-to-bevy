@@ -119,7 +119,7 @@
       ],
       "assetSourcing": [
         "The user supplied the hero aircraft; its normalized source, bounded recipe, output, and generator provenance are example-local.",
-        "The photographic sky and reflection environment use the repository Poly Haven provider adapter and its CC0 Kloofendal 48d Partly Cloudy (Pure Sky) record."
+        "The photographic sky and reflection environment use Poly Haven's CC0 Kloofendal 48d Partly Cloudy (Pure Sky) record."
       ],
       "proofCommands": [
         "tn iterate --project . --json",

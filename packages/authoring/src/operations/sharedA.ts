@@ -110,6 +110,7 @@ import {
   supportedBlenderRecipeOperations,
   supportedBlenderRecipePrimitives,
   supportedBlenderRecipeShading,
+  supportedBlenderSourceRecipeOperations,
   supportedFlowActionKinds,
   supportedFlowTriggerKinds,
   supportedInputAxisSlots,
@@ -1216,9 +1217,9 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   const sourceMode = data.source !== undefined;
   if (sourceMode) {
     validateBlenderSourcePath(diagnostics, file, "/source", data.source);
-    for (const field of ["materials", "parts", "operations"] as const) {
+    for (const field of ["parts"] as const) {
       if (data[field] !== undefined) {
-        diagnostics.push(blenderRecipeDiagnostic(file, `/${field}`, "TN_AUTHORING_BLENDER_RECIPE_SOURCE_MODE_INVALID", `Source-backed Blender recipes cannot declare '${field}'.`, data[field], ["source", "animations", "budgets"]));
+        diagnostics.push(blenderRecipeDiagnostic(file, `/${field}`, "TN_AUTHORING_BLENDER_RECIPE_SOURCE_MODE_INVALID", `Source-backed Blender recipes cannot declare '${field}'.`, data[field], ["source", "materials", "operations", "animations", "budgets"]));
       }
     }
     if (!Array.isArray(data.animations) || data.animations.length === 0) {
@@ -1238,12 +1239,14 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
       return;
     }
     diagnostics.push(...unknownBlenderKeys(file, path, material, blenderRecipeMaterialKeys));
-    const id = blenderLogicalId(diagnostics, file, `${path}/id`, material.id, "material");
+    const id = sourceMode
+      ? blenderSourceMaterialName(diagnostics, file, `${path}/id`, material.id)
+      : blenderLogicalId(diagnostics, file, `${path}/id`, material.id, "material");
     if (id !== undefined && materialIds.has(id)) {
       diagnostics.push(blenderRecipeDiagnostic(file, `${path}/id`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Blender recipe material id '${id}' must be unique.`, id, ["unique material ids"]));
     }
     if (id !== undefined) materialIds.add(id);
-    validateBlenderColor(diagnostics, file, `${path}/baseColor`, material.baseColor, true);
+    validateBlenderColor(diagnostics, file, `${path}/baseColor`, material.baseColor, !sourceMode);
     validateBlenderUnitNumber(diagnostics, file, `${path}/metallic`, material.metallic, false);
     validateBlenderUnitNumber(diagnostics, file, `${path}/roughness`, material.roughness, false);
     validateBlenderColor(diagnostics, file, `${path}/emissive`, material.emissive, false);
@@ -1290,13 +1293,67 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   if (parts.length > maxParts) diagnostics.push(blenderBudgetDiagnostic(file, "/parts", "parts", parts.length, maxParts));
   if (materials.length > maxMaterials) diagnostics.push(blenderBudgetDiagnostic(file, "/materials", "materials", materials.length, maxMaterials));
 
-  const operationNodes = sourceMode ? undefined : validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
+  const operationNodes = sourceMode
+    ? validateBlenderSourceOperations(diagnostics, file, data.operations, budgets)
+    : validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
   validateBlenderAnimations(diagnostics, file, data.animations, operationNodes, budgets);
   const estimatedPolygons = estimateBlenderRecipePolygons(parts);
   const maxPolygons = blenderRequestedLimit(budgets, "maxPolygons");
   if (estimatedPolygons > maxPolygons) diagnostics.push(blenderBudgetDiagnostic(file, "/budgets/maxPolygons", "estimated polygons", estimatedPolygons, maxPolygons));
   validateBlenderBudgets(diagnostics, file, data.budgets);
   return sortAuthoringDiagnostics(diagnostics);
+}
+
+function validateBlenderSourceOperations(
+  diagnostics: IAuthoringDiagnostic[],
+  file: string,
+  value: unknown,
+  budgets: Record<string, unknown>,
+): undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) {
+    diagnostics.push(typeDiagnostic(file, "/operations", "Source-backed Blender recipe operations must be an array.", value));
+    return undefined;
+  }
+  const maxOperations = blenderRequestedLimit(budgets, "maxOperations");
+  if (value.length > maxOperations) diagnostics.push(blenderBudgetDiagnostic(file, "/operations", "operations", value.length, maxOperations));
+  const outputIds = new Set<string>();
+  value.forEach((operation, index) => {
+    const path = `/operations/${index}`;
+    if (!isRecord(operation)) {
+      diagnostics.push(typeDiagnostic(file, path, "Source-backed Blender recipe operation must be an object.", operation));
+      return;
+    }
+    diagnostics.push(...unknownBlenderKeys(file, path, operation, new Set(["kind", "node", "axis", "threshold", "negative", "positive"])));
+    validateEnumString(
+      diagnostics,
+      file,
+      `${path}/kind`,
+      operation.kind,
+      supportedBlenderSourceRecipeOperations,
+      "Source-backed Blender recipe operation",
+      `Use one of: ${[...supportedBlenderSourceRecipeOperations].join(", ")}.`,
+    );
+    if (typeof operation.node !== "string" || operation.node.length === 0 || operation.node.length > 128 || /[\u0000-\u001f]/u.test(operation.node)) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Source operation node must be an exact non-empty imported node name of at most 128 characters.", operation.node, ["exact imported node name"]));
+    }
+    validateEnumString(diagnostics, file, `${path}/axis`, operation.axis, new Set(["x", "y", "z"]), "source split axis", "Use 'x', 'y', or 'z'.");
+    if (typeof operation.threshold !== "number" || !Number.isFinite(operation.threshold)) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/threshold`, "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID", "Source split threshold must be a finite authored-space number.", operation.threshold, ["finite number"]));
+    }
+    const negative = blenderLogicalId(diagnostics, file, `${path}/negative`, operation.negative, "negative split output");
+    const positive = blenderLogicalId(diagnostics, file, `${path}/positive`, operation.positive, "positive split output");
+    for (const [field, id] of [["negative", negative], ["positive", positive]] as const) {
+      if (id !== undefined && outputIds.has(id)) {
+        diagnostics.push(blenderRecipeDiagnostic(file, `${path}/${field}`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", `Source split output id '${id}' must be unique.`, id, ["unique split output ids"]));
+      }
+      if (id !== undefined) outputIds.add(id);
+    }
+    if (negative !== undefined && negative === positive) {
+      diagnostics.push(blenderRecipeDiagnostic(file, `${path}/positive`, "TN_AUTHORING_BLENDER_RECIPE_ID_DUPLICATE", "Source split outputs must have different ids.", positive, ["distinct split output id"]));
+    }
+  });
+  return undefined;
 }
 
 function validateBlenderModifier(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, earlierPartIds: ReadonlySet<string>, maxSegments: number): void {
@@ -1525,6 +1582,14 @@ function blenderBudgetDiagnostic(file: string, path: string, kind: string, actua
 
 function blenderLogicalId(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown, kind: string): string | undefined {
   if (typeof value !== "string" || value.length > 128 || !logicalIdPattern.test(value)) { diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_ID_INVALID", `Blender recipe ${kind} id must be a lowercase logical id of at most 128 characters.`, value, ["lowercase letters", "numbers", ".", "_", "-", "maximum 128 characters"])); return undefined; }
+  return value;
+}
+
+function blenderSourceMaterialName(diagnostics: IAuthoringDiagnostic[], file: string, path: string, value: unknown): string | undefined {
+  if (typeof value !== "string" || value.length === 0 || value.length > 128 || /[\u0000-\u001f\u007f]/.test(value)) {
+    diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_ID_INVALID", "Source material name must exactly match a non-empty imported material name of at most 128 characters.", value, ["exact imported material name", "maximum 128 characters"]));
+    return undefined;
+  }
   return value;
 }
 

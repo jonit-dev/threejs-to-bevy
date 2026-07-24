@@ -23,6 +23,8 @@ export interface IWebAudioElement {
   src: string;
   currentTime: number;
   volume: number;
+  playbackRate?: number;
+  preservesPitch?: boolean;
   play(): Promise<void> | void;
   pause(): void;
 }
@@ -33,6 +35,11 @@ export interface IWebAudioElementSink extends IWebAudioSink {
   handleServices(services: readonly IQueuedServiceCall[], audio: IAudioIr): void;
   pauseLoops(): void;
   resumeLoops(): void;
+}
+
+export interface IWebAudioGestureTarget {
+  addEventListener(type: string, listener: () => void): void;
+  removeEventListener(type: string, listener: () => void): void;
 }
 
 export interface IWebAudioRuntime {
@@ -192,10 +199,13 @@ function clamp01(value: number): number {
   return Math.min(1, Math.max(0, Number(value.toFixed(6))));
 }
 
+const GESTURE_UNLOCK_EVENTS = ["keydown", "pointerdown"] as const;
+
 export function createWebAudioElementSink(
   source: string,
   assets: IAssetsManifest,
   createElement: () => IWebAudioElement = defaultAudioElement,
+  gestureTarget: IWebAudioGestureTarget | undefined = defaultGestureTarget(),
 ): IWebAudioElementSink {
   const resolvedAssets = resolveWebAssets(source, assets);
   const diagnostics: IRuntimeDiagnostic[] = [];
@@ -203,11 +213,49 @@ export function createWebAudioElementSink(
   const pausedLoops = new Set<string>();
   const playbacks = new Map<string, IWebAudioElement>();
   const elements = new Set<IWebAudioElement>();
+  const pendingGestureRetries = new Map<string, IWebAudioElement>();
+  let gestureListenersArmed = false;
+
+  const detachGestureListeners = () => {
+    if (!gestureListenersArmed || gestureTarget === undefined) return;
+    for (const type of GESTURE_UNLOCK_EVENTS) {
+      gestureTarget.removeEventListener(type, onUnlockGesture);
+    }
+    gestureListenersArmed = false;
+  };
+
+  const onUnlockGesture = () => {
+    detachGestureListeners();
+    const retries = [...pendingGestureRetries];
+    pendingGestureRetries.clear();
+    for (const [id, element] of retries) {
+      playElement(element, id);
+    }
+  };
+
+  const armGestureListeners = () => {
+    if (gestureListenersArmed || gestureTarget === undefined) return;
+    for (const type of GESTURE_UNLOCK_EVENTS) {
+      gestureTarget.addEventListener(type, onUnlockGesture);
+    }
+    gestureListenersArmed = true;
+  };
 
   const playElement = (element: IWebAudioElement, id: string) => {
     const result = element.play();
     if (isPromiseLike(result)) {
       void result.catch((error: unknown) => {
+        if (isAutoplayPolicyRejection(error) && gestureTarget !== undefined) {
+          pendingGestureRetries.set(id, element);
+          armGestureListeners();
+          diagnostics.push({
+            code: "TN_AUDIO_PLAYBACK_DEFERRED",
+            message: `Audio command '${id}' was blocked by the browser autoplay policy; it will start on the first key or pointer gesture.`,
+            path: `audio/${id}`,
+            severity: "warning",
+          });
+          return;
+        }
         diagnostics.push({
           code: "TN_AUDIO_PLAYBACK_REJECTED",
           message: `Audio command '${id}' could not start playback: ${error instanceof Error ? error.message : String(error)}`,
@@ -237,6 +285,12 @@ export function createWebAudioElementSink(
     element.loop = command.kind === "loop";
     element.currentTime = 0;
     element.volume = command.volume ?? 1;
+    if (command.pitch !== undefined) {
+      // Rate-shift the source so pitch tracks the command (e.g. engine RPM);
+      // preservesPitch must be off for the rate change to move the pitch.
+      element.preservesPitch = false;
+      element.playbackRate = command.pitch;
+    }
     if (command.kind === "loop") {
       loops.set(command.id, element);
     }
@@ -246,6 +300,8 @@ export function createWebAudioElementSink(
   return {
     diagnostics,
     dispose() {
+      detachGestureListeners();
+      pendingGestureRetries.clear();
       for (const element of elements) {
         element.pause();
         element.currentTime = 0;
@@ -270,6 +326,7 @@ export function createWebAudioElementSink(
             playbacks.delete(playbackId);
             loops.delete(playbackId);
             pausedLoops.delete(playbackId);
+            pendingGestureRetries.delete(playbackId);
           }
           continue;
         }
@@ -318,6 +375,14 @@ function scriptAudioAsset(audio: IAudioIr, soundId: string): string | undefined 
 
 function defaultAudioElement(): IWebAudioElement {
   return new Audio();
+}
+
+function defaultGestureTarget(): IWebAudioGestureTarget | undefined {
+  return typeof window === "undefined" ? undefined : window;
+}
+
+function isAutoplayPolicyRejection(error: unknown): boolean {
+  return error instanceof Error && error.name === "NotAllowedError";
 }
 
 function isPromiseLike(value: unknown): value is Promise<void> {

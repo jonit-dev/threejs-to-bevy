@@ -73,7 +73,7 @@
       "id": "ocean.visual",
       "components": {
         "OceanWater": {
-          "color": "#042143",
+          "color": "#021d41",
           "size": 24000,
           "sunColor": "#fdf6e3",
           "sunDirection": [

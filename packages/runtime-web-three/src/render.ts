@@ -47,6 +47,7 @@ import { createWebAudioElementSink, createWebAudioRuntime } from "./audio.js";
 import { createWebOverlayHost, type IWebOverlayHost } from "./overlay/host.js";
 import { createFrameTimingTrace, summarizeFrameTimings, type IFrameTimingSummary } from "./performanceMetrics.js";
 import { colorToThree } from "./worldMapping/colors.js";
+import { applyOceanSkyReflection } from "./worldMapping/oceanWater.js";
 import { forgetMeshLodGeometries, meshLodGeometries, traceWebMeshLod, type IWebMeshLodSelection } from "./meshLod.js";
 import { observePhysicsVehicleControllers, observePhysicsVehicles } from "./physicsVehicle.js";
 import { observePhysicsAerodynamics, setPhysicsAerodynamicInputs, type IAerodynamicInputs } from "./physicsAerodynamics.js";
@@ -383,6 +384,11 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   const renderer = new THREE.WebGLRenderer(webRendererParameters(bundle.runtimeConfig, options.captureDrawingBuffer));
   const renderLook = applyWebRenderLookProfile(bundle.runtimeConfig, options.targetProfile ?? "desktop-web");
   applyRendererColorManagement(renderer, bundle.environmentScene?.atmosphere?.colorManagement, renderLook.colorGrading);
+  applyOceanSkyReflection(
+    mapped.scene,
+    mapped.scene.background instanceof THREE.Texture ? mapped.scene.background : null,
+    renderer.toneMappingExposure,
+  );
   applyRendererShadowSettings(renderer, bundle.runtimeConfig, mapped.scene);
   applyRenderLookSceneDefaults(mapped.scene, renderLook);
   const directionalShadowController = shouldUseDirectionalShadowController(
@@ -1103,13 +1109,7 @@ function createColliderDebugOverlay(mapped: IThreeWorld, world: IWorldIr): IColl
   const root = new THREE.Group();
   root.name = "threenative.debug.colliders";
   root.renderOrder = 10_000;
-  const material = new THREE.MeshBasicMaterial({
-    color: 0x00d4ff,
-    depthTest: false,
-    opacity: 0.22,
-    transparent: true,
-    wireframe: true,
-  });
+  const material = createColliderDebugMaterial();
   const items = world.entities.flatMap((entity) => {
     const collider = entity.components.Collider;
     const object = mapped.objectsById.get(entity.id);
@@ -1158,6 +1158,17 @@ function createColliderDebugOverlay(mapped: IThreeWorld, world: IWorldIr): IColl
       }
     },
   };
+}
+
+export function createColliderDebugMaterial(): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({
+    color: 0x00d4ff,
+    depthTest: true,
+    depthWrite: false,
+    opacity: 0.22,
+    transparent: true,
+    wireframe: true,
+  });
 }
 
 function colliderDebugMesh(

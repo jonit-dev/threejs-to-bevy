@@ -45,11 +45,12 @@ export async function startWebPreview(options: {
     server: {
       host: options.host ?? "127.0.0.1",
       middlewareMode: false,
-      ...(options.port === undefined ? {} : { port: options.port }),
+      ...(options.port === undefined || options.port === 0 ? {} : { port: options.port }),
       // An explicitly requested port must never silently drift to a free
       // neighbor: a stale server would keep the requested port while the new
       // one binds elsewhere, so the browser keeps loading the stale build.
-      strictPort: options.port !== undefined,
+      // Port 0 means "any free port" and is exempt.
+      strictPort: options.port !== undefined && options.port !== 0,
     },
   });
   const sockets = new Set<Socket>();
@@ -58,7 +59,12 @@ export async function startWebPreview(options: {
     socket.on("close", () => sockets.delete(socket));
   });
 
-  await server.listen();
+  try {
+    await server.listen();
+  } catch (error) {
+    await server.close();
+    throw error;
+  }
   const url = `http://${options.host ?? "127.0.0.1"}:${getPort(server)}/`;
   return {
     close: async () => {
@@ -189,6 +195,10 @@ export function contentTypeForBundleFile(filePath: string): string {
       return "audio/ogg";
     case ".wav":
       return "audio/wav";
+    case ".mp3":
+      return "audio/mpeg";
+    case ".m4a":
+      return "audio/mp4";
     default:
       return "application/octet-stream";
   }

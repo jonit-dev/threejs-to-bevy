@@ -2,7 +2,7 @@
   "assets": [
     {
       "id": "engine-loop",
-      "path": "assets/generated/audio/engine-loop.mp3",
+      "path": "assets/generated/audio/engine-loop.ogg",
       "source": "generated:elevenlabs",
       "type": "audio"
     }

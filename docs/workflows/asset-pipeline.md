@@ -113,18 +113,26 @@ recipes, GUI/Xvfb, `.blend` import, rigs, and unbounded providerless text-to-3D
 are not supported.
 
 A source-backed recipe may instead name one self-contained project-local GLB
-below `assets/`. In that mode, generated materials, parts, and operations are
-forbidden; animation tracks target exact unique imported node names reported by
-`tn asset inspect`. Position and rotation values are local offsets from the
-imported pose, while scale values multiply the imported scale. A source-backed
-rotation track may also declare a `pivot` in the model's authored Y-up
-coordinates. The runner creates a bounded parent pivot, preserves the target's
-rest pose, and exports the rotation on that parent so detached control surfaces
-hinge around their real edge rather than the model origin. Pivots are rejected
-on generated recipes and non-rotation tracks. Source bytes are included in the
-generator input hash. Missing or ambiguous targets, conflicting pivots,
-external dependencies, clip-name collisions, traversal/symlinks, missing
-emitted clips, and source/output budget violations fail before promotion:
+below `assets/`. In that mode, generated parts remain forbidden. The bounded
+`split-by-axis` operation may separate one imported mesh whose disconnected
+surfaces already lie strictly on opposite sides of an authored-space
+threshold; it emits two uniquely named nodes without adding polygons. Other
+source operations remain forbidden. Animation tracks target exact unique
+imported or split-output node names reported by `tn asset inspect`.
+Optional material rows target exact imported material names and patch bounded
+factors such as `metallic` or `roughness` while preserving unpatched source
+texture maps.
+Position and rotation values are local offsets from the imported pose, while
+scale values multiply the imported scale. A source-backed rotation track may
+also declare a `pivot` in the model's authored Y-up coordinates. The runner
+creates a bounded parent pivot, preserves the target's rest pose, and exports
+the rotation on that parent so detached control surfaces hinge around their
+real edge rather than the model origin. Pivots are rejected on generated
+recipes and non-rotation tracks. Source bytes are included in the generator
+input hash. Missing or ambiguous targets or materials, conflicting pivots,
+split thresholds that intersect a vertex or face, output collisions, external
+dependencies, clip-name collisions, traversal/symlinks, missing emitted clips,
+and source/output budget violations fail before promotion:
 
 ```json
 {

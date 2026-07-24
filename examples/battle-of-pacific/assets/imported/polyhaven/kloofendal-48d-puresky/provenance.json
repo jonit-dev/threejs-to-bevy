@@ -1,0 +1,45 @@
+{
+  "schema": "threenative.asset-provider-provenance",
+  "version": "0.1.0",
+  "provider": "poly-haven",
+  "providerAssetId": "kloofendal_48d_partly_cloudy_puresky",
+  "sourceUrl": "https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky",
+  "apiInfoUrl": "https://api.polyhaven.com/info/kloofendal_48d_partly_cloudy_puresky",
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "authors": [
+    "Greg Zaal",
+    "Jarod Guest"
+  ],
+  "resolution": "1k",
+  "format": "hdr",
+  "retrievedAt": "2026-07-24T00:48:49Z",
+  "files": [
+    {
+      "bytes": 1435119,
+      "md5": "c69498687e876bf68d2a8b8a62234eb9",
+      "path": "kloofendal_48d_partly_cloudy_puresky_1k.hdr",
+      "sha256": "fd94c84997b8a3c353b62c2125a9b44e19509956986a126e472684432a02d798",
+      "url": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloofendal_48d_partly_cloudy_puresky_1k.hdr"
+    }
+  ],
+  "derived": [
+    {
+      "bytes": 624727,
+      "inputs": [
+        "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/kloofendal_48d_partly_cloudy_puresky.jpg"
+      ],
+      "kind": "downsampled-tonemapped-environment-jpeg-ocean-lower-hemisphere",
+      "path": "environment.jpg",
+      "sha256": "4f26e4ab73e7414573345b26b481b9ea9805b18d9f219540455ae21a69da89ce"
+    }
+  ],
+  "processing": {
+    "runtimeResolution": "4096x2048",
+    "runtimeQuality": 92,
+    "sourceBytes": 22162150,
+    "sourceMd5": "3f2b19fa9c14943b34e5d4f480ba13ba",
+    "sourceSha256": "2bdd7abe32f1d2f7a626e0a6e45bb808313f29bd41d758eacbdba91560e93f04",
+    "reason": "4K tonemapped sky; lower hemisphere replaced with ocean-blue gradient (source photo is grassland \u2014 green terrain in the IBL tinted the aircraft metallic paint olive; the game world below the horizon is open ocean)."
+  }
+}

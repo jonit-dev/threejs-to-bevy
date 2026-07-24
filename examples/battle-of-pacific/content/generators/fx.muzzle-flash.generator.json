@@ -1,37 +1,37 @@
 {
   "id": "fx.muzzle-flash",
-  "inputHash": "sha256:c613cbad400f5bbda8e7d4fa15212ab9ef333341879e095b22636b53130e4340",
+  "inputHash": "sha256:be139c52a0602d79eb9a1c8cce02d0c8b5de6f8c7ec7ad525e52a8bbf607b896",
   "lastRun": {
-    "completedAt": "2026-07-24T00:54:23.017Z",
+    "completedAt": "2026-07-24T01:20:30.557Z",
     "diagnostics": [],
     "filesWritten": [
       "assets/generated/fx.muzzle-flash.glb",
       "content/assets/fx.muzzle-flash.assets.json",
       "content/generators/fx.muzzle-flash.generator.json"
     ],
-    "inputHash": "sha256:c613cbad400f5bbda8e7d4fa15212ab9ef333341879e095b22636b53130e4340",
+    "inputHash": "sha256:be139c52a0602d79eb9a1c8cce02d0c8b5de6f8c7ec7ad525e52a8bbf607b896",
     "inspection": {
       "animationClips": [],
       "bounds": {
         "center": [
-          0,
-          0,
-          0.16
+          -0.000318,
+          0.002015,
+          0.185603
         ],
         "max": [
-          0.1025451891471221,
-          0.10254519059216288,
-          0.3100000262328836
+          0.056027340879149026,
+          0.04403243347519867,
+          0.3712061913508016
         ],
         "min": [
-          -0.1025451891471221,
-          -0.10254519129570892,
-          0.009999966614559042
+          -0.056662961726215696,
+          -0.04000186252251507,
+          -8.940697071579962e-9
         ],
         "size": [
-          0.20509,
-          0.20509,
-          0.3
+          0.11269,
+          0.084034,
+          0.371206
         ],
         "source": "accessor-min-max"
       },
@@ -43,32 +43,32 @@
           "recommendedDistance": 1
         },
         "collider": {
-          "height": 0.20509,
-          "radiusForXZ": 0.15
+          "height": 0.084034,
+          "radiusForXZ": 0.185603
         },
         "fitScales": {
-          "targetHeight2m": 9.751816,
-          "targetLength4m": 13.333333,
-          "targetWidth1m": 4.875908
+          "targetHeight2m": 23.799891,
+          "targetLength4m": 10.775688,
+          "targetWidth1m": 8.873902
         },
         "gameplay": {
           "laneWidthMeters": 3.5,
-          "verdict": "ok",
-          "widthToLaneRatio": 0.058597
+          "verdict": "too-small",
+          "widthToLaneRatio": 0.032197
         }
       },
       "code": "TN_ASSET_INSPECT_OK",
       "counts": {
-        "accessors": 17,
+        "accessors": 19,
         "animations": 0,
         "buffers": 1,
         "images": 0,
-        "materials": 2,
+        "materials": 3,
         "meshes": 5,
         "nodes": 5,
         "scenes": 1,
         "textures": 0,
-        "triangles": 78
+        "triangles": 150
       },
       "dependencies": [
         {
@@ -79,127 +79,51 @@
       ],
       "diagnostics": [
         {
+          "code": "TN_ASSET_GAMEPLAY_TOO_SMALL",
+          "message": "Model width is tiny relative to a 3.5m gameplay lane; consider applying the target scale in the calibration report.",
+          "severity": "warning"
+        },
+        {
           "code": "TN_ASSET_MODULAR_PIVOT_OFFSET",
-          "message": "Model footprint center is offset from the entity origin by [0, 0.16] on X/Z; center-based grid placement needs an origin correction.",
+          "message": "Model footprint center is offset from the entity origin by [-0.000318, 0.185603] on X/Z; center-based grid placement needs an origin correction.",
           "severity": "warning"
         }
       ],
       "file": {
-        "byteSize": 7900,
+        "byteSize": 10752,
         "path": "assets/generated/fx.muzzle-flash.glb",
         "type": "glb"
       },
       "gltf": {
-        "assetId": "asset:fx.muzzle-flash.glb.staging-773117-1784854462393-a347582edd7d1",
+        "assetId": "asset:fx.muzzle-flash.glb.staging-869698-1784856030127-8ace398304e29",
         "customAttributes": [],
         "materials": [],
         "morphTargets": [],
         "nodes": [
           {
             "materials": [
-              "material:flash.orange"
+              "material:flash.ember"
             ],
-            "mesh": "mesh:flame-bottom.mesh",
-            "name": "flame-bottom",
-            "path": "/flame-bottom",
+            "mesh": "mesh:ember-tail.mesh",
+            "name": "ember-tail",
+            "path": "/ember-tail",
             "spawnedHandleEligible": true,
             "transform": {
               "rotation": [
-                0.80901700258255,
-                0,
-                0,
-                0.5877852439880371
+                0.7429476380348206,
+                0.009709103032946587,
+                0.06735735386610031,
+                0.6658810973167419
               ],
               "scale": [
-                0.03500000014901161,
-                0.20000000298023224,
-                0.03500000014901161
+                0.014000000432133675,
+                0.08500000089406967,
+                0.012000000104308128
               ],
               "translation": [
-                0,
-                -0.054999999701976776,
-                0.11999999731779099
-              ]
-            }
-          },
-          {
-            "materials": [
-              "material:flash.orange"
-            ],
-            "mesh": "mesh:flame-left.mesh",
-            "name": "flame-left",
-            "path": "/flame-left",
-            "spawnedHandleEligible": true,
-            "transform": {
-              "rotation": [
-                0.6984010934829712,
-                -0.11061587184667587,
-                0.11061587184667587,
-                0.698401153087616
-              ],
-              "scale": [
-                0.03500000014901161,
-                0.20000000298023224,
-                0.03500000014901161
-              ],
-              "translation": [
-                -0.054999999701976776,
-                0,
-                0.11999999731779099
-              ]
-            }
-          },
-          {
-            "materials": [
-              "material:flash.orange"
-            ],
-            "mesh": "mesh:flame-right.mesh",
-            "name": "flame-right",
-            "path": "/flame-right",
-            "spawnedHandleEligible": true,
-            "transform": {
-              "rotation": [
-                0.6984010934829712,
-                0.11061587184667587,
-                -0.11061587184667587,
-                0.698401153087616
-              ],
-              "scale": [
-                0.03500000014901161,
-                0.20000000298023224,
-                0.03500000014901161
-              ],
-              "translation": [
-                0.054999999701976776,
-                0,
-                0.11999999731779099
-              ]
-            }
-          },
-          {
-            "materials": [
-              "material:flash.orange"
-            ],
-            "mesh": "mesh:flame-top.mesh",
-            "name": "flame-top",
-            "path": "/flame-top",
-            "spawnedHandleEligible": true,
-            "transform": {
-              "rotation": [
-                0.5877852439880371,
-                0,
-                0,
-                0.80901700258255
-              ],
-              "scale": [
-                0.03500000014901161,
-                0.20000000298023224,
-                0.03500000014901161
-              ],
-              "translation": [
-                0,
-                0.054999999701976776,
-                0.11999999731779099
+                -0.012000000104308128,
+                -0.019999999552965164,
+                0.04500000178813934
               ]
             }
           },
@@ -212,21 +136,96 @@
             "path": "/hot-core",
             "spawnedHandleEligible": true,
             "transform": {
-              "rotation": [
-                0.7071068286895752,
-                0,
-                0,
-                0.7071068286895752
-              ],
               "scale": [
-                0.054999999701976776,
-                0.30000001192092896,
-                0.054999999701976776
+                0.041999999433755875,
+                0.03400000184774399,
+                0.15000000596046448
               ],
               "translation": [
-                0,
-                0,
-                0.1599999964237213
+                0.006000000052154064,
+                -0.004000000189989805,
+                0.07500000298023224
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:flash.orange"
+            ],
+            "mesh": "mesh:primary-flame.mesh",
+            "name": "primary-flame",
+            "path": "/primary-flame",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.6946433186531067,
+                -0.005631358828395605,
+                -0.03094656579196453,
+                0.7186664342880249
+              ],
+              "scale": [
+                0.046000003814697266,
+                0.3400000035762787,
+                0.03800000622868538
+              ],
+              "translation": [
+                0.00800000037997961,
+                0.006000000052154064,
+                0.20000000298023224
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:flash.orange"
+            ],
+            "mesh": "mesh:side-flame-a.mesh",
+            "name": "side-flame-a",
+            "path": "/side-flame-a",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.6165431141853333,
+                -0.03945779800415039,
+                0.11886511743068695,
+                0.7772957682609558
+              ],
+              "scale": [
+                0.02199999988079071,
+                0.15000000596046448,
+                0.017999999225139618
+              ],
+              "translation": [
+                -0.02800000086426735,
+                0.017999999225139618,
+                0.10499999672174454
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:flash.ember"
+            ],
+            "mesh": "mesh:side-flame-b.mesh",
+            "name": "side-flame-b",
+            "path": "/side-flame-b",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.7801285982131958,
+                0.006512438878417015,
+                -0.16083551943302155,
+                0.6045567989349365
+              ],
+              "scale": [
+                0.01899999938905239,
+                0.12999999523162842,
+                0.01600000075995922
+              ],
+              "translation": [
+                0.03200000151991844,
+                -0.014000000432133675,
+                0.08500000089406967
               ]
             }
           }
@@ -235,16 +234,16 @@
       "materials": [
         {
           "baseColor": [
-            1,
-            0.41999998688697815,
-            0.05999999865889549,
+            0.800000011920929,
+            0.11999999731779099,
+            0.014999999664723873,
             1
           ],
           "baseColorTexture": false,
           "metallic": 0,
           "metallicRoughnessTexture": false,
-          "name": "flash.orange",
-          "roughness": 0.6499999761581421
+          "name": "flash.ember",
+          "roughness": 0.800000011920929
         },
         {
           "baseColor": [
@@ -258,6 +257,19 @@
           "metallicRoughnessTexture": false,
           "name": "flash.white-hot",
           "roughness": 0.20000000298023224
+        },
+        {
+          "baseColor": [
+            1,
+            0.41999998688697815,
+            0.05999999865889549,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "flash.orange",
+          "roughness": 0.6499999761581421
         }
       ],
       "message": "Asset inspection completed.",
@@ -268,65 +280,65 @@
             "z"
           ],
           "center": [
-            0,
-            0.16
+            -0.000318,
+            0.185603
           ],
           "max": [
-            0.1025451891471221,
-            0.3100000262328836
+            0.056027340879149026,
+            0.3712061913508016
           ],
           "min": [
-            -0.1025451891471221,
-            0.009999966614559042
+            -0.056662961726215696,
+            -8.940697071579962e-9
           ],
           "size": [
-            0.20509,
-            0.3
+            0.11269,
+            0.371206
           ]
         },
         "originCorrection": [
-          0,
-          0,
-          -0.16
+          0.000318,
+          -0.002015,
+          -0.185603
         ],
         "pivotOffsetFromFootprintCenter": [
-          0,
-          0.16
+          -0.000318,
+          0.185603
         ],
         "placement": {
           "cardinalYaw": [
             {
               "entityPositionForFootprintCenterAtOrigin": [
-                0,
-                0,
-                -0.16
+                0.000318,
+                -0.002015,
+                -0.185603
               ],
               "yawDegrees": 0,
               "yawRadians": 0
             },
             {
               "entityPositionForFootprintCenterAtOrigin": [
-                -0.16,
-                0,
-                0
+                -0.185603,
+                -0.002015,
+                -0.000318
               ],
               "yawDegrees": 90,
               "yawRadians": 1.570796
             },
             {
               "entityPositionForFootprintCenterAtOrigin": [
-                0,
-                0,
-                0.16
+                -0.000318,
+                -0.002015,
+                0.185603
               ],
               "yawDegrees": 180,
               "yawRadians": 3.141593
             },
             {
               "entityPositionForFootprintCenterAtOrigin": [
-                0.16,
-                0,
-                0
+                0.185603,
+                -0.002015,
+                0.000318
               ],
               "yawDegrees": 270,
               "yawRadians": 4.712389
@@ -335,38 +347,38 @@
         },
         "snap": {
           "gridSize": [
-            0.20509,
-            0.3
+            0.11269,
+            0.371206
           ],
           "halfExtents": [
-            0.102545,
-            0.15
+            0.056345,
+            0.185603
           ],
-          "suggestedCellSize": 0.3
+          "suggestedCellSize": 0.371206
         },
         "y": {
-          "center": 0,
-          "max": 0.10254519059216288,
-          "min": -0.10254519129570892,
-          "size": 0.20509
+          "center": 0.002015,
+          "max": 0.04403243347519867,
+          "min": -0.04000186252251507,
+          "size": 0.084034
         }
       },
       "namedNodes": [
-        "flame-bottom",
-        "flame-left",
-        "flame-right",
-        "flame-top",
-        "hot-core"
+        "ember-tail",
+        "hot-core",
+        "primary-flame",
+        "side-flame-a",
+        "side-flame-b"
       ]
     },
     "ok": true,
-    "outputHash": "sha256:6119b281ed29dba5a74362baba1849f8f2649483e3c5388cdd0294f319f94cac",
+    "outputHash": "sha256:e368a9b1984c323f0bd27b1c9ca398308ad9b23e0de1d4b74e00281064931f66",
     "provider": "blender",
     "providerVersion": "4.5.11",
-    "runnerHash": "sha256:40bf9aeb36922f9368a1f0be19612fe8ce0526fdc2df36c567f23767989166d6",
-    "startedAt": "2026-07-24T00:54:22.393Z"
+    "runnerHash": "sha256:f6404e25d91f9c1168324ecff5d00747c3951465427bdb10039b663d369eceea",
+    "startedAt": "2026-07-24T01:20:30.127Z"
   },
-  "outputHash": "sha256:6119b281ed29dba5a74362baba1849f8f2649483e3c5388cdd0294f319f94cac",
+  "outputHash": "sha256:e368a9b1984c323f0bd27b1c9ca398308ad9b23e0de1d4b74e00281064931f66",
   "outputs": [
     "assets/generated/fx.muzzle-flash.glb"
   ],

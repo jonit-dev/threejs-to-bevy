@@ -241,6 +241,124 @@ print(json.dumps({
   });
 });
 
+test("owned runner restores the bind pose and mutes overlapping NLA strips before export", async () => {
+  const runnerPath = join(import.meta.dirname, "..", "blender", "runner.py");
+  const harness = String.raw`
+import ast, json, sys
+tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "restore_animation_baselines"]
+scope = {}
+exec(compile(ast.Module(body=selected, type_ignores=[]), sys.argv[1], "exec"), scope)
+class Track:
+    def __init__(self):
+        self.mute = False
+class AnimationData:
+    def __init__(self):
+        self.action = "flight.rudder-right"
+        self.nla_tracks = [Track(), Track()]
+class Object:
+    def __init__(self, pose):
+        self.animation_data = AnimationData()
+        self.matrix_basis = pose
+class Scene:
+    frame_start = 0
+    def __init__(self):
+        self.frame = 90
+    def frame_set(self, frame):
+        self.frame = frame
+rudder = Object("deflected-right")
+flaps = Object("deployed")
+scene = Scene()
+scope["restore_animation_baselines"](
+    scene,
+    {"rudder": rudder, "flaps": flaps},
+    {"rudder": {"matrix_basis": "neutral-rudder"}, "flaps": {"matrix_basis": "neutral-flaps"}},
+)
+print(json.dumps({
+    "actions": [rudder.animation_data.action, flaps.animation_data.action],
+    "frame": scene.frame,
+    "muted": [[track.mute for track in obj.animation_data.nla_tracks] for obj in [rudder, flaps]],
+    "poses": [rudder.matrix_basis, flaps.matrix_basis],
+}, sort_keys=True))
+`;
+  const { stdout } = await execFileAsync("python3", ["-c", harness, runnerPath]);
+  assert.deepEqual(JSON.parse(stdout), {
+    actions: [null, null],
+    frame: 0,
+    muted: [[true, true], [true, true]],
+    poses: ["neutral-rudder", "neutral-flaps"],
+  });
+});
+
+test("owned runner applies bounded source material factors without replacing the material", async () => {
+  const runnerPath = join(import.meta.dirname, "..", "blender", "runner.py");
+  const harness = String.raw`
+import ast, json, sys
+tree = ast.parse(open(sys.argv[1], encoding="utf-8").read())
+selected = [node for node in tree.body if isinstance(node, ast.FunctionDef) and node.name == "override_source_material"]
+scope = {}
+exec(compile(ast.Module(body=selected, type_ignores=[]), sys.argv[1], "exec"), scope)
+class Input:
+    def __init__(self, value):
+        self.default_value = value
+        self.links = [object()]
+class Inputs(dict):
+    pass
+class Links:
+    def remove(self, link):
+        for socket in node.inputs.values():
+            if link in socket.links:
+                socket.links.remove(link)
+class Nodes:
+    def __init__(self, node):
+        self.node = node
+    def get(self, name):
+        return self.node if name == "Principled BSDF" else None
+class Material:
+    def __init__(self):
+        self.diffuse_color = [1, 1, 1, 1]
+        self.metallic = 1
+        self.roughness = 1
+        self.use_backface_culling = False
+        self.use_nodes = True
+        global node
+        node = type("Node", (), {
+            "inputs": Inputs({
+                "Base Color": Input([1, 1, 1, 1]),
+                "Metallic": Input(1),
+                "Roughness": Input(1),
+            }),
+        })()
+        self.node_tree = type("Tree", (), {"links": Links(), "nodes": Nodes(node)})()
+material = Material()
+class Materials:
+    def get(self, name):
+        return material if name == "Paint" else None
+scope["bpy"] = type("Bpy", (), {"data": type("Data", (), {"materials": Materials()})()})()
+scope["override_source_material"]({"id": "Paint", "metallic": 0, "roughness": 0.65})
+node = material.node_tree.nodes.get("Principled BSDF")
+print(json.dumps({
+    "color": material.diffuse_color,
+    "metallic": material.metallic,
+    "metallicLinks": len(node.inputs["Metallic"].links),
+    "metallicSocket": node.inputs["Metallic"].default_value,
+    "roughness": material.roughness,
+    "roughnessLinks": len(node.inputs["Roughness"].links),
+    "roughnessSocket": node.inputs["Roughness"].default_value,
+}, sort_keys=True))
+`;
+  const { stdout } = await execFileAsync("python3", ["-c", harness, runnerPath]);
+  assert.deepEqual(JSON.parse(stdout), {
+    color: [1, 1, 1, 1],
+    metallic: 0,
+    metallicLinks: 0,
+    metallicSocket: 0,
+    roughness: 0.65,
+    roughnessLinks: 0,
+    roughnessSocket: 0.65,
+  });
+});
+
 test("generator run invokes hardened Blender and atomically registers sorted animation clips", async () => {
   const root = await createBlenderGeneratorProject();
   const invocations: Array<{ args: readonly string[]; cwd?: string; env?: NodeJS.ProcessEnv; executable: string; timeoutMs: number }> = [];
@@ -284,13 +402,20 @@ test("generator run passes a contained source GLB to Blender and hashes its byte
     const recipe = JSON.parse(await readFile(recipePath, "utf8")) as Record<string, unknown>;
     delete recipe.materials;
     delete recipe.parts;
-    delete recipe.operations;
     recipe.source = "assets/source/aircraft.glb";
+    recipe.operations = [{
+      axis: "x",
+      kind: "split-by-axis",
+      negative: "propeller.left",
+      node: "Propeller",
+      positive: "propeller.right",
+      threshold: 0,
+    }];
     recipe.animations = [{
       id: "propeller.spin",
       duration: 1,
       loop: true,
-      tracks: [{ node: "Propeller", property: "rotation", keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0, 360] }] }],
+      tracks: [{ node: "propeller.left", property: "rotation", keyframes: [{ time: 0, value: [0, 0, 0] }, { time: 1, value: [0, 0, 360] }] }],
     }];
     await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`, "utf8");
     const dependencies = successfulBlenderDependencies([]);
@@ -302,7 +427,7 @@ test("generator run passes a contained source GLB to Blender and hashes its byte
       const job = JSON.parse(await readFile(jobPath, "utf8")) as { outputPath: string; resultPath: string; sourcePath?: string };
       invocations.push({ sourcePath: job.sourcePath });
       await writeFile(job.outputPath, "deterministic-glb", "utf8");
-      await writeFile(job.resultPath, `${JSON.stringify({ animations: ["propeller.spin"], nodes: ["Propeller"], ok: true })}\n`, "utf8");
+      await writeFile(job.resultPath, `${JSON.stringify({ animations: ["propeller.spin"], nodes: ["propeller.left", "propeller.right"], ok: true })}\n`, "utf8");
       return { exitCode: 0, stderr: "", stdout: "THREENATIVE_RESULT", timedOut: false };
     };
 

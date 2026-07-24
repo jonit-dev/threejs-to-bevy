@@ -14,22 +14,24 @@
 - Role: visible equirectangular skybox plus reflection and irradiance
   environment for the aircraft and ocean.
 - Runtime asset:
-  `assets/imported/polyhaven/pacific-sky/environment.png`.
+  `assets/imported/polyhaven/kloofendal-48d-puresky/environment.jpg`.
 - Catalog/provider asset:
   `kloofendal_48d_partly_cloudy_puresky`.
 - Source URL:
   `https://polyhaven.com/a/kloofendal_48d_partly_cloudy_puresky`.
-- Origin: repository Poly Haven snapshot search followed by the bounded live
-  provider import command.
+- Origin: Poly Haven's live public asset record and direct-download endpoint.
 - License: CC0-1.0; redistribution allowed and attribution not required.
 - Authors: Greg Zaal and Jarod Guest.
-- Runtime derivative: 2048 x 1024 PNG sRGB, SHA-256
-  `d4f6157edcd8a343f7e65c686b8c4ade65921c044e62c40f1007e582b6098218`.
-- The provider-imported 8192 x 4096 display image was downsampled to a
-  web-appropriate 2K runtime panorama while the original 1K HDR source and
-  provider provenance remain example-local.
-- Selection rationale: sky-only photographic midday panorama with crisp
-  cumulus clouds, directional sun, and no terrestrial horizon geometry. It is
-  suitable for open-ocean flight and metallic reflection lighting and replaces
-  both the rejected stylized `sky_88_2k` asset and the visually flat overcast
-  ambientCG candidate.
+- Runtime derivative: 2048 x 1024 progressive JPEG sRGB at quality 90,
+  183,095 bytes, SHA-256
+  `2d65a34b4ee3654d7297c5cb0cb1da3bcf8e1cf60f08d49a763a9c13279bfccc`.
+- The provider's direct 8192 x 4096 tonemapped image was downsampled to a
+  web-appropriate 2K runtime panorama. The official 1K HDR source and exact
+  provider metadata remain example-local.
+- Selection rationale: a runtime-camera comparison against the production
+  reference selected this sky-only midday panorama for its distinct bright
+  white cumulus, saturated blue openings, directional sun, and soft neutral
+  horizon. It is visibly closer than the rejected `sunflowers_puresky`
+  candidate, whose cloud canopy rendered gray-green in the gameplay view.
+  The selected panorama gives metallic aircraft and ocean surfaces coherent
+  reflection lighting without terrestrial horizon geometry.

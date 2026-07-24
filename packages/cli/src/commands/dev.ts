@@ -68,28 +68,33 @@ export async function devCommand(
           if (report.status === "pass") liveServer?.reload();
         },
       });
-      const bundlePath = watcher.initialReport.bundlePath;
-      const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath, port: requestedPort }) : undefined;
-      liveServer = server;
-      const url = server === undefined ? undefined : previewUrl(server.url, debugColliders);
-      const payload = {
-        code: "TN_DEV_WATCH_READY",
-        debugColliders,
-        initialReport: watcher.initialReport,
-        message:
-          watcher.initialReport.status === "pass"
-            ? "Watch mode ready. Rebuild diagnostics will be reported after source changes."
-            : "Watch mode ready with build diagnostics. Fix the reported issue and save again.",
-        url,
-        watchedPaths: watcher.watchedPaths,
-      };
+      try {
+        const bundlePath = watcher.initialReport.bundlePath;
+        const server = target === "web" && bundlePath !== undefined ? await startWebPreview({ bundlePath, port: requestedPort }) : undefined;
+        liveServer = server;
+        const url = server === undefined ? undefined : previewUrl(server.url, debugColliders);
+        const payload = {
+          code: "TN_DEV_WATCH_READY",
+          debugColliders,
+          initialReport: watcher.initialReport,
+          message:
+            watcher.initialReport.status === "pass"
+              ? "Watch mode ready. Rebuild diagnostics will be reported after source changes."
+              : "Watch mode ready with build diagnostics. Fix the reported issue and save again.",
+          url,
+          watchedPaths: watcher.watchedPaths,
+        };
 
-      return {
-        exitCode: 0,
-        server,
-        stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
-        watcher,
-      };
+        return {
+          exitCode: 0,
+          server,
+          stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n`,
+          watcher,
+        };
+      } catch (error) {
+        watcher.close();
+        throw error;
+      }
     }
 
     const bundlePath = await ensureProjectBundle(projectPath);

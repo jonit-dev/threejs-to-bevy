@@ -68,6 +68,36 @@ test("should diagnose transform double ownership in one fixed tick", async () =>
   assert.match(conflict.suggestion ?? "", /authoritative owner/);
 });
 
+test("should materialize write observations only when explicitly requested", async () => {
+  const world = makeWorld();
+  const runtimeState = createWebSystemRuntimeState(world, {});
+  const materialize = runtimeState.writeLedger.observations.bind(runtimeState.writeLedger);
+  let materializationCount = 0;
+  runtimeState.writeLedger.observations = () => {
+    materializationCount += 1;
+    return materialize();
+  };
+
+  await runSchedule({
+    module: {
+      systems: {
+        movePlayer(context: any) {
+          context.entity("player")?.transform().setPosition([2, 0, 0]);
+        },
+      },
+    },
+    runtimeState,
+    schedule: "fixedUpdate",
+    systems: makeSystems("fixedUpdate", "movePlayer"),
+    tick: 1,
+    world,
+  });
+
+  assert.equal(materializationCount, 0);
+  assert.equal(runtimeState.writeLedger.observations().some((observation) => observation.system === "movePlayer"), true);
+  assert.equal(materializationCount, 1);
+});
+
 test("should preserve transform scale when a system patches only position", async () => {
   const world: IWorldIr = {
     schema: "threenative.world",
