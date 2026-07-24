@@ -1,9 +1,8 @@
 import {
-  addAnimationClip,
-  addAnimationGraphState,
   addAsset,
   authoringDiagnostic,
   readAuthoringJsonDocument,
+  reconcileGeneratedAssetAnimations,
   validateAuthoringProject,
   writeAuthoringJsonDocument,
   type IAuthoringDiagnostic,
@@ -61,6 +60,7 @@ export interface IBlenderGeneratorRunResult {
 }
 
 interface IBlenderGeneratorDocumentData {
+  animationIds?: string[];
   id: string;
   inputHash?: string;
   lastRun?: Record<string, unknown>;
@@ -83,6 +83,7 @@ interface IBlenderRecipe {
   animations?: IBlenderRecipeAnimation[];
   budgets: Record<string, unknown>;
   id: string;
+  initialAnimation?: string;
   materials?: Array<{ id: string; normalTexture?: string; texture?: string }>;
   operations?: Array<
     | { kind: "decimate"; ratio: number }
@@ -193,6 +194,18 @@ export async function runBlenderGenerator(
   const generatorSnapshot = await snapshot(resolve(projectPath, generatorFile));
   const assetFile = resolve(projectPath, "content/assets", `${generator.id}.assets.json`);
   const assetSnapshot = await snapshot(assetFile);
+  const animations = [...(recipe.animations ?? [])].sort((left, right) => left.id.localeCompare(right.id));
+  const currentAnimationIds = animations.map((animation) => animation.id);
+  const priorOwnedAnimationIds = Array.isArray(generator.animationIds)
+    ? generator.animationIds.filter((value): value is string => typeof value === "string")
+    : legacyGeneratorAnimationIds(assetSnapshot, generator.id);
+  const priorInitialState = readAssetInitialState(assetSnapshot, generator.id);
+  const initialState = recipe.initialAnimation
+    ?? (priorInitialState !== undefined && currentAnimationIds.includes(priorInitialState) ? priorInitialState : undefined)
+    ?? (currentAnimationIds.length === 1 ? currentAnimationIds[0] : undefined);
+  if (currentAnimationIds.length > 1 && initialState === undefined) {
+    return failure(options, [diagnostic(generator.recipe, "TN_BLENDER_INITIAL_ANIMATION_REQUIRED", "A multi-clip Blender recipe must declare initialAnimation or preserve a still-valid prior initial state.", "Set initialAnimation to one declared animation id.")]);
+  }
   const runnerHash = sha256(runnerBytes);
   const sourceHash = sourceBytes === undefined ? "" : sha256(sourceBytes);
   const inputHash = sha256(Buffer.from(`${canonicalJson(recipe)}\0${sourceHash}\0${textureHashes.join(",")}\0${runnerHash}\0${status.version}`, "utf8"));
@@ -246,13 +259,13 @@ export async function runBlenderGenerator(
     await rename(stagingPath, outputAbsolute);
     promoted = true;
     requireOperation(await addAsset({ assetId: generator.id, path: outputRelative, projectPath, source: `generator:${generator.id}`, type: "model" }));
-    const animations = [...(recipe.animations ?? [])].sort((left, right) => left.id.localeCompare(right.id));
-    for (const animation of animations) {
-      requireOperation(await addAnimationClip({ assetId: generator.id, clipId: animation.id, loop: animation.loop, projectPath, sourceClip: animation.id }));
-    }
-    for (const [index, animation] of animations.entries()) {
-      requireOperation(await addAnimationGraphState({ assetId: generator.id, clipId: animation.id, initial: index === 0, projectPath, stateId: animation.id }));
-    }
+    requireOperation(await reconcileGeneratedAssetAnimations({
+      animations: animations.map((animation) => ({ id: animation.id, ...(animation.loop === undefined ? {} : { loop: animation.loop }), sourceClip: animation.id })),
+      assetId: generator.id,
+      ...(initialState === undefined ? {} : { initialState }),
+      priorOwnedIds: priorOwnedAnimationIds,
+      projectPath,
+    }));
     const outputHash = sha256(await readFile(outputAbsolute));
     const completedAt = dependencies.now().toISOString();
     const lastRun = {
@@ -268,7 +281,7 @@ export async function runBlenderGenerator(
       runnerHash,
       startedAt,
     };
-    await writeGeneratorRunProvenance(generatorRead.document, { inputHash, lastRun, outputHash });
+    await writeGeneratorRunProvenance(generatorRead.document, { animationIds: currentAnimationIds, inputHash, lastRun, outputHash });
     await rm(backupPath, { force: true });
     return {
       diagnostics: [], filesWritten: lastRun.filesWritten, generatorId: generator.id, inputHash, inspection,
@@ -321,10 +334,38 @@ function requireOperation(result: IAuthoringOperationResult): void {
   if (!result.ok) throw new Error(result.diagnostics.map((row) => `${row.code}: ${row.message}`).join("; "));
 }
 
-async function writeGeneratorRunProvenance(document: IAuthoringDocument, updates: { inputHash: string; lastRun: Record<string, unknown>; outputHash: string }): Promise<void> {
+async function writeGeneratorRunProvenance(document: IAuthoringDocument, updates: { animationIds: string[]; inputHash: string; lastRun: Record<string, unknown>; outputHash: string }): Promise<void> {
   if (typeof document.data !== "object" || document.data === null || Array.isArray(document.data)) throw new Error("generator provenance document is malformed");
   Object.assign(document.data, updates);
   await writeAuthoringJsonDocument(document);
+}
+
+function legacyGeneratorAnimationIds(snapshot: Uint8Array | undefined, generatorId: string): string[] {
+  const asset = readGeneratedAsset(snapshot, generatorId);
+  if (asset?.source !== `generator:${generatorId}` || !Array.isArray(asset.animations)) return [];
+  return asset.animations.flatMap((row) => isRecord(row) && typeof row.id === "string" ? [row.id] : []);
+}
+
+function readAssetInitialState(snapshot: Uint8Array | undefined, generatorId: string): string | undefined {
+  const asset = readGeneratedAsset(snapshot, generatorId);
+  return isRecord(asset?.animationGraph) && typeof asset.animationGraph.initialState === "string"
+    ? asset.animationGraph.initialState
+    : undefined;
+}
+
+function readGeneratedAsset(snapshot: Uint8Array | undefined, generatorId: string): Record<string, unknown> | undefined {
+  if (snapshot === undefined) return undefined;
+  try {
+    const document = JSON.parse(Buffer.from(snapshot).toString("utf8")) as unknown;
+    if (!isRecord(document) || !Array.isArray(document.assets)) return undefined;
+    return document.assets.find((row) => isRecord(row) && row.id === generatorId) as Record<string, unknown> | undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function failure(options: { generatorId: string; projectPath: string }, diagnostics: IAuthoringDiagnostic[], inputHash?: string, inspection?: IInspectionReport): IBlenderGeneratorRunResult {

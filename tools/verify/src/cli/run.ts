@@ -315,6 +315,21 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Runtime sensor occupancy, transform write conflict diagnostics, resource composition classification, and bounded write-audit artifacts.",
     },
   },
+  "verify:generator-rerun": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/authoring", "build"],
+      ["pnpm", "--filter", "@threenative/cli", "build"],
+      ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+      ["node", "tools/verify/dist/generatorRerunGate.js"],
+    ],
+    description: "Generator provenance and exact animation reconciliation gate.",
+    metadata: {
+      owner: "tools/verify generator-rerun gate",
+      profile: "focused",
+      reason: "Runs a real temporary project through two Blender generator registrations with deterministic local provider doubles.",
+      protects: "Overwrite-policy preservation, stale generated animation removal, authored-row preservation, explicit initial state, and coherent provenance hashes.",
+    },
+  },
   "verify:script-local-modules": {
     commands: [
       ["pnpm", "--filter", "@threenative/compiler", "build"],

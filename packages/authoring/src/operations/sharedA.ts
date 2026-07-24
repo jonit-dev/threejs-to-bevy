@@ -1062,6 +1062,19 @@ export async function validateGeneratorDocument(file: string, data: unknown, pro
     validateImg2ThreejsGeneratorProvenance(diagnostics, file, data);
   }
   validateStringList(diagnostics, file, "/outputs", data.outputs, "generator outputs must be an array of non-empty project-relative paths.");
+  validateStringList(diagnostics, file, "/animationIds", data.animationIds, "generator animationIds must be an array of non-empty animation ids.");
+  if (Array.isArray(data.animationIds) && new Set(data.animationIds).size !== data.animationIds.length) {
+    diagnostics.push(
+      authoringDiagnostic({
+        code: "TN_AUTHORING_GENERATOR_ANIMATION_IDS_DUPLICATE",
+        file,
+        message: "Generator animationIds must not contain duplicates.",
+        path: "/animationIds",
+        value: data.animationIds,
+        suggestion: "Keep each generator-owned animation id exactly once.",
+      }),
+    );
+  }
   if ((provider === "blender" || provider === "img2threejs") && Array.isArray(data.outputs)) {
     data.outputs.forEach((output, index) => validateBlenderOutputPath(diagnostics, file, `/outputs/${index}`, output));
   }
@@ -1307,7 +1320,10 @@ export function validateBlenderRecipe(file: string, data: unknown): IAuthoringDi
   const operationNodes = sourceMode
     ? validateBlenderSourceOperations(diagnostics, file, data.operations, budgets)
     : validateBlenderOperations(diagnostics, file, data.operations, partIds, budgets);
-  validateBlenderAnimations(diagnostics, file, data.animations, operationNodes, budgets);
+  const animationIds = validateBlenderAnimations(diagnostics, file, data.animations, operationNodes, budgets);
+  if (data.initialAnimation !== undefined && (typeof data.initialAnimation !== "string" || !animationIds.has(data.initialAnimation))) {
+    diagnostics.push(blenderRecipeDiagnostic(file, "/initialAnimation", "TN_AUTHORING_BLENDER_RECIPE_INITIAL_ANIMATION_INVALID", "Blender recipe initialAnimation must reference a declared animation clip.", data.initialAnimation, [...animationIds]));
+  }
   const estimatedPolygons = estimateBlenderRecipePolygons(parts);
   const maxPolygons = blenderRequestedLimit(budgets, "maxPolygons");
   if (estimatedPolygons > maxPolygons) diagnostics.push(blenderBudgetDiagnostic(file, "/budgets/maxPolygons", "estimated polygons", estimatedPolygons, maxPolygons));
@@ -1498,11 +1514,11 @@ function estimateBlenderRecipePolygons(parts: unknown[]): number {
   return total;
 }
 
-function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string> | undefined, budgets: Record<string, unknown>): void {
-  if (value === undefined) return;
+function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown, partIds: ReadonlySet<string> | undefined, budgets: Record<string, unknown>): Set<string> {
+  if (value === undefined) return new Set();
   if (!Array.isArray(value)) {
     diagnostics.push(typeDiagnostic(file, "/animations", "Blender recipe animations must be an array.", value));
-    return;
+    return new Set();
   }
   const maxAnimations = blenderRequestedLimit(budgets, "maxAnimations");
   const maxTracks = blenderRequestedLimit(budgets, "maxTracksPerAnimation");
@@ -1563,6 +1579,7 @@ function validateBlenderAnimations(diagnostics: IAuthoringDiagnostic[], file: st
       });
     });
   });
+  return clipIds;
 }
 
 function validateBlenderBudgets(diagnostics: IAuthoringDiagnostic[], file: string, value: unknown): void {

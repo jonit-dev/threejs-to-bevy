@@ -7,21 +7,57 @@ import type { ICommandResult } from "../diagnostics.js";
 export async function assetRepairCommand(argv: readonly string[], cwd = process.env.INIT_CWD ?? process.cwd()): Promise<ICommandResult> {
   const json = argv.includes("--json");
   const source = argv.find((value, index) => index > 0 && !value.startsWith("-") && argv[index - 1] !== "--project");
-  if (source === undefined || !argv.includes("--strip-extensions")) {
-    return render({ code: "TN_ASSET_REPAIR_ARGS_MISSING", message: "Usage: tn asset repair <path.glb|path.gltf> --strip-extensions [--no-backup] [--json]", severity: "error" }, json, 2);
+  const stripExtensions = argv.includes("--strip-extensions");
+  const dedupeNodeNames = argv.includes("--dedupe-node-names");
+  if (source === undefined || (!stripExtensions && !dedupeNodeNames)) {
+    return render({ code: "TN_ASSET_REPAIR_ARGS_MISSING", message: "Usage: tn asset repair <path.glb|path.gltf> (--strip-extensions|--dedupe-node-names) [--no-backup] [--json]", severity: "error" }, json, 2);
   }
   const projectPath = resolve(cwd, readFlag(argv, "--project") ?? ".");
   const assetPath = resolve(projectPath, source);
   try {
     const original = await readFile(assetPath);
     const parsed = extname(assetPath).toLowerCase() === ".glb" ? parseGlb(original) : { document: JSON.parse(original.toString("utf8")) as Record<string, unknown>, suffix: undefined };
-    const stripped = stripUnsupportedMaterialExtensions(parsed.document);
+    const stripped = stripExtensions ? stripUnsupportedMaterialExtensions(parsed.document) : [];
+    const renamedNodes = dedupeNodeNames ? renameDuplicateSiblingNodes(parsed.document) : [];
     if (!argv.includes("--no-backup")) await copyFile(assetPath, `${assetPath}.bak`);
     await writeFile(assetPath, parsed.suffix === undefined ? `${JSON.stringify(parsed.document, null, 2)}\n` : writeGlb(parsed.document, parsed.suffix));
-    return render({ backup: argv.includes("--no-backup") ? undefined : `${assetPath}.bak`, code: "TN_ASSET_REPAIR_OK", message: `Repaired '${source}' and stripped ${stripped.length} unsupported material extension(s).`, path: assetPath, stripped }, json, 0);
+    return render({ backup: argv.includes("--no-backup") ? undefined : `${assetPath}.bak`, code: "TN_ASSET_REPAIR_OK", message: `Repaired '${source}': stripped ${stripped.length} extension(s), renamed ${renamedNodes.length} duplicate node(s).`, path: assetPath, renamedNodes, stripped }, json, 0);
   } catch (error) {
     return render({ code: "TN_ASSET_REPAIR_FAILED", message: `Asset repair failed: ${error instanceof Error ? error.message : String(error)}`, severity: "error" }, json, 1);
   }
+}
+
+function renameDuplicateSiblingNodes(document: Record<string, unknown>): Array<{ from: string; index: number; to: string }> {
+  if (!Array.isArray(document.nodes)) return [];
+  const nodes = document.nodes;
+  const parentByIndex = new Map<number, number>();
+  nodes.forEach((node, parentIndex) => {
+    if (!isRecord(node) || !Array.isArray(node.children)) return;
+    node.children.forEach((child) => {
+      if (typeof child === "number" && Number.isInteger(child)) parentByIndex.set(child, parentIndex);
+    });
+  });
+  const usedByParent = new Map<number, Set<string>>();
+  const renamed: Array<{ from: string; index: number; to: string }> = [];
+  nodes.forEach((node, index) => {
+    if (!isRecord(node) || typeof node.name !== "string" || node.name.trim() === "") return;
+    const parent = parentByIndex.get(index) ?? -1;
+    const used = usedByParent.get(parent) ?? new Set<string>();
+    usedByParent.set(parent, used);
+    const original = node.name;
+    let candidate = original;
+    let suffix = 2;
+    while (used.has(candidate)) {
+      candidate = `${original}.${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    if (candidate !== original) {
+      node.name = candidate;
+      renamed.push({ from: original, index, to: candidate });
+    }
+  });
+  return renamed;
 }
 
 function stripUnsupportedMaterialExtensions(document: Record<string, unknown>): string[] {

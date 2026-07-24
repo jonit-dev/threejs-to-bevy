@@ -118,7 +118,7 @@ export const assetGenerationProviderRegistry = [
     providerVersion: blenderTool.version,
     provenanceOperation: "generator.record_blender",
     runGenerator: async (context) => (await import("../blender/runBlenderGenerator.js")).runBlenderGenerator({ generatorId: context.generatorId, projectPath: context.projectPath }, context.blenderDependencies),
-    usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
+    usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--dry-run] [--project <path>] [--json]",
   },
   {
     assetIdPattern,
@@ -167,7 +167,7 @@ export const assetGenerationProviderRegistry = [
       reviewedCommit: img2ThreejsManifest.reviewedCommit,
       skillVersion: img2ThreejsManifest.skillVersion,
     },
-    usage: "tn asset generate <asset-id> --provider img2threejs --recipe <project-path> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
+    usage: "tn asset generate <asset-id> --provider img2threejs --recipe <project-path> [--out <path>] [--overwrite-policy manual|replace|skip] [--dry-run] [--project <path>] [--json]",
   },
 ] as const satisfies readonly IAssetGenerationProviderDescriptor[];
 

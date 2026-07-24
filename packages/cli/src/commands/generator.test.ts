@@ -391,6 +391,61 @@ test("generator run invokes hardened Blender and atomically registers sorted ani
   }
 });
 
+test("generator rerun exactly reconciles owned animations and preserves authored rows", async () => {
+  const root = await createBlenderGeneratorProject();
+  try {
+    const dependencies = successfulBlenderDependencies([]);
+    const first = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    assert.equal(first.exitCode, 0, first.stdout);
+
+    const assetPath = join(root, "content", "assets", "robot.assets.json");
+    const assetDocument = JSON.parse(await readFile(assetPath, "utf8")) as {
+      assets: Array<{
+        animationGraph: { initialState: string; states: Array<Record<string, unknown>> };
+        animations: Array<Record<string, unknown>>;
+      }>;
+    };
+    assetDocument.assets[0]!.animations.push({
+      id: "authored.inspect",
+      loop: false,
+      provenance: { owner: "author" },
+      sourceClip: "inspect",
+    });
+    assetDocument.assets[0]!.animationGraph.states.push({
+      clip: "authored.inspect",
+      id: "authored.inspect",
+      provenance: { owner: "author" },
+    });
+    await writeFile(assetPath, `${JSON.stringify(assetDocument, null, 2)}\n`);
+
+    const recipePath = join(root, "content", "generators", "robot.recipe.json");
+    const recipe = JSON.parse(await readFile(recipePath, "utf8")) as Record<string, unknown>;
+    recipe.initialAnimation = "dive";
+    recipe.animations = [{
+      id: "dive",
+      duration: 1,
+      loop: false,
+      tracks: [{ node: "body", property: "position", keyframes: [{ time: 0, value: [0, 1, 0] }, { time: 1, value: [0, 0, 0] }] }],
+    }];
+    await writeFile(recipePath, `${JSON.stringify(recipe, null, 2)}\n`);
+
+    dependencies.inspect = async (path) => ({
+      ...validInspection(path),
+      animationClips: [{ channels: 1, name: "dive", samplers: 1 }],
+      counts: { animations: 1, materials: 1, meshes: 2, triangles: 48 },
+    });
+    const second = await generatorCommand(["run", "robot", "--project", root, "--json"], { blenderDependencies: dependencies });
+    const reconciled = JSON.parse(await readFile(assetPath, "utf8")) as typeof assetDocument;
+
+    assert.equal(second.exitCode, 0, second.stdout);
+    assert.deepEqual(reconciled.assets[0]!.animations.map((row) => row.id), ["authored.inspect", "dive"]);
+    assert.deepEqual(reconciled.assets[0]!.animationGraph.states.map((row) => row.id), ["authored.inspect", "dive"]);
+    assert.equal(reconciled.assets[0]!.animationGraph.initialState, "dive");
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("generator run passes a contained source GLB to Blender and hashes its bytes", async () => {
   const root = await createBlenderGeneratorProject();
   const invocations: Array<{ sourcePath?: string }> = [];
@@ -403,6 +458,7 @@ test("generator run passes a contained source GLB to Blender and hashes its byte
     delete recipe.materials;
     delete recipe.parts;
     recipe.source = "assets/source/aircraft.glb";
+    recipe.initialAnimation = "propeller.spin";
     recipe.operations = [{
       axis: "x",
       kind: "split-by-axis",
@@ -728,6 +784,7 @@ async function createBlenderGeneratorProject(): Promise<string> {
   await mkdir(join(root, "content", "generators"), { recursive: true });
   const recipe = {
     schema: "threenative.blender-recipe", version: "0.1.0", id: "robot",
+    initialAnimation: "idle",
     materials: [{ id: "paint", baseColor: [0.1, 0.4, 0.9], metallic: 0.1, roughness: 0.5 }],
     parts: [{ id: "body", primitive: "cube", material: "paint", position: [0, 1, 0], scale: [0.8, 1.2, 0.4] }, { id: "arm", primitive: "cylinder", material: "paint", position: [0.7, 1.5, 0], rotation: [0, 0, 90], scale: [0.2, 0.8, 0.2] }],
     operations: [{ kind: "parent", parent: "body", child: "arm" }],

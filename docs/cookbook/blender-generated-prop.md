@@ -59,6 +59,14 @@ the cross-host recipe set with `pnpm verify:blender-host`. The runtime-aware
 materials and rejects fallback-only white evidence; the turntable remains an
 isolated asset proof rather than a final-scene composition claim.
 
+An omitted `--overwrite-policy` preserves the existing generator provenance
+policy; only an explicit flag changes it. Reruns reconcile the provenance-owned
+animation IDs exactly, remove clips deleted from the recipe, retain separately
+authored rows, and preserve a still-valid prior initial state. Multi-clip
+recipes must otherwise declare `initialAnimation`; they never choose the
+lexicographically first clip. The repository-owned no-download proof is
+`pnpm verify:generator-rerun`.
+
 ## Textured materials
 
 Recipe materials may reference project-local PNG/JPEG textures instead of a
@@ -91,13 +99,16 @@ names:
 ```bash
 tn asset import aircraft.glb --id aircraft.source --license user-provided --project . --json
 tn asset inspect assets/imported/aircraft.source.glb --json
-tn asset generate aircraft.animated --provider blender --recipe '{"schema":"threenative.blender-recipe","version":"0.1.0","id":"aircraft.animated","source":"assets/imported/aircraft.source.glb","animations":[{"id":"propeller.spin","duration":1,"loop":true,"tracks":[{"node":"Propeller","property":"rotation","keyframes":[{"time":0,"value":[0,0,0]},{"time":0.25,"value":[0,0,90]},{"time":0.5,"value":[0,0,180]},{"time":0.75,"value":[0,0,270]},{"time":1,"value":[0,0,360]}]}]}],"budgets":{"maxOutputBytes":50000000,"maxPolygons":200000}}' --overwrite-policy replace --project . --json
+tn asset generate aircraft.animated --provider blender --recipe '{"schema":"threenative.blender-recipe","version":"0.1.0","id":"aircraft.animated","source":"assets/imported/aircraft.source.glb","initialAnimation":"propeller.spin","animations":[{"id":"propeller.spin","duration":1,"loop":true,"tracks":[{"node":"Propeller","property":"rotation","keyframes":[{"time":0,"value":[0,0,0]},{"time":0.25,"value":[0,0,90]},{"time":0.5,"value":[0,0,180]},{"time":0.75,"value":[0,0,270]},{"time":1,"value":[0,0,360]}]}]}],"budgets":{"maxOutputBytes":50000000,"maxPolygons":200000}}' --overwrite-policy replace --project . --json
 tn asset inspect assets/generated/aircraft.animated.glb --json
 tn model-test assets/generated/aircraft.animated.glb --angles 0,90,180,270 --json
 ```
 
 Source-backed tracks use exact unique node names. Position and rotation values
 are local offsets from the imported pose; scale values multiply imported scale.
+If inspection reports a duplicate spawned-handle path, run `tn asset repair
+<path> --dedupe-node-names --json` before generation. The repair renames only
+duplicate siblings and preserves node indices and animation channel targets.
 An optional `materials` array patches named imported materials without
 replacing the material or its unpatched texture maps. Use it for bounded source corrections such as
 `{"id":"Paint","metallic":0,"roughness":0.65}` when inspection shows that an

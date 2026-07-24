@@ -38,6 +38,8 @@ import { animationCommand, audioCommand, distributionCommand, environmentCommand
 import { validateProject } from "./commands/validate.js";
 import { recordCommand, screenshotCommand } from "./commands/visualProof.js";
 import { verifyCommand } from "./commands/verify.js";
+
+export { runBlenderGenerator } from "./blender/runBlenderGenerator.js";
 import { typesCommand } from "./commands/types.js";
 import { toolCommand } from "./commands/tool.js";
 import { worldCommand } from "./commands/world.js";

@@ -67,7 +67,7 @@ publishes or rolls back without changing unrelated author edits.
 
 - [x] Omitted flag preserves existing policy; first run uses documented default.
 - [x] Explicit flag is the only way to change policy.
-- [ ] Dry run reports the resolved policy and owner.
+- [x] Dry run reports the resolved policy and owner.
 - [x] Failed generation leaves provenance and outputs byte-identical.
 
 ### Phase 2: Exact animation reconciliation
@@ -82,13 +82,13 @@ publishes or rolls back without changing unrelated author edits.
 
 **Implementation:**
 
-- [ ] Tag/derive generator-owned animation rows from provenance; do not infer
+- [x] Tag/derive generator-owned animation rows from provenance; do not infer
   ownership from clip names alone.
-- [ ] Add/update/delete those rows to exactly match current output.
-- [ ] Preserve user-owned animations and unrelated asset entries.
-- [ ] Require an explicit recipe initial state or preserve a still-valid prior
+- [x] Add/update/delete those rows to exactly match current output.
+- [x] Preserve user-owned animations and unrelated asset entries.
+- [x] Require an explicit recipe initial state or preserve a still-valid prior
   state; otherwise fail with a choice, never lexicographically guess.
-- [ ] Publish GLB, asset doc, and provenance atomically.
+- [x] Publish GLB, asset doc, and provenance atomically.
 
 ### Phase 3: Duplicate-path diagnosis at the first boundary
 
@@ -102,10 +102,10 @@ publishes or rolls back without changing unrelated author edits.
 
 **Implementation:**
 
-- [ ] Choose one policy: deterministic normalization with stable mapping, or
+- [x] Choose one policy: deterministic normalization with stable mapping, or
   fail before registration. Document why it preserves animation/node targeting.
-- [ ] Include conflicting paths/nodes and a bounded import/recipe repair.
-- [ ] Ensure inspect and model-test agree exactly.
+- [x] Include conflicting paths/nodes and a bounded import/recipe repair.
+- [x] Ensure inspect and model-test agree exactly.
 
 ### Phase 4: Workflow/status closure
 
@@ -122,12 +122,12 @@ publishes or rolls back without changing unrelated author edits.
 Automated `prd-work-reviewer` after each phase; manual inspection of the
 regenerated Pacific aircraft is additional after Phase 2.
 
-- [ ] Omitted overwrite policy never changes existing provenance.
-- [ ] Removed generated clips disappear; authored clips remain.
-- [ ] Initial state is explicit or stably preserved.
-- [ ] Failure rolls back GLB, docs, and provenance together.
-- [ ] Duplicate paths are handled before model-test with one canonical policy.
-- [ ] Focused tests, generator rerun gate, cookbook, and docs checks pass.
+- [x] Omitted overwrite policy never changes existing provenance.
+- [x] Removed generated clips disappear; authored clips remain.
+- [x] Initial state is explicit or stably preserved.
+- [x] Failure rolls back GLB, docs, and provenance together.
+- [x] Duplicate paths are handled before model-test with one canonical policy.
+- [x] Focused tests, generator rerun gate, cookbook, and docs checks pass.
 
 ## Verification evidence
 
@@ -141,3 +141,36 @@ Append repeat-run hashes, diffs, commands, and artifact paths during execution.
 - The complete authoring suite passes 152 tests and the focused asset command
   suite passes 44 tests. The asset failure regression preserves prior recipe
   and `replace` provenance bytes when generation cannot start.
+
+### Phase 2
+
+- Generator provenance now records the exact owned animation IDs. A rerun
+  reconciles only those rows, preserving separately authored rows and removing
+  stale generated rows.
+- The retained rerun regression changes generated clips from `idle` and `wave`
+  to `dive`, preserves `authored.inspect`, and selects the recipe-declared
+  `dive` initial state.
+- A valid prior initial state is preserved when still present. A multi-clip
+  output without an explicit or still-valid initial state fails with
+  `TN_BLENDER_INITIAL_ANIMATION_REQUIRED`.
+- The authoring transaction publishes the GLB, asset document, and provenance
+  as one rollback boundary.
+
+### Phase 3
+
+- `tn asset inspect` and `tn model-test` both consume the canonical glTF scene
+  metadata validator and reject duplicate spawned node paths at inspection.
+- The diagnostic points to
+  `tn asset repair <path> --dedupe-node-names --json`. Repair deterministically
+  suffixes duplicate sibling names while preserving node indices and animation
+  channel targets; re-inspection then passes.
+
+### Phase 4
+
+- `pnpm verify:generator-rerun` passes against a real temporary project and
+  writes
+  `tools/verify/artifacts/generator-rerun/verification-report.json`.
+- The focused CLI suites pass 89 tests; the complete authoring suite passes
+  153 tests, including malformed generator-owned animation provenance.
+- `pnpm verify:conformance`, `pnpm verify:cookbook`, and `pnpm check:docs`
+  pass on the completed implementation.

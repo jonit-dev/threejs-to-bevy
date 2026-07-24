@@ -495,6 +495,37 @@ export async function addAnimationGraphState(options: IAddAnimationGraphStateOpt
   });
 }
 
+export interface IReconcileGeneratedAssetAnimationsOptions {
+  animations: Array<{ id: string; loop?: boolean; sourceClip: string }>;
+  assetId: string;
+  initialState?: string;
+  priorOwnedIds: readonly string[];
+  projectPath: string;
+}
+
+export async function reconcileGeneratedAssetAnimations(
+  options: IReconcileGeneratedAssetAnimationsOptions,
+): Promise<IAuthoringOperationResult> {
+  return mutateAsset(options.projectPath, options.assetId, (asset) => {
+    const priorOwned = new Set(options.priorOwnedIds);
+    const existingAnimations = Array.isArray(asset.animations) ? asset.animations.filter(isRecord) : [];
+    const preservedAnimations = existingAnimations.filter((row) => typeof row.id !== "string" || !priorOwned.has(row.id));
+    const generatedAnimations = [...options.animations]
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((row) => ({ id: row.id, ...(row.loop === undefined ? {} : { loop: row.loop }), sourceClip: row.sourceClip }));
+    asset.animations = [...preservedAnimations, ...generatedAnimations];
+
+    const existingGraph = isRecord(asset.animationGraph) ? asset.animationGraph : {};
+    const existingStates = Array.isArray(existingGraph.states) ? existingGraph.states.filter(isRecord) : [];
+    const preservedStates = existingStates.filter((row) => typeof row.id !== "string" || !priorOwned.has(row.id));
+    asset.animationGraph = {
+      ...existingGraph,
+      ...(options.initialState === undefined ? {} : { initialState: options.initialState }),
+      states: [...preservedStates, ...generatedAnimations.map((row) => ({ clip: row.id, id: row.id }))],
+    };
+  });
+}
+
 export async function addParticleEmitter(options: IAddParticleEmitterOptions): Promise<IAuthoringOperationResult> {
   return mutateAsset(options.projectPath, options.assetId, (asset) => {
     const particleEmitters = ensureArrayProperty(asset, "particleEmitters");

@@ -331,6 +331,7 @@ export {
   addAsset,
   addAnimationClip,
   addAnimationGraphState,
+  reconcileGeneratedAssetAnimations,
   addAudioSound,
   addGroup,
   addPrefab,

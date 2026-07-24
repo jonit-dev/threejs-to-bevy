@@ -23,6 +23,12 @@ Current support:
   `textureScale`); texture bytes participate in the rerun input hash and CC0
   sets are sourced through the curated asset catalog. Raw Python,
   remote recipe inputs, and unbounded operations are rejected.
+- Blender reruns preserve an existing overwrite policy unless a flag explicitly
+  changes it. Generator provenance owns the accepted output hash and exact
+  generated animation ID set: reruns add/update/delete those rows while
+  retaining separately authored animations. Multi-clip recipes declare
+  `initialAnimation` or preserve a still-valid prior state; no lexical fallback
+  is used. GLB, asset metadata, and provenance restore together on failure.
 - The same Blender recipe owner supports animation-only re-export of one
   self-contained project-local source GLB. Tracks use exact unique imported
   node names and local transform offsets; source rotation tracks may declare an
@@ -91,6 +97,11 @@ Current support:
   license metadata expected beside committed assets.
 - Asset inspection, model tests, bundle-local path validation, and production
   evidence gates.
+- `tn asset inspect` validates canonical spawned-handle paths before
+  registration and before `model-test`. Duplicate sibling names fail with the
+  conflicting paths and `tn asset repair <path> --dedupe-node-names --json`,
+  which deterministically renames nodes without changing indices or animation
+  targets.
 
 GLB/glTF visual inspection is available through the web preview workflow:
 
@@ -147,6 +158,7 @@ Verification:
   record, two reruns, inspect, four-angle model-test, validate, and build)
 - `pnpm verify:blender-package` (packs the CLI and rejects Blender archives,
   executables, and cache paths while requiring the owned runner)
+- `pnpm verify:generator-rerun`
 
 Promotion boundary: Linux x64 has a real pinned-install and checked host smoke
 for three bounded generated props plus project-local source-GLB animation

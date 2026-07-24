@@ -3,7 +3,7 @@ import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path
 
 import { addAsset, dispatchAuthoringOperation, recordBlenderGenerator, resolveGeneratorOverwritePolicy, type IAuthoringOperationResult } from "@threenative/authoring";
 import { extractGltfAssetMetadata } from "@threenative/compiler";
-import type { IGltfSceneAssetIr } from "@threenative/ir";
+import { validateGltfSceneMetadata, type IGltfSceneAssetIr } from "@threenative/ir";
 
 import { importPolyHavenAsset, listPolyHavenCategories, polyHavenStatus, searchPolyHaven, type IPolyHavenDependencies, type PolyHavenAssetType } from "../assetProviders/polyHaven.js";
 import { assetProviderRegistry, findAssetProvider, renderAssetProviderHelp } from "../assetProviders/registry.js";
@@ -299,6 +299,25 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
         code: "TN_ASSET_GENERATE_MANUAL_ASSET_CONFLICT",
         message: `Asset '${assetId}' is already declared in '${assetConflict}'. Local generation cannot take ownership of an existing declaration.`,
       }, { exitCode: 1, json, stderr: !json });
+    }
+    if (normalizedArgv.includes("--dry-run")) {
+      const payload = {
+        changed: false,
+        code: "TN_ASSET_GENERATE_DRY_RUN_OK",
+        generatorId: assetId,
+        message: `Asset generator '${assetId}' dry run resolved without writing source or invoking '${providerDescriptor.id}'.`,
+        output,
+        overwritePolicy: overwritePolicyResolution,
+        projectPath,
+        provider: providerDescriptor.id,
+        recipe: recipeInput,
+      };
+      return {
+        exitCode: 0,
+        stdout: json
+          ? `${JSON.stringify(payload, null, 2)}\n`
+          : `${payload.message}\nResolved overwrite policy: ${payload.overwritePolicy.policy} (${payload.overwritePolicy.owner})\n`,
+      };
     }
     const provenancePath = resolve(projectPath, "content/generators", `${assetId}.generator.json`);
     if (providerDescriptor.id === "img2threejs") {
@@ -906,6 +925,19 @@ export async function inspectAsset(assetPath: string): Promise<InspectReport> {
   const modular = bounds === undefined ? undefined : computeModularPlacement(bounds, diagnostics, computeRoadConnectors(gltf, binaryChunk, bounds));
   const gltfMetadata = extractGltfAssetMetadata(assetIdForInspect(assetPath), gltf as Parameters<typeof extractGltfAssetMetadata>[1]);
   diagnostics.push(...gltfMetadataDiagnostics(gltfMetadata));
+  diagnostics.push(...validateGltfSceneMetadata({
+    assets: [gltfMetadata],
+    schema: "threenative.gltf-scene",
+    version: "0.1.0",
+  }).map((row) => ({
+    code: row.code,
+    ...(row.code === "TN_IR_GLTF_SCENE_HANDLE_PATH_DUPLICATE"
+      ? { fix: { instruction: "Deterministically rename duplicate sibling nodes without changing node indices or animation targets.", snippet: `tn asset repair ${assetPath} --dedupe-node-names --json` } }
+      : {}),
+    message: row.message,
+    path: row.path,
+    severity: row.severity ?? "error",
+  })));
 
   const report: InspectReport = {
     animationClips: (gltf.animations ?? []).map((animation, index) => ({

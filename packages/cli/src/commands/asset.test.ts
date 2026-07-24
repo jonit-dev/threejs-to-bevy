@@ -48,7 +48,7 @@ test("should reject unknown local generation providers and reach img2threejs rec
 test("should preserve Blender generation behavior after registry extraction", () => {
   assert.deepEqual(ASSET_GENERATE_BLENDER_DESCRIPTOR, {
     assetIdPattern: "^[a-z][a-z0-9._-]*$",
-    usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--project <path>] [--json]",
+    usage: "tn asset generate <asset-id> --provider blender --recipe <path-or-json> [--out <path>] [--overwrite-policy manual|replace|skip] [--dry-run] [--project <path>] [--json]",
     mcp: {
       argv: {
         arguments: [
@@ -259,6 +259,43 @@ test("should inspect triangle counts named nodes and animation clips for generat
     assert.equal(payload.counts.triangles, 2);
   } finally {
     restoreInitCwd(previousInitCwd);
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should reject duplicate spawned node paths during inspect with the canonical repair command", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-duplicate-path-"));
+  try {
+    const assetPath = join(root, "duplicate.gltf");
+    await writeFile(assetPath, `${JSON.stringify({
+      asset: { version: "2.0" },
+      nodes: [
+        { children: [1, 2], name: "Root" },
+        { name: "Door" },
+        { name: "Door" },
+      ],
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+    })}\n`);
+    const result = await assetCommand(["inspect", assetPath, "--json"]);
+    const payload = JSON.parse(result.stdout) as {
+      code: string;
+      diagnostics: Array<{ code: string; fix?: { snippet?: string }; message: string }>;
+    };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_ASSET_INSPECT_FAILED");
+    const duplicate = payload.diagnostics.find((row) => row.code === "TN_IR_GLTF_SCENE_HANDLE_PATH_DUPLICATE");
+    assert.match(duplicate?.message ?? "", /Root\/Door/);
+    assert.match(duplicate?.fix?.snippet ?? "", /tn asset repair .*--dedupe-node-names/);
+
+    const repair = await assetCommand(["repair", assetPath, "--dedupe-node-names", "--no-backup", "--json"]);
+    const repairedInspection = await assetCommand(["inspect", assetPath, "--json"]);
+    const repairedDocument = JSON.parse(await readFile(assetPath, "utf8")) as { nodes: Array<{ name: string }> };
+    assert.equal(repair.exitCode, 0, repair.stdout);
+    assert.equal(repairedInspection.exitCode, 0, repairedInspection.stdout);
+    assert.deepEqual(repairedDocument.nodes.map((node) => node.name), ["Root", "Door", "Door.2"]);
+  } finally {
     await rm(root, { force: true, recursive: true });
   }
 });
@@ -623,6 +660,28 @@ test("should roll back Blender recipe and provenance when asset generation fails
     assert.equal(payload.diagnostics[0]?.fix?.snippet, "tn tool install blender --accept-download --json");
     assert.equal(await readFile(join(root, "content/generators/crate.generator.json"), "utf8"), priorProvenance);
     assert.equal(await readFile(join(root, "content/generators/crate.recipe.json"), "utf8"), priorRecipe);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should dry-run asset generation with resolved existing policy and no writes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-asset-generate-dry-run-"));
+  try {
+    await mkdir(join(root, "content/generators"), { recursive: true });
+    const provenancePath = join(root, "content/generators/crate.generator.json");
+    const provenance = `${JSON.stringify({ id: "crate", overwritePolicy: "replace" })}\n`;
+    await writeFile(provenancePath, provenance);
+    const recipe = { budgets: { maxOutputBytes: 10_000, maxPolygons: 100 }, id: "crate", parts: [{ id: "body", primitive: "cube" }], schema: "threenative.blender-recipe", version: "0.1.0" };
+
+    const result = await assetCommand(["generate", "crate", "--provider", "blender", "--recipe", JSON.stringify(recipe), "--dry-run", "--project", root, "--json"]);
+    const payload = JSON.parse(result.stdout) as { changed: boolean; code: string; overwritePolicy: { owner: string; policy: string } };
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(payload.code, "TN_ASSET_GENERATE_DRY_RUN_OK");
+    assert.equal(payload.changed, false);
+    assert.deepEqual(payload.overwritePolicy, { owner: "existing-provenance", policy: "replace" });
+    assert.equal(await readFile(provenancePath, "utf8"), provenance);
   } finally {
     await rm(root, { force: true, recursive: true });
   }

@@ -36,6 +36,27 @@ const validFixtureGltf = {
   scenes: [{ nodes: [0] }],
 };
 
+test("model-test should fail at the same duplicate node-path boundary as asset inspect", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-model-test-duplicate-path-"));
+  try {
+    const assetPath = join(root, "duplicate.gltf");
+    await writeFile(assetPath, `${JSON.stringify({
+      asset: { version: "2.0" },
+      nodes: [{ children: [1, 2], name: "Root" }, { name: "Door" }, { name: "Door" }],
+      scene: 0,
+      scenes: [{ nodes: [0] }],
+    })}\n`);
+    const result = await modelTestCommand([assetPath, "--out", "proof", "--json"], root);
+    const payload = JSON.parse(result.stdout) as { code: string; message: string };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.code, "TN_MODEL_TEST_FAILED");
+    assert.match(payload.message, /Root\/Door/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("model-test should generate a one-model proof project", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-model-test-"));
   try {

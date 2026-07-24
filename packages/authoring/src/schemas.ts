@@ -47,8 +47,8 @@ export const sequenceDocumentKeys = new Set(["schema", "version", "id", "duratio
 export const prefabDocumentKeys = new Set(["schema", "version", "id", "entities", "provenance"]);
 export const audioDocumentKeys = new Set(["schema", "version", "id", "sounds", "provenance"]);
 export const meshDocumentKeys = new Set(["schema", "version", "id", "meshes", "provenance"]);
-export const generatorDocumentKeys = new Set(["schema", "version", "id", "provider", "providerVersion", "module", "export", "recipe", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "provenance", "sourceImage", "sculptSpec", "upstream", "sourceHashes", "acceptedPasses", "budgets"]);
-export const blenderRecipeKeys = new Set(["schema", "version", "id", "source", "materials", "parts", "operations", "animations", "budgets"]);
+export const generatorDocumentKeys = new Set(["schema", "version", "id", "provider", "providerVersion", "module", "export", "recipe", "outputs", "overwritePolicy", "inputHash", "outputHash", "lastRun", "animationIds", "provenance", "sourceImage", "sculptSpec", "upstream", "sourceHashes", "acceptedPasses", "budgets"]);
+export const blenderRecipeKeys = new Set(["schema", "version", "id", "source", "materials", "parts", "operations", "animations", "initialAnimation", "budgets"]);
 export const blenderRecipeMaterialKeys = new Set(["id", "baseColor", "metallic", "roughness", "emissive", "alphaMode", "doubleSided", "texture", "normalTexture", "textureScale"]);
 export const blenderRecipePartKeys = new Set(["id", "primitive", "material", "position", "rotation", "scale", "segments", "rings", "shading", "modifiers"]);
 export const blenderRecipeModifierKeys = new Set(["kind", "width", "segments", "axis", "count", "offset", "target", "operation", "thickness"]);
@@ -209,6 +209,7 @@ export interface IBlenderRecipe {
   parts: unknown[];
   operations?: unknown[];
   animations?: unknown[];
+  initialAnimation?: string;
   budgets: Record<string, unknown>;
 }
 
@@ -231,6 +232,7 @@ export interface IBlenderGeneratorProvenance {
   providerVersion: string;
   recipe: string;
   outputs: string[];
+  animationIds?: string[];
   overwritePolicy?: "manual" | "replace" | "skip";
 }
 
