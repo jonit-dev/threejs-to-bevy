@@ -70,7 +70,7 @@ test("should diagnose transform double ownership in one fixed tick", async () =>
 
 test("should materialize write observations only when explicitly requested", async () => {
   const world = makeWorld();
-  const runtimeState = createWebSystemRuntimeState(world, {});
+  const runtimeState = createWebSystemRuntimeState(world, { auditWrites: true });
   const materialize = runtimeState.writeLedger.observations.bind(runtimeState.writeLedger);
   let materializationCount = 0;
   runtimeState.writeLedger.observations = () => {

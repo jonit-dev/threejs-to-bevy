@@ -82,7 +82,7 @@ export {
   type ISystemContext,
 } from "./systems/context.js";
 export { applySystemEffects, validateSystemEffects, type ISystemEffects } from "./systems/effects.js";
-export { createRuntimeWriteLedger, type IRuntimeWriteLedger, type IRuntimeWriteRecordInput } from "./systems/writeAudit.js";
+export { createRuntimeWriteLedger, type IRuntimeWriteLedger, type IRuntimeWriteLedgerOptions, type IRuntimeWriteRecordInput } from "./systems/writeAudit.js";
 export { createSystemEffectLog, serializeSystemEffectLog, stableSystemEffectLog, type ISystemEffectLog, type ISystemEffectLogEntry } from "./systems/log.js";
 export {
   createWebPersistenceService,

@@ -9,7 +9,12 @@ import { tmpdir } from "node:os";
 
 import { NativeHeadlessUnsupportedError } from "../native/bevy.js";
 
-import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeAnimationEffectLogEntries, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, resourceObservationDiagnostics } from "./playtest.js";
+import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeAnimationEffectLogEntries, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, playtestPreviewUrl, resourceObservationDiagnostics } from "./playtest.js";
+
+test("web playtest enables detailed runtime write capture only when requested", () => {
+  assert.equal(playtestPreviewUrl("http://127.0.0.1:5173", false, false), "http://127.0.0.1:5173/");
+  assert.equal(playtestPreviewUrl("http://127.0.0.1:5173", false, true), "http://127.0.0.1:5173/?auditWrites=1");
+});
 
 test("web playtest exact stepping delegates N ticks without unpausing", async () => {
   const pauses: boolean[] = [];

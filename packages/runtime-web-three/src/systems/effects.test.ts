@@ -30,7 +30,7 @@ test("should apply transform patch after system", () => {
 test("should distinguish composed patches from overwritten fields", () => {
   const world = makeWorld();
   world.resources = { Score: { lives: 3, points: 1 } };
-  const ledger = createRuntimeWriteLedger();
+  const ledger = createRuntimeWriteLedger({ captureObservations: true });
   const system = makeSystem({ resourceWrites: ["Score"] });
 
   applySystemEffects(world, system, {
@@ -45,6 +45,34 @@ test("should distinguish composed patches from overwritten fields", () => {
   }, { frame: 0, tick: 1, writeLedger: ledger });
 
   assert.deepEqual(ledger.observations().sort((left, right) => left.path.localeCompare(right.path)).map((observation) => observation.disposition), ["composed", "accepted", "overwritten"]);
+});
+
+test("should defer effect payload serialization until the effect log is requested", () => {
+  let serializationCount = 0;
+  const payload = {
+    toJSON() {
+      serializationCount += 1;
+      return { value: 1 };
+    },
+  };
+
+  const result = applySystemEffects(
+    makeWorld(),
+    makeSystem({ eventWrites: ["first", "second"] }),
+    {
+      commands: [],
+      events: [
+        { event: "first", payload },
+        { event: "second", payload },
+      ],
+      resources: [],
+      services: [],
+    },
+    { frame: 0, tick: 0 },
+  );
+
+  assert.equal(result.entries.length, 2);
+  assert.equal(serializationCount, 0);
 });
 
 test("should let script-authored kinematic transform skip same-tick velocity integration", () => {

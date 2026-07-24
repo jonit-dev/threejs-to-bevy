@@ -102,7 +102,7 @@ export type {
 
 export function createWebSystemRuntimeState(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; auditWrites?: boolean },
 ) {
   const seed = randomSeed(world);
   const runtimeState = {
@@ -121,7 +121,7 @@ export function createWebSystemRuntimeState(
     presentation: createPresentationRuntimeState(),
     knownComponents: new Set(world.entities.flatMap((entity) => Object.keys(entity.components))),
     queryDiagnostics: new Set<string>(),
-    writeLedger: createRuntimeWriteLedger(),
+    writeLedger: createRuntimeWriteLedger({ captureObservations: options.auditWrites }),
   };
   recordInitialRuntimeWrites(world, runtimeState.writeLedger);
   return runtimeState;
@@ -271,11 +271,17 @@ const webSystemRuntimeStates = new WeakMap<IWorldIr, ReturnType<typeof createWeb
 
 export function webSystemRuntimeStateFor(
   world: IWorldIr,
-  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr },
+  options: { assets?: IAssetsManifest; audio?: import("@threenative/ir").IAudioIr; auditWrites?: boolean },
 ): ReturnType<typeof createWebSystemRuntimeState> {
   const seedKey = runtimeSeedKey(randomSeed(world));
   const existing = webSystemRuntimeStates.get(world);
-  if (existing !== undefined && existing.assets === options.assets && existing.audio === options.audio && existing.randomSeedKey === seedKey) {
+  if (
+    existing !== undefined
+    && existing.assets === options.assets
+    && existing.audio === options.audio
+    && existing.randomSeedKey === seedKey
+    && existing.writeLedger.capturesObservations() === (options.auditWrites === true)
+  ) {
     return existing;
   }
   const next = createWebSystemRuntimeState(world, options);

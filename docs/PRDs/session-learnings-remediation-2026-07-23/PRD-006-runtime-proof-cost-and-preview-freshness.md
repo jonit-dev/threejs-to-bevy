@@ -76,9 +76,9 @@ executing stale `/dist/browser/main.js`.
 
 **Implementation:**
 
-- [ ] Keep the minimum last-writer/conflict state required for correctness.
-- [ ] Allocate/serialize detailed observations only when trace/audit asks.
-- [ ] Preserve stable diagnostics and deterministic full-audit ordering.
+- [x] Keep the minimum last-writer/conflict state required for correctness.
+- [x] Allocate/serialize detailed observations only when trace/audit asks.
+- [x] Preserve stable diagnostics and deterministic full-audit ordering.
 - [ ] Prove normal and full modes make the same accept/reject decisions.
 
 ### Phase 3: Preview runtime module ownership

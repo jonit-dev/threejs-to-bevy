@@ -137,6 +137,7 @@ export function requiresWebFixedLoop(world: IWorldIr): boolean {
 }
 
 export interface IRenderOptions {
+  auditWrites?: boolean;
   bookmarkId?: string;
   captureDrawingBuffer?: boolean;
   captureFrames?: number;
@@ -373,7 +374,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
     gameLoopExecution = result.then(() => undefined, () => undefined);
     return result;
   };
-  const runtimeState = webSystemRuntimeStateFor(bundle.world, { assets: bundle.assets, audio: bundle.audio });
+  const runtimeState = webSystemRuntimeStateFor(bundle.world, { assets: bundle.assets, audio: bundle.audio, auditWrites: options.auditWrites });
   mapped.presentation = runtimeState.presentation;
   const effectLog = createSystemEffectLog();
   const vehicleControllerInputs = new Map<string, IVehicleControllerInput>();

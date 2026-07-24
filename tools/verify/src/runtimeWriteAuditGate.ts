@@ -92,7 +92,7 @@ export async function runRuntimeWriteAuditGate(options: { reportPath?: string; r
   }
   const exit = sensorRuntime.advance(world, { fixedDelta: 1, tick: 3 });
 
-  const webLedger = createRuntimeWriteLedger();
+  const webLedger = createRuntimeWriteLedger({ captureObservations: true });
   webLedger.beginTick(1);
   recordSharedWrites(webLedger);
   const webAudit = serializeRuntimeWriteAudit(webLedger.observations());

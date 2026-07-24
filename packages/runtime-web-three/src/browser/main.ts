@@ -59,6 +59,7 @@ const captureTraceEntityId = params.get("captureTraceEntity") ?? undefined;
 const targetProfile = params.get("targetProfile") === "mobile-web" ? "mobile-web" : "desktop-web";
 const debugVehicle = params.get("debugVehicle");
 const debugAerodynamics = params.get("debugAerodynamics");
+const auditWrites = ["1", "true", "on"].includes(params.get("auditWrites") ?? "");
 const loadedBundle = await loadBundleUrl(resolvedBundleUrl);
 const debugVehiclePosition = params.get("debugVehiclePosition")?.split(",").map(Number);
 if (debugVehicle !== null && debugVehiclePosition?.length === 3 && debugVehiclePosition.every(Number.isFinite)) {
@@ -66,6 +67,7 @@ if (debugVehicle !== null && debugVehiclePosition?.length === 3 && debugVehicleP
   if (entity !== undefined) entity.components.Transform = { ...(entity.components.Transform ?? {}), position: debugVehiclePosition as [number, number, number] };
 }
 const result = await renderLoadedBundle(loadedBundle, container, {
+  auditWrites,
   bookmarkId: params.get("bookmark") ?? undefined,
   captureDrawingBuffer,
   captureFrames: captureFrames !== undefined && Number.isFinite(captureFrames) && captureFrames > 0 ? captureFrames : undefined,

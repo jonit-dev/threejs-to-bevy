@@ -603,7 +603,7 @@ async function runWebPlaytest(options: IPlaytestRunOptions): Promise<IPlaytestRe
   let server: IWebPreviewServer | undefined;
   try {
     server = await startWebPreview({ bundlePath, silent: true });
-    return await probePreview({ ...options, url: previewUrl(server.url, options.debugColliders) });
+    return await probePreview({ ...options, url: playtestPreviewUrl(server.url, options.debugColliders, options.auditWrites === true) });
   } finally {
     await server?.close();
   }
@@ -1721,12 +1721,14 @@ function keyboardKeyFromCode(code: string): string {
   return code;
 }
 
-function previewUrl(url: string, debugColliders: boolean): string {
-  if (!debugColliders) {
-    return url;
-  }
+export function playtestPreviewUrl(url: string, debugColliders: boolean, auditWrites: boolean): string {
   const parsed = new URL(url);
-  parsed.searchParams.set("debugColliders", "1");
+  if (debugColliders) {
+    parsed.searchParams.set("debugColliders", "1");
+  }
+  if (auditWrites) {
+    parsed.searchParams.set("auditWrites", "1");
+  }
   return parsed.toString();
 }
 
