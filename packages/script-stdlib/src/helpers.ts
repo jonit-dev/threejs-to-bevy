@@ -5,3 +5,4 @@ export * from "./rotation.js";
 export * from "./bounds.js";
 export * from "./feedback.js";
 export * from "./gameplay.js";
+export * from "./combat.js";

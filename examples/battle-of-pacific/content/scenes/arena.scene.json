@@ -6349,6 +6349,21 @@
         "shipsAlive": 3,
         "shipsTotal": 3
       }
+    },
+    {
+      "id": "PacificCombat",
+      "value": {
+        "collisionRadiusSq": 121,
+        "destroyerHalfX": 74,
+        "destroyerHalfZ": 8.5,
+        "destroyerMaxY": 36,
+        "destroyerMinY": 2,
+        "flakProximitySq": 484,
+        "planeHitRadiusSq": 56.25,
+        "playerTracerDamage": 10,
+        "playerTracerPool": 14,
+        "shotHitRadiusSq": 42.25
+      }
     }
   ],
   "schema": "threenative.scene",

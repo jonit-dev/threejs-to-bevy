@@ -1,6 +1,7 @@
 import ts from "typescript";
 
 import { prescriptiveFixForCode } from "@threenative/authoring";
+import { SCRIPT_STDLIB_RUNTIME_EXPORTS } from "@threenative/script-stdlib";
 import type { ICompilerDiagnostic } from "../diagnostics.js";
 import { resolveScriptModuleGraph, type IScriptModuleGraph } from "./moduleGraph.js";
 import { extractResourceAccess } from "./resourceAccess.js";
@@ -12,39 +13,7 @@ const supportedScriptHelperBindings: Record<SupportedScriptHelperImport, Readonl
   "@threenative/collector-kit": new Set(["CollectorKit"]),
   "@threenative/lane-runner-kit": new Set(["LaneRunnerKit"]),
   "@threenative/racing-kit": new Set(["CheckpointRace", "Track2D"]),
-  "@threenative/script-stdlib": new Set([
-    "AngleEx",
-    "ArrayEx",
-    "BasisEx",
-    "Bounds2",
-    "Bounds3",
-    "CameraMath",
-    "CameraRig",
-    "CharacterRig",
-    "CheckpointRaceEx",
-    "ColorEx",
-    "ControllerEx",
-    "Ease",
-    "InputEx",
-    "KinematicMoverEx",
-    "MaterialEx",
-    "MotionEx",
-    "Mathf",
-    "NumberEx",
-    "Quat",
-    "RandomEx",
-    "RespawnEx",
-    "SpawnEx",
-    "TextEx",
-    "TimerEx",
-    "TransformMath",
-    "Vector2",
-    "Vector3",
-    "TriggerEx",
-    "Vec2",
-    "Vec3",
-    "defineBehavior",
-  ]),
+  "@threenative/script-stdlib": new Set(SCRIPT_STDLIB_RUNTIME_EXPORTS),
 };
 
 export interface IResolveSystemScriptSourcesResult<T extends ISystemScriptSource> {

@@ -53,6 +53,10 @@ export const RandomEx = Object.freeze({
     value ^= value >>> 16;
     return value >>> 0;
   },
+  sine01(seed: number): number {
+    const noise = Math.sin(NumberEx.finite(seed, 0) * 12.9898) * 43758.5453;
+    return noise - Math.floor(noise);
+  },
   pickIndex(seed: number, index: number, length: number): number {
     const count = Math.max(0, Math.trunc(NumberEx.finite(length, 0)));
     return count === 0 ? -1 : Math.floor(RandomEx.float01(seed, index) * count) % count;

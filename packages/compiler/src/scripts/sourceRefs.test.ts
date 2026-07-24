@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 
+import { SCRIPT_STDLIB_RUNTIME_EXPORTS } from "@threenative/script-stdlib";
 import type { ISystemScriptSource } from "./bundle.js";
 import { resolveSystemScriptSources } from "./sourceRefs.js";
 
@@ -103,6 +104,36 @@ test("should allow supported script stdlib imports", async () => {
       },
     ]);
     assert.match(result.systems[0]?.script?.source ?? "", /Vec3\.round/);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should derive every supported stdlib binding from the generated runtime manifest", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-script-source-ref-stdlib-manifest-"));
+  try {
+    await mkdir(join(root, "src/scripts"), { recursive: true });
+    await writeFile(
+      join(root, "src/scripts/all-helpers.ts"),
+      `import { ${SCRIPT_STDLIB_RUNTIME_EXPORTS.join(", ")} } from "@threenative/script-stdlib";\nexport const allHelpers = () => [${SCRIPT_STDLIB_RUNTIME_EXPORTS.map((name) => `typeof ${name}`).join(", ")}];\n`,
+    );
+    const result = resolveSystemScriptSources<ISystemScriptSource>([{
+      name: "allHelpers",
+      script: {
+        exportName: "system_allHelpers",
+        sourceRef: {
+          export: "allHelpers",
+          module: "src/scripts/all-helpers.ts",
+          systemId: "allHelpers",
+        },
+      },
+    }], root);
+
+    assert.deepEqual(result.diagnostics, []);
+    assert.deepEqual(
+      result.systems[0]?.script?.helperImports,
+      [{ imported: [...SCRIPT_STDLIB_RUNTIME_EXPORTS].sort(), module: "@threenative/script-stdlib" }],
+    );
   } finally {
     await rm(root, { force: true, recursive: true });
   }

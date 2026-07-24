@@ -241,6 +241,22 @@ export const CameraMath = Object.freeze({
     const position = Vec3.add(options.target, offset);
     return TransformMath.lookAtPose(position, options.target);
   },
+  oscillatingOffset(
+    elapsed: number,
+    amplitude: Vec3Value,
+    frequency: Vec3Value,
+    phase: Vec3Value = [0, 0, 0]
+  ): Vec3Tuple {
+    const amount = Vec3.from(amplitude);
+    const rate = Vec3.from(frequency);
+    const offset = Vec3.from(phase);
+    const time = NumberEx.finite(elapsed, 0);
+    return [
+      Math.sin(time * rate[0] + offset[0]) * amount[0],
+      Math.sin(time * rate[1] + offset[1]) * amount[1],
+      Math.sin(time * rate[2] + offset[2]) * amount[2],
+    ];
+  },
   shakeOffset(seed: number, amplitude: number, index = 0): Vec3Tuple {
     const amount = Math.max(0, NumberEx.finite(amplitude, 0));
     return [RandomEx.range(seed, index, -amount, amount), RandomEx.range(seed, index + 1, -amount, amount), RandomEx.range(seed, index + 2, -amount, amount)];

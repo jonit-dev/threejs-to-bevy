@@ -110,6 +110,14 @@ Current support:
   supported for one compatibility cycle. Type-only imports, including
   generated local context declarations, are ignored by the runtime helper
   import allowlist.
+- Portable combat and flight math is available through pure state/value
+  helpers: `ProjectileEx`, `GunneryEx`, `FxEx`, `HitTestEx`, `ShipFxEx`,
+  `GuidedFlightEx`, and `CoordinatedTurnEx`. Canonical unit tests pin pool
+  lifecycle, lead pursuit, hit boundaries, fireball/sinking envelopes, guided
+  steering, and constant-radius coordinated-turn behavior; the generated
+  stdlib bundle parity gate keeps the runtime-injected implementations aligned,
+  and the generator-owned runtime-export manifest drives the compiler import
+  allowlist without a second helper-name registry.
 - Compiler diagnostics reject unsupported imports, mutable module state,
   module-local helpers that cannot be emitted, legacy idioms, and undeclared
   access.
@@ -182,7 +190,8 @@ Verification:
   stdlib bundle freshness.
 - `pnpm --filter @threenative/script-stdlib test` compiles every promoted facade
   and retains negative vector, payload, scalar-setting, result-discriminant,
-  unknown-surface, and unsupported-handle controls.
+  unknown-surface, unsupported-handle, and portable combat/flight numeric
+  regression controls.
 - `pnpm --filter @threenative/compiler test` includes the generated
   `ProjectContext` consumer compile fixture with unknown-ID errors.
 - `pnpm --filter @threenative/ir test` covers shared DTO ownership,

@@ -94,8 +94,8 @@ export const Quat = Object.freeze({
   },
   yaw(rotation: QuatValue | undefined, fallback = 0): number {
     const q = Quat.from(rotation);
-    const siny = 2 * (q[3] * q[1] + q[2] * q[0]);
-    const cosy = 1 - 2 * (q[1] * q[1] + q[2] * q[2]);
+    const siny = 2 * (q[3] * q[1] + q[0] * q[2]);
+    const cosy = 1 - 2 * (q[0] * q[0] + q[1] * q[1]);
     return NumberEx.finite(Math.atan2(siny, cosy), fallback);
   },
 });
@@ -151,4 +151,3 @@ function quatFromBasis(x: Vec3Tuple, y: Vec3Tuple, z: Vec3Tuple): QuatTuple {
 function readRotation(pose: { readonly rotation?: QuatValue } | QuatValue): QuatValue | undefined {
   return isRecord(pose) && "rotation" in pose ? (pose.rotation as QuatValue | undefined) : (pose as QuatValue | undefined);
 }
-

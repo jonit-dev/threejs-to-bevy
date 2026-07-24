@@ -67,6 +67,12 @@ export const AngleEx = Object.freeze({
   deltaAngle(current: number, target: number): number {
     return NumberEx.repeat(NumberEx.finite(target, 0) - NumberEx.finite(current, 0) + Math.PI, Math.PI * 2) - Math.PI;
   },
+  deltaAngleInclusive(current: number, target: number): number {
+    let delta = NumberEx.finite(target, 0) - NumberEx.finite(current, 0);
+    while (delta > Math.PI) delta -= Math.PI * 2;
+    while (delta < -Math.PI) delta += Math.PI * 2;
+    return delta;
+  },
   moveTowardAngle(current: number, target: number, maxDelta: number): number {
     return NumberEx.finite(current, 0) + NumberEx.moveToward(0, AngleEx.deltaAngle(current, target), maxDelta);
   },

@@ -55,6 +55,15 @@ and deterministic seeded gusts. Keep the craft on a dynamic `RigidBody` with a
 matching `Collider`, and declare the flight system's component access in
 `systems.ir.json`.
 
+For deterministic script-owned aircraft, boats, or missiles, use
+`GuidedFlightEx.step(...)` to calculate bounded yaw, climb, and speed
+convergence, then write its returned linear and angular velocity once per
+fixed tick. Use `CoordinatedTurnEx.step(...)` when a dynamic player aircraft
+keeps the aerodynamic integrator but needs a pinned no-sideslip turn assist.
+Keep the gains explicit and cover the chosen constants with a fixed-tick
+numeric test or committed turn-radius playtest; do not feed an unnamed body
+through two competing flight models.
+
 ## proof
 ```bash
 tn playtest --scenario playtests/flight-course.playtest.json --target web --reuse-bundle --out artifacts/playtest/flight-course/web --json
