@@ -9,6 +9,7 @@ import {
   applyOceanSkyReflection,
   createOceanWaterObject,
   readOceanWater,
+  recenterOceanWaterRuntime,
 } from "./oceanWater.js";
 
 test("ocean water should use the engine-owned smooth analytic shader", () => {
@@ -42,6 +43,21 @@ test("ocean water should advance shader time by the authored speed", () => {
   advanceOceanWaterRuntime(object, 0.25);
 
   assert.equal(surface.material.uniforms.iTime?.value, 0.25);
+});
+
+test("ocean recentering should move only the runtime-owned surface", () => {
+  const object = createOceanWaterObject({ size: 4000 });
+  object.position.set(10, 3, -5);
+  const authoredPosition = object.position.clone();
+  const surface = object.children[0]!;
+
+  recenterOceanWaterRuntime(object, new THREE.Vector3(110, 20, 45));
+  assert.deepEqual(object.position.toArray(), authoredPosition.toArray());
+  assert.deepEqual(surface.position.toArray(), [100, 0, 50]);
+
+  recenterOceanWaterRuntime(object, new THREE.Vector3(210, -10, 95));
+  assert.deepEqual(object.position.toArray(), authoredPosition.toArray());
+  assert.deepEqual(surface.position.toArray(), [200, 0, 100]);
 });
 
 test("ocean shader should mirror the scene sky through a pow5 fresnel", () => {

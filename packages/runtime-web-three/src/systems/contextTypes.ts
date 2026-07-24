@@ -80,11 +80,26 @@ export interface ISystemEntityView {
 }
 
 export interface ISystemTransformFacade {
+  localOffsetOr(fallback?: {
+    position?: readonly [number, number, number];
+    rotation?: readonly [number, number, number, number];
+    scale?: readonly [number, number, number];
+  }): {
+    position: [number, number, number];
+    rotation: [number, number, number, number];
+    scale: [number, number, number];
+  };
   position: [number, number, number];
   positionOr(fallback: readonly [number, number, number]): [number, number, number];
   setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
   setPosition(position: readonly [number, number, number]): void;
   setRotation(rotation: readonly [number, number, number, number]): void;
+  setLocalOffset(offset: {
+    position?: readonly [number, number, number];
+    rotation?: readonly [number, number, number, number];
+    scale?: readonly [number, number, number];
+  }): void;
+  resetLocalOffset(): void;
   yawOr(fallback: number): number;
 }
 

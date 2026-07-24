@@ -1935,7 +1935,7 @@ function createRenderPipeline(
     if (feature === "ssgi" && ssgi !== undefined) composer.addPass(new SsgiPass(mapped.scene, mapped.camera, ssgi));
     if (feature === "bloom") composer.addPass(createBloomPass(bloom));
     if (feature === "depthOfField") composer.addPass(createDepthOfFieldPass(mapped.scene, mapped.camera, depthOfField));
-    if (feature === "motionBlur") composer.addPass(createMotionBlurPass(motionBlur));
+    if (feature === "motionBlur") composer.addPass(createMotionBlurPass(motionBlur, mapped.camera));
   }
   composer.addPass(colorManagedOutputPass(renderer, colorGrading));
   const composerClear = backbufferViews[0]?.clear;
@@ -2108,8 +2108,8 @@ function createDepthOfFieldPass(scene: THREE.Scene, camera: THREE.Camera, settin
   });
 }
 
-function createMotionBlurPass(settings: IWebMotionBlurSettings): TemporalMotionBlurPass {
-  return new TemporalMotionBlurPass(webMotionBlurBlend(settings.shutterAngle));
+function createMotionBlurPass(settings: IWebMotionBlurSettings, camera: THREE.Camera): TemporalMotionBlurPass {
+  return new TemporalMotionBlurPass(webMotionBlurBlend(settings.shutterAngle), camera);
 }
 
 function webMotionBlurBlend(shutterAngle: number): number {
@@ -2117,6 +2117,36 @@ function webMotionBlurBlend(shutterAngle: number): number {
   // Keep enough history to soften high-contrast moving detail while bounding
   // the fallback so it does not become a long, stepped after-image.
   return Math.max(0, Math.min(0.25, shutterAngle * 0.3));
+}
+
+export interface IWebTemporalCameraHistory {
+  position: THREE.Vector3;
+  projectionMatrix: THREE.Matrix4;
+  quaternion: THREE.Quaternion;
+}
+
+export function webTemporalCameraHistoryRequiresReset(
+  previous: IWebTemporalCameraHistory | undefined,
+  current: IWebTemporalCameraHistory,
+): boolean {
+  if (previous === undefined || previous.position.distanceToSquared(current.position) > 0.000001) {
+    return true;
+  }
+  if (1 - Math.abs(previous.quaternion.dot(current.quaternion)) > 0.000001) {
+    return true;
+  }
+  return previous.projectionMatrix.elements.some(
+    (value, index) => Math.abs(value - current.projectionMatrix.elements[index]!) > 0.000001,
+  );
+}
+
+function captureWebTemporalCameraHistory(camera: THREE.Camera): IWebTemporalCameraHistory {
+  camera.updateMatrixWorld();
+  return {
+    position: camera.getWorldPosition(new THREE.Vector3()),
+    projectionMatrix: camera.projectionMatrix.clone(),
+    quaternion: camera.getWorldQuaternion(new THREE.Quaternion()),
+  };
 }
 
 function createScreenSpaceReflectionsPass(
@@ -2214,6 +2244,7 @@ class TemporalMotionBlurPass extends Pass {
   private hasPrevious = false;
   private readonly blendMaterial: THREE.ShaderMaterial;
   private previousTarget: THREE.WebGLRenderTarget;
+  private previousCamera: IWebTemporalCameraHistory | undefined;
   private readonly quad: FullScreenQuad;
   private readonly uniforms: {
     previousWeight: { value: number };
@@ -2221,7 +2252,7 @@ class TemporalMotionBlurPass extends Pass {
     tPrevious: { value: THREE.Texture | null };
   };
 
-  public constructor(private readonly previousWeight: number) {
+  public constructor(private readonly previousWeight: number, private readonly camera: THREE.Camera) {
     super();
     this.uniforms = {
       previousWeight: { value: previousWeight },
@@ -2268,6 +2299,11 @@ class TemporalMotionBlurPass extends Pass {
   }
 
   public override render(renderer: THREE.WebGLRenderer, writeBuffer: THREE.WebGLRenderTarget, readBuffer: THREE.WebGLRenderTarget): void {
+    const currentCamera = captureWebTemporalCameraHistory(this.camera);
+    if (webTemporalCameraHistoryRequiresReset(this.previousCamera, currentCamera)) {
+      this.hasPrevious = false;
+    }
+    this.previousCamera = currentCamera;
     this.uniforms.tCurrent.value = readBuffer.texture;
     this.uniforms.tPrevious.value = this.previousTarget.texture;
     this.uniforms.previousWeight.value = this.hasPrevious ? this.previousWeight : 0;

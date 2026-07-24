@@ -98,6 +98,31 @@ test("syncTransforms should restore visibility after a runtime mutation", () => 
   assert.equal(object.visible, true);
 });
 
+test("syncTransforms should compose cosmetic offsets without accumulating or replacing authored rotation", () => {
+  const object = new THREE.Object3D();
+  const half = Math.sqrt(0.5);
+  const world = {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [{
+      id: "aircraft",
+      components: {
+        Transform: { position: [10, 0, 0] as const, rotation: [0, 0, half, half] as const, scale: [2, 2, 2] as const },
+        CosmeticTransform: { position: [1, 0, 0] as const },
+      },
+    }],
+  };
+  const objects = new Map([["aircraft", object]]);
+
+  syncTransforms(world, objects);
+  const first = object.matrix.compose(object.position, object.quaternion, object.scale).clone();
+  syncTransforms(world, objects);
+
+  assert.deepEqual(object.position.toArray().map((value) => Number(value.toFixed(6))), [10, 2, 0]);
+  assert.deepEqual(object.quaternion.toArray().map((value) => Number(value.toFixed(6))), [0, 0, 0.707107, 0.707107]);
+  assert.equal(object.matrix.equals(first), true);
+});
+
 test("mapped world should reconcile runtime-spawned hierarchies and dispose despawned renderables", () => {
   const bundle: IWebBundle = {
     assets: {

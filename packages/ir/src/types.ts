@@ -295,6 +295,12 @@ export interface ITransformComponent {
   scale?: Vec3;
 }
 
+export interface ICosmeticTransformComponent {
+  position?: Vec3;
+  rotation?: Quat;
+  scale?: Vec3;
+}
+
 export type ICameraViewport = readonly [number, number, number, number];
 
 export interface ICameraClear {
@@ -875,6 +881,7 @@ export interface IWorldEntity {
     Camera?: ICameraComponent;
     CharacterController?: ICharacterControllerComponent;
     ContactShadows?: IContactShadowsIr;
+    CosmeticTransform?: ICosmeticTransformComponent;
     Light?: ILightComponent;
     MeshRenderer?: IMeshRendererComponent;
     Patrol?: IPatrolComponent;

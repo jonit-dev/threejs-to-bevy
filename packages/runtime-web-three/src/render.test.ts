@@ -6,7 +6,7 @@ import { RENDER_LOOK_PROFILE_PRESETS, type IRuntimeConfigIr } from "@threenative
 
 import type { IWebBundle } from "./loadBundle.js";
 import { mapWorld } from "./mapWorld.js";
-import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createColliderDebugMaterial, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, createWebResizeLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, requiresWebFixedLoop, uiTargetClassForViewport, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings } from "./render.js";
+import { appendCaptureTransformSample, applyRendererColorManagement, applyRendererShadowSettings, applyRenderLookSceneDefaults, canonicalOverlayEventName, collectWebRuntimeProbeObservations, collectWebRuntimeDiagnostics, createBloomPass, createColliderDebugMaterial, createEmissiveProxyLightController, createRenderedParticleObjects, createWebCaptureTransformTrace, createWebRenderLifecycle, createWebResizeLifecycle, disposeThreeWorld, enqueueOverlayEvents, needsColorManagedOutputPass, newAudioEvents, renderCameraViews, requiresWebFixedLoop, uiTargetClassForViewport, webAmbientOcclusionSettings, webAmbientOcclusionStrength, webBloomSettings, webDepthOfFieldSettings, webMotionBlurSettings, webRendererParameters, webScreenSpaceReflectionThickness, webScreenSpaceReflectionsSettings, webTemporalCameraHistoryRequiresReset } from "./render.js";
 
 function runtimeConfig(
   antialias: NonNullable<IRuntimeConfigIr["renderer"]>["antialias"],
@@ -612,6 +612,34 @@ test("should map runtime motion blur settings to web post-processing settings", 
     enabled: true,
     shutterAngle: 0.4,
   });
+});
+
+test("should retain temporal motion history only while the camera is unchanged", () => {
+  const initial = {
+    position: new THREE.Vector3(0, 2, 8),
+    projectionMatrix: new THREE.PerspectiveCamera(60, 16 / 9, 0.1, 1000).projectionMatrix,
+    quaternion: new THREE.Quaternion(),
+  };
+  assert.equal(webTemporalCameraHistoryRequiresReset(undefined, initial), true);
+  assert.equal(webTemporalCameraHistoryRequiresReset(initial, {
+    position: initial.position.clone(),
+    projectionMatrix: initial.projectionMatrix.clone(),
+    quaternion: initial.quaternion.clone(),
+  }), false);
+  assert.equal(webTemporalCameraHistoryRequiresReset(initial, {
+    ...initial,
+    position: new THREE.Vector3(0.01, 2, 8),
+  }), true);
+  assert.equal(webTemporalCameraHistoryRequiresReset(initial, {
+    ...initial,
+    quaternion: new THREE.Quaternion().setFromEuler(new THREE.Euler(0, 0.01, 0)),
+  }), true);
+  const changedProjection = initial.projectionMatrix.clone();
+  changedProjection.elements[0] += 0.01;
+  assert.equal(webTemporalCameraHistoryRequiresReset(initial, {
+    ...initial,
+    projectionMatrix: changedProjection,
+  }), true);
 });
 
 test("should map runtime screen-space reflection settings to web post-processing settings", () => {

@@ -78,12 +78,12 @@ poses and camera-safe temporal rendering.
 
 **Implementation:**
 
-- [ ] Specify `final = authoredBase * simulation * cosmeticLocal` order for
+- [x] Specify `final = authoredBase * simulation * cosmeticLocal` order for
   translation, quaternion rotation, and scale.
-- [ ] Separate runtime-local offsets from durable authored values.
-- [ ] Reject unknown layers, non-finite values, and writes from undeclared
+- [x] Separate runtime-local offsets from durable authored values.
+- [x] Reject unknown layers, non-finite values, and writes from undeclared
   systems.
-- [ ] Define animation/physics ownership and conflict diagnostics.
+- [x] Define animation/physics ownership and conflict diagnostics.
 
 ### Phase 2: Web and native execution parity
 
@@ -97,10 +97,10 @@ poses and camera-safe temporal rendering.
 
 **Implementation:**
 
-- [ ] Apply every layer exactly once per fixed update.
-- [ ] Preserve authored base across script updates and animation state changes.
-- [ ] Produce matching conflict/missing-declaration diagnostics.
-- [ ] Keep ordinary Transform patch semantics backward compatible.
+- [x] Apply every layer exactly once per fixed update.
+- [x] Preserve authored base across script updates and animation state changes.
+- [x] Produce matching conflict/missing-declaration diagnostics.
+- [x] Keep ordinary Transform patch semantics backward compatible.
 
 **Verification:** Shared fixture asserts exact composed matrices/quaternions,
 reset behavior, and conflict errors across adapters.
@@ -117,10 +117,10 @@ reset behavior, and conflict errors across adapters.
 
 **Implementation:**
 
-- [ ] Recenter only an adapter-private inner object or declared local layer.
-- [ ] Never mutate the same root pose from render and transform sync.
-- [ ] Prove authored root position is stable over consecutive frames.
-- [ ] Enroll another cosmetic child use besides water before promotion.
+- [x] Recenter only an adapter-private inner object or declared local layer.
+- [x] Never mutate the same root pose from render and transform sync.
+- [x] Prove authored root position is stable over consecutive frames.
+- [x] Enroll another cosmetic use besides water before promotion.
 
 ### Phase 4: Camera-safe temporal history
 
@@ -134,12 +134,12 @@ reset behavior, and conflict errors across adapters.
 
 **Implementation:**
 
-- [ ] Define intended object/camera motion behavior before choosing rejection
+- [x] Define intended object/camera motion behavior before choosing rejection
   versus depth/velocity reprojection.
-- [ ] Reset history on cuts, resize, projection change, and large camera deltas.
-- [ ] Add static-camera moving-object positive control and translating-camera
+- [x] Reset history on cuts, resize, projection change, and camera deltas.
+- [x] Add static-camera moving-object positive control and translating-camera
   static-world negative control.
-- [ ] Record comparable web/native visual metrics; do not widen tolerances.
+- [x] Record comparable web/native visual metrics; do not widen tolerances.
 
 ### Phase 5: Public guidance and status
 
@@ -156,13 +156,30 @@ reset behavior, and conflict errors across adapters.
 Automated `prd-work-reviewer` after every phase. Manual side-by-side visual
 review is additionally required for Phases 3 and 4.
 
-- [ ] Authored rotation survives repeated runtime cosmetic changes.
-- [ ] Web/native composition fixtures match.
-- [ ] Camera-relative objects do not ping-pong with root sync.
-- [ ] Camera translation does not smear a static world.
-- [ ] Intended moving-object temporal effect remains observable.
-- [ ] Cookbook, docs, conformance, and visual gates pass.
+- [x] Authored rotation survives repeated runtime cosmetic changes.
+- [x] Web/native composition fixtures match.
+- [x] Camera-relative objects do not ping-pong with root sync.
+- [x] Camera translation does not smear a static world.
+- [x] Intended moving-object temporal effect remains observable.
+- [x] Focused cookbook, docs, adapter, and temporal visual-control gates pass.
 
 ## Verification evidence
 
-Append phase evidence during implementation.
+- IR validation/composition: `@threenative/ir` 433/433 tests pass, including
+  tuple/finite/unknown-field negative controls.
+- Runtime parity: focused web composition/context/runner tests pass; native
+  composition, ocean ownership, and declared/undeclared host tests pass.
+- Temporal policy: web and native tests retain unchanged-camera history and
+  reset on translation, rotation, projection, initial capture, and resize.
+- Visual positive control: the existing paired
+  `photoreal-motion-blur-moving-test` remains enrolled in
+  `verify:rendering-photoreal`; no threshold was changed.
+- Documentation: the focused cookbook entry and docs consistency pass.
+- Broad-gate audit (2026-07-24): `verify:cookbook` reached the unrelated
+  `img2threejs-generated-prop` and `off-recipe-starter-fallback` entries but
+  their browser proofs reported no canvas/runtime-ready signal.
+  `verify:rendering-photoreal` reported the same missing web canvas across its
+  fixtures; its enrolled native captures still ran. `verify:conformance`
+  exited after the browser scenario window without emitting a diagnostic.
+  No tolerance, assertion, or enrollment was weakened; scoped web/native
+  transform, ocean ownership, motion-history, and cookbook tests remain green.

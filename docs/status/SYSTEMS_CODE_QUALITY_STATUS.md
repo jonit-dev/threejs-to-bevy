@@ -1,5 +1,11 @@
 # Systems Code Quality Status
 
+- 2026-07-24: Closed the mixed transform/temporal ownership hotspot with one
+  IR-owned `CosmeticTransform` composition contract, declared script writes,
+  adapter-private camera-relative children, and camera-aware history rejection.
+  The remaining bounded limitation is same-UV object history until a portable
+  velocity/depth contract has two-adapter evidence.
+
 Living log for systemic code-quality, architecture, and technical-debt status.
 Update it when a new system is introduced or when an agent finds the code in a
 systemically bad place. Keep entries brief.

@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generatePortableShaderMaterial } from "@threenative/ir/shaderCodegen";
+import { composeTransformLayers } from "@threenative/ir";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IShaderMaterialIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import {
@@ -460,6 +461,7 @@ function isLitMaterial(bundle: IWebBundle, materialId: string): boolean {
 }
 
 export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number): void {
+  const cameraWorldPosition = mapped.camera.getWorldPosition(new THREE.Vector3());
   for (const object of mapped.objectsById.values()) {
     const playback = object.userData.threeNativeAnimation as IAnimationPlaybackState | undefined;
     if (playback !== undefined) {
@@ -469,7 +471,7 @@ export function advanceAnimationPlayback(mapped: IThreeWorld, fixedDelta: number
     if (mixer !== undefined) {
       mixer.update(fixedDelta);
     }
-    advanceStylizedNatureRuntime(object, fixedDelta);
+    advanceStylizedNatureRuntime(object, fixedDelta, cameraWorldPosition);
   }
 }
 
@@ -1480,16 +1482,10 @@ function textureColorSpaceForSlot(slot: Parameters<typeof mapTextureSlot>[1]): T
 }
 
 function applyTransform(object: THREE.Object3D, entity: IWorldEntity): void {
-  const transform = entity.components.Transform;
-  if (transform?.position !== undefined) {
-    object.position.fromArray([...transform.position]);
-  }
-  if (transform?.rotation !== undefined) {
-    object.quaternion.fromArray([...transform.rotation]);
-  }
-  if (transform?.scale !== undefined) {
-    object.scale.fromArray([...transform.scale]);
-  }
+  const transform = composeTransformLayers(entity.components.Transform, entity.components.CosmeticTransform);
+  object.position.fromArray([...transform.position]);
+  object.quaternion.fromArray([...transform.rotation]);
+  object.scale.fromArray([...transform.scale]);
 }
 
 function applyEntityRenderLayers(

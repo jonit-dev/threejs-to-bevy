@@ -203,6 +203,28 @@ test("should reject transform facade writes without declared Transform access", 
   assert.deepEqual(world.entities[0]?.components.Transform, { position: [0, 0, 0] });
 });
 
+test("should reject cosmetic transform writes without declared CosmeticTransform access", async () => {
+  const world = makeWorld();
+  const systems = makeSystems("update", "bankPlayer");
+  systems.systems[0]!.writes = ["Transform"];
+
+  const result = await runSchedule({
+    module: {
+      systems: {
+        bankPlayer(context: any) {
+          context.entity("player")?.transform().setLocalOffset({ rotation: [0, 0, 0.1, 0.995] });
+        },
+      },
+    },
+    schedule: "update",
+    systems,
+    world,
+  });
+
+  assert.equal(result.diagnostics[0]?.code, "TN_WEB_SYSTEM_WRITE_UNDECLARED");
+  assert.equal(world.entities[0]?.components.CosmeticTransform, undefined);
+});
+
 test("should emit complete Transform from transform facade position writes", async () => {
   const world = makeWorld();
   const systems = makeSystems("update", "movePlayer");

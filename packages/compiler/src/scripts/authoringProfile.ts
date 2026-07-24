@@ -49,7 +49,7 @@ export interface ICompactAuthoringProfile {
 const DISCRETE_INPUT_APIS = ["pressed", "released"] satisfies Array<keyof ScriptInputFacade>;
 const HELD_INPUT_APIS = ["getButton", "getAxis", "getAxis2"] satisfies Array<keyof ScriptInputFacade>;
 const RESOURCE_APIS = ["get", "patch", "set"] satisfies Array<keyof ScriptResourcesFacade>;
-const TRANSFORM_APIS = ["position", "setPosition", "setPose", "setRotation"] satisfies Array<keyof ScriptTransformFacade>;
+const TRANSFORM_APIS = ["localOffsetOr", "position", "resetLocalOffset", "setLocalOffset", "setPosition", "setPose", "setRotation"] satisfies Array<keyof ScriptTransformFacade>;
 const COMPONENT_ENTITY_APIS = ["get", "has", "patch", "set"] satisfies Array<keyof ScriptEntity>;
 const COMPONENT_REFLECTION_APIS = ["hooks", "type", "types"] satisfies Array<keyof ScriptComponentsFacade>;
 const COMPONENT_COMMAND_APIS = ["addComponent", "removeComponent", "setComponent"] satisfies Array<keyof ScriptCommandsFacade>;

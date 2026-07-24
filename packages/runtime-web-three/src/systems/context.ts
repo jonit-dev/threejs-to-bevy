@@ -1326,6 +1326,21 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
       value: transform,
     });
   };
+  const queueCosmeticTransform = (value: Record<string, unknown>) => {
+    const cosmetic = {
+      position: vec3(value.position, [0, 0, 0]),
+      rotation: quat(value.rotation, [0, 0, 0, 1]),
+      scale: vec3(value.scale, [1, 1, 1]),
+    };
+    pendingComponents.CosmeticTransform = cosmetic;
+    commands.push({
+      component: "CosmeticTransform",
+      entity: entity.id,
+      kind: "setComponent",
+      source: "entity",
+      value: cosmetic,
+    });
+  };
   return {
     components,
     get<T = unknown>(component: unknown, defaults?: Record<string, unknown>): T {
@@ -1366,6 +1381,14 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
     tags,
     transform(): ISystemTransformFacade {
       return {
+        localOffsetOr(fallback = {}) {
+          const current = isRecord(pendingComponents.CosmeticTransform) ? pendingComponents.CosmeticTransform : {};
+          return {
+            position: vec3(current.position, fallback.position ?? [0, 0, 0]),
+            rotation: quat(current.rotation, fallback.rotation ?? [0, 0, 0, 1]),
+            scale: vec3(current.scale, fallback.scale ?? [1, 1, 1]),
+          };
+        },
         get position() {
           return vec3((isRecord(pendingComponents.Transform) ? pendingComponents.Transform.position : undefined), [0, 0, 0]);
         },
@@ -1383,6 +1406,15 @@ function createEntityView(entity: IWorldEntity, commands: IQueuedCommand[]): ISy
         },
         setRotation(rotation) {
           queueTransformPatch({ rotation: quat(rotation, [0, 0, 0, 1]) });
+        },
+        setLocalOffset(offset) {
+          queueCosmeticTransform({
+            ...(isRecord(pendingComponents.CosmeticTransform) ? pendingComponents.CosmeticTransform : {}),
+            ...offset,
+          });
+        },
+        resetLocalOffset() {
+          queueCosmeticTransform({});
         },
         yawOr(fallback) {
           return yawFromQuat((isRecord(pendingComponents.Transform) ? pendingComponents.Transform.rotation : undefined), fallback);

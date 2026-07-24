@@ -69,7 +69,7 @@ export function validateResources(
 }
 
 export function isBuiltInComponent(componentName: string): boolean {
-  return BUILT_IN_PHYSICS_COMPONENTS.has(componentName) || ["Camera", "CharacterController", "Collider", "ContactShadows", "Hierarchy", "Light", "MeshRenderer", "Patrol", "PhysicsJoint", "RenderLayers", "RigidBody", "StateMachine", "Transform", "Visibility", "WorldText"].includes(componentName);
+  return BUILT_IN_PHYSICS_COMPONENTS.has(componentName) || ["Camera", "CharacterController", "Collider", "ContactShadows", "CosmeticTransform", "Hierarchy", "Light", "MeshRenderer", "Patrol", "PhysicsJoint", "RenderLayers", "RigidBody", "StateMachine", "Transform", "Visibility", "WorldText"].includes(componentName);
 }
 
 export function isBuiltInResource(resourceName: string): boolean {

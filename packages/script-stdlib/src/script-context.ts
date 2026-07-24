@@ -79,11 +79,26 @@ export interface ScriptEntity {
 }
 
 export interface ScriptTransformFacade {
+  localOffsetOr(fallback?: {
+    position?: readonly [number, number, number];
+    rotation?: readonly [number, number, number, number];
+    scale?: readonly [number, number, number];
+  }): {
+    position: ScriptVec3Tuple;
+    rotation: ScriptQuatTuple;
+    scale: ScriptVec3Tuple;
+  };
   position: ScriptVec3Tuple;
   positionOr(fallback: readonly [number, number, number]): ScriptVec3Tuple;
   setPose(position: readonly [number, number, number], rotation: readonly [number, number, number, number]): void;
   setPosition(position: readonly [number, number, number]): void;
   setRotation(rotation: readonly [number, number, number, number]): void;
+  setLocalOffset(offset: {
+    position?: readonly [number, number, number];
+    rotation?: readonly [number, number, number, number];
+    scale?: readonly [number, number, number];
+  }): void;
+  resetLocalOffset(): void;
   yawOr(fallback: number): number;
 }
 

@@ -22,6 +22,21 @@ cannot follow one exactly, document the adapter-specific drift in
 | Asset origins | Preserve imported asset origins; scene placement should use explicit instance transforms. |
 | Time | Verification scenes should use deterministic fixed inputs and static frame time unless testing motion. |
 
+## Transform ownership
+
+`Transform` is the durable authored or simulated world pose.
+`CosmeticTransform` is an optional bounded local layer composed after it:
+`final = Transform * CosmeticTransform`. Translation is therefore rotated and
+scaled by the base pose, quaternions multiply in that order, and scale
+multiplies component-wise. Scripts must declare `CosmeticTransform` in
+`writes` before using `setLocalOffset` or `resetLocalOffset`.
+
+Adapters may move private children for camera-relative rendering, such as an
+ocean surface, but must never rewrite the entity root. Temporal effects reset
+history on camera cuts, projection/viewport changes, or camera motion so a
+static world does not smear; object-only motion with a stable camera retains
+history.
+
 ## V3 Drift To Watch
 
 - Bevy and Three.js may differ in default tone mapping, exposure, shadow

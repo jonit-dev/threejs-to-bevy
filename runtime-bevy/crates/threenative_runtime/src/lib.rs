@@ -400,6 +400,7 @@ fn install_native_runtime_systems(
         mesh_lod::select_native_mesh_lod
             .after(bevy::transform::TransformSystem::TransformPropagate),
     );
+    app.add_systems(Update, map_world::recenter_native_ocean_water);
     if requires_runtime_loop {
         app.insert_resource(systems_host::NativeResourceObservationState {
             declared: systems_host::native_declared_system_resources(&bundle),
@@ -1224,12 +1225,24 @@ fn sync_scripted_transforms(
                 transform_interpolation::interpolate_transform(*previous, *current, alpha);
             let mut next = *target;
             apply_transform_sample(&mut next, interpolated);
+            next = map_world::apply_cosmetic_transform(
+                next,
+                entities_by_id
+                    .get(stable_id.0.as_str())
+                    .and_then(|entity| entity.components.extra.get("CosmeticTransform")),
+            );
             if *target != next {
                 *target = next;
             }
         } else {
             let mut next = *target;
             apply_transform_component(&mut next, source);
+            next = map_world::apply_cosmetic_transform(
+                next,
+                entities_by_id
+                    .get(stable_id.0.as_str())
+                    .and_then(|entity| entity.components.extra.get("CosmeticTransform")),
+            );
             if *target != next {
                 *target = next;
             }

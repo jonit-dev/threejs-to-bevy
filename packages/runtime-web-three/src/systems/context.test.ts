@@ -262,6 +262,28 @@ test("should expose state and transform helper facades through existing effects"
   ]);
 });
 
+test("should keep cosmetic transform writes separate from the durable Transform pose", () => {
+  const world = makeWorld();
+  const { commands, context } = createSystemContext(world, { delta: 0.016, fixedDelta: 0.016 });
+  const transform = context.entity("player")!.transform();
+
+  transform.setLocalOffset({ position: [0, 0.25, 0], rotation: [0, 0, 0.1, 0.995] });
+  assert.deepEqual(transform.localOffsetOr(), {
+    position: [0, 0.25, 0],
+    rotation: [0, 0, 0.1, 0.995],
+    scale: [1, 1, 1],
+  });
+  transform.resetLocalOffset();
+
+  assert.deepEqual(commands.map((command) => command.component), ["CosmeticTransform", "CosmeticTransform"]);
+  assert.deepEqual(commands.at(-1)?.value, {
+    position: [0, 0, 0],
+    rotation: [0, 0, 0, 1],
+    scale: [1, 1, 1],
+  });
+  assert.deepEqual(world.entities.find((entity) => entity.id === "player")?.components.Transform, { position: [0, 1, 0] });
+});
+
 test("should merge defaults when reading entity components and resources", () => {
   const world = makeWorld();
   const playerSource = world.entities.find((entity) => entity.id === "player");

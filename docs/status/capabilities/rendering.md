@@ -1,5 +1,11 @@
 # Rendering Status
 
+Camera-relative surfaces now recenter an adapter-private child while preserving
+the authored entity root on web and native. Temporal motion-blur history is
+retained for object-only motion with a stable camera and reset on camera
+translation/rotation, projection change, cuts, and resize, preventing
+whole-frame smear without exposing renderer handles.
+
 Rendering is driven by authored IR values and adapter-private mappings.
 Visual parity work must fix mapping, color space, assets, shaders/materials,
 camera, lighting, or test setup rather than hand-tuning adapters to screenshots.

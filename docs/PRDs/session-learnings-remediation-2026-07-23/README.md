@@ -12,7 +12,7 @@ documents, completed PRDs, and active PRDs before inclusion.
 | PRD | Durable owner | Open findings |
 | --- | --- | --- |
 | [PRD-001](../done/session-learnings-remediation-2026-07-23/PRD-001-flight-viability-and-realistic-proof.md) | Aerodynamic validation and plan-derived proof contracts | Complete: measured flight viability, focus-realistic input, and plan-derived objective-duration/diagnostic scenarios |
-| [PRD-002](PRD-002-runtime-transform-and-temporal-ownership.md) | Runtime transform composition and camera-history policy | Authored/runtime cosmetic transform composition, ocean recenter ownership, camera-safe motion blur |
+| [PRD-002](../done/session-learnings-remediation-2026-07-23/PRD-002-runtime-transform-and-temporal-ownership.md) | Runtime transform composition and camera-history policy | Complete: declared cosmetic composition, private ocean recenter ownership, and camera-safe temporal history |
 | [PRD-003](../done/session-learnings-remediation-2026-07-23/PRD-003-executable-projectiles-and-flight-kit.md) | Mechanic descriptors and script stdlib | Complete: executable projectile block and reusable flight rig/audio-edge/propeller/reticle conventions |
 | [PRD-004](../done/session-learnings-remediation-2026-07-23/PRD-004-generator-regeneration-integrity.md) | Generator provenance and generated-asset reconciliation | Complete: overwrite-policy preservation, exact animation reconciliation, stable initial state, and duplicate-path repair |
 | [PRD-005](../done/session-learnings-remediation-2026-07-23/PRD-005-safe-prototypes-and-agent-authoring-contract.md) | Plan-derived authoring transaction and generated agent guidance | Complete: non-destructive prototypes, process cleanup, capability/direct-edit truth, focused inner loops, compact CLI summaries |
@@ -61,8 +61,8 @@ shows a render-scale requirement.
    output exactly.
 5. PRD-006 is complete: normal proof mode is budgeted and live previews expose
    the runtime build they actually executed.
-6. PRD-002 establishes transform/history ownership before more camera-relative
-   rendering behaviors are added.
+6. PRD-002 is complete: transform/history ownership is explicit before more
+   camera-relative rendering behaviors are added.
 7. PRD-008 adds cross-runtime live audio control.
 8. PRD-007 proceeds only when a second shipped material besides water requires
    portable expression composition.

@@ -9,6 +9,12 @@ Current support:
 
 - Convention-first context idioms: `context.input.getAxis(...)`,
   `entity.transform().position`, and readonly `context.time.fixedDelta`.
+- Layered transform ownership keeps `Transform` as the durable authored or
+  simulated pose and exposes declared `CosmeticTransform` writes through
+  `transform().localOffsetOr()`, `setLocalOffset(...)`, and
+  `resetLocalOffset()`. Web and native compose the local layer once after the
+  base pose; undeclared writes fail with the existing actionable access
+  diagnostic.
 - Typed script context imports from `@threenative/script-stdlib`, including
   `ScriptContext`, complete named facades for every promoted host service, and
   portable primitives for channels, components, observers, plugins, random,

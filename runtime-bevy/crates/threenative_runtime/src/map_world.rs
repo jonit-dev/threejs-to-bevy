@@ -77,6 +77,74 @@ use crate::world_mapping::attach_entity_hierarchy;
 // native adapter uses neutral camera exposure and keeps non-atmosphere
 // directional intensity close to Three's authored scalar.
 pub const THREE_COMPAT_DIRECTIONAL_ILLUMINANCE_PER_INTENSITY: f32 = 1.0;
+
+pub fn apply_cosmetic_transform(mut base: Transform, value: Option<&Value>) -> Transform {
+    let Some(value) = value else {
+        return base;
+    };
+    let position = cosmetic_json_vec3(value.get("position"), Vec3::ZERO);
+    let rotation = cosmetic_json_quat(value.get("rotation"), Quat::IDENTITY);
+    let scale = cosmetic_json_vec3(value.get("scale"), Vec3::ONE);
+    base.translation += base.rotation * (base.scale * position);
+    base.rotation = (base.rotation * rotation).normalize();
+    base.scale *= scale;
+    base
+}
+
+fn cosmetic_json_vec3(value: Option<&Value>, fallback: Vec3) -> Vec3 {
+    let Some(values) = value.and_then(Value::as_array) else {
+        return fallback;
+    };
+    if values.len() != 3 {
+        return fallback;
+    }
+    let numbers = values.iter().map(Value::as_f64).collect::<Option<Vec<_>>>();
+    match numbers {
+        Some(values) if values.iter().all(|value| value.is_finite()) => Vec3::new(values[0] as f32, values[1] as f32, values[2] as f32),
+        _ => fallback,
+    }
+}
+
+fn cosmetic_json_quat(value: Option<&Value>, fallback: Quat) -> Quat {
+    let Some(values) = value.and_then(Value::as_array) else {
+        return fallback;
+    };
+    if values.len() != 4 {
+        return fallback;
+    }
+    let numbers = values.iter().map(Value::as_f64).collect::<Option<Vec<_>>>();
+    match numbers {
+        Some(values) if values.iter().all(|value| value.is_finite()) => {
+            let result = Quat::from_xyzw(values[0] as f32, values[1] as f32, values[2] as f32, values[3] as f32);
+            if result.length_squared() > 1e-12 { result.normalize() } else { fallback }
+        }
+        _ => fallback,
+    }
+}
+
+pub fn recenter_native_ocean_water(
+    cameras: Query<&GlobalTransform, With<Camera3d>>,
+    roots: Query<&GlobalTransform>,
+    mut surfaces: Query<(&Parent, &Name, &mut Transform)>,
+) {
+    let Some(camera) = cameras.iter().next() else {
+        return;
+    };
+    for (parent, name, mut surface) in &mut surfaces {
+        if !name.as_str().ends_with(".ocean-water-surface") {
+            continue;
+        }
+        let Ok(root) = roots.get(parent.get()) else {
+            continue;
+        };
+        let local = root
+            .affine()
+            .inverse()
+            .transform_point3(camera.translation());
+        surface.translation.x = local.x;
+        surface.translation.z = local.z;
+    }
+}
 pub const THREE_COMPAT_AMBIENT_BRIGHTNESS_PER_INTENSITY: f32 = 1.0;
 // Environment bundles duplicate authored lights in world.ir.json and atmosphere;
 // keep the world directional contribution low so it stacks with atmosphere sun.

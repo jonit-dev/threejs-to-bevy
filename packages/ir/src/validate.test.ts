@@ -303,6 +303,38 @@ test("should reject schema unknown component fields", async () => {
   }
 });
 
+test("should reject invalid or unknown cosmetic transform layer fields", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-ir-cosmetic-transform-"));
+  try {
+    await writeBundle(root, { current: 100, max: 100 });
+    await writeJson(root, "world.ir.json", {
+      schema: "threenative.world",
+      version: "0.1.0",
+      entities: [{
+        id: "player",
+        components: {
+          CosmeticTransform: {
+            position: [0, null, 0],
+            adapterHandle: "unsupported",
+          },
+          Health: { current: 100, max: 100 },
+        },
+      }],
+      resources: {},
+      events: {},
+      prefabs: [],
+    });
+
+    const result = await validateBundle(root);
+
+    assert.equal(result.ok, false);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_TRANSFORM_LAYER_UNKNOWN"), true);
+    assert.equal(result.diagnostics.some((diagnostic) => diagnostic.code === "TN_IR_TRANSFORM_VALUE_INVALID"), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 test("should accept runtime prefab catalog", async () => {
   const root = await mkdtemp(join(tmpdir(), "tn-ir-runtime-prefab-valid-"));
   try {

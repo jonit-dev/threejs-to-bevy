@@ -117,6 +117,70 @@ fn systems_host_should_call_quickjs_system_export() {
 }
 
 #[test]
+fn systems_host_should_apply_declared_cosmetic_transform_without_replacing_base_pose() {
+    let root = write_context_ergonomics_bundle("cosmetic-transform");
+    let systems_path = root.join("systems.ir.json");
+    let systems = fs::read_to_string(&systems_path)
+        .expect("systems should be readable")
+        .replace(
+            r#""writes": ["Transform"]"#,
+            r#""writes": ["Transform", "CosmeticTransform"]"#,
+        );
+    fs::write(systems_path, systems).expect("cosmetic access should be declared");
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_ergonomics = (ctx) => {
+  ctx.entity("player").transform().setLocalOffset({
+    position: [0, 0.25, 0],
+    rotation: [0, 0, 0.1, 0.995]
+  });
+};
+export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
+export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });
+"#,
+    )
+    .expect("cosmetic script should be written");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    run_native_systems_once(&mut bundle, time()).expect("declared cosmetic write should run");
+
+    let player = &bundle.world.entities[0];
+    assert_eq!(player.components.transform.as_ref().unwrap().position, Some([0.0, 0.0, 0.0]));
+    assert_eq!(
+        player.components.extra.get("CosmeticTransform"),
+        Some(&serde_json::json!({
+            "position": [0, 0.25, 0],
+            "rotation": [0, 0, 0.1, 0.995],
+            "scale": [1, 1, 1]
+        })),
+    );
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
+fn systems_host_should_reject_undeclared_cosmetic_transform_write() {
+    let root = write_context_ergonomics_bundle("cosmetic-transform-undeclared");
+    fs::write(
+        root.join("scripts.bundle.js"),
+        r#"const system_ergonomics = (ctx) => {
+  ctx.entity("player").transform().setLocalOffset({ position: [0, 0.25, 0] });
+};
+export const systemIds = Object.freeze({ "system_ergonomics": "ergonomics" });
+export const systems = Object.freeze({ "system_ergonomics": system_ergonomics });
+"#,
+    )
+    .expect("cosmetic script should be written");
+    let mut bundle = load_bundle(&root).expect("scripted bundle should load");
+
+    let error = run_native_systems_once(&mut bundle, time())
+        .expect_err("undeclared cosmetic write should fail");
+
+    assert!(error.to_string().contains("TN_BEVY_SYSTEM_WRITE_UNDECLARED"));
+    assert!(!bundle.world.entities[0].components.extra.contains_key("CosmeticTransform"));
+    fs::remove_dir_all(root).expect("temporary bundle should be removed");
+}
+
+#[test]
 fn systems_host_should_tick_countdown_and_fire_one_limit_event_per_cycle() {
     let root = write_countdown_bundle("countdown");
     let mut bundle = load_bundle(&root).expect("countdown bundle should load");

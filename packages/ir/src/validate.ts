@@ -1369,24 +1369,47 @@ function validateMeshRendererLod(
 
 function validateTransformComponents(entity: IWorldEntity, path: string, diagnostics: IIrDiagnostic[]): void {
   const transform = entity.components.Transform;
-  if (transform === undefined) {
-    return;
-  }
-  for (const key of ["position", "rotation", "scale"] as const) {
-    const values = transform[key];
-    if (values !== undefined && (!Array.isArray(values) || values.some((value) => typeof value !== "number" || !Number.isFinite(value)))) {
+  const cosmetic = entity.components.CosmeticTransform;
+  for (const [component, value] of [["Transform", transform], ["CosmeticTransform", cosmetic]] as const) {
+    if (value === undefined) continue;
+    if (typeof value !== "object" || value === null || Array.isArray(value)) {
       diagnostics.push({
         code: "TN_IR_TRANSFORM_VALUE_INVALID",
-        fix: {
-          docs: "docs/contracts/ir.md",
-          instruction: "Use finite numeric Transform vectors; repair the durable scene source that emitted this IR path.",
-          snippet: '{ "Transform": { "position": [0, 0, 0], "rotation": [0, 0, 0], "scale": [1, 1, 1] } }',
-        },
-        message: `Entity '${entity.id}' has an invalid Transform.${key} value.`,
-        path: `${path}/components/Transform/${key}`,
+        message: `Entity '${entity.id}' has an invalid ${component} value.`,
+        path: `${path}/components/${component}`,
         severity: "error",
         suggestion: "Use only finite numeric transform values.",
       });
+      continue;
+    }
+    for (const key of Object.keys(value)) {
+      if (!["position", "rotation", "scale"].includes(key)) {
+        diagnostics.push({
+          code: "TN_IR_TRANSFORM_LAYER_UNKNOWN",
+          message: `Entity '${entity.id}' ${component} uses unknown field '${key}'.`,
+          path: `${path}/components/${component}/${key}`,
+          severity: "error",
+          suggestion: "Use only position, rotation, and scale in bounded transform layers.",
+        });
+      }
+    }
+    for (const key of ["position", "rotation", "scale"] as const) {
+      const values = value[key];
+      const expectedLength = key === "rotation" ? 4 : 3;
+      if (values !== undefined && (!Array.isArray(values) || values.length !== expectedLength || values.some((item) => typeof item !== "number" || !Number.isFinite(item)))) {
+        diagnostics.push({
+          code: "TN_IR_TRANSFORM_VALUE_INVALID",
+          fix: {
+            docs: "docs/contracts/ir.md",
+            instruction: `Use finite numeric ${component} vectors; repair the durable scene source that emitted this IR path.`,
+            snippet: `{ "${component}": { "position": [0, 0, 0], "rotation": [0, 0, 0, 1], "scale": [1, 1, 1] } }`,
+          },
+          message: `Entity '${entity.id}' has an invalid ${component}.${key} value.`,
+          path: `${path}/components/${component}/${key}`,
+          severity: "error",
+          suggestion: "Use only finite numeric transform values with the required tuple length.",
+        });
+      }
     }
   }
 }

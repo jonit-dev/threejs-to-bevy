@@ -1046,6 +1046,15 @@ function __tnInvokeSystem(options) {
     return pendingComponentsByEntity.get(source.id);
   };
   const transformFacade = (source) => ({
+    localOffsetOr(fallback = {}) {
+      const components = pendingComponents(source);
+      const current = components.CosmeticTransform || {};
+      return {
+        position: readVec3(current.position, fallback.position || [0, 0, 0]),
+        rotation: readQuat(current.rotation, fallback.rotation || [0, 0, 0, 1]),
+        scale: readVec3(current.scale, fallback.scale || [1, 1, 1]),
+      };
+    },
     get position() {
       const components = pendingComponents(source);
       return readVec3(components.Transform && components.Transform.position, [0, 0, 0]);
@@ -1078,6 +1087,20 @@ function __tnInvokeSystem(options) {
       const components = pendingComponents(source);
       components.Transform = { ...(components.Transform || {}), ...clone(value) };
       effects.patches.push({ entity: source.id, component: "Transform", operation: "patch", value });
+    },
+    setLocalOffset(offset) {
+      const components = pendingComponents(source);
+      const previous = components.CosmeticTransform || {};
+      const value = {
+        position: readVec3(offset && offset.position !== undefined ? offset.position : previous.position, [0, 0, 0]),
+        rotation: readQuat(offset && offset.rotation !== undefined ? offset.rotation : previous.rotation, [0, 0, 0, 1]),
+        scale: readVec3(offset && offset.scale !== undefined ? offset.scale : previous.scale, [1, 1, 1]),
+      };
+      components.CosmeticTransform = clone(value);
+      effects.patches.push({ entity: source.id, component: "CosmeticTransform", operation: "set", value });
+    },
+    resetLocalOffset() {
+      this.setLocalOffset({ position: [0, 0, 0], rotation: [0, 0, 0, 1], scale: [1, 1, 1] });
     }
   });
   const entityViews = new Map();

@@ -21,7 +21,7 @@ use bevy::{
     prelude::*,
     render::{
         ExtractSchedule, MainWorld, Render, RenderApp, RenderSet,
-        camera::ExtractedCamera,
+        camera::{CameraProjection, ExtractedCamera, Projection},
         extract_component::{ComponentUniforms, DynamicUniformIndex, UniformComponentPlugin},
         render_graph::{
             NodeRunError, RenderGraphApp, RenderGraphContext, RenderLabel, ViewNode, ViewNodeRunner,
@@ -47,6 +47,9 @@ const SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(1174751668119168165
 /// velocity-buffer implementation can provide equivalent edge coverage.
 #[derive(Component, Clone, Debug)]
 pub struct NativeTemporalMotionBlur {
+    pub previous_camera_projection: Option<[f32; 16]>,
+    pub previous_camera_rotation: Option<Quat>,
+    pub previous_camera_translation: Option<Vec3>,
     pub previous_weight: f32,
     pub reset: bool,
 }
@@ -54,6 +57,9 @@ pub struct NativeTemporalMotionBlur {
 impl NativeTemporalMotionBlur {
     pub fn from_shutter_angle(shutter_angle: f32) -> Self {
         Self {
+            previous_camera_projection: None,
+            previous_camera_rotation: None,
+            previous_camera_translation: None,
             previous_weight: temporal_motion_blur_previous_weight(shutter_angle),
             reset: true,
         }
@@ -128,12 +134,32 @@ fn extract_temporal_motion_blur_settings(
     mut commands: Commands,
     mut main_world: ResMut<MainWorld>,
 ) {
-    let mut cameras = main_world
-        .query_filtered::<(Entity, &Camera, &mut NativeTemporalMotionBlur), With<Camera3d>>();
-    for (entity, camera, mut settings) in cameras.iter_mut(&mut main_world) {
+    let mut cameras = main_world.query_filtered::<
+        (
+            Entity,
+            &Camera,
+            &GlobalTransform,
+            &Projection,
+            &mut NativeTemporalMotionBlur,
+        ),
+        With<Camera3d>,
+    >();
+    for (entity, camera, camera_transform, projection, mut settings) in
+        cameras.iter_mut(&mut main_world)
+    {
         if !camera.is_active {
             continue;
         }
+        let (_, camera_rotation, camera_translation) =
+            camera_transform.to_scale_rotation_translation();
+        settings.reset |= native_temporal_camera_history_requires_reset(
+            settings.previous_camera_translation,
+            settings.previous_camera_rotation,
+            settings.previous_camera_projection,
+            camera_translation,
+            camera_rotation,
+            projection.get_clip_from_view().to_cols_array(),
+        );
         commands.get_or_spawn(entity).insert((
             settings.clone(),
             NativeTemporalMotionBlurUniform {
@@ -141,8 +167,37 @@ fn extract_temporal_motion_blur_settings(
                 reset: u32::from(settings.reset),
             },
         ));
+        settings.previous_camera_projection =
+            Some(projection.get_clip_from_view().to_cols_array());
+        settings.previous_camera_rotation = Some(camera_rotation);
+        settings.previous_camera_translation = Some(camera_translation);
         settings.reset = false;
     }
+}
+
+fn native_temporal_camera_history_requires_reset(
+    previous_translation: Option<Vec3>,
+    previous_rotation: Option<Quat>,
+    previous_projection: Option<[f32; 16]>,
+    current_translation: Vec3,
+    current_rotation: Quat,
+    current_projection: [f32; 16],
+) -> bool {
+    let Some(previous_translation) = previous_translation else {
+        return true;
+    };
+    let Some(previous_rotation) = previous_rotation else {
+        return true;
+    };
+    let Some(previous_projection) = previous_projection else {
+        return true;
+    };
+    previous_translation.distance_squared(current_translation) > 0.000001
+        || 1.0 - previous_rotation.dot(current_rotation).abs() > 0.000001
+        || previous_projection
+            .iter()
+            .zip(current_projection)
+            .any(|(previous, current)| (previous - current).abs() > 0.000001)
 }
 
 #[derive(Component)]
@@ -462,6 +517,55 @@ mod tests {
             true,
             Some(size),
             size,
+        ));
+    }
+
+    #[test]
+    fn temporal_history_resets_on_camera_motion_but_not_object_only_motion() {
+        let translation = Vec3::new(0.0, 2.0, 8.0);
+        let rotation = Quat::IDENTITY;
+        let projection = Mat4::IDENTITY.to_cols_array();
+        assert!(native_temporal_camera_history_requires_reset(
+            None,
+            None,
+            None,
+            translation,
+            rotation,
+            projection,
+        ));
+        assert!(!native_temporal_camera_history_requires_reset(
+            Some(translation),
+            Some(rotation),
+            Some(projection),
+            translation,
+            rotation,
+            projection,
+        ));
+        assert!(native_temporal_camera_history_requires_reset(
+            Some(translation),
+            Some(rotation),
+            Some(projection),
+            translation + Vec3::X * 0.01,
+            rotation,
+            projection,
+        ));
+        assert!(native_temporal_camera_history_requires_reset(
+            Some(translation),
+            Some(rotation),
+            Some(projection),
+            translation,
+            Quat::from_rotation_y(0.01),
+            projection,
+        ));
+        let mut changed_projection = projection;
+        changed_projection[0] += 0.01;
+        assert!(native_temporal_camera_history_requires_reset(
+            Some(translation),
+            Some(rotation),
+            Some(projection),
+            translation,
+            rotation,
+            changed_projection,
         ));
     }
 }

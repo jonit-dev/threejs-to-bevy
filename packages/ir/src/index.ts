@@ -490,6 +490,7 @@ export type {
   IRigidBodyComponent,
   ITargetProfile,
   ITransformComponent,
+  ICosmeticTransformComponent,
   IUiAttachmentIr,
   IUiBinding,
   IUiComponentDefinitionIr,
@@ -555,6 +556,7 @@ export { validateBundle, type IBundleValidationResult, type IIrDiagnostic } from
 export { resolveUiEffectStrategy, type UiEffectRenderStrategy } from "./uiEffects.js";
 export { UI_NODE_KINDS, type UiNodeKind } from "./uiTypes.js";
 export { validateCameraViews } from "./camera.js";
+export { composeTransformLayers } from "./transformLayers.js";
 export { validateEnvironmentSceneIr } from "./environment.js";
 export {
   OVERLAY_MAX_PAYLOAD_BYTES,

@@ -1193,7 +1193,10 @@ fn map_transform(entity: &WorldEntity) -> Transform {
             transform.scale = Vec3::new(scale[0], scale[1], scale[2]);
         }
     }
-    transform
+    apply_cosmetic_transform(
+        transform,
+        entity.components.extra.get("CosmeticTransform"),
+    )
 }
 
 fn directional_light_transform(transform: Transform, entity: &WorldEntity) -> Transform {

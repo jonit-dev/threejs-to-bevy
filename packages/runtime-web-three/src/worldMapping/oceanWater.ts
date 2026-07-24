@@ -261,6 +261,18 @@ export function advanceOceanWaterRuntime(object: THREE.Object3D, fixedDelta: num
   });
 }
 
+export function recenterOceanWaterRuntime(object: THREE.Object3D, cameraWorldPosition: THREE.Vector3): void {
+  object.updateWorldMatrix(true, false);
+  const localCamera = object.worldToLocal(cameraWorldPosition.clone());
+  object.traverse((child) => {
+    if (child.userData.threeNativeOceanWater === undefined) {
+      return;
+    }
+    child.position.x = localCamera.x;
+    child.position.z = localCamera.z;
+  });
+}
+
 function finitePositive(value: number | undefined, fallback: number): number {
   return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : fallback;
 }

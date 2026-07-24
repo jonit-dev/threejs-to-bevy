@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { IAssetIr, IRuntimeDiagnostic, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { bundleUrl, isLoadableModelFormat } from "./assets.js";
 import { colorToThree } from "./colors.js";
-import { advanceOceanWaterRuntime, readOceanWater } from "./oceanWater.js";
+import { advanceOceanWaterRuntime, readOceanWater, recenterOceanWaterRuntime } from "./oceanWater.js";
 import { applyTextureControls, canLoadImageInRuntime, enqueuePendingTextureLoad } from "./textureLoading.js";
 
 export { createOceanWaterObject, readOceanWater, type IOceanWaterComponent } from "./oceanWater.js";
@@ -112,8 +112,11 @@ export function readRippleWater(entity: IWorldEntity): IRippleWaterComponent | u
   return value as IRippleWaterComponent;
 }
 
-export function advanceStylizedNatureRuntime(object: THREE.Object3D, fixedDelta: number): void {
+export function advanceStylizedNatureRuntime(object: THREE.Object3D, fixedDelta: number, cameraWorldPosition?: THREE.Vector3): void {
   advanceOceanWaterRuntime(object, fixedDelta);
+  if (cameraWorldPosition !== undefined) {
+    recenterOceanWaterRuntime(object, cameraWorldPosition);
+  }
   object.traverse((child) => {
     const grassState = child.userData.threeNativeGrassWind as IGrassWindState | undefined;
     if (grassState !== undefined && child instanceof THREE.InstancedMesh) {
