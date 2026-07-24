@@ -177,7 +177,9 @@ export async function captureScreenshot(options: { command?: readonly string[]; 
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     if (options.waitReady === true) {
       try {
-        await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10000 });
+        // Readiness now includes renderer warm-up (texture upload + shader
+        // compile), which software-GL harness environments serve slowly.
+        await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30000 });
       } catch (error) {
         diagnostics.push({ code: "TN_SCREENSHOT_RUNTIME_READY_MISSING", message: `Runtime readiness was not exposed: ${errorMessage(error)}.`, severity: "error" });
       }

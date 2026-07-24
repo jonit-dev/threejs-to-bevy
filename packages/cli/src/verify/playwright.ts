@@ -47,7 +47,9 @@ export async function verifyWebPreview(options: IPlaywrightVerifyOptions): Promi
     });
     try {
       await page.goto(options.previewUrl, { waitUntil: "domcontentloaded" });
-      await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 10000 });
+      // Readiness now includes renderer warm-up (texture upload + shader
+      // compile), which software-GL harness environments serve slowly.
+      await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__)", undefined, { timeout: 30000 });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       diagnostics.push(likelyDiagnostic("TN_VERIFY_PREVIEW_NOT_READY", `Preview did not reach runtime readiness: ${message}`, "runtime-web"));

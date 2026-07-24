@@ -901,3 +901,50 @@ function makeDynamicMeshCcdWorld(): IWorldIr {
     ],
   };
 }
+
+test("physics should sanitize malformed authored rotations instead of poisoning the Rapier world", async () => {
+  await initializePhysicsRuntime();
+  const world: IWorldIr = {
+    schema: "threenative.world" as const,
+    version: "0.1.0" as const,
+    entities: [
+      {
+        id: "sea",
+        components: {
+          Collider: { kind: "box" as const, size: [16000, 2, 16000] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, -1, 0] as const },
+        },
+      },
+      {
+        id: "ship",
+        components: {
+          // Regression: a 3-element (Euler-style) rotation used to reach
+          // Rapier as {w: undefined} -> NaN quaternion -> wasm `unreachable`
+          // panic that permanently poisoned the world.
+          Collider: { kind: "box" as const, size: [145, 31, 14] as const },
+          RigidBody: { kind: "static" as const },
+          Transform: { position: [0, 5, -900] as const, rotation: [0, 0, 0] as unknown as [number, number, number, number] },
+        },
+      },
+      ...[0, 1, 2].map((index) => ({
+        id: `plane.${index}`,
+        components: {
+          Collider: { kind: "box" as const, size: [11, 3, 9] as const },
+          RigidBody: { ccd: { enabled: true, mode: "swept-aabb" as const }, kind: "dynamic" as const, mass: 2500, velocity: [0, 0, 78] as const },
+          Transform: { position: [index * 60, 285, -420 - index * 25] as const, rotation: [0, 1, 0, 0] as const },
+        },
+      })),
+    ],
+  };
+
+  assert.doesNotThrow(() => {
+    for (let step = 0; step < 240; step += 1) {
+      stepPhysics(world, 1 / 60);
+    }
+  });
+  const ship = world.entities.find((entity) => entity.id === "ship")?.components.Transform;
+  assert.ok(ship?.position !== undefined);
+  assert.ok(ship.position.every((component) => Number.isFinite(component)), "static ship transform must stay finite");
+  disposePhysicsRuntime(world);
+});

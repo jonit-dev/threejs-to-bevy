@@ -498,6 +498,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
   container.replaceChildren(...([canvas, uiOverlay?.element, overlayHost?.element].filter((child) => child !== undefined) as Node[]));
   const detachInputListeners = attachInputListeners(window, input);
   resizeRenderer(renderer, pipeline, mapped, container);
+  await warmRendererResources(renderer, mapped.scene, mapped.camera, mapped.diagnostics);
   const resizeLifecycle = createWebResizeLifecycle({
     addEventListener: (type, listener) => window.addEventListener(type, listener),
     currentSize: () => [Math.max(1, container.clientWidth || window.innerWidth || 800), Math.max(1, container.clientHeight || window.innerHeight || 600)],
@@ -1554,6 +1555,43 @@ export function newQueuedEvents(
     cursors.set(event, [...values]);
   }
   return fresh;
+}
+
+// Upload every texture and compile every shader program before the first
+// presented frame. Lazy first-visibility compiles and texture uploads
+// otherwise land mid-gameplay as multi-hundred-millisecond freezes the first
+// time an entity, effect quad, or large model enters the camera frustum.
+export async function warmRendererResources(
+  renderer: THREE.WebGLRenderer,
+  scene: THREE.Scene,
+  camera: THREE.Camera,
+  diagnostics: IRuntimeDiagnostic[],
+): Promise<void> {
+  try {
+    if (scene.background instanceof THREE.Texture) {
+      renderer.initTexture(scene.background);
+    }
+    scene.traverse((object) => {
+      const mesh = object as THREE.Mesh;
+      const material = mesh.material as THREE.Material | THREE.Material[] | undefined;
+      const materials = Array.isArray(material) ? material : material === undefined ? [] : [material];
+      for (const entry of materials) {
+        for (const value of Object.values(entry)) {
+          if ((value as THREE.Texture | null | undefined)?.isTexture === true) {
+            renderer.initTexture(value as THREE.Texture);
+          }
+        }
+      }
+    });
+    await renderer.compileAsync(scene, camera);
+  } catch (error) {
+    diagnostics.push({
+      code: "TN_WEB_RENDER_WARMUP_FAILED",
+      message: `Renderer warm-up failed; first-visibility stalls may occur: ${error instanceof Error ? error.message : String(error)}.`,
+      path: "runtime/renderer",
+      severity: "warning",
+    });
+  }
 }
 
 export function webRendererParameters(config?: IRuntimeConfigIr, captureDrawingBuffer = false): THREE.WebGLRendererParameters {

@@ -224,3 +224,87 @@ kbd {
     transition-duration: .01ms !important;
   }
 }
+
+.radar {
+  position: absolute;
+  right: max(22px, env(safe-area-inset-right));
+  bottom: 86px;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+}
+.radar__scope {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 148px;
+  height: 148px;
+  border: 2px solid #c9bc8b;
+  border-radius: 50%;
+  background: radial-gradient(circle, #06231cd9 0%, #041712ee 68%, #030d0bf5 100%);
+  box-shadow: 0 0 18px #00000066, inset 0 0 22px #0c3a2c88;
+  overflow: hidden;
+}
+.radar__ring {
+  position: absolute;
+  border: 1px solid #3d6b5566;
+  border-radius: 50%;
+}
+.radar__ring--outer { width: 124px; height: 124px; }
+.radar__ring--inner { width: 62px; height: 62px; }
+.radar__axis { position: absolute; background: #3d6b5544; }
+.radar__axis--v { width: 1px; height: 124px; }
+.radar__axis--h { width: 124px; height: 1px; }
+.radar__sweep {
+  position: absolute;
+  width: 124px;
+  height: 124px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #4fd39a55 0deg, #4fd39a11 46deg, transparent 90deg);
+  animation: radar-sweep 3.4s linear infinite;
+}
+@keyframes radar-sweep {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.radar__player {
+  position: absolute;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-bottom: 9px solid #efe4b6;
+}
+.radar__blip {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff5f4a;
+  box-shadow: 0 0 8px #ff5f4acc;
+}
+.radar__blip--ship {
+  width: 9px;
+  height: 9px;
+  border-radius: 1px;
+  background: #ffb54a;
+  box-shadow: 0 0 8px #ffb54acc;
+}
+.radar__blip--down {
+  background: #5b6d66;
+  box-shadow: none;
+  opacity: .55;
+}
+.radar__caption {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 5px 10px;
+  border-left: 3px solid #c9bc8b;
+  background: #091012d9;
+  color: #9eafa8;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.radar__caption b { color: #eee2bd; font-size: 10px; }

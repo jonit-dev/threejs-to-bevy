@@ -1296,7 +1296,9 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     });
     await page.goto(options.url, { waitUntil: "domcontentloaded" });
     try {
-      await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__?.ok)", undefined, { timeout: 10000 });
+      // Readiness now includes renderer warm-up (texture upload + shader
+      // compile), which software-GL harness environments serve slowly.
+      await page.waitForFunction("Boolean(globalThis.__THREENATIVE_READY__?.ok)", undefined, { timeout: 30000 });
     } catch {
       diagnostics.push({
         code: "TN_PLAYTEST_RUNTIME_NOT_READY",

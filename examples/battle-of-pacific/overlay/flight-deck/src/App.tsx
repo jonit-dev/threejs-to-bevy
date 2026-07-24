@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from "react";
-import { overlayClient, type FlightTelemetry } from "./client.js";
+import { overlayClient, type FlightTelemetry, type RadarFrame } from "./client.js";
 
 const initialTelemetry: FlightTelemetry = {
   airspeed: "140 KT",
@@ -32,6 +32,45 @@ function Gauge({
   );
 }
 
+const RADAR_RADIUS = 62;
+
+function Radar({ frame }: { frame: RadarFrame | undefined }) {
+  const range = frame?.rangeMeters ?? 1600;
+  const contacts = Object.entries(frame?.contacts ?? {});
+  return (
+    <section className="radar" aria-label="Radar scope">
+      <div className="radar__scope">
+        <span className="radar__ring radar__ring--outer" />
+        <span className="radar__ring radar__ring--inner" />
+        <span className="radar__axis radar__axis--v" />
+        <span className="radar__axis radar__axis--h" />
+        <span className="radar__sweep" />
+        <span className="radar__player" />
+        {contacts.map(([id, contact]) => {
+          const clamped = Math.min(1, contact.distance / range);
+          const angle = (contact.bearingDeg * Math.PI) / 180;
+          const x = Math.sin(angle) * clamped * RADAR_RADIUS;
+          const y = -Math.cos(angle) * clamped * RADAR_RADIUS;
+          const kindClass = contact.kind === "ship" ? "radar__blip--ship" : "radar__blip--zero";
+          const stateClass = contact.alive ? "" : " radar__blip--down";
+          return (
+            <span
+              key={id}
+              className={`radar__blip ${kindClass}${stateClass}`}
+              style={{ transform: `translate(${x}px, ${y}px)` }}
+            />
+          );
+        })}
+      </div>
+      <div className="radar__caption">
+        <span>RADAR</span>
+        <b>{`HDG ${String(frame?.headingDeg ?? 0).padStart(3, "0")}°`}</b>
+        <small>{`${((range) / 1000).toFixed(1)} KM`}</small>
+      </div>
+    </section>
+  );
+}
+
 function Reticle() {
   return (
     <div className="reticle" aria-hidden="true">
@@ -45,8 +84,10 @@ function Reticle() {
 
 export function App() {
   const [telemetry, setTelemetry] = useState(initialTelemetry);
+  const [radar, setRadar] = useState<RadarFrame | undefined>(undefined);
 
   useEffect(() => overlayClient.subscribe("flight:telemetry", setTelemetry), []);
+  useEffect(() => overlayClient.subscribe("flight:radar", setRadar), []);
   useEffect(() => {
     const forwardKeyboard = (event: KeyboardEvent) => {
       window.parent.dispatchEvent(new KeyboardEvent(event.type, {
@@ -106,6 +147,8 @@ export function App() {
       </aside>
 
       <Reticle />
+
+      <Radar frame={radar} />
 
       <section className="warning-panel" aria-live="assertive">
         <span>⚠</span>

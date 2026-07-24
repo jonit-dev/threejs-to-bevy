@@ -1320,9 +1320,9 @@
         },
         "Transform": {
           "position": [
-            105,
-            285,
-            -420
+            400,
+            300,
+            -1800
           ],
           "rotation": [
             0,
@@ -1631,6 +1631,1161 @@
     },
     {
       "components": {
+        "AerodynamicBody": {
+          "dragArea": [
+            2.6,
+            4.3,
+            1.7
+          ],
+          "maxForce": 155000,
+          "surfaces": [
+            {
+              "area": 21.3,
+              "aspectRatio": 5.6,
+              "centerOfPressure": [
+                0,
+                0,
+                0
+              ],
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.22
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.28
+                }
+              ],
+              "id": "main-wing",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.78
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.55
+                },
+                {
+                  "angle": 0.24,
+                  "coefficient": 1.42
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.18
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.4
+            },
+            {
+              "area": 3.8,
+              "aspectRatio": 4.2,
+              "centerOfPressure": [
+                0,
+                0,
+                3.7
+              ],
+              "control": {
+                "binding": "Pitch",
+                "input": 0,
+                "maxDeflection": 0.18,
+                "response": 3.4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.16
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.16
+                }
+              ],
+              "id": "elevator",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.9
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.3,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                -3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.left",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.right",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            }
+          ],
+          "thrusters": [
+            {
+              "binding": "Throttle",
+              "direction": [
+                0,
+                0,
+                -1
+              ],
+              "fuelHook": "fuel.avgas",
+              "id": "nakajima-sakae",
+              "maxForce": 14500,
+              "point": [
+                0,
+                0,
+                -3.8
+              ],
+              "response": 0.65,
+              "throttle": 0.9
+            }
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            11.13,
+            3.33,
+            9.04
+          ]
+        },
+        "Health": {
+          "current": 60,
+          "max": 60
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "maxSubsteps": 4,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.006,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 2500,
+          "velocity": [
+            0,
+            0,
+            78
+          ]
+        },
+        "Transform": {
+          "position": [
+            0,
+            312,
+            -1400
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        "VisualProvenance": {
+          "notes": "Rendering is owned by enemy.zero.1.visual; the dynamic parent carries portable aircraft physics and AI.",
+          "status": "model-backed enemy aircraft"
+        }
+      },
+      "id": "enemy.zero.1"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.1"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "enemy.zero.1.visual",
+      "prefab": "prefab.enemy.zero"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.1.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            -3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.1.fire.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.1.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.1.fire.right"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.1.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            -2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.1.smoke.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.1.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.1.smoke.right"
+    },
+    {
+      "components": {
+        "AerodynamicBody": {
+          "dragArea": [
+            2.6,
+            4.3,
+            1.7
+          ],
+          "maxForce": 155000,
+          "surfaces": [
+            {
+              "area": 21.3,
+              "aspectRatio": 5.6,
+              "centerOfPressure": [
+                0,
+                0,
+                0
+              ],
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.22
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.28
+                }
+              ],
+              "id": "main-wing",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.78
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.55
+                },
+                {
+                  "angle": 0.24,
+                  "coefficient": 1.42
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.18
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.4
+            },
+            {
+              "area": 3.8,
+              "aspectRatio": 4.2,
+              "centerOfPressure": [
+                0,
+                0,
+                3.7
+              ],
+              "control": {
+                "binding": "Pitch",
+                "input": 0,
+                "maxDeflection": 0.18,
+                "response": 3.4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.16
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.16
+                }
+              ],
+              "id": "elevator",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.9
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.3,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                -3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.left",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.right",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            }
+          ],
+          "thrusters": [
+            {
+              "binding": "Throttle",
+              "direction": [
+                0,
+                0,
+                -1
+              ],
+              "fuelHook": "fuel.avgas",
+              "id": "nakajima-sakae",
+              "maxForce": 14500,
+              "point": [
+                0,
+                0,
+                -3.8
+              ],
+              "response": 0.65,
+              "throttle": 0.9
+            }
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            11.13,
+            3.33,
+            9.04
+          ]
+        },
+        "Health": {
+          "current": 60,
+          "max": 60
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "maxSubsteps": 4,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.006,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 2500,
+          "velocity": [
+            0,
+            0,
+            78
+          ]
+        },
+        "Transform": {
+          "position": [
+            -400,
+            312,
+            -1800
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        "VisualProvenance": {
+          "notes": "Rendering is owned by enemy.zero.2.visual; the dynamic parent carries portable aircraft physics and AI.",
+          "status": "model-backed enemy aircraft"
+        }
+      },
+      "id": "enemy.zero.2"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.2"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "enemy.zero.2.visual",
+      "prefab": "prefab.enemy.zero"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.2.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            -3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.2.fire.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.2.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.2.fire.right"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.2.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            -2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.2.smoke.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.2.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.2.smoke.right"
+    },
+    {
+      "components": {
+        "AerodynamicBody": {
+          "dragArea": [
+            2.6,
+            4.3,
+            1.7
+          ],
+          "maxForce": 155000,
+          "surfaces": [
+            {
+              "area": 21.3,
+              "aspectRatio": 5.6,
+              "centerOfPressure": [
+                0,
+                0,
+                0
+              ],
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.22
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.28
+                }
+              ],
+              "id": "main-wing",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.78
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.55
+                },
+                {
+                  "angle": 0.24,
+                  "coefficient": 1.42
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.18
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.4
+            },
+            {
+              "area": 3.8,
+              "aspectRatio": 4.2,
+              "centerOfPressure": [
+                0,
+                0,
+                3.7
+              ],
+              "control": {
+                "binding": "Pitch",
+                "input": 0,
+                "maxDeflection": 0.18,
+                "response": 3.4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.16
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.16
+                }
+              ],
+              "id": "elevator",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.9
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.3,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                -3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.left",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.right",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            }
+          ],
+          "thrusters": [
+            {
+              "binding": "Throttle",
+              "direction": [
+                0,
+                0,
+                -1
+              ],
+              "fuelHook": "fuel.avgas",
+              "id": "nakajima-sakae",
+              "maxForce": 14500,
+              "point": [
+                0,
+                0,
+                -3.8
+              ],
+              "response": 0.65,
+              "throttle": 0.9
+            }
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            11.13,
+            3.33,
+            9.04
+          ]
+        },
+        "Health": {
+          "current": 60,
+          "max": 60
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "maxSubsteps": 4,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.006,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 2500,
+          "velocity": [
+            0,
+            0,
+            78
+          ]
+        },
+        "Transform": {
+          "position": [
+            0,
+            325,
+            -2200
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        "VisualProvenance": {
+          "notes": "Rendering is owned by enemy.zero.3.visual; the dynamic parent carries portable aircraft physics and AI.",
+          "status": "model-backed enemy aircraft"
+        }
+      },
+      "id": "enemy.zero.3"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.3"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "enemy.zero.3.visual",
+      "prefab": "prefab.enemy.zero"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.3.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            -3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.3.fire.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.3.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.3.fire.right"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.3.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            -2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.3.smoke.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.3.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.3.smoke.right"
+    },
+    {
+      "components": {
         "Collider": {
           "kind": "box",
           "size": [
@@ -1655,7 +2810,8 @@
           "rotation": [
             0,
             0,
-            0
+            0,
+            1
           ],
           "scale": [
             1,
@@ -1816,85 +2972,253 @@
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.00"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.01"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.02"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.03"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.04"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.05"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.06"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.07"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.08"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
-        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-aa",
+          "mesh": "mesh.tracer"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.3,
+            0.3,
+            3.2
+          ]
+        }
       },
       "id": "destroyer.aa.09"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-flash", "mesh": "mesh.destroyer-flash" },
-        "Transform": { "position": [-30, -100, -900], "scale": [0.001, 0.001, 0.001] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-flash",
+          "mesh": "mesh.destroyer-flash"
+        },
+        "Transform": {
+          "position": [
+            -30,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
       },
       "id": "destroyer.aa-flash.0"
     },
     {
       "components": {
-        "MeshRenderer": { "material": "mat.destroyer-flash", "mesh": "mesh.destroyer-flash" },
-        "Transform": { "position": [30, -100, -900], "scale": [0.001, 0.001, 0.001] }
+        "MeshRenderer": {
+          "material": "mat.destroyer-flash",
+          "mesh": "mesh.destroyer-flash"
+        },
+        "Transform": {
+          "position": [
+            30,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
       },
       "id": "destroyer.aa-flash.1"
     }
@@ -1942,7 +3266,9 @@
         "health": 60,
         "hitsOnPlayer": 0,
         "phase": "INTERCEPT",
-        "targetId": "aircraft"
+        "targetId": "aircraft",
+        "zerosAlive": 4,
+        "zerosTotal": 4
       }
     }
   ],

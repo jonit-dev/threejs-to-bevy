@@ -36,6 +36,22 @@
                 "throttle"
               ]
             }
+          },
+          {
+            "name": "flight:radar",
+            "schema": {
+              "fields": {
+                "contacts": "object",
+                "headingDeg": "number",
+                "rangeMeters": "number"
+              },
+              "kind": "object",
+              "required": [
+                "contacts",
+                "headingDeg",
+                "rangeMeters"
+              ]
+            }
           }
         ],
         "overlayToGame": [
@@ -57,7 +73,10 @@
           }
         ]
       },
-      "targetProfiles": ["web", "desktop"],
+      "targetProfiles": [
+        "web",
+        "desktop"
+      ],
       "transparent": true,
       "zIndex": 20
     }

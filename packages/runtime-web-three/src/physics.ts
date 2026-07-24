@@ -73,6 +73,22 @@ const queryBallShapes = new Map<number, RAPIER.Ball>();
 const queryCuboidShapes = new Map<string, RAPIER.Cuboid>();
 const ZERO_VEC3: Vec3 = [0, 0, 0];
 const IDENTITY_QUAT = [0, 0, 0, 1] as const;
+
+// Authored rotations reach Rapier verbatim; a malformed quaternion (wrong
+// length or non-finite components, e.g. an accidental 3-element Euler array)
+// becomes NaN inside the wasm world, which panics `unreachable` and leaves the
+// world permanently poisoned ("recursive use of an object"). Sanitize at the
+// boundary so bad authored data degrades to identity instead of freezing the
+// whole simulation.
+function sanitizedQuat(rotation: readonly number[] | undefined): readonly [number, number, number, number] {
+  if (rotation === undefined || rotation.length !== 4) return IDENTITY_QUAT;
+  const [x, y, z, w] = rotation;
+  if (x === undefined || y === undefined || z === undefined || w === undefined) return IDENTITY_QUAT;
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z) || !Number.isFinite(w)) return IDENTITY_QUAT;
+  const length = Math.hypot(x, y, z, w);
+  if (!(length > 1e-6)) return IDENTITY_QUAT;
+  return [x / length, y / length, z / length, w / length];
+}
 let rapierInitialized = false;
 let rapierInitialization: Promise<void> | undefined;
 
@@ -509,7 +525,7 @@ function stepRapierBodies(cacheKey: IWorldIr, world: IWorldIr, fixedDelta: numbe
     if (body === undefined || transform?.position === undefined || source === undefined) {
       continue;
     }
-    const rotation = transform.rotation ?? IDENTITY_QUAT;
+    const rotation = sanitizedQuat(transform.rotation);
     const authoredVelocity = source.velocity ?? ZERO_VEC3;
     const angularVelocity = source.angularVelocity ?? ZERO_VEC3;
     const scriptPosedKinematic = source.kind === "kinematic" && scriptAuthoredTransforms.has(entity.id);
@@ -643,7 +659,7 @@ function createRapierRuntime(world: IWorldIr, gravity: Vec3, signature: string):
     }
     const body = authoredBody ?? { kind: "static" as const };
     const position = transform.position;
-    const rotation = transform.rotation ?? [0, 0, 0, 1];
+    const rotation = sanitizedQuat(transform.rotation);
     const desc = rigidBodyDesc(body.kind)
       .setTranslation(position[0], position[1], position[2])
       .setRotation({ x: rotation[0], y: rotation[1], z: rotation[2], w: rotation[3] })

@@ -12,8 +12,22 @@ export type FlightTelemetry = {
   throttle: string;
 };
 
+export type RadarContact = {
+  alive: boolean;
+  bearingDeg: number;
+  distance: number;
+  kind: "zero" | "ship";
+};
+
+export type RadarFrame = {
+  contacts: Record<string, RadarContact>;
+  headingDeg: number;
+  rangeMeters: number;
+};
+
 export type GameToOverlay = {
   "flight:telemetry": FlightTelemetry;
+  "flight:radar": RadarFrame;
 };
 
 export type OverlayToGame = {
