@@ -14,12 +14,19 @@ Rules for the native Bevy runtime.
   an explicit diagnostic and document the bounded follow-up instead of hiding
   the gap behind a compatibility shim.
 - Rust uses edition 2024. Bevy and `bevy_ecs` are pinned to `=0.14.2`.
-- For Rust-only changes, prefer:
+- For Rust-only changes, run the integration-test target that owns the changed
+  behavior. From the repository root, use:
 
 ```bash
-cargo test
+pnpm test:rust -- <target> [test-name-filter]
 ```
 
+- For library unit tests, use `pnpm test:rust:lib -- [test-name-filter]`.
+- Do not use a bare `cargo test` or `cargo test <filter>` for focused
+  verification. Cargo links every integration-test executable before applying
+  the filter, and this Bevy workspace has dozens of large static test binaries.
+- Use `pnpm test:rust:full` only when the change genuinely requires the complete
+  native suite.
 - To self-verify native behavior against an emitted bundle, use
   `tn scene proof <scene> --project <path> --native` and scenario playtests
   run with `tn playtest ... --target desktop`; keep the evidence under the

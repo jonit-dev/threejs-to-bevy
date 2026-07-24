@@ -13,114 +13,142 @@ path = "src/lib.rs"
 [[bin]]
 name = "threenative_runtime"
 path = "src/main.rs"
+test = false
 
 [[bin]]
 name = "threenative_capture"
 path = "src/capture.rs"
+test = false
 
 [[bin]]
 name = "threenative_conformance"
 path = "src/conformance_cli.rs"
+test = false
 
 [[bin]]
 name = "threenative_interaction_residual_trace"
 path = "src/interaction_residual_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_game_flow_trace"
 path = "src/game_flow_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_sequence_trace"
 path = "src/sequence_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_systems_log"
 path = "src/systems_log.rs"
+test = false
 
 [[bin]]
 name = "threenative_character_trace"
 path = "src/character_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_animation_trace"
 path = "src/animation_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_animation_physics_residuals_trace"
 path = "src/animation_physics_residuals_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_input_ui_polish_trace"
 path = "src/input_ui_polish_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_persistence_reload_trace"
 path = "src/persistence_reload_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_production_hardening_trace"
 path = "src/production_hardening_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_rendering_residuals_trace"
 path = "src/rendering_residuals_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_runtime_gameplay_host_trace"
 path = "src/runtime_gameplay_host_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_ui_navigation_trace"
 path = "src/ui_navigation_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_ui_native_trace"
 path = "src/ui_native_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_audio_lifecycle_trace"
 path = "src/audio_lifecycle_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_environment_content_trace"
 path = "src/environment_content_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_runtime_query_diffing_trace"
 path = "src/runtime_query_diffing_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_runtime_prefabs_hierarchy_trace"
 path = "src/runtime_prefabs_hierarchy_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_spawner_trace"
 path = "src/spawner_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_ui_persistence_settings_facades_trace"
 path = "src/ui_persistence_settings_facades_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_rigid_body_trace"
 path = "src/rigid_body_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_asset_load_trace"
 path = "src/asset_load_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_v9_physics_character_trace"
 path = "src/v9_physics_character_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_physics_self_verification_trace"
 path = "src/physics_self_verification_trace.rs"
+test = false
 
 [[bin]]
 name = "threenative_advanced_physics_benchmark"
 path = "src/advanced_physics_benchmark.rs"
+test = false
 
 [dependencies]
 bevy = { version = "=0.14.2", features = ["jpeg", "mp3", "pbr_multi_layer_material_textures", "pbr_transmission_textures", "webp"] }
