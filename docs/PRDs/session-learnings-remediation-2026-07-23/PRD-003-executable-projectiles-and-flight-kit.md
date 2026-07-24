@@ -124,11 +124,11 @@ from camera data rather than copying the Pacific script.
 
 **Implementation:**
 
-- [ ] Prefer ordinary spawn unless profiling proves pooling necessary.
-- [ ] If promoted, pool owns acquire/advance/orient/park/reset with bounded IDs.
-- [ ] Add rising-edge and rate-limited cue decisions as pure deterministic
+- [x] Prefer ordinary spawn unless profiling proves pooling necessary.
+- [x] If promoted, pool owns acquire/advance/orient/park/reset with bounded IDs.
+- [x] Add rising-edge and rate-limited cue decisions as pure deterministic
   helpers; they return intent and do not hide `ctx.audio`.
-- [ ] Add prop/rotor throttle-to-clip/visibility convention without requiring
+- [x] Add prop/rotor throttle-to-clip/visibility convention without requiring
   model sub-node handles.
 
 ### Phase 5: Boresight projection and second consumer
@@ -143,9 +143,9 @@ from camera data rather than copying the Pacific script.
 
 **Implementation:**
 
-- [ ] Project boresight from camera vertical FOV, aspect, pitch, and aim vector.
-- [ ] Send normalized coordinates over the existing typed bridge.
-- [ ] Remove copied Pacific lifecycle logic only when behavior/evidence matches.
+- [x] Project boresight from camera vertical FOV, aspect, pitch, and aim vector.
+- [x] Send normalized coordinates over the existing typed bridge.
+- [x] Remove copied Pacific lifecycle logic only when behavior/evidence matches.
 
 ### Phase 6: Planner, cookbook, status, and release proof
 
@@ -166,8 +166,8 @@ Automated review follows every phase; manual playtest is additional for Phases
 - [x] Cooldown and invalid-source negative controls fail correctly.
 - [x] Web/native projectile observations match.
 - [x] FlightRig has two real consumers and independent direction tests.
-- [ ] No helper exposes renderer/native handles or duplicates descriptor truth.
-- [ ] Reticle follows camera projection rather than a CSS constant.
+- [x] No helper exposes renderer/native handles or duplicates descriptor truth.
+- [x] Reticle follows camera projection rather than a CSS constant.
 - [ ] Focused tests, conformance, cookbook, docs, and both game playtests pass.
 
 ## Verification evidence
@@ -235,3 +235,23 @@ Append commands and artifacts per phase.
   the restored pose and increments `retryCount`, but its two legacy
   `changed:true` assertions compare against an already-restored native resource
   snapshot; that proof-authoring defect remains separate from the shared rig.
+
+### Phases 4 and 5
+
+- No new effect pool was promoted: ordinary runtime spawn remains preferred,
+  while existing bounded projectile/effect pools keep their established
+  acquire/advance/park ownership.
+- `AudioCueEx` and `PropellerEx` are pure helpers. Their edge/reset, cadence,
+  throttle/clip, and bounded-disc tests pass, and Pacific consumes them without
+  hiding audio or model handles.
+- `BoresightEx` projects a parent-space aim vector using the authored camera's
+  FOV and rotation-derived pitch plus the overlay aspect. Center, FOV/aspect,
+  pitch, and rear-facing cases pass independently.
+- The typed `flight:telemetry` payload now carries normalized reticle
+  coordinates and visibility. The overlay positions the reticle from that
+  payload; the hardcoded `top: 28%` anchor is removed.
+- `pnpm --dir examples/battle-of-pacific build:overlay:flight-deck` and the game
+  bundle build pass. The post-change focused-input playtest passes all six
+  gameplay, visual, animation, movement, and diagnostic assertions at
+  `/tmp/battle-flight-kit-input-web/summary.json`; its frame visibly contains
+  the Pacific aircraft, ocean, combat HUD, and projected reticle.

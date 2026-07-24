@@ -1,4 +1,6 @@
 import {
+  AudioCueEx,
+  BoresightEx,
   CameraMath,
   defineBehavior,
   FlightRig,
@@ -7,6 +9,7 @@ import {
   HitTestEx,
   Mathf,
   ProjectileEx,
+  PropellerEx,
   Quat,
   RandomEx,
   ShipFxEx,
@@ -685,14 +688,13 @@ export const updatePacificFlight = defineBehavior(
 
     // Propeller speed follows throttle: near-idle shows readable blades,
     // full power spins into a strobe hidden behind the translucent blur disc.
-    const propSpeed = 1.5 + control.throttle * 35;
-    const discTarget = Mathf.clamp((control.throttle - 0.3) / 0.35, 0, 1);
-    control.discBlend += (discTarget - control.discBlend) * Mathf.clamp(dt * 3, 0, 1);
+    const propeller = PropellerEx.step(control.discBlend, control.throttle, dt);
+    const propSpeed = propeller.clipSpeed;
+    control.discBlend = propeller.discBlend;
     const disc = context.entity("aircraft.propdisc");
     if (disc !== undefined) {
-      const discScale = Math.max(0.001, control.discBlend) * 0.5;
       disc.patch("Transform", {
-        scale: [discScale, 0.012, discScale]
+        scale: [propeller.discScale, 0.012, propeller.discScale]
       });
     }
 
@@ -732,8 +734,9 @@ export const updatePacificFlight = defineBehavior(
     const stall = flight.telemetry.stall;
     // Fire warning/crash cues on the rising edge only, so they sound once per
     // event rather than every fixed tick the condition stays true.
-    if (stall && !control.prevStall) context.audio.play("warning.stall");
-    control.prevStall = stall;
+    const stallCue = AudioCueEx.rising(control.prevStall, stall);
+    if (stallCue.fire) context.audio.play("warning.stall");
+    control.prevStall = stallCue.nextActive;
     if (failed && control.enginePlaybackId !== "") {
       // Ditching cuts the running engine and spools it down to silence.
       context.audio.stop(control.enginePlaybackId);
@@ -806,6 +809,23 @@ export const updatePacificFlight = defineBehavior(
     const airspeedKnots = Math.round(speed * 1.94384);
     const altitudeFeet = Math.max(0, Math.round(altitude * 3.28084));
     const throttlePercent = Math.round(control.throttle * 100);
+    const projectionCamera = context.entity("camera.main");
+    const cameraComponent = projectionCamera?.get("Camera", { fovY: 52 });
+    const cameraTransform = projectionCamera?.get("Transform", {
+      rotation: [-0.090633, 0, 0, 0.995884] as [number, number, number, number]
+    });
+    const cameraRotation = cameraTransform?.rotation ?? [-0.090633, 0, 0, 0.995884];
+    const cameraPitch = Math.asin(Mathf.clamp(
+      2 * (cameraRotation[3] * cameraRotation[0] - cameraRotation[1] * cameraRotation[2]),
+      -1,
+      1
+    ));
+    const boresight = BoresightEx.project({
+      aim: [0, 0, -1],
+      aspect: 1280 / 720,
+      cameraPitch,
+      verticalFov: (cameraComponent?.fovY ?? 52) * Math.PI / 180
+    });
     const objective = failed
       ? control.playerIntegrity <= 0
         ? "Zero got you - press R or RETRY FLIGHT"
@@ -840,6 +860,9 @@ export const updatePacificFlight = defineBehavior(
       objective,
       phase,
       progress,
+      reticleVisible: boresight.visible,
+      reticleX: boresight.x,
+      reticleY: boresight.y,
       stall,
       throttle: `${throttlePercent}%`
     });

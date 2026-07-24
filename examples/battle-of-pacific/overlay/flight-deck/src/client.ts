@@ -8,6 +8,9 @@ export type FlightTelemetry = {
   objective: string;
   phase: string;
   progress: number;
+  reticleVisible: boolean;
+  reticleX: number;
+  reticleY: number;
   stall: boolean;
   throttle: string;
 };

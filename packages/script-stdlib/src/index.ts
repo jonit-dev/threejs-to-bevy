@@ -32,6 +32,10 @@ export {
   Vec2,
   Vec3,
 } from "./helpers.js";
+export { AudioCueEx, PropellerEx } from "./audioHelpers.js";
+export type { IAudioCueDecision, IPropellerResult, IRateLimitedCueDecision } from "./audioHelpers.js";
+export { BoresightEx } from "./camera.js";
+export type { IBoresightProjection } from "./camera.js";
 export type { IFireballState, IProjectile, IProjectileSpawn } from "./combat.js";
 export type { IMaterialPatch } from "./feedback.js";
 export { CameraRig, CharacterRig, KinematicMoverEx, RespawnEx, TriggerEx } from "./rigs.js";

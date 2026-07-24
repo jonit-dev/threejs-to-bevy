@@ -9,6 +9,9 @@ const initialTelemetry: FlightTelemetry = {
   objective: "Hold controlled flight for 45 seconds",
   phase: "CRUISE",
   progress: 0,
+  reticleVisible: true,
+  reticleX: 0.5,
+  reticleY: 0.28,
   stall: false,
   throttle: "82%"
 };
@@ -75,9 +78,17 @@ function Radar({ frame }: { frame: RadarFrame | undefined }) {
   );
 }
 
-function Reticle() {
+function Reticle({ telemetry }: { telemetry: FlightTelemetry }) {
   return (
-    <div className="reticle" aria-hidden="true">
+    <div
+      className="reticle"
+      aria-hidden="true"
+      style={{
+        "--reticle-x": `${Math.max(0, Math.min(1, telemetry.reticleX)) * 100}%`,
+        "--reticle-y": `${Math.max(0, Math.min(1, telemetry.reticleY)) * 100}%`,
+        opacity: telemetry.reticleVisible ? undefined : 0
+      } as CSSProperties}
+    >
       <span className="reticle__wing reticle__wing--left" />
       <span className="reticle__wing reticle__wing--right" />
       <span className="reticle__dot" />
@@ -150,7 +161,7 @@ export function App() {
         </section>
       </aside>
 
-      <Reticle />
+      <Reticle telemetry={telemetry} />
 
       <Radar frame={radar} />
 

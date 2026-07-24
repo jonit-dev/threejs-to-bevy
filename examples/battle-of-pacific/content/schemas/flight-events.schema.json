@@ -13,6 +13,9 @@
         "objective": { "kind": "string" },
         "phase": { "kind": "string" },
         "progress": { "kind": "number" },
+        "reticleVisible": { "kind": "boolean" },
+        "reticleX": { "kind": "number" },
+        "reticleY": { "kind": "number" },
         "stall": { "kind": "boolean" },
         "throttle": { "kind": "string" }
       }
