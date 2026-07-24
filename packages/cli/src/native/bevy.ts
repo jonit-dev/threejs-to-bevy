@@ -5,7 +5,10 @@ import { fileURLToPath } from "node:url";
 
 export interface IBevyRuntimeInvocation {
   bundlePath: string;
+  cargoFeatures?: readonly string[];
   captureOutput?: boolean;
+  environment?: Readonly<Record<string, string>>;
+  exitAfterSeconds?: number;
   headless?: boolean;
   proofHarness?: {
     auditWrites?: boolean;
@@ -85,6 +88,10 @@ export function bevyRuntimeArgs(
   bundledManifestPath?: string,
 ): string[] {
   const runtime = resolveBevyRuntime(repoRoot, env, bundledManifestPath);
+  const cargoFeatures = [...new Set([
+    ...REQUIRED_BEVY_RUNTIME_FEATURES,
+    ...(invocation.cargoFeatures ?? []),
+  ])];
   const args = [
     "run",
     "--manifest-path",
@@ -94,7 +101,7 @@ export function bevyRuntimeArgs(
     "--bin",
     "threenative_runtime",
     "--features",
-    REQUIRED_BEVY_RUNTIME_FEATURES.join(","),
+    cargoFeatures.join(","),
   ];
   if (env.TN_NATIVE_PROFILE !== "debug") {
     args.push("--release");
@@ -102,6 +109,9 @@ export function bevyRuntimeArgs(
   args.push("--", invocation.bundlePath);
   if (invocation.headless === true) {
     args.push("--headless");
+  }
+  if (invocation.exitAfterSeconds !== undefined) {
+    args.push("--exit-after-seconds", String(invocation.exitAfterSeconds));
   }
   if (invocation.proofHarness !== undefined) {
     args.push(
@@ -130,6 +140,7 @@ export function resolveBevyRuntimeBinaryPath(
   repoRoot: string,
   env: BevyRuntimeEnvironment = process.env,
   bundledManifestPath?: string,
+  extraRequiredFeatures: readonly string[] = [],
 ): string | undefined {
   const runtimeRoots = [
     dirname(resolveBevyRuntime(repoRoot, env, bundledManifestPath).manifestPath),
@@ -141,6 +152,10 @@ export function resolveBevyRuntimeBinaryPath(
     join(runtimeRoot, `target/${profile}/threenative_runtime`),
     join(runtimeRoot, `target/${fallbackProfile}/threenative_runtime`),
   ]);
+  const requiredFeatures = [...new Set([
+    ...REQUIRED_BEVY_RUNTIME_FEATURES,
+    ...extraRequiredFeatures,
+  ])];
   return candidates.find((candidate) => {
     if (!existsSync(candidate)) return false;
     const result = spawnSync(candidate, ["--capabilities"], { encoding: "utf8", env: runtimeBinaryEnv(candidate), timeout: 5_000 });
@@ -150,7 +165,7 @@ export function resolveBevyRuntimeBinaryPath(
       const cargoFeatures = capabilities.cargoFeatures;
       if (!Array.isArray(cargoFeatures)
         || !cargoFeatures.every((feature): feature is string => typeof feature === "string")) return false;
-      return REQUIRED_BEVY_RUNTIME_FEATURES.every((feature) => cargoFeatures.includes(feature));
+      return requiredFeatures.every((feature) => cargoFeatures.includes(feature));
     } catch {
       return false;
     }
@@ -161,6 +176,9 @@ function bevyRuntimeBinaryArgs(invocation: IBevyRuntimeInvocation): string[] {
   const args = [invocation.bundlePath];
   if (invocation.headless === true) {
     args.push("--headless");
+  }
+  if (invocation.exitAfterSeconds !== undefined) {
+    args.push("--exit-after-seconds", String(invocation.exitAfterSeconds));
   }
   if (invocation.proofHarness !== undefined) {
     args.push(
@@ -183,13 +201,18 @@ export function runBevyRuntime(invocation: IBevyRuntimeInvocation): BevyRuntimeP
   const repoRoot = resolve(fileURLToPath(new URL("../../../../", import.meta.url)));
   const bundledManifestPath = resolve(fileURLToPath(new URL("../runtime-bevy/Cargo.toml", import.meta.url)));
   const runtime = resolveBevyRuntime(repoRoot, process.env, bundledManifestPath);
-  const binaryPath = resolveBevyRuntimeBinaryPath(repoRoot, process.env, bundledManifestPath);
-  const env = { ...process.env };
+  const binaryPath = resolveBevyRuntimeBinaryPath(
+    repoRoot,
+    process.env,
+    bundledManifestPath,
+    invocation.cargoFeatures,
+  );
+  const env = { ...process.env, ...invocation.environment };
   const stdio: StdioOptions = invocation.captureOutput ? ["ignore", "pipe", "pipe"] : "inherit";
   if (binaryPath !== undefined) {
     return spawn(binaryPath, bevyRuntimeBinaryArgs(invocation), {
       cwd: runtime.cwd,
-      env: runtimeBinaryEnv(binaryPath),
+      env: { ...runtimeBinaryEnv(binaryPath), ...invocation.environment },
       stdio,
     });
   }

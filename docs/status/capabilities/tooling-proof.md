@@ -66,7 +66,12 @@ Current support:
   texture variant bytes, and entity counts. `tn performance proof --target
   desktop` writes the same sidecar shape with measured static bundle counters
   and stable unsupported diagnostics for Bevy counters that are not promoted
-  yet. `pnpm verify:efficient-scale`
+  yet. `tn performance trace --target desktop` builds the opt-in Bevy
+  `trace_chrome` feature, runs the release runtime for a bounded duration with
+  graceful shutdown, and writes the same gzip-compressed Chrome/Perfetto
+  artifact shape as web tracing. Native tracing requires a graphical desktop
+  session; the first invocation may compile the profiling feature.
+  `pnpm verify:efficient-scale`
   builds `examples/dense-world-benchmark`, captures a web performance-proof
   sidecar, validates target-profile budgets, and enforces dense-scene entity
   and visible-instance floors plus selected texture-variant package/load

@@ -166,6 +166,7 @@ rapier3d = "0.33.0"
 [features]
 default = []
 native-overlay-cef = ["dep:cef"]
+native-performance-trace = ["bevy/trace_chrome"]
 
 [package.metadata.threenative.native-overlay-cef]
 cef-crate = "150.0.0+150.0.10"

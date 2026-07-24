@@ -93,6 +93,25 @@ test("should pass headless flag to runtime argv", () => {
   assert.deepEqual(args.slice(-2), ["/project/dist/game.bundle", "--headless"]);
 });
 
+test("should enable native Chrome tracing and a bounded graceful runtime", () => {
+  const args = bevyRuntimeArgs(
+    "/repo",
+    {
+      bundlePath: "/project/dist/game.bundle",
+      cargoFeatures: ["native-performance-trace"],
+      exitAfterSeconds: 5,
+    },
+    {},
+  );
+
+  assert.equal(args[args.indexOf("--features") + 1], "native-overlay-cef,native-performance-trace");
+  assert.deepEqual(args.slice(-3), [
+    "/project/dist/game.bundle",
+    "--exit-after-seconds",
+    "5",
+  ]);
+});
+
 test("should emit structured waiver instead of winit crash without display", () => {
   assert.equal(hasNativeDisplay({}), false);
   assert.throws(

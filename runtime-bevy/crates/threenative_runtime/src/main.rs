@@ -1,5 +1,6 @@
 use std::{env, process::ExitCode};
 
+use bevy::prelude::*;
 use threenative_runtime::{
     RuntimeOptions, app_from_bundle_with_options, overlay_host,
     proof_harness::NativeProofHarnessOptions,
@@ -12,14 +13,17 @@ fn main() -> ExitCode {
     }
     let mut args = env::args().skip(1);
     if args.next().as_deref() == Some("--capabilities") {
+        let mut cargo_features = overlay_host::native_overlay_backend_descriptor()
+            .map(|descriptor| vec![descriptor.cargo_feature])
+            .unwrap_or_default();
+        #[cfg(feature = "native-performance-trace")]
+        cargo_features.push("native-performance-trace");
         println!(
             "{}",
             serde_json::json!({
                 "schema": "threenative.runtime-capabilities",
                 "version": "0.1.0",
-                "cargoFeatures": overlay_host::native_overlay_backend_descriptor()
-                    .map(|descriptor| vec![descriptor.cargo_feature])
-                    .unwrap_or_default(),
+                "cargoFeatures": cargo_features,
                 "nativeWebview": {
                     "available": overlay_host::native_webview_backend_available(),
                     "backend": overlay_host::native_webview_backend_name(),
@@ -30,7 +34,7 @@ fn main() -> ExitCode {
     }
     let Some(invocation) = RuntimeInvocation::parse(env::args().skip(1)) else {
         eprintln!(
-            "Usage: threenative_runtime --capabilities | <bundle-path> [--headless] [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
+            "Usage: threenative_runtime --capabilities | <bundle-path> [--headless] [--exit-after-seconds <seconds>] [--proof-harness <commands.json> --readiness-out <readiness.json> [--audit-writes]]"
         );
         return ExitCode::from(2);
     };
@@ -44,6 +48,10 @@ fn main() -> ExitCode {
 
     match app_from_bundle_with_options(invocation.bundle_path, invocation.options) {
         Ok(mut app) => {
+            if let Some(seconds) = invocation.exit_after_seconds {
+                app.insert_resource(RuntimeExitAfterSeconds(seconds))
+                    .add_systems(Update, exit_runtime_after_profile_duration);
+            }
             app.run();
             ExitCode::SUCCESS
         }
@@ -56,6 +64,7 @@ fn main() -> ExitCode {
 
 struct RuntimeInvocation {
     bundle_path: String,
+    exit_after_seconds: Option<f32>,
     headless: bool,
     options: RuntimeOptions,
 }
@@ -66,6 +75,7 @@ impl RuntimeInvocation {
         let mut proof_harness = None;
         let mut readiness_out = None;
         let mut audit_writes = false;
+        let mut exit_after_seconds = None;
         let mut headless = false;
         let mut args = args.peekable();
         while let Some(arg) = args.next() {
@@ -73,6 +83,14 @@ impl RuntimeInvocation {
                 "--proof-harness" => proof_harness = args.next(),
                 "--readiness-out" => readiness_out = args.next(),
                 "--audit-writes" => audit_writes = true,
+                "--exit-after-seconds" => {
+                    exit_after_seconds = Some(
+                        args.next()?
+                            .parse::<f32>()
+                            .ok()
+                            .filter(|value| *value > 0.0)?,
+                    )
+                }
                 "--headless" => headless = true,
                 _ if bundle_path.is_none() => bundle_path = Some(arg),
                 _ => return None,
@@ -91,8 +109,22 @@ impl RuntimeInvocation {
         };
         Some(Self {
             bundle_path: bundle_path?,
+            exit_after_seconds,
             headless,
             options: RuntimeOptions { proof_harness },
         })
+    }
+}
+
+#[derive(Resource)]
+struct RuntimeExitAfterSeconds(f32);
+
+fn exit_runtime_after_profile_duration(
+    deadline: Res<RuntimeExitAfterSeconds>,
+    time: Res<Time>,
+    mut exits: EventWriter<AppExit>,
+) {
+    if time.elapsed_seconds() >= deadline.0 {
+        exits.send(AppExit::Success);
     }
 }

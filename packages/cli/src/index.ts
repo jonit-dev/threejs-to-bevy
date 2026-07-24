@@ -256,11 +256,11 @@ export const CLI_COMMAND_REGISTRY = defineCommandRegistry({
     usage: "tn parity playtest --project <path> --scenario <playtest.json> [--targets web,desktop] [--stable-artifacts] [--json]\n              tn parity visual --project <path> --url <preview-url> --reference <png> [--out <png>] [--history <json>] [--viewport reference|desktop|mobile|<width>x<height>] [--json]",
   },
   performance: {
-    description: "Capture runtime performance proof or a browser DevTools CPU/GPU trace.",
+    description: "Capture runtime performance proof or a web/native Chrome trace.",
     handler: performanceCommand,
     implemented: true,
     subcommands: ["proof", "trace"],
-    usage: "tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]\n              tn performance trace --project <path> --url <preview-url> [--seconds <1..30>] [--out <file.json.gz>] [--json]",
+    usage: "tn performance proof [--project <path>] [--target web|desktop|native] [--url <preview-url>] [--frames <n>] [--target-profile <id>] [--out <file>] [--json]\n              tn performance trace --project <path> [--target web|desktop] [--url <preview-url>] [--seconds <1..30>] [--out <file.json.gz>] [--json]",
   },
   playtest: {
     description: "Run, scaffold, or inspect playtest scenarios and assertion DSL.",
