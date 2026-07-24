@@ -17,8 +17,6 @@ import {
   type CascadeVec3,
 } from "./cascadeMath.js";
 
-type Shader = Parameters<THREE.Material["onBeforeCompile"]>[0];
-
 interface IMaterialPatch {
   cacheKeyHook: THREE.Material["customProgramCacheKey"];
   cascadeBlendFractionDefine: unknown;
@@ -33,7 +31,6 @@ interface IMaterialPatch {
   originalCsmFadeDefineExisted: boolean;
   originalOnBeforeCompile: THREE.Material["onBeforeCompile"];
   originalUseCsmDefineExisted: boolean;
-  shaders: Set<Shader>;
   useCsmDefine: unknown;
 }
 
@@ -43,6 +40,14 @@ interface ICascadeShaderUniformState {
   cascadeBlendFraction: number;
   cascades: THREE.Vector2[];
   shadowFar: number;
+}
+
+interface ICascadeShaderUniforms {
+  CSM_blendMargins: { value: THREE.Vector2[] };
+  CSM_cascades: { value: THREE.Vector2[] };
+  cameraNear: { value: number };
+  csmCascadeBlendFraction: { value: number };
+  shadowFar: { value: number };
 }
 
 export interface IDirectionalShadowControllerSnapshot {
@@ -86,6 +91,7 @@ export class DirectionalShadowController {
   private readonly profile: IResolvedCascadeShadowProfile;
   private readonly scene: THREE.Scene;
   private readonly shaderUniformState: ICascadeShaderUniformState;
+  private readonly shaderUniforms: ICascadeShaderUniforms;
   private splits: number[] = [];
   private disposed = false;
 
@@ -100,6 +106,13 @@ export class DirectionalShadowController {
       cascadeBlendFraction: this.profile.cascadeBlendFraction,
       cascades: Array.from({ length: this.profile.cascadeCount }, () => new THREE.Vector2()),
       shadowFar: this.profile.maxDistance,
+    };
+    this.shaderUniforms = {
+      CSM_blendMargins: { value: this.shaderUniformState.blendMargins },
+      CSM_cascades: { value: this.shaderUniformState.cascades },
+      cameraNear: { value: this.shaderUniformState.cameraNear },
+      csmCascadeBlendFraction: { value: this.shaderUniformState.cascadeBlendFraction },
+      shadowFar: { value: this.shaderUniformState.shadowFar },
     };
     this.lightDirection = new THREE.Vector3(...options.atmosphere.sun.direction).normalize();
     if (this.lightDirection.lengthSq() === 0) {
@@ -212,7 +225,7 @@ export class DirectionalShadowController {
       const materials = Array.isArray(object.material) ? object.material : [object.material];
       for (const material of materials) {
         if (supportsCascadedLighting(material) && !this.materialPatches.has(material)) {
-          this.materialPatches.set(material, patchMaterial(material, this.profile, this.shaderUniformState));
+          this.materialPatches.set(material, patchMaterial(material, this.profile, this.shaderUniforms));
         }
       }
     });
@@ -286,15 +299,8 @@ export class DirectionalShadowController {
     }
     this.shaderUniformState.cameraNear = nearDistance;
     this.shaderUniformState.shadowFar = farDistance;
-    for (const patch of this.materialPatches.values()) {
-      for (const shader of patch.shaders) {
-        shader.uniforms.CSM_cascades = { value: this.shaderUniformState.cascades };
-        shader.uniforms.CSM_blendMargins = { value: this.shaderUniformState.blendMargins };
-        shader.uniforms.cameraNear = { value: this.shaderUniformState.cameraNear };
-        shader.uniforms.shadowFar = { value: this.shaderUniformState.shadowFar };
-        shader.uniforms.csmCascadeBlendFraction = { value: this.shaderUniformState.cascadeBlendFraction };
-      }
-    }
+    this.shaderUniforms.cameraNear.value = nearDistance;
+    this.shaderUniforms.shadowFar.value = farDistance;
   }
 }
 
@@ -321,7 +327,7 @@ export function shouldUseDirectionalShadowController(
 function patchMaterial(
   material: THREE.Material,
   profile: IResolvedCascadeShadowProfile,
-  shaderUniformState: ICascadeShaderUniformState,
+  shaderUniforms: ICascadeShaderUniforms,
 ): IMaterialPatch {
   const patchedMaterial = material as THREE.Material & { defines?: Record<string, unknown> };
   const definesExisted = patchedMaterial.defines !== undefined;
@@ -329,7 +335,6 @@ function patchMaterial(
   patchedMaterial.defines = defines;
   const originalOnBeforeCompile = material.onBeforeCompile;
   const originalCacheKey = material.customProgramCacheKey;
-  const shaders = new Set<Shader>();
   const patchedFragmentBegin = CSMShader.lights_fragment_begin.replace(CSM_BLEND_MARGIN, CSM_AUTHORED_BLEND_MARGIN);
   const onBeforeCompileHook: THREE.Material["onBeforeCompile"] = (shader, renderer) => {
     originalOnBeforeCompile.call(material, shader, renderer);
@@ -339,12 +344,11 @@ function patchMaterial(
         `uniform float csmCascadeBlendFraction;\nuniform vec2 CSM_blendMargins[CSM_CASCADES];\n${CSMShader.lights_pars_begin}`,
       )
       .replace("#include <lights_fragment_begin>", patchedFragmentBegin);
-    shader.uniforms.CSM_cascades = { value: shaderUniformState.cascades };
-    shader.uniforms.CSM_blendMargins = { value: shaderUniformState.blendMargins };
-    shader.uniforms.cameraNear = { value: shaderUniformState.cameraNear };
-    shader.uniforms.shadowFar = { value: shaderUniformState.shadowFar };
-    shader.uniforms.csmCascadeBlendFraction = { value: shaderUniformState.cascadeBlendFraction };
-    shaders.add(shader);
+    shader.uniforms.CSM_cascades = shaderUniforms.CSM_cascades;
+    shader.uniforms.CSM_blendMargins = shaderUniforms.CSM_blendMargins;
+    shader.uniforms.cameraNear = shaderUniforms.cameraNear;
+    shader.uniforms.shadowFar = shaderUniforms.shadowFar;
+    shader.uniforms.csmCascadeBlendFraction = shaderUniforms.csmCascadeBlendFraction;
   };
   const cacheKeyHook: THREE.Material["customProgramCacheKey"] = function (this: THREE.Material) {
     return `${originalCacheKey.call(this)}:tn-csm-${profile.cascadeCount}-${profile.cascadeBlendFraction}`;
@@ -363,7 +367,6 @@ function patchMaterial(
     originalCsmFadeDefineExisted: Object.hasOwn(defines, "CSM_FADE"),
     originalOnBeforeCompile,
     originalUseCsmDefineExisted: Object.hasOwn(defines, "USE_CSM"),
-    shaders,
     useCsmDefine: defines.USE_CSM,
   };
   defines.USE_CSM = 1;

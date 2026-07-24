@@ -239,13 +239,14 @@ test("should expose state and transform helper facades through existing effects"
 
   const state = context.state("RallyState", { lap: 0, message: "Ready", speed: 0 });
   state.speed = 12;
+  state.lap = 2;
   const transform = player.transform();
   transform.setPose([1, 2, 3], [0, 0.707107, 0, 0.707107]);
 
   assert.deepEqual(transform.position, [1, 2, 3]);
   assert.deepEqual(transform.positionOr([9, 9, 9]), [1, 2, 3]);
   assert.equal(Math.round(transform.yawOr(0) * 1000) / 1000, 1.571);
-  assert.deepEqual(resources, [{ resource: "RallyState", value: { lap: 1, message: "Go", speed: 12 } }]);
+  assert.deepEqual(resources, [{ resource: "RallyState", value: { lap: 2, message: "Go", speed: 12 } }]);
   assert.deepEqual(commands, [
     {
       component: "Transform",

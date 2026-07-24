@@ -904,12 +904,16 @@ export function createSystemContext(
           ...cloneValue(defaults) as Record<string, unknown>,
           ...(isRecord(currentResourceValue(resource)) ? cloneValue(currentResourceValue(resource)) as Record<string, unknown> : {}),
         };
+        let queued = false;
         return new Proxy(initial, {
           set(target, property, value) {
             if (typeof property === "string") {
               target[property] = cloneValue(value);
               options.resourceObserver?.({ kind: "write", resource });
-              resources.push({ resource, value: cloneValue(target) });
+              if (!queued) {
+                resources.push({ resource, value: target });
+                queued = true;
+              }
               return true;
             }
             return false;

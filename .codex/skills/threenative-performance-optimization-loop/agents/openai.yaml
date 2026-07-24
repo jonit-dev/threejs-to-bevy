@@ -1,0 +1,4 @@
+interface:
+  display_name: "ThreeNative Performance Optimization Loop"
+  short_description: "Profile and optimize web and native FPS"
+  default_prompt: "Use $threenative-performance-optimization-loop to profile this ThreeNative project on web and native, optimize measured bottlenecks, and iterate until both reach 60 FPS."

@@ -43,7 +43,11 @@ export function appendSystemEffectLog(log: ISystemEffectLog, entries: ReadonlyAr
 
 export function stableSystemEffectLog(log: ISystemEffectLog): ISystemEffectLog {
   return {
-    entries: [...log.entries].map((entry) => normalizeEntry(entry)).sort(compareEntries),
+    entries: log.entries
+      .map((entry) => normalizeEntry(entry))
+      .map((entry) => ({ entry, key: entryKey(entry) }))
+      .sort((left, right) => left.key.localeCompare(right.key))
+      .map(({ entry }) => entry),
     schema: log.schema,
     version: log.version,
   };
@@ -51,10 +55,6 @@ export function stableSystemEffectLog(log: ISystemEffectLog): ISystemEffectLog {
 
 export function serializeSystemEffectLog(log: ISystemEffectLog): string {
   return `${JSON.stringify(stableSystemEffectLog(log), null, 2)}\n`;
-}
-
-function compareEntries(left: ISystemEffectLogEntry, right: ISystemEffectLogEntry): number {
-  return entryKey(left).localeCompare(entryKey(right));
 }
 
 function entryKey(entry: ISystemEffectLogEntry): string {

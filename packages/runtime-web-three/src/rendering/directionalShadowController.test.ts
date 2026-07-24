@@ -116,6 +116,17 @@ test("DirectionalShadowController should compose and restore authored material h
   assert.equal(shader.fragmentShader.includes("#include <lights_fragment_begin>"), false);
   assert.match(shader.fragmentShader, /CSM_blendMargins\[ i \]\.x : CSM_blendMargins\[ i \]\.y/);
 
+  const cameraNearUniform = shader.uniforms.cameraNear;
+  const shadowFarUniform = shader.uniforms.shadowFar;
+  const updatedCamera = camera();
+  updatedCamera.near = 0.5;
+  updatedCamera.far = 40;
+  controller.update(updatedCamera);
+  assert.equal(shader.uniforms.cameraNear, cameraNearUniform);
+  assert.equal(shader.uniforms.shadowFar, shadowFarUniform);
+  assert.equal(cameraNearUniform?.value, 0.5);
+  assert.equal(shadowFarUniform?.value, 40);
+
   controller.dispose();
   assert.equal(material.onBeforeCompile, authoredCompileHook);
   assert.equal(material.customProgramCacheKey, authoredCacheKey);
