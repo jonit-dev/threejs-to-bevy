@@ -710,6 +710,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
   const gameplayObservations = readinessSamples.at(-1)?.gameplayObservations;
   const physicsDebug = readinessSamples.at(-1)?.physicsDebug;
   const physicsDebugSeries = nativePhysicsDebugSeries(readinessSamples, options.scenario, captureTicks.beforeTick);
+  const resourceSeries = nativeResourceSeries(readinessSamples, options.scenario, observationIds.resources, captureTicks.beforeTick);
   const effectLog = nativeSceneQueryEffectLog(readinessSamples);
   effectLog.entries.push(...nativeAnimationEffectLogEntries(readinessSamples));
   const pathLength = movementPathLength(effectLog, options.entityId, before?.position, after?.position);
@@ -743,6 +744,7 @@ async function runNativePlaytest(options: IPlaytestRunOptions, bevyRunner: BevyR
       ...(physicsDebug === undefined ? {} : { physicsDebug }),
       ...(physicsDebugSeries.length === 0 ? {} : { physicsDebugSeries }),
       resources: mergeSnapshots(beforeResources, afterResources),
+      ...(resourceSeries.length === 0 ? {} : { resourceSeries }),
       ...(gameplayObservations === undefined ? {} : { runtimeObservations: { gameplay: gameplayObservations } }),
       runtimeDiagnostics,
     },
@@ -838,6 +840,25 @@ function nativePhysicsDebugSeries(
           snapshot: sample.physicsDebug,
           tick: typeof sample.tick === "number" ? sample.tick : tick,
         }];
+  });
+}
+
+function nativeResourceSeries(
+  samples: readonly Record<string, unknown>[],
+  scenario: IPlaytestScenario,
+  ids: readonly string[],
+  beforeTick: number,
+): Array<{ label: string; snapshots: Record<string, unknown>; tick: number }> {
+  let tick = beforeTick + 1;
+  return scenario.steps.map((step, index) => {
+    if (step.press !== undefined) tick += playtestStepHoldTicks(step);
+    tick += playtestStepWaitTicks(step);
+    const sample = readinessSampleNearTick(samples, tick, "after");
+    return {
+      label: step.label ?? `step-${index + 1}`,
+      snapshots: nativeResourceSnapshotsNearTick(samples, ids, tick, "after"),
+      tick: typeof sample?.tick === "number" ? sample.tick : tick,
+    };
   });
 }
 
@@ -1340,7 +1361,9 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
     const followBefore = options.follow === undefined ? undefined : await readTransformSample(page, options.follow.entityId);
     await page.screenshot({ path: beforeArtifact });
     const runtimeDiagnosticsSeries: unknown[] = [await readRuntimeDiagnostics(page)];
+    const effectLogSeries: Array<{ label: string; snapshot: unknown; tick: number }> = [];
     const physicsDebugSeries: Array<{ label: string; snapshot: unknown; tick: number }> = [];
+    const resourceSeries: Array<{ label: string; snapshots: Record<string, unknown>; tick: number }> = [];
     let completedTicks = 0;
     for (const [stepIndex, step] of options.scenario.steps.entries()) {
       if (step.overlayMessage !== undefined) {
@@ -1383,6 +1406,19 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         completedTicks += waitTicks;
       }
       const stepPhysicsDebug = await readWebPhysicsDebug(page);
+      const stepEffectLog = await readEffectLog(page);
+      if (stepEffectLog !== undefined) {
+        effectLogSeries.push({
+          label: step.label ?? `step-${stepIndex + 1}`,
+          snapshot: stepEffectLog,
+          tick: completedTicks,
+        });
+      }
+      resourceSeries.push({
+        label: step.label ?? `step-${stepIndex + 1}`,
+        snapshots: await readResourceSnapshots(page, observationIds.resources),
+        tick: completedTicks,
+      });
       if (stepPhysicsDebug !== undefined) {
         physicsDebugSeries.push({
           label: step.label ?? `step-${stepIndex + 1}`,
@@ -1411,11 +1447,13 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       console: consoleEntries,
       ...(typeof debugColliderCount === "number" ? { debugColliderCount } : {}),
       effectLog,
+      ...(effectLogSeries.length === 0 ? {} : { effectLogSeries }),
       hud: mergeSnapshots(beforeHud, await readHudSnapshots(page, observationIds.hud)),
       network: networkEntries,
       physicsDebug,
       ...(physicsDebugSeries.length === 0 ? {} : { physicsDebugSeries }),
       resources: mergeSnapshots(beforeResources, await readResourceSnapshots(page, observationIds.resources)),
+      ...(resourceSeries.length === 0 ? {} : { resourceSeries }),
       runtimeObservations,
       runtimeDiagnostics: { diagnostics: runtimeDiagnostics, performance: performanceSnapshot },
     };

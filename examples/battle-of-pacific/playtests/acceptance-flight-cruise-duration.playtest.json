@@ -1,0 +1,43 @@
+{
+  "acceptanceId": "flight-cruise-duration",
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "acceptance-flight-cruise-duration",
+  "schemaVersion": 1,
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5,
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 1,
+      "maxDistance": 1000000
+    },
+    "resources": [
+      {
+        "equals": false,
+        "id": "FlightState",
+        "path": "stall"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "hands-off objective-duration cruise",
+      "release": false,
+      "waitTicks": 1800
+    }
+  ],
+  "subject": "aircraft"
+}

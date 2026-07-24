@@ -1,0 +1,81 @@
+{
+  "acceptanceId": "retry-path",
+  "artifacts": {
+    "effectLog": "focused",
+    "screenshots": "before-after"
+  },
+  "name": "acceptance-retry-path",
+  "schemaVersion": 1,
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5,
+  "assert": {
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "resources": [
+      {
+        "atSteps": [
+          {
+            "label": "observe flight failure",
+            "textIncludes": "DITCHED"
+          },
+          {
+            "label": "observe restored flight",
+            "textIncludes": "CRUISE"
+          }
+        ],
+        "id": "FlightState",
+        "path": "phase"
+      },
+      {
+        "changed": true,
+        "gte": 1,
+        "id": "FlightState",
+        "path": "retryCount"
+      },
+      {
+        "equals": false,
+        "id": "FlightState",
+        "path": "stall"
+      }
+    ]
+  },
+  "setup": {
+    "entities": [
+      {
+        "entity": "aircraft",
+        "position": [
+          0,
+          0,
+          0
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "observe flight failure",
+      "release": false,
+      "waitTicks": 2
+    },
+    {
+      "holdTicks": 1,
+      "label": "request flight retry",
+      "press": "KeyR",
+      "release": true
+    },
+    {
+      "label": "observe restored flight",
+      "release": false,
+      "waitTicks": 12
+    }
+  ],
+  "subject": "aircraft"
+}

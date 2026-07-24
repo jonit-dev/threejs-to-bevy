@@ -1,0 +1,90 @@
+{
+  "acceptanceId": "flight-pitch-sign",
+  "artifacts": {
+    "effectLog": true,
+    "screenshots": "before-after"
+  },
+  "name": "acceptance-flight-pitch-sign",
+  "schemaVersion": 1,
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5,
+  "assert": {
+    "aerodynamics": [
+      {
+        "controls": [
+          {
+            "sign": "negative",
+            "surface": "elevator"
+          },
+          {
+            "sign": "positive",
+            "surface": "elevator"
+          }
+        ],
+        "entity": "aircraft",
+        "minForceSamples": 4,
+        "torques": [
+          {
+            "axis": "x",
+            "label": "positive pitch sign",
+            "relativeToLabel": "neutral before positive pitch",
+            "sign": "positive"
+          },
+          {
+            "axis": "x",
+            "label": "negative pitch sign",
+            "relativeToLabel": "neutral before negative pitch",
+            "sign": "negative"
+          }
+        ]
+      }
+    ],
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 0.1
+    },
+    "resources": [
+      {
+        "equals": false,
+        "id": "FlightState",
+        "path": "stall",
+        "throughoutSteps": true
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "neutral before positive pitch",
+      "release": false,
+      "waitTicks": 1
+    },
+    {
+      "holdTicks": 30,
+      "label": "positive pitch sign",
+      "press": "KeyW",
+      "release": true
+    },
+    {
+      "label": "neutral before negative pitch",
+      "release": false,
+      "waitTicks": 1
+    },
+    {
+      "holdTicks": 30,
+      "label": "negative pitch sign",
+      "press": "KeyS",
+      "release": true
+    }
+  ],
+  "subject": "aircraft"
+}

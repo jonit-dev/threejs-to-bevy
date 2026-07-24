@@ -1,0 +1,66 @@
+{
+  "acceptanceId": "flight-force-trace",
+  "artifacts": {
+    "effectLog": "focused",
+    "runtimeTrace": true,
+    "screenshots": false
+  },
+  "name": "acceptance-flight-force-trace",
+  "schemaVersion": 1,
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5,
+  "assert": {
+    "aerodynamics": [
+      {
+        "entity": "aircraft",
+        "minForceSamples": 4
+      }
+    ],
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 0.1
+    },
+    "resources": [
+      {
+        "equals": false,
+        "id": "FlightState",
+        "path": "stall"
+      }
+    ]
+  },
+  "steps": [
+    {
+      "waitTicks": 30,
+      "label": "baseline force trace",
+      "release": false
+    },
+    {
+      "holdTicks": 30,
+      "label": "positive pitch force trace",
+      "press": "KeyW",
+      "release": true
+    },
+    {
+      "holdTicks": 30,
+      "label": "positive roll force trace",
+      "press": "KeyD",
+      "release": true
+    },
+    {
+      "waitTicks": 30,
+      "label": "restored force trace",
+      "release": false
+    }
+  ],
+  "subject": "aircraft"
+}

@@ -185,7 +185,22 @@ interface IPlanProofIds {
   hud?: string;
   objective?: string;
   objectiveHasProgress: boolean;
+  flightEntity?: string;
+  flightResource?: string;
+  flightRetryPath?: string;
+  flightRetryProof?: {
+    failedPhase: string;
+    failurePosition: [number, number, number];
+    restoredPhase: string;
+  };
+  flightStallPath?: string;
+  pitchSurfaces: string[];
+  pitchNegativeKey?: string;
+  pitchPositiveKey?: string;
   rightKey?: string;
+  rollNegativeKey?: string;
+  rollPositiveKey?: string;
+  rollSurfaces: string[];
   retryKey?: string;
   targetCount?: number;
 }
@@ -199,7 +214,7 @@ async function scaffoldFromPlan(projectPath: string, planPath: string, json: boo
   }
   const ids = await discoverPlanProofIds(projectPath);
   const required = plan.intentContract?.acceptanceAssertions?.filter((assertion) => assertion.required) ?? [];
-  const planned = required.map((acceptance) => planScenario(acceptance, ids));
+  const planned = required.map((acceptance) => planScenario(acceptance, ids, plan.intentContract?.objectiveDurationTicks));
   const unsupported = planned.filter((entry) => "missing" in entry);
   if (unsupported.length > 0) {
     const payload = {
@@ -248,10 +263,10 @@ async function scaffoldFromPlan(projectPath: string, planPath: string, json: boo
   return { exitCode: publication.ok ? 0 : 1, stdout: json ? `${JSON.stringify(payload, null, 2)}\n` : `${payload.message}\n` };
 }
 
-function planScenario(acceptance: IGameAcceptanceAssertion, ids: IPlanProofIds): { acceptance: IGameAcceptanceAssertion; missing: string } | { acceptance: IGameAcceptanceAssertion; scenario: IPlaytestScenario } {
+function planScenario(acceptance: IGameAcceptanceAssertion, ids: IPlanProofIds, objectiveDurationTicks?: number): { acceptance: IGameAcceptanceAssertion; missing: string } | { acceptance: IGameAcceptanceAssertion; scenario: IPlaytestScenario } {
   const family = acceptance.proof?.family;
   if (family === undefined) return { acceptance, missing: "proof-template-binding" };
-  const missing = missingPlanCapability(family, ids);
+  const missing = missingPlanCapability(family, ids, objectiveDurationTicks);
   if (missing !== undefined) return { acceptance, missing };
   const rightKey = ids.rightKey!;
   const retryKey = ids.retryKey!;
@@ -269,6 +284,14 @@ function planScenario(acceptance: IGameAcceptanceAssertion, ids: IPlanProofIds):
   };
   const scenario: IPlaytestScenario = family === "canvas-render"
     ? { ...common, assert: { diagnostics: cleanDiagnostics(), visual: [{ region: { height: 720, minNonblankPixelRatio: 0.01, width: 1280, x: 0, y: 0 } }] }, steps: [{ label: "observe active canvas", release: false, waitFrames: 2 }], subject: ids.actor }
+    : family === "flight-cruise-duration"
+      ? { ...common, assert: { diagnostics: cleanDiagnostics(), movement: { entity: ids.flightEntity!, minDistance: 1, maxDistance: 1_000_000 }, resources: [{ equals: false, id: ids.flightResource!, path: ids.flightStallPath! }] }, steps: [{ label: "hands-off objective-duration cruise", release: false, waitTicks: objectiveDurationTicks! }], subject: ids.flightEntity }
+    : family === "flight-pitch-sign"
+      ? { ...common, artifacts: { effectLog: true, screenshots: "before-after" }, assert: { aerodynamics: [{ controls: ids.pitchSurfaces.flatMap((surface) => [{ sign: "negative" as const, surface }, { sign: "positive" as const, surface }]), entity: ids.flightEntity!, minForceSamples: 4, torques: [{ axis: "x", label: "positive pitch sign", relativeToLabel: "neutral before positive pitch", sign: "positive" }, { axis: "x", label: "negative pitch sign", relativeToLabel: "neutral before negative pitch", sign: "negative" }] }], diagnostics: cleanDiagnostics(), movement: { entity: ids.flightEntity!, minDistance: 0.1 }, resources: [{ equals: false, id: ids.flightResource!, path: ids.flightStallPath!, throughoutSteps: true }] }, steps: [{ label: "neutral before positive pitch", release: false, waitTicks: 1 }, { holdTicks: 30, label: "positive pitch sign", press: ids.pitchPositiveKey!, release: true }, { label: "neutral before negative pitch", release: false, waitTicks: 1 }, { holdTicks: 30, label: "negative pitch sign", press: ids.pitchNegativeKey!, release: true }], subject: ids.flightEntity }
+    : family === "flight-roll-sign"
+      ? { ...common, artifacts: { effectLog: true, screenshots: "before-after" }, assert: { aerodynamics: [{ controls: ids.rollSurfaces.flatMap((surface) => [{ sign: "negative" as const, surface }, { sign: "positive" as const, surface }]), entity: ids.flightEntity!, minForceSamples: 4, torques: [{ axis: "z", label: "positive roll sign", relativeToLabel: "neutral before positive roll", sign: "negative" }, { axis: "z", label: "negative roll sign", relativeToLabel: "neutral before negative roll", sign: "positive" }] }], diagnostics: cleanDiagnostics(), movement: { entity: ids.flightEntity!, minDistance: 0.1 }, resources: [{ equals: false, id: ids.flightResource!, path: ids.flightStallPath!, throughoutSteps: true }] }, steps: [{ label: "neutral before positive roll", release: false, waitTicks: 1 }, { holdTicks: 30, label: "positive roll sign", press: ids.rollPositiveKey!, release: true }, { label: "neutral before negative roll", release: false, waitTicks: 1 }, { holdTicks: 30, label: "negative roll sign", press: ids.rollNegativeKey!, release: true }], subject: ids.flightEntity }
+    : family === "flight-force-trace"
+      ? { ...common, assert: { aerodynamics: [{ entity: ids.flightEntity!, minForceSamples: 4 }], diagnostics: cleanDiagnostics(), movement: { entity: ids.flightEntity!, minDistance: 0.1 }, resources: [{ equals: false, id: ids.flightResource!, path: ids.flightStallPath! }] }, artifacts: { effectLog: "focused", runtimeTrace: true, screenshots: false }, steps: [{ waitTicks: 30, label: "baseline force trace", release: false }, { holdTicks: 30, label: "positive pitch force trace", press: ids.pitchPositiveKey!, release: true }, { holdTicks: 30, label: "positive roll force trace", press: ids.rollPositiveKey!, release: true }, { waitTicks: 30, label: "restored force trace", release: false }], subject: ids.flightEntity }
     : family === "blocked-movement"
     ? ids.gridStep === undefined
       ? { ...common, assert: { diagnostics: cleanDiagnostics(), movement: { entity: ids.actor, maxDistance: 0.05 } }, setup: { entities: [{ entity: ids.actor, position: [ids.blockedBoundaryX!, ids.actorStart[1], ids.actorStart[2]] }] }, steps: [{ holdFrames: 2, label: "attempt blocked step", press: rightKey, release: true }], subject: ids.actor }
@@ -279,6 +302,8 @@ function planScenario(acceptance: IGameAcceptanceAssertion, ids: IPlanProofIds):
         ? { ...common, assert: { diagnostics: cleanDiagnostics(), hud: [{ changed: true, id: ids.hud!, ...(spatialSolution === undefined ? {} : { textIncludes: "ALL TARGETS" }) }], resources: [{ changed: true, gte: ids.targetCount ?? 1, id: ids.objective!, path: "progress" }, ...(spatialSolution === undefined ? [] : [{ equals: true, id: ids.objective!, path: "won" }])] }, steps: spatialSolution ?? [{ holdFrames: 2, label: "advance objective", press: rightKey, release: true }], subject: ids.actor }
         : family === "state-change"
           ? { ...common, assert: { diagnostics: cleanDiagnostics(), hud: [{ changed: true, id: ids.hud! }], resources: [{ changed: true, id: ids.objective! }] }, steps: [{ label: "observe gameplay state change", release: false, waitFrames: 90 }], subject: ids.actor }
+        : family === "retry" && ids.flightEntity !== undefined
+          ? { ...common, assert: { diagnostics: cleanDiagnostics(), resources: [{ atSteps: [{ label: "observe flight failure", textIncludes: ids.flightRetryProof!.failedPhase }, { label: "observe restored flight", textIncludes: ids.flightRetryProof!.restoredPhase }], id: ids.flightResource!, path: "phase" }, { changed: true, gte: 1, id: ids.flightResource!, path: ids.flightRetryPath! }, { equals: false, id: ids.flightResource!, path: ids.flightStallPath! }] }, setup: { entities: [{ entity: ids.flightEntity!, position: ids.flightRetryProof!.failurePosition }] }, steps: [{ label: "observe flight failure", release: false, waitTicks: 2 }, { holdTicks: 1, label: "request flight retry", press: retryKey, release: true }, { label: "observe restored flight", release: false, waitTicks: 12 }], subject: ids.flightEntity }
         : family === "retry"
           ? spatialSolution === undefined
             ? { ...common, assert: { diagnostics: cleanDiagnostics(), movement: { entity: ids.actor, minDistance: 0.5 }, resources: [{ equals: 0, id: ids.objective!, path: "progress" }] }, setup: { entities: [{ entity: ids.actor, position: [ids.actorStart[0] + 1, ids.actorStart[1], ids.actorStart[2]] }] }, steps: [{ holdFrames: 1, label: "reset changed state", press: retryKey, release: true }], subject: ids.actor }
@@ -287,13 +312,24 @@ function planScenario(acceptance: IGameAcceptanceAssertion, ids: IPlanProofIds):
   return { acceptance, scenario };
 }
 
-function missingPlanCapability(family: GameProofAssertionFamily, ids: IPlanProofIds): string | undefined {
+function missingPlanCapability(family: GameProofAssertionFamily, ids: IPlanProofIds, objectiveDurationTicks?: number): string | undefined {
+  if (family.startsWith("flight-") && ids.flightEntity === undefined) return "aerodynamic-flight-entity";
+  if (family.startsWith("flight-") && ids.flightResource === undefined) return "flight-observation-resource";
+  if (family.startsWith("flight-") && ids.flightStallPath === undefined) return "flight-safety-observation";
+  if (family === "retry" && ids.flightEntity !== undefined && ids.flightRetryPath === undefined) return "flight-retry-observation";
+  if (family === "retry" && ids.flightEntity !== undefined && ids.flightRetryProof === undefined) return "flight-retry-proof-metadata";
+  if (family === "flight-cruise-duration" && objectiveDurationTicks === undefined) return "objective-duration";
+  if ((family === "flight-pitch-sign" || family === "flight-force-trace") && (ids.pitchPositiveKey === undefined || ids.pitchNegativeKey === undefined)) return "pitch-axis-input";
+  if ((family === "flight-roll-sign" || family === "flight-force-trace") && (ids.rollPositiveKey === undefined || ids.rollNegativeKey === undefined)) return "roll-axis-input";
+  if (family === "flight-pitch-sign" && ids.pitchSurfaces.length === 0) return "pitch-control-surface";
+  if (family === "flight-roll-sign" && ids.rollSurfaces.length < 2) return "roll-control-surfaces";
+  if (family.startsWith("flight-")) return undefined;
   if (ids.actor === "") return "actor-entity";
   if (family === "blocked-movement" && ids.blockedBoundaryX === undefined) return "grid-bounds";
   if ((family === "movement" || family === "blocked-movement" || family === "push-only" || family === "objective-progress") && ids.rightKey === undefined) return "movement-input";
   if (family === "push-only" && ids.crate === undefined) return "pushable-entity";
-  if ((family === "objective-progress" || family === "win-state" || family === "retry") && ids.objective === undefined) return "objective-resource";
-  if ((family === "objective-progress" || family === "win-state" || family === "retry") && !ids.objectiveHasProgress) return "objective-progress-field";
+  if ((family === "objective-progress" || family === "win-state" || (family === "retry" && ids.flightEntity === undefined)) && ids.objective === undefined) return "objective-resource";
+  if ((family === "objective-progress" || family === "win-state" || (family === "retry" && ids.flightEntity === undefined)) && !ids.objectiveHasProgress) return "objective-progress-field";
   if ((family === "objective-progress" || family === "win-state") && ids.hud === undefined) return "objective-hud";
   if (family === "state-change" && ids.objective === undefined) return "state-resource";
   if (family === "state-change" && ids.hud === undefined) return "state-hud";
@@ -303,11 +339,13 @@ function missingPlanCapability(family: GameProofAssertionFamily, ids: IPlanProof
 
 async function discoverPlanProofIds(projectPath: string): Promise<IPlanProofIds> {
   const project = await loadAuthoringProject({ projectPath });
-  const sceneData = documentData(project, "scene");
-  const entities = records(sceneData.entities);
-  const resources = records(sceneData.resources);
+  const entities = documentRecords(project, "scene", "entities");
+  const resources = documentRecords(project, "scene", "resources");
   const grid = recordValue(resources.find((resource) => resource.id === "SpatialGrid")?.value);
-  const actor = stringId(grid.actor) ?? stringId(entities.find((entity) => /player|hero/iu.test(String(entity.id)))?.id) ?? "";
+  const actor = stringId(grid.actor)
+    ?? stringId(entities.find((entity) => /player|hero/iu.test(String(entity.id)))?.id)
+    ?? stringId(entities.find((entity) => recordValue(entity.components).AerodynamicBody !== undefined)?.id)
+    ?? "";
   const actorEntity = entities.find((entity) => entity.id === actor);
   const actorStart = vector3(grid.actorStart) ?? vector3(recordValue(actorEntity?.transform).position) ?? [0, 0.35, 0];
   const crates = entities.flatMap((entity) => {
@@ -319,33 +357,65 @@ async function discoverPlanProofIds(projectPath: string): Promise<IPlanProofIds>
     ?? resources.find((resource) => /objective|progress|score|state|health|turn/iu.test(String(resource.id)))
     ?? resources[0];
   const objectiveValue = recordValue(objectiveResource?.value);
-  const inputData = documentData(project, "input");
-  const actions = records(inputData.actions);
-  const uiData = documentData(project, "ui");
-  const nodes = records(uiData.nodes);
+  const actions = documentRecords(project, "input", "actions");
+  const axes = documentRecords(project, "input", "axes");
+  const nodes = documentRecords(project, "ui", "nodes");
+  const flightEntity = entities.find((entity) => recordValue(entity.components).AerodynamicBody !== undefined);
+  const aerodynamicBody = recordValue(recordValue(flightEntity?.components).AerodynamicBody);
+  const aerodynamicSurfaces = records(aerodynamicBody.surfaces);
+  const pitchSurfaces = aerodynamicSurfaces.flatMap((surface) => /pitch/iu.test(String(recordValue(surface.control).binding)) && stringId(surface.id) !== undefined ? [stringId(surface.id)!] : []);
+  const rollSurfaces = aerodynamicSurfaces.flatMap((surface) => /roll/iu.test(String(recordValue(surface.control).binding)) && stringId(surface.id) !== undefined ? [stringId(surface.id)!] : []);
+  const flightResource = resources.find((resource) => {
+    const value = recordValue(resource.value);
+    return typeof value.stall === "boolean" && typeof value.phase === "string" && (
+      typeof value.altitude === "number"
+      || typeof value.altitudeFeet === "number"
+      || typeof value.speed === "number"
+      || typeof value.airspeedKnots === "number"
+    );
+  });
+  const retryProof = recordValue(recordValue(flightResource?.value).retryProof);
   return {
     actor,
     actorStart,
     blockedBoundaryX: numberValue(grid.boundsMaxX),
     crate: crates[0]?.id,
     crates,
+    flightEntity: stringId(flightEntity?.id),
+    flightResource: stringId(flightResource?.id),
+    flightRetryPath: typeof recordValue(flightResource?.value).retryCount === "number" ? "retryCount" : undefined,
+    flightRetryProof: vector3(retryProof.failurePosition) !== undefined
+      && stringId(retryProof.failedPhase) !== undefined
+      && stringId(retryProof.restoredPhase) !== undefined
+      ? { failedPhase: stringId(retryProof.failedPhase)!, failurePosition: vector3(retryProof.failurePosition)!, restoredPhase: stringId(retryProof.restoredPhase)! }
+      : undefined,
+    flightStallPath: flightResource === undefined ? undefined : "stall",
     gridStep: numberValue(grid.step),
     hud: stringId(nodes.find((node) => /spatial|progress|target|status|health|turn/iu.test(String(node.id)))?.id) ?? stringId(nodes[0]?.id),
     objective: stringId(objectiveResource?.id),
     objectiveHasProgress: numberValue(objectiveValue.progress) !== undefined,
+    pitchNegativeKey: axisKey(axes, "pitch", "negative"),
+    pitchPositiveKey: axisKey(axes, "pitch", "positive"),
+    pitchSurfaces,
     rightKey: actionKey(actions, "grid-right") ?? actionKey(actions, "move-right"),
+    rollNegativeKey: axisKey(axes, "roll", "negative"),
+    rollPositiveKey: axisKey(axes, "roll", "positive"),
+    rollSurfaces,
     retryKey: actionKey(actions, "retry"),
     targetCount: numberValue(objectiveValue.targetCount),
   };
 }
 
-function documentData(project: Awaited<ReturnType<typeof loadAuthoringProject>>, kind: string): Record<string, unknown> { const document = project.documents.find((candidate) => candidate.kind === kind); return isRecord(document?.data) ? document.data : {}; }
+function documentRecords(project: Awaited<ReturnType<typeof loadAuthoringProject>>, kind: string, field: string): Record<string, unknown>[] {
+  return project.documents.flatMap((document) => document.kind === kind && isRecord(document.data) ? records(document.data[field]) : []);
+}
 function records(value: unknown): Record<string, unknown>[] { return Array.isArray(value) ? value.filter(isRecord) : []; }
 function recordValue(value: unknown): Record<string, unknown> { return isRecord(value) ? value : {}; }
 function strings(value: unknown): string[] { return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []; }
 function vector3(value: unknown): [number, number, number] | undefined { return Array.isArray(value) && value.length === 3 && value.every((item) => typeof item === "number" && Number.isFinite(item)) ? value as [number, number, number] : undefined; }
 function numberValue(value: unknown): number | undefined { return typeof value === "number" && Number.isFinite(value) ? value : undefined; }
 function actionKey(actions: Record<string, unknown>[], id: string): string | undefined { const binding = strings(actions.find((action) => action.id === id)?.bindings)[0]; return binding?.replace(/^keyboard\./u, ""); }
+function axisKey(axes: Record<string, unknown>[], id: string, direction: "negative" | "positive"): string | undefined { const binding = strings(axes.find((axis) => axis.id === id)?.[direction])[0]; return binding?.replace(/^keyboard\./u, ""); }
 function cleanDiagnostics() { return { noConsoleErrors: true, noNetworkErrors: true, noRuntimeDiagnostics: true, runtimeReady: true }; }
 function isMissingPathError(error: unknown): boolean { return typeof error === "object" && error !== null && "code" in error && (error as { code?: unknown }).code === "ENOENT"; }
 

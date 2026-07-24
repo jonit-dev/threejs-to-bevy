@@ -175,11 +175,94 @@ test("should reject plan scaffolds whose discovered objective has no executable 
   }
 });
 
+test("should generate exact-tick flight duration, sign, and force-trace probes from plan metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-plan-flight-"));
+  try {
+    await writeFlightPlanFixture(root, 1_800);
+    const result = await playtestScaffoldCommand(["--from-plan", "artifacts/game-production/plan.json", "--project", ".", "--json"], root);
+    const cruise = await loadPlaytestScenario(root, "playtests/acceptance-flight-cruise-duration.playtest.json");
+    const pitch = await loadPlaytestScenario(root, "playtests/acceptance-flight-pitch-sign.playtest.json");
+    const roll = await loadPlaytestScenario(root, "playtests/acceptance-flight-roll-sign.playtest.json");
+    const forces = await loadPlaytestScenario(root, "playtests/acceptance-flight-force-trace.playtest.json");
+    const retry = await loadPlaytestScenario(root, "playtests/acceptance-retry-path.playtest.json");
+
+    assert.equal(result.exitCode, 0, result.stdout);
+    assert.equal(cruise.subject, "craft.live");
+    assert.equal(cruise.steps[0]?.waitTicks, 1_800);
+    assert.deepEqual(pitch.steps.map((step) => [step.label, step.press, step.holdTicks ?? step.waitTicks]), [
+      ["neutral before positive pitch", undefined, 1],
+      ["positive pitch sign", "ArrowUp", 30],
+      ["neutral before negative pitch", undefined, 1],
+      ["negative pitch sign", "ArrowDown", 30],
+    ]);
+    assert.deepEqual(pitch.assert?.aerodynamics?.[0]?.controls, [
+      { sign: "negative", surface: "tail.pitch" },
+      { sign: "positive", surface: "tail.pitch" },
+    ]);
+    assert.deepEqual(pitch.assert?.aerodynamics?.[0]?.torques, [
+      { axis: "x", label: "positive pitch sign", relativeToLabel: "neutral before positive pitch", sign: "positive" },
+      { axis: "x", label: "negative pitch sign", relativeToLabel: "neutral before negative pitch", sign: "negative" },
+    ]);
+    assert.deepEqual(roll.steps.filter((step) => step.press !== undefined).map((step) => step.press), ["ArrowRight", "ArrowLeft"]);
+    assert.deepEqual(roll.assert?.aerodynamics?.[0]?.controls, [
+      { sign: "negative", surface: "wing.left.roll" },
+      { sign: "positive", surface: "wing.left.roll" },
+      { sign: "negative", surface: "wing.right.roll" },
+      { sign: "positive", surface: "wing.right.roll" },
+    ]);
+    assert.deepEqual(roll.assert?.aerodynamics?.[0]?.torques, [
+      { axis: "z", label: "positive roll sign", relativeToLabel: "neutral before positive roll", sign: "negative" },
+      { axis: "z", label: "negative roll sign", relativeToLabel: "neutral before negative roll", sign: "positive" },
+    ]);
+    assert.equal(pitch.assert?.resources?.[0]?.throughoutSteps, true);
+    assert.equal(roll.assert?.movement?.rotationChanged, undefined);
+    assert.deepEqual(cruise.assert?.resources, [{ equals: false, id: "FlightState", path: "stall" }]);
+    assert.deepEqual(forces.steps.map((step) => step.waitTicks ?? step.holdTicks), [30, 30, 30, 30]);
+    assert.equal(forces.artifacts?.runtimeTrace, true);
+    assert.equal(forces.assert?.aerodynamics?.[0]?.minForceSamples, 4);
+    assert.deepEqual(retry.setup?.entities?.[0]?.position, [0, 0, 0]);
+    assert.deepEqual(retry.assert?.resources?.[0]?.atSteps, [
+      { label: "observe flight failure", textIncludes: "DITCHED" },
+      { label: "observe restored flight", textIncludes: "CRUISE" },
+    ]);
+    assert.equal(retry.assert?.resources?.some((assertion) => assertion.path === "retryCount" && assertion.changed === true && assertion.gte === 1), true);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
+test("should fail flight scaffold instead of inventing objective duration or missing roll metadata", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-playtest-plan-flight-missing-"));
+  try {
+    await writeFlightPlanFixture(root);
+    const scenePath = join(root, "content/scenes/flight.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as { entities: Array<{ components: { AerodynamicBody: { surfaces: unknown[] } } }> };
+    scene.entities[0]!.components.AerodynamicBody.surfaces = [];
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
+    const result = await playtestScaffoldCommand(["--from-plan", "artifacts/game-production/plan.json", "--project", ".", "--json"], root);
+    const payload = JSON.parse(result.stdout) as { diagnostics: Array<{ missingCapability: string }>; filesWritten: string[] };
+
+    assert.equal(result.exitCode, 1);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.missingCapability === "objective-duration"), true);
+    assert.equal(payload.diagnostics.some((diagnostic) => diagnostic.missingCapability === "pitch-control-surface"), true);
+    assert.deepEqual(payload.filesWritten, []);
+  } finally {
+    await rm(root, { force: true, recursive: true });
+  }
+});
+
 async function writeSpatialPlanFixture(root: string, unsupported = false): Promise<void> {
   const write = async (path: string, value: unknown) => {
     await mkdir(join(root, path, ".."), { recursive: true });
     await writeFile(join(root, path), `${JSON.stringify(value, null, 2)}\n`, "utf8");
   };
+  await write("content/scenes/00-empty.scene.json", {
+    entities: [],
+    id: "empty",
+    resources: [],
+    schema: "threenative.scene",
+    version: "0.1.0",
+  });
   await write("content/scenes/arena.scene.json", {
     entities: [
       { id: "hero.live", transform: { position: [0, 0.35, 0] } },
@@ -209,4 +292,79 @@ async function writeSpatialPlanFixture(root: string, unsupported = false): Promi
   await write("artifacts/game-production/plan.json", { intentContract: { acceptanceAssertions } });
   await mkdir(join(root, "playtests"), { recursive: true });
   assert.equal((await readFile(join(root, "artifacts/game-production/plan.json"), "utf8")).length > 0, true);
+}
+
+async function writeFlightPlanFixture(root: string, objectiveDurationTicks?: number): Promise<void> {
+  const write = async (path: string, value: unknown) => {
+    await mkdir(join(root, path, ".."), { recursive: true });
+    await writeFile(join(root, path), `${JSON.stringify(value, null, 2)}\n`, "utf8");
+  };
+  await write("content/scenes/00-empty.scene.json", {
+    entities: [],
+    id: "empty",
+    resources: [],
+    schema: "threenative.scene",
+    version: "0.1.0",
+  });
+  await write("content/scenes/flight.scene.json", {
+    entities: [{
+      components: {
+        AerodynamicBody: {
+          dragArea: [1, 1, 1],
+          maxForce: 5_000,
+          surfaces: [
+            { area: 1, aspectRatio: 2, centerOfPressure: [0, 0, 2], control: { binding: "Pitch", input: 0, maxDeflection: 0.2, response: 2 }, dragCurve: [], id: "tail.pitch", liftCurve: [], recoveryAngle: 0.2, stallAngle: 0.3 },
+            { area: 1, aspectRatio: 2, centerOfPressure: [-2, 0, 0], control: { binding: "Roll", input: 0, maxDeflection: 0.2, response: 2 }, dragCurve: [], id: "wing.left.roll", liftCurve: [], recoveryAngle: 0.2, stallAngle: 0.3 },
+            { area: 1, aspectRatio: 2, centerOfPressure: [2, 0, 0], control: { binding: "Roll", input: 0, maxDeflection: 0.2, response: 2 }, dragCurve: [], id: "wing.right.roll", liftCurve: [], recoveryAngle: 0.2, stallAngle: 0.3 },
+          ],
+          thrusters: [],
+        },
+        RigidBody: { kind: "dynamic", mass: 100, velocity: [0, 0, -20] },
+        Transform: { position: [0, 100, 0] },
+      },
+      id: "craft.live",
+    }],
+    id: "flight",
+    resources: [{ id: "FlightState", value: {
+      altitude: 100,
+      phase: "cruise",
+      retryCount: 0,
+      retryProof: { failedPhase: "DITCHED", failurePosition: [0, 0, 0], restoredPhase: "CRUISE" },
+      speed: 20,
+      stall: false,
+    } }],
+    schema: "threenative.scene",
+    version: "0.1.0",
+  });
+  await write("content/input/00-empty.input.json", {
+    actions: [],
+    axes: [],
+    id: "empty-input",
+    schema: "threenative.input",
+    version: "0.1.0",
+  });
+  await write("content/input/flight.input.json", {
+    actions: [{ bindings: ["keyboard.KeyR"], id: "retry" }],
+    axes: [
+      { id: "pitch", negative: ["keyboard.ArrowDown"], positive: ["keyboard.ArrowUp"] },
+      { id: "roll", negative: ["keyboard.ArrowLeft"], positive: ["keyboard.ArrowRight"] },
+    ],
+    id: "flight-input",
+    schema: "threenative.input",
+    version: "0.1.0",
+  });
+  const acceptanceAssertions = [
+    ["flight-cruise-duration", "progress", "flight-cruise-duration"],
+    ["flight-pitch-sign", "movement", "flight-pitch-sign"],
+    ["flight-roll-sign", "movement", "flight-roll-sign"],
+    ["flight-force-trace", "progress", "flight-force-trace"],
+    ["retry-path", "retry", "retry"],
+  ].map(([id, kind, family]) => ({ description: id, id, kind, proof: { family, templateId: `acceptance-${id}` }, required: true }));
+  await write("artifacts/game-production/plan.json", {
+    intentContract: {
+      acceptanceAssertions,
+      ...(objectiveDurationTicks === undefined ? {} : { objectiveDurationTicks }),
+    },
+  });
+  await mkdir(join(root, "playtests"), { recursive: true });
 }

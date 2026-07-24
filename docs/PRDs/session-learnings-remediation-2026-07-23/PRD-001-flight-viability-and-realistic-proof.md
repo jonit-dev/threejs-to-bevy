@@ -83,7 +83,7 @@ desktop.
 
 ### Phase 1: Aerodynamic spawn-state analysis
 
-**Files (max 5):**
+**Planner/scaffold files (max 5):**
 
 - `packages/ir/src/aerodynamicViability.ts` - pure owned analyzer.
 - `packages/ir/src/aerodynamicViability.test.ts` - numeric fixtures.
@@ -148,14 +148,37 @@ focus. Manual checkpoint: interact with the same scenario in a visible browser.
 - `packages/cli/src/commands/playtestScaffold.test.ts` - generated proof.
 - `docs/cookbook/flight-diagnostic-probes.md` - reusable author flow.
 
+**Plan-transport files (max 5):**
+
+- `packages/cli/src/commands/game.ts` and `gamePlanTypes.ts` - carry the
+  plan-owned duration/proof descriptor.
+- `packages/cli/src/commands/playtestScenario.ts` - validate the reusable
+  aerodynamic assertion contract.
+
+**Observation-evaluation files (max 5):**
+
+- `packages/cli/src/commands/playtestAssertions.ts`,
+  `playtestAssertions.test.ts`, `playtest.ts`, and `playtest.test.ts` - capture
+  per-step evidence and evaluate finite force telemetry, discovered control
+  surfaces, and opposing downstream torque at the real playtest boundary.
+
+**Reference-project files (max 5):**
+
+- `examples/battle-of-pacific/content/scenes/arena.scene.json` - source-owned
+  retry proof state.
+- `examples/battle-of-pacific/playtests/acceptance-flight-*.playtest.json` -
+  committed duration, sign, and force-trace scenarios.
+- `examples/battle-of-pacific/playtests/acceptance-retry-path.playtest.json` -
+  committed failure-to-recovery scenario.
+
 **Implementation:**
 
-- [ ] Derive objective duration from explicit goal/plan data; ambiguity must
+- [x] Derive objective duration from explicit goal/plan data; ambiguity must
   produce a diagnostic, not an invented duration.
-- [ ] Generate hands-off cruise for the full objective duration.
-- [ ] Generate pitch and roll sign/safety probes and a stepped force-trace probe.
-- [ ] Use `holdTicks`/`waitTicks`, real project IDs, and transition assertions.
-- [ ] Emit unsupported diagnostics when flight metadata or observation support
+- [x] Generate hands-off cruise for the full objective duration.
+- [x] Generate pitch and roll sign/safety probes and a stepped force-trace probe.
+- [x] Use `holdTicks`/`waitTicks`, real project IDs, and transition assertions.
+- [x] Emit unsupported diagnostics when flight metadata or observation support
   is missing.
 
 **Verification:** Planner/scaffold tests, `pnpm verify:cookbook`, and generated
@@ -218,3 +241,36 @@ Append per-phase commands, outputs, and artifact paths here during execution.
   The browser check also caught and closed an eager Node-only IR root import
   regression by routing runtime values through browser-safe IR subpaths. The
   required independent Phase 2 review completed clean.
+- Phase 3 (2026-07-24): focused planner/scaffold/assertion/playtest tests
+  passed 86/86.
+  Explicit
+  `45 seconds` normalized to 2,700 fixed ticks; missing and conflicting
+  durations emitted stable diagnostics. A source-backed flight fixture
+  generated duration, pitch, roll, and stepped force-trace scenarios using its
+  real entity, resource, and axis bindings across multiple source documents;
+  missing duration or safety observations failed without publishing partial
+  files. The full `pnpm verify:cookbook` gate passed with
+  `TN_COOKBOOK_GATE_OK`. Battle of Pacific web evidence passed for the exact
+  1,800-tick cruise, bidirectional pitch sign, bidirectional roll sign, and
+  four-sample force trace with `FlightState.stall === false`, discovered
+  surface IDs, both input signs, neutral-relative opposing downstream
+  aerodynamic torque, per-step no-stall state, finite aero vectors, and zero
+  diagnostics. Same-direction torque and recovered transient-stall controls
+  fail in focused tests. The final pitch and roll evidence is under
+  `2026-07-24T10-39-37-993Z` and `2026-07-24T10-40-26-429Z` respectively.
+  Native per-step resource capture has focused integration coverage; the
+  bidirectional pitch scenario passed all five assertions in the graphical
+  Bevy harness under Xvfb at `2026-07-24T10-45-22-059Z`. The force trace also
+  passed all four assertions in the same harness at
+  `examples/battle-of-pacific/artifacts/playtest/acceptance-flight-force-trace/2026-07-24T10-35-08-218Z`.
+  The plan-derived Battle retry scenario began at its source-declared failure
+  position, observed `DITCHED`, delivered `KeyR`, then observed `CRUISE`, an
+  incremented `retryCount`, and restored no-stall state at
+  `2026-07-24T10-51-02-820Z`.
+  The required independent Phase 3 review reran the CLI build and all four
+  focused suites (86/86), inspected the labeled artifact samples, and returned
+  clean.
+  A fresh visible-browser checkpoint separately confirmed focused pitch/roll
+  input while the aircraft remained in `CRUISE`, integrity 100, and
+  `stall: false`; the aircraft advanced from z=-7.18 to z=-13.15 and a
+  screenshot was retained as `battle-flight-probes-phase3.png`.

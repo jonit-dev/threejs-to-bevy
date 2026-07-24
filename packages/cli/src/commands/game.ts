@@ -248,6 +248,7 @@ async function gamePlanCommand(argv: readonly string[]): Promise<ICommandResult>
     },
     diagnostics: [
       ...buildPlanDiagnostics(inventory),
+      ...intentResult.diagnostics,
       ...(intentResult.ambiguousInterpretationIds.length > 0 ? [{
         code: "TN_GAME_PLAN_AMBIGUOUS",
         interpretationIds: intentResult.ambiguousInterpretationIds,

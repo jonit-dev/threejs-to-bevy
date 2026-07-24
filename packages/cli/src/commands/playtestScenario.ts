@@ -57,12 +57,18 @@ export interface IPlaytestCameraAssertion {
 }
 
 export interface IPlaytestPathAssertion {
+  atSteps?: Array<{
+    equals?: unknown;
+    label: string;
+    textIncludes?: string;
+  }>;
   changed?: boolean;
   equals?: unknown;
   gte?: number;
   id: string;
   path?: string;
   textIncludes?: string;
+  throughoutSteps?: boolean;
 }
 
 export interface IPlaytestContactAssertion {
@@ -114,7 +120,25 @@ export interface IPlaytestVisualAssertion {
   region?: { height: number; minNonblankPixelRatio?: number; width: number; x: number; y: number };
 }
 
+export interface IPlaytestAerodynamicsAssertion {
+  controls?: Array<{
+    minAbs?: number;
+    sign: "negative" | "positive";
+    surface: string;
+  }>;
+  entity: string;
+  minForceSamples?: number;
+  torques?: Array<{
+    axis: "x" | "y" | "z";
+    label: string;
+    minAbs?: number;
+    relativeToLabel?: string;
+    sign: "negative" | "positive";
+  }>;
+}
+
 export interface IPlaytestScenarioAssertions {
+  aerodynamics?: IPlaytestAerodynamicsAssertion[];
   animation?: IPlaytestAnimationAssertion[];
   camera?: IPlaytestCameraAssertion;
   contacts?: IPlaytestContactAssertion[];
@@ -481,6 +505,7 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
   const camera = isRecord(value.camera) ? value.camera : undefined;
   const diagnostics = isRecord(value.diagnostics) ? value.diagnostics : undefined;
   return {
+    ...(Array.isArray(value.aerodynamics) ? { aerodynamics: value.aerodynamics.map(validateAerodynamicsAssertion).filter((item): item is IPlaytestAerodynamicsAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.animation) ? { animation: value.animation.map(validateAnimationAssertion).filter((item): item is IPlaytestAnimationAssertion => item !== undefined) } : {}),
     ...(camera === undefined
       ? {}
@@ -528,6 +553,41 @@ function validateAssertions(value: Record<string, unknown>): IPlaytestScenarioAs
     ...(Array.isArray(value.tags) ? { tags: value.tags.map(validateTagCountAssertion).filter((item): item is IPlaytestTagCountAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.visibility) ? { visibility: value.visibility.map(validateVisibilityAssertion).filter((item): item is IPlaytestVisibilityAssertion => item !== undefined) } : {}),
     ...(Array.isArray(value.visual) ? { visual: value.visual.map(validateVisualAssertion).filter((item): item is IPlaytestVisualAssertion => item !== undefined) } : {}),
+  };
+}
+
+function validateAerodynamicsAssertion(value: unknown): IPlaytestAerodynamicsAssertion | undefined {
+  if (!isRecord(value) || typeof value.entity !== "string") return undefined;
+  const controls: IPlaytestAerodynamicsAssertion["controls"] = Array.isArray(value.controls)
+    ? value.controls.flatMap((control) => isRecord(control)
+      && typeof control.surface === "string"
+      && (control.sign === "negative" || control.sign === "positive")
+      ? [{
+          ...(typeof control.minAbs === "number" && Number.isFinite(control.minAbs) && control.minAbs >= 0 ? { minAbs: control.minAbs } : {}),
+          sign: control.sign as "negative" | "positive",
+          surface: control.surface,
+        }]
+      : [])
+    : undefined;
+  const torques: IPlaytestAerodynamicsAssertion["torques"] = Array.isArray(value.torques)
+    ? value.torques.flatMap((torque) => isRecord(torque)
+      && (torque.axis === "x" || torque.axis === "y" || torque.axis === "z")
+      && typeof torque.label === "string"
+      && (torque.sign === "negative" || torque.sign === "positive")
+      ? [{
+          axis: torque.axis,
+          label: torque.label,
+          ...(typeof torque.minAbs === "number" && Number.isFinite(torque.minAbs) && torque.minAbs >= 0 ? { minAbs: torque.minAbs } : {}),
+          ...(typeof torque.relativeToLabel === "string" ? { relativeToLabel: torque.relativeToLabel } : {}),
+          sign: torque.sign as "negative" | "positive",
+        }]
+      : [])
+    : undefined;
+  return {
+    ...(controls === undefined ? {} : { controls }),
+    entity: value.entity,
+    ...(typeof value.minForceSamples === "number" && Number.isInteger(value.minForceSamples) && value.minForceSamples > 0 ? { minForceSamples: value.minForceSamples } : {}),
+    ...(torques === undefined ? {} : { torques }),
   };
 }
 
@@ -612,12 +672,16 @@ function validatePathAssertion(value: unknown): IPlaytestPathAssertion | undefin
     return undefined;
   }
   return {
+    ...(Array.isArray(value.atSteps) ? { atSteps: value.atSteps.flatMap((step) => isRecord(step) && typeof step.label === "string"
+      ? [{ ...(hasKey(step, "equals") ? { equals: step.equals } : {}), label: step.label, ...(typeof step.textIncludes === "string" ? { textIncludes: step.textIncludes } : {}) }]
+      : []) } : {}),
     ...(typeof value.changed === "boolean" ? { changed: value.changed } : {}),
     ...(hasKey(value, "equals") ? { equals: value.equals } : {}),
     ...(typeof value.gte === "number" && Number.isFinite(value.gte) ? { gte: value.gte } : {}),
     id: value.id,
     ...(typeof value.path === "string" ? { path: value.path } : {}),
     ...(typeof value.textIncludes === "string" ? { textIncludes: value.textIncludes } : {}),
+    ...(typeof value.throughoutSteps === "boolean" ? { throughoutSteps: value.throughoutSteps } : {}),
   };
 }
 

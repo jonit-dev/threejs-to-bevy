@@ -16,7 +16,19 @@ export interface IGameAcceptanceAssertion {
   required: boolean;
 }
 
-export type GameProofAssertionFamily = "blocked-movement" | "canvas-render" | "movement" | "objective-progress" | "push-only" | "retry" | "state-change" | "win-state";
+export type GameProofAssertionFamily =
+  | "blocked-movement"
+  | "canvas-render"
+  | "flight-cruise-duration"
+  | "flight-force-trace"
+  | "flight-pitch-sign"
+  | "flight-roll-sign"
+  | "movement"
+  | "objective-progress"
+  | "push-only"
+  | "retry"
+  | "state-change"
+  | "win-state";
 
 export interface IGameProofTemplateBinding {
   family: GameProofAssertionFamily;
@@ -26,6 +38,7 @@ export interface IGameProofTemplateBinding {
 export interface IGameIntentContract {
   acceptanceAssertions: IGameAcceptanceAssertion[];
   id: string;
+  objectiveDurationTicks?: number;
   prototype?: IGamePrototypeBinding;
   requiredCapabilities: string[];
   schema: "threenative.game-intent";

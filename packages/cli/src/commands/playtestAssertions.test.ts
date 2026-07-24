@@ -34,6 +34,154 @@ test("native visual assertions should emit the standard unsupported diagnostic",
   assert.equal(result.assertions[0]?.details?.skipped, true);
 });
 
+test("aerodynamic assertions prove finite force samples and signed controls", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.effectLog = {
+    entries: [{
+      payload: { request: { entity: "aircraft", inputs: { surfaces: { elevator: -1 } } } },
+      service: "physics.aerodynamics.setInputs",
+    }],
+  };
+  report.observations!.effectLogSeries = [{
+    label: "negative pitch",
+    snapshot: {
+      entries: [{
+        payload: { request: { entity: "aircraft", inputs: { surfaces: { elevator: 1 } } } },
+        service: "physics.aerodynamics.setInputs",
+      }],
+    },
+    tick: 2,
+  }];
+  report.observations!.physicsDebugSeries = [
+    { label: "positive pitch", snapshot: aeroSnapshot("aircraft", 12), tick: 1 },
+    { label: "after", snapshot: aeroSnapshot("aircraft", 16), tick: 2 },
+  ];
+  const result = evaluateRichPlaytestAssertions({
+    report,
+    scenario: {
+      assert: { aerodynamics: [{ controls: [{ sign: "negative", surface: "elevator" }, { sign: "positive", surface: "elevator" }], entity: "aircraft", minForceSamples: 2, torques: [{ axis: "x", label: "positive pitch", sign: "negative" }] }] },
+      name: "flight",
+      schemaVersion: 1,
+      steps: [{ release: true, waitTicks: 2 }],
+      target: "web",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.deepEqual(result.diagnostics, []);
+  assert.equal(result.assertions[0]?.pass, true);
+});
+
+test("aerodynamic assertions reject wrong control signs and missing force evidence", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.effectLog = {
+    entries: [{
+      payload: { request: { entity: "aircraft", inputs: { surfaces: { elevator: 1 } } } },
+      service: "physics.aerodynamics.setInputs",
+    }],
+  };
+  const result = evaluateRichPlaytestAssertions({
+    report,
+    scenario: {
+      assert: { aerodynamics: [{ controls: [{ sign: "negative", surface: "elevator" }], entity: "aircraft", minForceSamples: 1 }] },
+      name: "flight-invalid",
+      schemaVersion: 1,
+      steps: [{ release: true, waitTicks: 1 }],
+      target: "web",
+      viewport: { height: 720, width: 1280 },
+      warmupFrames: 0,
+    },
+  });
+
+  assert.equal(result.assertions[0]?.pass, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_AERODYNAMICS_ASSERTION_FAILED");
+});
+
+test("relative aerodynamic torque requires opposing control-induced directions", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.physicsDebugSeries = [
+    { label: "neutral-positive", snapshot: aeroSnapshot("aircraft", 1, -1), tick: 1 },
+    { label: "positive", snapshot: aeroSnapshot("aircraft", 1, -2), tick: 2 },
+    { label: "neutral-negative", snapshot: aeroSnapshot("aircraft", 1, 1), tick: 3 },
+    { label: "negative", snapshot: aeroSnapshot("aircraft", 1, 2), tick: 4 },
+  ];
+  const scenario: IPlaytestScenario = {
+    assert: { aerodynamics: [{ entity: "aircraft", torques: [
+      { axis: "x", label: "positive", relativeToLabel: "neutral-positive", sign: "positive" },
+      { axis: "x", label: "negative", relativeToLabel: "neutral-negative", sign: "negative" },
+    ] }] },
+    name: "opposing-torque",
+    schemaVersion: 1,
+    steps: [{ release: true, waitTicks: 1 }],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+  assert.equal(evaluateRichPlaytestAssertions({ report, scenario }).assertions[0]?.pass, true);
+  const nativeScenario = { ...scenario, assert: { aerodynamics: [{ ...scenario.assert!.aerodynamics![0]!, controls: [{ sign: "negative" as const, surface: "elevator" }] }] }, target: "desktop" as const };
+  assert.equal(evaluateRichPlaytestAssertions({ report, scenario: nativeScenario }).assertions[0]?.pass, true);
+  report.observations!.physicsDebugSeries[3] = { label: "negative", snapshot: aeroSnapshot("aircraft", 1, 0), tick: 4 };
+  assert.equal(evaluateRichPlaytestAssertions({ report, scenario }).assertions[0]?.pass, false);
+});
+
+test("throughout-steps resource assertions catch recovered transient failures", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.resources = { FlightState: { after: { stall: false }, before: { stall: false } } };
+  report.observations!.resourceSeries = [
+    { label: "positive", snapshots: { FlightState: { stall: true } }, tick: 1 },
+    { label: "negative", snapshots: { FlightState: { stall: false } }, tick: 2 },
+  ];
+  const scenario: IPlaytestScenario = {
+    assert: { resources: [{ equals: false, id: "FlightState", path: "stall", throughoutSteps: true }] },
+    name: "transient-stall",
+    schemaVersion: 1,
+    steps: [{ release: true, waitTicks: 1 }, { release: true, waitTicks: 1 }],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+  const result = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.equal(result.assertions.find((item) => item.id.endsWith("throughoutSteps"))?.pass, false);
+  assert.equal(result.diagnostics[0]?.code, "TN_PLAYTEST_RESOURCE_TRANSITION_ASSERTION_FAILED");
+});
+
+test("labeled resource transitions do not require an unrelated final-value assertion", () => {
+  const report = reportWithRuntimeDiagnostics("web", {});
+  report.observations!.resources = { FlightState: { after: { phase: "CRUISE" }, before: { phase: "DITCHED" } } };
+  report.observations!.resourceSeries = [
+    { label: "observe failure", snapshots: { FlightState: { phase: "DITCHED" } }, tick: 1 },
+    { label: "observe restored", snapshots: { FlightState: { phase: "CRUISE" } }, tick: 2 },
+  ];
+  const scenario: IPlaytestScenario = {
+    assert: { resources: [{ atSteps: [
+      { label: "observe failure", textIncludes: "DITCHED" },
+      { label: "observe restored", textIncludes: "CRUISE" },
+    ], id: "FlightState", path: "phase" }] },
+    name: "retry-transition",
+    schemaVersion: 1,
+    steps: [{ label: "observe failure", release: true, waitTicks: 1 }, { label: "observe restored", release: true, waitTicks: 1 }],
+    target: "web",
+    viewport: { height: 720, width: 1280 },
+    warmupFrames: 0,
+  };
+  const passing = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.deepEqual(passing.assertions.map((item) => item.id), ["resource.FlightState.phase.atSteps"]);
+  assert.equal(passing.assertions[0]?.pass, true);
+
+  report.observations!.resourceSeries[0] = { label: "observe failure", snapshots: { FlightState: { phase: "CRUISE" } }, tick: 1 };
+  const failing = evaluateRichPlaytestAssertions({ report, scenario });
+  assert.equal(failing.assertions[0]?.pass, false);
+  assert.equal(failing.diagnostics[0]?.code, "TN_PLAYTEST_RESOURCE_TRANSITION_ASSERTION_FAILED");
+});
+
+function aeroSnapshot(entity: string, value: number, forceY = 1): unknown {
+  return { artifact: { primitives: [
+    { category: "sleep", entity, id: `sleep:${entity}`, kind: "point", position: [0, 0, 0], value: 0 },
+    { category: "aero", entity, from: [0, 0, 1], to: [0, forceY, 1], value },
+  ] } };
+}
+
 function visualScenario(assertion: NonNullable<NonNullable<IPlaytestScenario["assert"]>["visual"]>[number]): IPlaytestScenario {
   return { assert: { visual: [assertion] }, name: "visual", schemaVersion: 1, steps: [{ waitFrames: 1, release: true }], target: "web", viewport: { height: 100, width: 100 }, warmupFrames: 0 };
 }

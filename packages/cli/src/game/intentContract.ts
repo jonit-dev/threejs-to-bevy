@@ -17,6 +17,12 @@ interface IIntentProfile {
 export interface IIntentContractBuildResult {
   ambiguousInterpretationIds: string[];
   contract: IGameIntentContract;
+  diagnostics: Array<{
+    code: string;
+    message: string;
+    severity: "error";
+    suggestedFix: string;
+  }>;
   semanticCoverageComplete: boolean;
 }
 
@@ -26,6 +32,24 @@ export interface IIntentCoverage {
 }
 
 const PROFILES: readonly IIntentProfile[] = [
+  profile({
+    acceptanceAssertions: [
+      assertion("flight-cruise-duration", "progress", "The aircraft remains in controlled flight for the explicit objective duration."),
+      assertion("flight-pitch-sign", "movement", "Positive and negative pitch input move the aircraft in the declared vertical directions without stalling."),
+      assertion("flight-roll-sign", "movement", "Positive and negative roll input rotate the aircraft in the declared directions without loss of control."),
+      assertion("flight-force-trace", "progress", "A stepped exact-tick trace records finite aerodynamic force and control observations."),
+      assertion("retry-path", "retry", "Retry restores a controllable flight state after failure."),
+    ],
+    capabilityIds: ["controller.flight", "physics.aerodynamics", "objective.duration", "state.retry"],
+    id: "flight",
+    keywordGroups: [["aircraft", "airplane", "aviation", "dogfight", "flight", "fly", "plane"]],
+    verbs: [
+      verb("controller.flight", "pilot", "control", "aircraft"),
+      verb("physics.aerodynamics", "aircraft", "sustain", "flight"),
+      verb("objective.duration", "pilot", "complete", "timed-objective"),
+      verb("state.retry", "pilot", "retry", "flight"),
+    ],
+  }),
   profile({
     acceptanceAssertions: [
       assertion("webgl-canvas", "progress", "Active play renders in a nonblank WebGL canvas."),
@@ -177,6 +201,7 @@ export function buildIntentContract(goal: string): IIntentContractBuildResult {
   const highestScore = Math.max(...scores.map((item) => item.score));
   const leaders = scores.filter((item) => item.score === highestScore && item.score > 0).map((item) => item.candidate);
   const selected = leaders[0] ?? customProfile(goal);
+  const objectiveDuration = selected.id === "flight" ? parseObjectiveDurationTicks(goal) : { ticks: undefined };
   const ambiguousInterpretationIds = leaders
     .filter((candidate) => candidate.id === selected.id || selected.incompatibleWith?.includes(candidate.id) === true || candidate.incompatibleWith?.includes(selected.id) === true)
     .map((candidate) => candidate.id)
@@ -186,14 +211,33 @@ export function buildIntentContract(goal: string): IIntentContractBuildResult {
     contract: {
       acceptanceAssertions: selected.acceptanceAssertions,
       id: `intent.${selected.id}`,
+      ...(objectiveDuration.ticks === undefined ? {} : { objectiveDurationTicks: objectiveDuration.ticks }),
       ...(selected.prototype === undefined ? {} : { prototype: selected.prototype }),
       requiredCapabilities: selected.capabilityIds,
       schema: "threenative.game-intent",
       verbs: selected.verbs,
       version: 1,
     },
+    diagnostics: selected.id !== "flight" || objectiveDuration.ticks !== undefined
+      ? []
+      : [{
+          code: objectiveDuration.ambiguous ? "TN_GAME_PLAN_OBJECTIVE_DURATION_AMBIGUOUS" : "TN_GAME_PLAN_OBJECTIVE_DURATION_REQUIRED",
+          message: objectiveDuration.ambiguous
+            ? "The flight goal declares conflicting objective durations."
+            : "The flight goal does not declare an objective duration.",
+          severity: "error",
+          suggestedFix: "State one explicit bounded duration, for example 'remain airborne for 30 seconds'.",
+        }],
     semanticCoverageComplete: selected.keywordGroups.length === 0 || selected.keywordGroups.every((group) => group.some((keyword) => includesPhrase(normalizedGoal, keyword))),
   };
+}
+
+function parseObjectiveDurationTicks(goal: string): { ambiguous?: boolean; ticks?: number } {
+  const matches = [...goal.toLowerCase().matchAll(/\b(\d+(?:\.\d+)?)\s*(seconds?|secs?|s|minutes?|mins?|m)\b/gu)];
+  const seconds = matches.map((match) => Number(match[1]) * (/^m(?:in(?:ute)?s?)?$/u.test(match[2]!) ? 60 : 1));
+  const valid = [...new Set(seconds.filter((value) => Number.isFinite(value) && value >= 1 && value <= 600))];
+  if (valid.length !== 1 || matches.length !== 1) return { ambiguous: valid.length > 1 };
+  return { ticks: Math.round(valid[0]! * 60) };
 }
 
 export function evaluateIntentCoverage(contract: IGameIntentContract, availableResponsibilityIds: Iterable<string>): IIntentCoverage {
@@ -225,6 +269,10 @@ function customProfile(goal: string): IIntentProfile {
 
 function assertion(id: string, kind: IGameAcceptanceAssertion["kind"], description: string): IGameAcceptanceAssertion {
   const family = id === "webgl-canvas" ? "canvas-render"
+    : id === "flight-cruise-duration" ? "flight-cruise-duration"
+    : id === "flight-pitch-sign" ? "flight-pitch-sign"
+    : id === "flight-roll-sign" ? "flight-roll-sign"
+    : id === "flight-force-trace" ? "flight-force-trace"
     : id === "grid-movement" ? "blocked-movement"
     : id === "crate-push" ? "push-only"
       : id === "goal-progress" || id === "pickup-objective" || id === "timer-or-counter" || id === "wave-progression" || kind === "progress" ? "objective-progress"

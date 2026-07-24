@@ -72,3 +72,17 @@ test("should own holdout prototype proof roles in the intent contract", () => {
   }
   assert.equal(buildIntentContract("grid puzzle where the player pushes crates onto goals").contract.prototype, undefined);
 });
+
+test("should derive exact flight objective ticks only from one explicit duration", () => {
+  const explicit = buildIntentContract("fly an aircraft and remain airborne for 45 seconds");
+  const missing = buildIntentContract("fly an aircraft through a storm");
+  const ambiguous = buildIntentContract("fly an aircraft for 30 seconds, then for 2 minutes");
+
+  assert.equal(explicit.contract.id, "intent.flight");
+  assert.equal(explicit.contract.objectiveDurationTicks, 2_700);
+  assert.deepEqual(explicit.diagnostics, []);
+  assert.equal(missing.contract.objectiveDurationTicks, undefined);
+  assert.equal(missing.diagnostics[0]?.code, "TN_GAME_PLAN_OBJECTIVE_DURATION_REQUIRED");
+  assert.equal(ambiguous.contract.objectiveDurationTicks, undefined);
+  assert.equal(ambiguous.diagnostics[0]?.code, "TN_GAME_PLAN_OBJECTIVE_DURATION_AMBIGUOUS");
+});

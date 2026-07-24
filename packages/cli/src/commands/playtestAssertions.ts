@@ -19,6 +19,17 @@ export interface IPlaytestAssertionSchemaEntry {
 
 export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry[] = [
   {
+    description: "Proves aerodynamic force telemetry and signed control-surface delivery for a flight entity.",
+    example: { aerodynamics: [{ controls: [{ sign: "negative", surface: "elevator" }], entity: "aircraft", minForceSamples: 4 }] },
+    fields: [
+      { description: "Aerodynamic entity id.", name: "entity", required: true, type: "string" },
+      { description: "Minimum physics-debug samples containing finite aerodynamic force vectors.", name: "minForceSamples", type: "positive integer" },
+      { description: "Signed surface values required in physics.aerodynamics.setInputs calls.", name: "controls", type: "Array<{ surface: string, sign: 'negative' | 'positive', minAbs?: number }>" },
+      { description: "Signed net aerodynamic torque, optionally relative to another labeled step.", name: "torques", type: "Array<{ label: string, relativeToLabel?: string, axis: 'x' | 'y' | 'z', sign: 'negative' | 'positive', minAbs?: number }>" },
+    ],
+    kind: "aerodynamics",
+  },
+  {
     description: "Proves screenshot change, populated regions, and sustained projected entity visibility.",
     example: { visual: [{ frameDiff: { minChangedPixelRatio: 0.01 }, entityVisible: { entity: "board.e4", minProjectedPixels: 20, throughoutFrames: true } }] },
     fields: [
@@ -65,6 +76,8 @@ export const PLAYTEST_ASSERTION_REGISTRY: readonly IPlaytestAssertionSchemaEntry
       { description: "Minimum numeric value.", name: "gte", type: "number" },
       { description: "Substring expected in the observed value.", name: "textIncludes", type: "string" },
       { description: "Require before and after values to differ or remain equal.", name: "changed", type: "boolean" },
+      { description: "Require the value assertion after every labeled scenario step.", name: "throughoutSteps", type: "boolean" },
+      { description: "Expected values at named scenario-step samples.", name: "atSteps", type: "Array<{ label: string, equals?: json, textIncludes?: string }>" },
     ],
     kind: "resources",
   },
@@ -182,11 +195,13 @@ export interface IPlaytestObservations {
   contacts?: unknown;
   debugColliderCount?: number;
   effectLog?: unknown;
+  effectLogSeries?: Array<{ label: string; snapshot: unknown; tick: number }>;
   hud: Record<string, { after?: unknown; before?: unknown }>;
   network: Array<{ method: string; url: string }>;
   physicsDebug?: unknown;
   physicsDebugSeries?: Array<{ label: string; snapshot: unknown; tick: number }>;
   resources: Record<string, { after?: unknown; before?: unknown }>;
+  resourceSeries?: Array<{ label: string; snapshots: Record<string, unknown>; tick: number }>;
   runtimeObservations?: unknown;
   runtimeDiagnostics?: unknown;
   visibility?: Record<string, unknown>;
@@ -237,14 +252,90 @@ export function evaluateRichPlaytestAssertions(input: {
     }
   }
   for (const assertion of scenarioAssertions.resources ?? []) {
-    const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id], {
-      effectLog: input.report.effectLog ?? input.report.observations?.effectLog,
-      movedDistance: input.report.distance,
-      scenarioSourcePath: input.scenario.sourcePath,
+    if (hasFinalPathExpectation(assertion)) {
+      const result = evaluatePathAssertion("resource", assertion, input.report.observations?.resources[assertion.id], {
+        effectLog: input.report.effectLog ?? input.report.observations?.effectLog,
+        movedDistance: input.report.distance,
+        scenarioSourcePath: input.scenario.sourcePath,
+      });
+      assertions.push(result.assertion);
+      if (result.diagnostic !== undefined) {
+        diagnostics.push({ ...result.diagnostic, code: result.diagnostic.code || "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED" });
+      }
+    }
+    if (assertion.throughoutSteps === true) {
+      const samples = (input.report.observations?.resourceSeries ?? []).map((sample) => ({
+        label: sample.label,
+        value: readPath(sample.snapshots[assertion.id], assertion.path),
+      }));
+      const pass = samples.length === input.scenario.steps.length && samples.every((sample) => pathValuePass(assertion, sample.value));
+      assertions.push({ details: { samples }, id: `resource.${assertion.id}.${assertion.path ?? "value"}.throughoutSteps`, pass });
+      if (!pass) diagnostics.push({
+        code: "TN_PLAYTEST_RESOURCE_TRANSITION_ASSERTION_FAILED",
+        message: `Resource '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`} did not satisfy the assertion after every scenario step.`,
+        observedRuntimePath: "observations.json/resourceSeries",
+        severity: "error",
+        suggestion: "Inspect the labeled resource samples and fix the transient gameplay-state transition.",
+      });
+    }
+    if ((assertion.atSteps?.length ?? 0) > 0) {
+      const samples = assertion.atSteps!.map((expected) => {
+        const sample = (input.report.observations?.resourceSeries ?? []).find((candidate) => candidate.label === expected.label);
+        const value = readPath(sample?.snapshots[assertion.id], assertion.path);
+        const pass = sample !== undefined
+          && (!Object.hasOwn(expected, "equals") || jsonEqual(value, expected.equals))
+          && (expected.textIncludes === undefined || String(textValue(value)).includes(expected.textIncludes));
+        return { expected, pass, value };
+      });
+      const pass = samples.every((sample) => sample.pass);
+      assertions.push({ details: { samples }, id: `resource.${assertion.id}.${assertion.path ?? "value"}.atSteps`, pass });
+      if (!pass) diagnostics.push({
+        code: "TN_PLAYTEST_RESOURCE_TRANSITION_ASSERTION_FAILED",
+        message: `Resource '${assertion.id}'${assertion.path === undefined ? "" : ` path '${assertion.path}'`} did not match the expected labeled-step transition.`,
+        observedRuntimePath: "observations.json/resourceSeries",
+        severity: "error",
+        suggestion: "Inspect the failed and restored labeled samples and fix the retry transition.",
+      });
+    }
+  }
+  for (const [index, assertion] of (scenarioAssertions.aerodynamics ?? []).entries()) {
+    const forceSamples = aerodynamicForceSampleCount(input.report.observations?.physicsDebugSeries, assertion.entity);
+    const controlsSupported = input.scenario.target === "web";
+    const controls = (assertion.controls ?? []).map((control) => ({
+      ...control,
+      observed: aerodynamicControlValues(
+        input.report.effectLog ?? input.report.observations?.effectLog,
+        input.report.observations?.effectLogSeries,
+        assertion.entity,
+        control.surface,
+      ),
+      ...(controlsSupported ? {} : { skipped: true, reason: "native-service-log-unavailable" }),
+    }));
+    const torques = (assertion.torques ?? []).map((torque) => {
+      const value = aerodynamicTorqueAtLabel(input.report.observations?.physicsDebugSeries, assertion.entity, torque.label)?.[axisIndex(torque.axis)];
+      const relative = torque.relativeToLabel === undefined
+        ? undefined
+        : aerodynamicTorqueAtLabel(input.report.observations?.physicsDebugSeries, assertion.entity, torque.relativeToLabel)?.[axisIndex(torque.axis)];
+      return { ...torque, observed: value === undefined || (torque.relativeToLabel !== undefined && relative === undefined) ? undefined : value - (relative ?? 0) };
     });
-    assertions.push(result.assertion);
-    if (result.diagnostic !== undefined) {
-      diagnostics.push({ ...result.diagnostic, code: result.diagnostic.code || "TN_PLAYTEST_RESOURCE_ASSERTION_FAILED" });
+    const forcePass = assertion.minForceSamples === undefined || forceSamples >= assertion.minForceSamples;
+    const controlsPass = controlsSupported
+      ? controls.every((control) => control.observed.some((value) => Math.abs(value) >= (control.minAbs ?? 0.01) && (control.sign === "positive" ? value > 0 : value < 0)))
+      : torques.length > 0;
+    const torquesPass = torques.every((torque) => torque.observed !== undefined
+      && Math.abs(torque.observed) >= (torque.minAbs ?? 0.01)
+      && (torque.sign === "positive" ? torque.observed > 0 : torque.observed < 0));
+    const pass = forcePass && controlsPass && torquesPass && (assertion.minForceSamples !== undefined || controls.length > 0 || torques.length > 0);
+    assertions.push({ details: { controls, forceSamples, minimumForceSamples: assertion.minForceSamples, torques }, id: `aerodynamics.${index}`, pass });
+    if (!pass) {
+      diagnostics.push({
+        artifactPath: assertion.minForceSamples !== undefined ? "observations.json" : "effect-log.json",
+        code: "TN_PLAYTEST_AERODYNAMICS_ASSERTION_FAILED",
+        message: `Aerodynamic proof for '${assertion.entity}' did not observe the required finite force samples and signed control values.`,
+        observedRuntimePath: "observations.json/physicsDebugSeries/artifact/primitives[category=aero] | effect-log.json/entries[service=physics.aerodynamics.setInputs]",
+        severity: "error",
+        suggestion: "Check AerodynamicBody metadata, physics debug capture, input-axis bindings, and surface sign mapping.",
+      });
     }
   }
   for (const assertion of scenarioAssertions.hud ?? []) {
@@ -537,11 +628,94 @@ function evaluatePathAssertion(
       };
 }
 
+function hasFinalPathExpectation(assertion: IPlaytestPathAssertion): boolean {
+  return Object.hasOwn(assertion, "equals")
+    || assertion.gte !== undefined
+    || assertion.textIncludes !== undefined
+    || assertion.changed !== undefined;
+}
+
+function pathValuePass(assertion: IPlaytestPathAssertion, value: unknown): boolean {
+  const checks: boolean[] = [];
+  if (Object.hasOwn(assertion, "equals")) checks.push(jsonEqual(value, assertion.equals));
+  if (assertion.gte !== undefined) checks.push(typeof value === "number" && value >= assertion.gte);
+  if (assertion.textIncludes !== undefined) checks.push(String(textValue(value)).includes(assertion.textIncludes));
+  return checks.length > 0 && checks.every(Boolean);
+}
+
+function aerodynamicForceSampleCount(series: IPlaytestObservations["physicsDebugSeries"], entity: string): number {
+  return (series ?? []).filter(({ snapshot }) => {
+    if (!isRecord(snapshot) || !isRecord(snapshot.artifact) || !Array.isArray(snapshot.artifact.primitives)) return false;
+    return snapshot.artifact.primitives.some((primitive) => isRecord(primitive)
+      && primitive.category === "aero"
+      && primitive.entity === entity
+      && typeof primitive.value === "number"
+      && Number.isFinite(primitive.value)
+      && finiteVector(primitive.from)
+      && finiteVector(primitive.to));
+  }).length;
+}
+
+function aerodynamicControlValues(
+  effectLog: unknown,
+  series: IPlaytestObservations["effectLogSeries"],
+  entity: string,
+  surface: string,
+): number[] {
+  const logs = [effectLog, ...(series ?? []).map((sample) => sample.snapshot)];
+  return logs.flatMap((log) => !isRecord(log) || !Array.isArray(log.entries) ? [] : log.entries.flatMap((entry) => {
+    if (!isRecord(entry) || entry.service !== "physics.aerodynamics.setInputs" || !isRecord(entry.payload)) return [];
+    const request = record(entry.payload.request);
+    const inputs = record(request?.inputs);
+    const surfaces = record(inputs?.surfaces);
+    const value = surfaces?.[surface];
+    return request?.entity === entity && typeof value === "number" && Number.isFinite(value) ? [value] : [];
+  }));
+}
+
+function aerodynamicTorqueAtLabel(series: IPlaytestObservations["physicsDebugSeries"], entity: string, label: string): Vec3 | undefined {
+  const snapshot = (series ?? []).find((sample) => sample.label === label)?.snapshot;
+  if (!isRecord(snapshot) || !isRecord(snapshot.artifact) || !Array.isArray(snapshot.artifact.primitives)) return undefined;
+  const primitives = snapshot.artifact.primitives.filter(isRecord);
+  const bodyPosition = primitives.find((primitive) => primitive.id === `sleep:${entity}`)?.position;
+  if (!finiteVector(bodyPosition)) return undefined;
+  const origin = bodyPosition as Vec3;
+  const torque: Vec3 = [0, 0, 0];
+  let samples = 0;
+  for (const primitive of primitives) {
+    if (primitive.category !== "aero" || primitive.entity !== entity || !finiteVector(primitive.from) || !finiteVector(primitive.to)) continue;
+    const from = primitive.from as Vec3;
+    const to = primitive.to as Vec3;
+    const momentArm: Vec3 = [from[0] - origin[0], from[1] - origin[1], from[2] - origin[2]];
+    const force: Vec3 = [to[0] - from[0], to[1] - from[1], to[2] - from[2]];
+    const cross: Vec3 = [
+      momentArm[1] * force[2] - momentArm[2] * force[1],
+      momentArm[2] * force[0] - momentArm[0] * force[2],
+      momentArm[0] * force[1] - momentArm[1] * force[0],
+    ];
+    torque[0] += cross[0];
+    torque[1] += cross[1];
+    torque[2] += cross[2];
+    samples += 1;
+  }
+  return samples === 0 || !torque.every(Number.isFinite) ? undefined : torque;
+}
+
+function finiteVector(value: unknown): boolean {
+  return Array.isArray(value) && value.length === 3 && value.every((item) => typeof item === "number" && Number.isFinite(item));
+}
+
+function record(value: unknown): Record<string, unknown> | undefined {
+  return isRecord(value) ? value : undefined;
+}
+
 function expectedPathAssertion(assertion: IPlaytestPathAssertion): Record<string, unknown> {
   return {
+    ...(assertion.atSteps === undefined ? {} : { atSteps: assertion.atSteps }),
     ...(Object.hasOwn(assertion, "equals") ? { equals: assertion.equals } : {}),
     ...(assertion.gte === undefined ? {} : { gte: assertion.gte }),
     ...(assertion.textIncludes === undefined ? {} : { textIncludes: assertion.textIncludes }),
+    ...(assertion.throughoutSteps === undefined ? {} : { throughoutSteps: assertion.throughoutSteps }),
     ...(assertion.changed === undefined ? {} : { changed: assertion.changed }),
   };
 }

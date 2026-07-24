@@ -743,7 +743,10 @@ test("playtest command should run desktop target through native proof harness", 
       subject: "player",
       setup: { entities: [{ entity: "player", position: [0, 0.02, 5] }] },
       steps: [{ press: "KeyW", holdFrames: 30, release: true }],
-      assert: { movement: { entity: "player", axis: "-z", minDistance: 1 } },
+      assert: {
+        movement: { entity: "player", axis: "-z", minDistance: 1 },
+        resources: [{ equals: false, id: "FlightState", path: "stall", throughoutSteps: true }],
+      },
     }),
     "utf8",
   );
@@ -769,6 +772,7 @@ test("playtest command should run desktop target through native proof harness", 
               ok: true,
               performance: { elapsed_ms: 0, fps: 62.5, frame_ms: 16 },
               schema: "threenative.native-proof-readiness",
+              resourceSnapshots: { FlightState: { stall: false } },
               tick: 0,
               transforms: [{ entity: "player", position: [0, 0, 0] }],
               version: "0.1.0",
@@ -783,6 +787,7 @@ test("playtest command should run desktop target through native proof harness", 
               ok: true,
               performance: { elapsed_ms: 16.6667, fps: 60, frame_ms: 16.6667 },
               schema: "threenative.native-proof-readiness",
+              resourceSnapshots: { FlightState: { stall: false } },
               tick: 6,
               transforms: [{ entity: "player", position: [0, 0, 0] }],
               version: "0.1.0",
@@ -809,6 +814,7 @@ test("playtest command should run desktop target through native proof harness", 
                 version: "0.1.0",
               },
               schema: "threenative.native-proof-readiness",
+              resourceSnapshots: { FlightState: { stall: false } },
               tick: 37,
               transforms: [{ entity: "player", position: [0, 0, -1.1] }],
               version: "0.1.0",
@@ -830,6 +836,7 @@ test("playtest command should run desktop target through native proof harness", 
   const observations = JSON.parse(await readFile(payload.artifacts.observations, "utf8")) as {
     physicsDebug: { artifact: { primitives: Array<{ id: string }> } };
     physicsDebugSeries: Array<{ label: string; snapshot: { artifact: { telemetry: { tick: number } } }; tick: number }>;
+    resourceSeries: Array<{ label: string; snapshots: { FlightState: { stall: boolean } }; tick: number }>;
     runtimeDiagnostics: { readiness: Array<{ tick: number }> };
   };
   const writeAudit = JSON.parse(await readFile(payload.artifacts.writeAudit, "utf8")) as { diagnostics: unknown[]; observations: unknown[]; schema: string; version: string };
@@ -865,6 +872,9 @@ test("playtest command should run desktop target through native proof harness", 
   assert.deepEqual(observations.physicsDebug.artifact.primitives.map((primitive) => primitive.id), ["joint-load:door"]);
   assert.deepEqual(observations.physicsDebugSeries.map(({ label, snapshot, tick }) => ({ label, runtimeTick: snapshot.artifact.telemetry.tick, tick })), [
     { label: "step-1", runtimeTick: 37, tick: 37 },
+  ]);
+  assert.deepEqual(observations.resourceSeries, [
+    { label: "step-1", snapshots: { FlightState: { stall: false } }, tick: 37 },
   ]);
   assert.deepEqual(commandStream.commands.map((command) => ({ code: command.code, entity: command.entity, frames: command.frames, position: command.position, pressed: command.pressed, tick: command.tick, type: command.type })), [
     { code: undefined, entity: "player", frames: undefined, position: [0, 0.02, 5], pressed: undefined, tick: 5, type: "setTransform" },

@@ -6374,6 +6374,15 @@
         "playerIntegrity": 100,
         "progress": 0,
         "retryCount": 0,
+        "retryProof": {
+          "failedPhase": "DITCHED",
+          "failurePosition": [
+            0,
+            0,
+            0
+          ],
+          "restoredPhase": "CRUISE"
+        },
         "stall": false,
         "targetDestroyed": false,
         "throttlePercent": 82

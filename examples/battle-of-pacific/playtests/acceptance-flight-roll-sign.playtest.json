@@ -1,0 +1,98 @@
+{
+  "acceptanceId": "flight-roll-sign",
+  "artifacts": {
+    "effectLog": true,
+    "screenshots": "before-after"
+  },
+  "name": "acceptance-flight-roll-sign",
+  "schemaVersion": 1,
+  "target": "web",
+  "viewport": {
+    "height": 720,
+    "width": 1280
+  },
+  "warmupFrames": 5,
+  "assert": {
+    "aerodynamics": [
+      {
+        "controls": [
+          {
+            "sign": "negative",
+            "surface": "aileron.left"
+          },
+          {
+            "sign": "positive",
+            "surface": "aileron.left"
+          },
+          {
+            "sign": "negative",
+            "surface": "aileron.right"
+          },
+          {
+            "sign": "positive",
+            "surface": "aileron.right"
+          }
+        ],
+        "entity": "aircraft",
+        "minForceSamples": 4,
+        "torques": [
+          {
+            "axis": "z",
+            "label": "positive roll sign",
+            "relativeToLabel": "neutral before positive roll",
+            "sign": "negative"
+          },
+          {
+            "axis": "z",
+            "label": "negative roll sign",
+            "relativeToLabel": "neutral before negative roll",
+            "sign": "positive"
+          }
+        ]
+      }
+    ],
+    "diagnostics": {
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true,
+      "runtimeReady": true
+    },
+    "movement": {
+      "entity": "aircraft",
+      "minDistance": 0.1
+    },
+    "resources": [
+      {
+        "equals": false,
+        "id": "FlightState",
+        "path": "stall",
+        "throughoutSteps": true
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "neutral before positive roll",
+      "release": false,
+      "waitTicks": 1
+    },
+    {
+      "holdTicks": 30,
+      "label": "positive roll sign",
+      "press": "KeyD",
+      "release": true
+    },
+    {
+      "label": "neutral before negative roll",
+      "release": false,
+      "waitTicks": 1
+    },
+    {
+      "holdTicks": 30,
+      "label": "negative roll sign",
+      "press": "KeyA",
+      "release": true
+    }
+  ],
+  "subject": "aircraft"
+}
