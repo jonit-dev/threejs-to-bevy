@@ -3,6 +3,17 @@
 `Complexity: 9 -> HIGH mode` (`+3` 10+ files, `+2` new versioned grammar,
 `+2` complex type/codegen logic, `+2` multi-package)
 
+## Disposition
+
+**Closed without promotion on 2026-07-24.** The Phase 0 repository audit found
+no second shipped material that requires portable expression composition.
+Battle of Pacific water remains the sole identified forcing function and is
+already owned by the adapter-private `OceanWater` implementations. The
+conformance-only `portable-shader-material` fixture proves the bounded
+leaf-expression V1 contract; it is not a shipped gameplay material and does not
+justify a new language version. Per the promotion gate below, Phases 1-4 were
+not executed.
+
 ## 1. Context
 
 **Problem:** Portable shader expressions can reference literals, uniforms,
@@ -75,11 +86,16 @@ samples and images.
 
 **Implementation:**
 
-- [ ] Name two shipped materials and the exact expressions each needs.
-- [ ] Stop if water is the only consumer; retain adapter-private implementation.
-- [ ] Freeze expected numeric sample tables before grammar design.
+- [x] Audit shipped examples and templates for two forcing functions; none use
+  portable shader expression composition.
+- [x] Stop because water is the only identified consumer; retain the
+  adapter-private implementation.
+- [x] Do not freeze numeric tables or design a grammar when the promotion
+  precondition is unmet.
 
 ### Phase 1: Descriptor-owned typed AST
+
+Not executed: the Phase 0 promotion gate did not pass.
 
 **Files (max 5):**
 
@@ -99,6 +115,8 @@ samples and images.
 
 ### Phase 2: Web GLSL code generation
 
+Not executed: the Phase 0 promotion gate did not pass.
+
 **Files (max 5):**
 
 - `packages/ir/src/shaderCodegen.ts` - normalized GLSL emitter.
@@ -108,6 +126,8 @@ samples and images.
 - `packages/ir/fixtures/portable-shader-v2/materials.ir.json` - fixture.
 
 ### Phase 3: Native WGSL code generation
+
+Not executed: the Phase 0 promotion gate did not pass.
 
 **Files (max 5):**
 
@@ -124,6 +144,8 @@ samples and images.
 - [ ] Never silently replace an expression with a constant/material fallback.
 
 ### Phase 4: Numeric and visual conformance
+
+Not executed: the Phase 0 promotion gate did not pass.
 
 **Files (max 5):**
 
@@ -144,13 +166,21 @@ samples and images.
 
 Automated reviewer after every phase; manual visual checkpoint after Phase 4.
 
-- [ ] Two shipped forcing functions justify the grammar.
-- [ ] One operator registry owns validation, GLSL, WGSL, and docs metadata.
-- [ ] Invalid programs fail with stable paths/fixes and no fallback.
-- [ ] Numeric and image conformance passes with effective negative controls.
-- [ ] `pnpm verify:conformance`, focused Rust tests, docs, and full material
-  validation pass.
+- [x] Repository audit demonstrates that two shipped forcing functions do not
+  exist, so the grammar is not promoted.
+- [x] No grammar, duplicate operator registry, fallback, or unsupported parity
+  claim was introduced.
+- [x] Existing V1/private-shader boundaries remain documented in
+  `docs/status/capabilities/rendering.md`.
+- [x] Documentation validation passes after closing the gated PRD.
 
 ## Verification evidence
 
-Append promotion evidence and phase artifacts during execution.
+- `rg -l '"kind"\s*:\s*"shader"|new ShaderMaterial|ShaderMaterial\(' examples
+  templates --glob '!**/dist/**' --glob '!**/artifacts/**'` returned no shipped
+  example or template consumers.
+- The only repository shader-material examples are the
+  `packages/ir/fixtures/conformance/portable-shader-material` V1 conformance
+  fixture and focused package tests.
+- `examples/battle-of-pacific/AGENT_GAME_PLAN.md` records water as the deferred
+  expression-grammar use case; its runtime water remains adapter-private.
