@@ -9,9 +9,9 @@ const ts = require("typescript");
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const sourceDirectory = join(scriptDirectory, "..", "src");
 const generatedPath = join(sourceDirectory, "bundle-source.generated.ts");
-const moduleNames = ["behavior", "bounds", "combat", "feedback", "gameplay", "numeric", "rigs", "rotation", "types", "vectors"];
+const moduleNames = ["behavior", "bounds", "combat", "feedback", "flight", "gameplay", "numeric", "rigs", "rotation", "types", "vectors"];
 const publicRuntimeExports = [
-  "AngleEx", "ArrayEx", "BasisEx", "Bounds2", "Bounds3", "CameraMath", "CheckpointRaceEx", "ColorEx", "ControllerEx", "CoordinatedTurnEx", "Ease", "FxEx", "GuidedFlightEx", "GunneryEx", "HitTestEx", "InputEx", "MaterialEx", "MotionEx", "Mathf", "NumberEx", "ProjectileEx", "Quat", "RandomEx", "RespawnEx", "ShipFxEx", "SpawnEx", "TextEx", "TimerEx", "TransformMath", "Vector2", "Vector3", "TriggerEx", "Vec2", "Vec3", "CameraRig", "CharacterRig", "KinematicMoverEx", "defineBehavior",
+  "AngleEx", "ArrayEx", "BasisEx", "Bounds2", "Bounds3", "CameraMath", "CheckpointRaceEx", "ColorEx", "ControllerEx", "CoordinatedTurnEx", "Ease", "FlightRig", "FxEx", "GuidedFlightEx", "GunneryEx", "HitTestEx", "InputEx", "MaterialEx", "MotionEx", "Mathf", "NumberEx", "ProjectileEx", "Quat", "RandomEx", "RespawnEx", "ShipFxEx", "SpawnEx", "TextEx", "TimerEx", "TransformMath", "Vector2", "Vector3", "TriggerEx", "Vec2", "Vec3", "CameraRig", "CharacterRig", "KinematicMoverEx", "defineBehavior",
 ];
 
 const sources = new Map();

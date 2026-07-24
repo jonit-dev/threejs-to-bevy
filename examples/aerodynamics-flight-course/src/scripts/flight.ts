@@ -1,4 +1,4 @@
-import type { ScriptContext } from "@threenative/script-stdlib";
+import { FlightRig, type ScriptContext } from "@threenative/script-stdlib";
 
 export function updateFlightCourse(context: ScriptContext): void {
   const { camera, craft } = context.entities.byId({ camera: "camera.main", craft: "craft" });
@@ -17,9 +17,51 @@ export function updateFlightCourse(context: ScriptContext): void {
     stall: false,
     takeoff: false,
   });
-  if (context.input.getButton("retry")) {
-    craft.patch("Transform", { position: [0, 2, 8], rotation: [0, 0, 0, 1] });
-    context.physics.setLinearVelocity("craft", [0, 0, -12]);
+  const transform = craft.get("Transform", { position: [0, 2, 8] });
+  const body = craft.get("RigidBody", {
+    angularVelocity: [0, 0, 0] as [number, number, number],
+    velocity: [0, 0, -12] as [number, number, number],
+  });
+  const pitch = context.input.getAxis("pitch");
+  const throttleHeld = context.input.getButton("throttle");
+  const rigState = context.state("flight-course-rig", FlightRig.initialState());
+  const flight = FlightRig.step(
+    rigState,
+    {
+      pitch,
+      retry: context.input.getButton("retry"),
+      throttleDown: !throttleHeld,
+      throttleUp: throttleHeld,
+    },
+    {
+      altitude: transform.position[1],
+      angularVelocity: body.angularVelocity ?? [0, 0, 0],
+      dt: context.time.fixedDelta,
+      velocity: body.velocity ?? [0, 0, -12],
+    },
+    { elevator: "elevator", thruster: "main-engine" },
+    {
+      ditchAltitude: -3,
+      ditchMushAltitude: -100,
+      elevatorSign: 1,
+      retryPose: { position: [0, 2, 8], velocity: [0, 0, -12] },
+      stallSpeed: 30,
+      throttleRate: 60,
+      turnGains: {
+        pitchDamping: 0,
+        rollDamping: 0,
+        yawAuthority: 0,
+        yawDamping: 0,
+      },
+    },
+  );
+  Object.assign(rigState, flight.state);
+  if (flight.retryPose !== undefined) {
+    craft.patch("Transform", {
+      position: flight.retryPose.position,
+      rotation: flight.retryPose.rotation,
+    });
+    context.physics.setLinearVelocity("craft", flight.retryPose.velocity);
     context.physics.setAngularVelocity("craft", [0, 0, 0]);
     context.resources.set("FlightState", {
       altitude: 2,
@@ -37,14 +79,13 @@ export function updateFlightCourse(context: ScriptContext): void {
     return;
   }
 
-  const throttle = context.input.getButton("throttle") ? 1 : 0;
-  const pitch = context.input.getAxis("pitch");
-  context.physics.aerodynamics.setInputs("craft", {
-    surfaces: { elevator: pitch },
-    thrusters: { "main-engine": throttle },
-  });
+  const throttle = flight.state.throttle;
+  context.physics.aerodynamics.setInputs("craft", flight.controls);
+  context.physics.addTorque("craft", flight.torque);
+  if (Math.abs((body.angularVelocity ?? [0, 0, 0])[1]) > 0.0005) {
+    context.physics.setLinearVelocity("craft", flight.velocity);
+  }
 
-  const transform = craft.get("Transform", { position: [0, 2, 8] });
   if (camera !== undefined) {
     camera.patch("Transform", {
       position: [
@@ -55,9 +96,8 @@ export function updateFlightCourse(context: ScriptContext): void {
       rotation: [-0.174613, 0.325291, 0.061251, 0.927332],
     });
   }
-  const body = craft.get("RigidBody", { velocity: [0, 0, -12] });
   const altitude = transform.position[1];
-  const speed = Math.hypot(...(body.velocity ?? [0, 0, 0]));
+  const speed = flight.telemetry.speed;
   let takeoff = Boolean(state.takeoff);
   let gust = Boolean(state.gust);
   let stall = Boolean(state.stall);

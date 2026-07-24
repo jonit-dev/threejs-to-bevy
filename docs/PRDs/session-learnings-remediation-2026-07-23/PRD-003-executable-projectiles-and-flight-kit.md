@@ -103,10 +103,10 @@ from camera data rather than copying the Pacific script.
 
 **Implementation:**
 
-- [ ] Own throttle integration, elevator sign convention, coordinated bank/yaw,
+- [x] Own throttle integration, elevator sign convention, coordinated bank/yaw,
   velocity rotation, stall/ditch/retry state, and telemetry shape.
 - [ ] Accept tuning constants and declared entity/action IDs; no example IDs.
-- [ ] Assert control directions and restoring behavior independently of adapter
+- [x] Assert control directions and restoring behavior independently of adapter
   parity.
 - [ ] Do not promote until the course and Pacific game both consume it without
   branching the API around either project.
@@ -209,3 +209,19 @@ Append commands and artifacts per phase.
   `/tmp/tn-projectile-final-wzKhyu/game/artifacts/gameplay-parity/playtests/block-projectile.playtest.parity.json`.
 - Focused parity-comparator mutations reject missing input fire,
   cooldown-rejection, impact count, and exact collision-target evidence.
+
+### Phase 3 (consumer one)
+
+- `FlightRig.step` is a pure adapter-independent kernel for throttle,
+  configurable elevator direction, coordinated bank/yaw torque and velocity
+  rotation, stall/ditch/retry transitions, and numeric telemetry.
+- The standard-library suite passes 51 tests, including independent positive
+  and negative control-direction, restoring-torque, speed-preservation,
+  stall/ditch, and retry-reset assertions.
+- The aerodynamics flight course consumes the rig without example IDs entering
+  the shared API. Its unchanged 11-assertion objective proof passes on web and
+  desktop:
+  `/tmp/flight-course-web-rig-final/summary.json` and
+  `/tmp/flight-course-native-rig-final/summary.json`.
+- Promotion remains incomplete until the Pacific consumer supplies its declared
+  entity/action bindings and passes its existing flight acceptance suite.

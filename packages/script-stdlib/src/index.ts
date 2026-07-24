@@ -35,9 +35,20 @@ export {
 export type { IFireballState, IProjectile, IProjectileSpawn } from "./combat.js";
 export type { IMaterialPatch } from "./feedback.js";
 export { CameraRig, CharacterRig, KinematicMoverEx, RespawnEx, TriggerEx } from "./rigs.js";
+export { FlightRig } from "./flight.js";
 export { defineBehavior } from "./behavior.js";
 export { vehicle, type VehicleFacade } from "./physics.js";
 export type { BehaviorFunction, BehaviorSchedule, IBehaviorCommandMetadata, IBehaviorFunction, IBehaviorMetadata, IBehaviorQueryMetadata } from "./behavior.js";
+export type {
+  IFlightRigBindings,
+  IFlightRigInput,
+  IFlightRigResult,
+  IFlightRigSample,
+  IFlightRigState,
+  IFlightRigTelemetry,
+  IFlightRigTuning,
+  IFlightRigTurnGains,
+} from "./flight.js";
 export type {
   ICameraRigOptions,
   ICameraRigResult,
