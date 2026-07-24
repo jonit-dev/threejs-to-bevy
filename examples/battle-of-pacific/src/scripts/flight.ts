@@ -516,7 +516,7 @@ export const updatePacificFlight = defineBehavior(
           burst.y = tracer.py;
           burst.z = tracer.pz;
           context.audio.play("flak.airburst", {
-            volume: 0.52,
+            volume: 0.82,
             pitch: 0.94 + (control.nextFlak % 3) * 0.05
           });
           const burstDistance = Math.sqrt(proximitySq);

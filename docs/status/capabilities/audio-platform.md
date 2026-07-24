@@ -29,6 +29,13 @@ Current support:
   production-hardening web/native reports, runs native event/script entity
   execution tests, and requires normalized command, mixer, support,
   device-routing, and platform-policy parity.
+- `pnpm verify:audio-quality` derives the Battle of Pacific sound inventory
+  from structured audio/asset documents, literal script playback calls, and
+  generation provenance. It decodes source PCM with `ffmpeg`, fails quiet
+  source or effective playback intensity, rejects unresolved cue IDs and loop
+  intent drift, and checks loop duration, first/last-edge balance, and
+  end-to-start seam continuity. Near-clipping sources remain explicit warnings
+  in the report rather than silent passes.
 - Default-output selection is reportable. Native audio handles, arbitrary
   device routing, custom executable decoders, and streaming/network audio
   remain diagnostic-only boundaries.
@@ -46,6 +53,7 @@ headless gate.
 
 Verification:
 
+- `pnpm verify:audio-quality`
 - `pnpm verify:focused verify:feature-parity-audio-platform`
 - `pnpm verify:focused verify:production-hardening`
 - `pnpm verify:conformance`

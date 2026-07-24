@@ -203,6 +203,24 @@ const STATIC_GATE_DESCRIPTORS: readonly GateDescriptor[] = [
     release: { enrolled: true, name: "verify session cost", timingCategory: "focused-gate" },
   },
   {
+    artifact: { reportPath: "tools/verify/artifacts/audio-quality/verification-report.json" },
+    command: {
+      commands: [
+        ["pnpm", "--filter", "@threenative/verify-tools", "build"],
+        ["node", "--test", "--test-name-pattern", "audio quality", "tools/verify/dist/audioQualityGate.test.js"],
+        ["node", "tools/verify/dist/audioQualityGate.js", "--project", "examples/battle-of-pacific"],
+      ],
+    },
+    conflictPolicy: "none",
+    description: "Project audio intensity, binding, and loop-seam quality gate.",
+    focused: { profile: "focused" },
+    name: "verify:audio-quality",
+    owner: "tools/verify audio quality gate",
+    protects: "Structured sound/asset binding, source and effective playback intensity, generated loop intent, duration, edge balance, and end-to-start seam continuity.",
+    reason: "Rejects inaudible cues, unresolved sound IDs, accidental loop drift, and click-prone loop seams before game audio reaches release evidence.",
+    release: { enrolled: true, name: "verify audio quality", timingCategory: "focused-gate" },
+  },
+  {
     artifact: { reportPath: "tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json" },
     command: {
       commands: [

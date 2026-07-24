@@ -24,6 +24,7 @@ test("gate descriptors should validate migrated proof gate metadata", () => {
     "verify:emitted-commands",
     "verify:agent-io",
     "verify:session-cost",
+    "verify:audio-quality",
     "verify:advanced-physics-major-games",
     "verify:webview-package",
     ...fixtureCatalogGateDescriptors().map((descriptor) => descriptor.name),
@@ -95,6 +96,7 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
 
   assert.equal(focused["verify:agent-io"]?.metadata.owner, "tools/verify agent IO budget gate");
   assert.equal(focused["verify:session-cost"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/sessionCostGate.js");
+  assert.equal(focused["verify:audio-quality"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/audioQualityGate.js --project examples/battle-of-pacific");
   assert.equal(focused["verify:img2threejs"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/img2ThreejsGate.js");
   assert.equal(focused["verify:overlay-scaffold"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/overlayScaffoldGate.js");
   assert.equal(focused["verify:native-overlay-cef"]?.commands.at(-1)?.join(" "), "node tools/verify/dist/nativeOverlayCefGate.js");
@@ -103,6 +105,7 @@ test("gate descriptors should derive focused gates and release artifacts", () =>
     ["verify:overlay-scaffold", "tools/verify/artifacts/overlay-scaffold/verification-report.json"],
     ["verify:agent-io", "tools/verify/artifacts/agent-io/verification-report.json"],
     ["verify:session-cost", "tools/verify/artifacts/session-cost/verification-report.json"],
+    ["verify:audio-quality", "tools/verify/artifacts/audio-quality/verification-report.json"],
     ["verify:advanced-physics-major-games", "tools/verify/artifacts/advanced-physics/phase-8-major-games/verification-report.json"],
     ["verify:webview-package", "tools/verify/artifacts/webview-package/verification-report.json"],
     ...fixtureCatalogGateDescriptors()
