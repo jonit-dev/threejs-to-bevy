@@ -66,3 +66,34 @@ test("detailed write ledger retains deterministic observations when requested", 
   assert.equal(ledger.observations().length, 1);
   assert.equal(ledger.observations()[0]?.fingerprint, "fnv1a:e0f965d9");
 });
+
+test("write ledger snapshots serialize the retained observations once at the boundary", () => {
+  const ledger = createRuntimeWriteLedger({ captureObservations: true });
+  ledger.record({
+    newValue: [1, 2, 3],
+    path: "Transform/position",
+    system: "flight",
+    targetId: "player",
+    targetKind: "component",
+    tick: 1,
+    writer: "script",
+  });
+
+  const snapshot = ledger.snapshot();
+
+  assert.equal(snapshot.schema, "threenative.runtime-write-audit");
+  assert.equal(snapshot.version, "0.1.0");
+  assert.equal(snapshot.observations.length, 1);
+  assert.notEqual(snapshot.observations, ledger.observations());
+});
+
+test("normal and detailed ledgers make identical conflict decisions", () => {
+  const signatures = (captureObservations: boolean) => {
+    const ledger = createRuntimeWriteLedger({ captureObservations });
+    ledger.record({ path: "Transform/position", system: "physics", targetId: "player", targetKind: "component", tick: 4, writer: "physics" });
+    ledger.record({ path: "Transform/position", system: "flight", targetId: "player", targetKind: "component", tick: 4, writer: "script" });
+    return ledger.diagnostics(4).map((diagnostic) => `${diagnostic.code}:${diagnostic.path}:${diagnostic.message}`);
+  };
+
+  assert.deepEqual(signatures(false), signatures(true));
+});

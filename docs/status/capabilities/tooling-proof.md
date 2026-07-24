@@ -80,6 +80,19 @@ Current support:
   `artifacts/game-production/performance-proof.json` using the shared
   performance-proof schema with measured bundle counters and explicit
   unsupported diagnostics for runtime-only counters.
+- `pnpm verify:runtime-observation-budget` runs a Battle-scale 46,080-write
+  workload in normal and `--audit-writes` modes. Normal mode retains and
+  serializes no detailed observations while preserving the same transform
+  conflict verdicts; the gate records median CPU, retained rows, and serialized
+  bytes at
+  `tools/verify/artifacts/runtime-observation-budget/verification-report.json`.
+- Repo previews import the source runtime graph under Vite ownership; published
+  packages fall back to `dist`. Dev state reports the current runtime graph hash
+  separately from the hash posted after that module executes. Visual parity
+  refuses mismatches with `TN_PARITY_VISUAL_RUNTIME_STALE`, distinct from stale
+  bundle/source diagnostics. `pnpm verify:runtime-preview-freshness` changes a
+  live observable runtime module and proves exactly one reload into the new
+  executed identity.
 - `pnpm verify:template-production` derives maintained starter checks from
   `templates/*/threenative.template.json`, including generated files,
   package scripts, proof command ids, iterate-first guidance, compact-report
@@ -242,6 +255,8 @@ Verification:
 - `pnpm verify:emitted-commands`
 - `pnpm --filter @threenative/verify-tools test`
 - `pnpm verify:conformance`
+- `pnpm verify:runtime-observation-budget`
+- `pnpm verify:runtime-preview-freshness`
 - `pnpm --filter @threenative/verify-tools test -- --run "interaction parity"`
 - `pnpm --filter @threenative/verify-tools test -- --run performance`
 - `node --test tools/verify/dist/gameProductionGate.test.js`

@@ -315,6 +315,32 @@ export const FOCUSED_GATES: Record<string, FocusedGate> = {
       protects: "Runtime sensor occupancy, transform write conflict diagnostics, resource composition classification, and bounded write-audit artifacts.",
     },
   },
+  "verify:runtime-observation-budget": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "tools/verify/dist/runtimeObservationBudget.js"],
+    ],
+    description: "Battle-scale normal versus full write-observation budget gate.",
+    metadata: {
+      owner: "tools/verify runtime-observation-budget gate",
+      profile: "focused",
+      reason: "Measures the representative write volume in both observation modes with retained-detail, serialized-byte, CPU, and verdict controls.",
+      protects: "Normal-mode proof cost, deterministic full-audit evidence, and identical transform-conflict decisions.",
+    },
+  },
+  "verify:runtime-preview-freshness": {
+    commands: [
+      ["pnpm", "--filter", "@threenative/runtime-web-three", "build"],
+      ["node", "tools/verify/dist/runtimePreviewFreshnessGate.js"],
+    ],
+    description: "Live preview runtime rebuild and executed-identity gate.",
+    metadata: {
+      owner: "tools/verify runtime-preview-freshness gate",
+      profile: "focused",
+      reason: "Edits an observable runtime module under a live Vite preview and requires exactly one reload into the new executed runtime hash.",
+      protects: "Repo source entry ownership, published dist fallback, runtime module invalidation, and truthful executed-runtime identity.",
+    },
+  },
   "verify:generator-rerun": {
     commands: [
       ["pnpm", "--filter", "@threenative/authoring", "build"],

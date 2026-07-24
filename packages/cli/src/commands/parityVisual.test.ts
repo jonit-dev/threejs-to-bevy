@@ -49,7 +49,7 @@ test("visual parity refuses a preview serving a different bundle hash", async ()
     ["visual", "--project", ".", "--url", "http://127.0.0.1:5173", "--reference", "reference.png", "--json"],
     root,
     {
-      fetcher: async () => new Response(JSON.stringify({ bundleHash: "stale" })),
+      fetcher: async () => new Response(JSON.stringify({ bundleHash: "stale", executedRuntimeBuildHash: "runtime", runtimeBuildHash: "runtime" })),
       screenshotRunner: async () => {
         captured = true;
         return jsonResult({});
@@ -60,6 +60,31 @@ test("visual parity refuses a preview serving a different bundle hash", async ()
 
   assert.equal(result.exitCode, 1);
   assert.equal(payload.code, "TN_PARITY_VISUAL_PREVIEW_STALE");
+  assert.equal(captured, false);
+});
+
+test("visual parity refuses a preview that has not executed the current runtime build", async () => {
+  const root = await createProject();
+  let captured = false;
+  const result = await parityVisualCommand(
+    ["visual", "--project", ".", "--url", "http://127.0.0.1:5173", "--reference", "reference.png", "--json"],
+    root,
+    {
+      fetcher: async () => {
+        const response = await devStateResponse(root);
+        const state = await response.json() as Record<string, unknown>;
+        return new Response(JSON.stringify({ ...state, executedRuntimeBuildHash: "old-runtime", runtimeBuildHash: "new-runtime" }));
+      },
+      screenshotRunner: async () => {
+        captured = true;
+        return jsonResult({});
+      },
+    },
+  );
+  const payload = JSON.parse(result.stdout) as { code: string };
+
+  assert.equal(result.exitCode, 1);
+  assert.equal(payload.code, "TN_PARITY_VISUAL_RUNTIME_STALE");
   assert.equal(captured, false);
 });
 
@@ -100,6 +125,8 @@ async function devStateResponse(root: string): Promise<Response> {
   const manifest = await readFile(join(root, "dist/game.bundle/manifest.json"));
   return new Response(JSON.stringify({
     bundleHash: createHash("sha256").update(manifest).digest("hex"),
+    executedRuntimeBuildHash: "runtime-build",
+    runtimeBuildHash: "runtime-build",
     sourceBuildStatus: "current",
   }));
 }

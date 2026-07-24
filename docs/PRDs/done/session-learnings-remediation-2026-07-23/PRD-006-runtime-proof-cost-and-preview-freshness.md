@@ -60,9 +60,9 @@ executing stale `/dist/browser/main.js`.
 
 **Implementation:**
 
-- [ ] Capture normal and full-audit CPU/alloc/serialized-byte baselines.
-- [ ] Model the Battle-of-Pacific entity/system/observation scale.
-- [ ] Gate normal-mode overhead and retain a full-audit functional lane.
+- [x] Capture normal and full-audit CPU/alloc/serialized-byte baselines.
+- [x] Model the Battle-of-Pacific entity/system/observation scale.
+- [x] Gate normal-mode overhead and retain a full-audit functional lane.
 
 ### Phase 2: Tiered observation implementation
 
@@ -79,7 +79,7 @@ executing stale `/dist/browser/main.js`.
 - [x] Keep the minimum last-writer/conflict state required for correctness.
 - [x] Allocate/serialize detailed observations only when trace/audit asks.
 - [x] Preserve stable diagnostics and deterministic full-audit ordering.
-- [ ] Prove normal and full modes make the same accept/reject decisions.
+- [x] Prove normal and full modes make the same accept/reject decisions.
 
 ### Phase 3: Preview runtime module ownership
 
@@ -93,12 +93,12 @@ executing stale `/dist/browser/main.js`.
 
 **Implementation:**
 
-- [ ] Choose source-module Vite ownership or explicit dist watch based on
+- [x] Choose source-module Vite ownership or explicit dist watch based on
   package/distribution boundaries; production distribution remains dist-based.
-- [ ] Runtime rebuild triggers cache invalidation and one full reload.
-- [ ] Dev state reports executed runtime build hash/identity separately from
+- [x] Runtime rebuild triggers cache invalidation and one full reload.
+- [x] Dev state reports executed runtime build hash/identity separately from
   game bundle hash.
-- [ ] Watchers close on failed startup and shutdown.
+- [x] Watchers close on failed startup and shutdown.
 
 ### Phase 4: End-to-end freshness/performance proof
 
@@ -112,23 +112,50 @@ executing stale `/dist/browser/main.js`.
 
 **Implementation:**
 
-- [ ] Change an observable runtime behavior, rebuild while preview runs, and
+- [x] Change an observable runtime behavior, rebuild while preview runs, and
   prove the next capture executes the new runtime without restart.
-- [ ] Deliberately suppress reload and ensure parity refuses stale runtime.
-- [ ] Compare same browser workflow before/after traces.
+- [x] Deliberately suppress reload and ensure parity refuses stale runtime.
+- [x] Compare same browser workflow before/after traces.
 
 ## 5. Checkpoints and acceptance
 
 Automated reviewer after every phase. Performance trace comparison is a manual
 checkpoint in addition to automation.
 
-- [ ] Normal mode meets the recorded CPU/allocation/byte budget.
-- [ ] Full audit retains deterministic evidence and identical verdicts.
-- [ ] Runtime rebuild becomes visible in the running preview exactly once.
-- [ ] Stale runtime and stale bundle have distinct actionable diagnostics.
-- [ ] Failure paths leak no watcher or port.
-- [ ] Focused tests, performance budget, parity, and docs checks pass.
+- [x] Normal mode meets the recorded CPU/allocation/byte budget.
+- [x] Full audit retains deterministic evidence and identical verdicts.
+- [x] Runtime rebuild becomes visible in the running preview exactly once.
+- [x] Stale runtime and stale bundle have distinct actionable diagnostics.
+- [x] Failure paths leak no watcher or port.
+- [x] Focused tests, performance budget, parity, and docs checks pass.
 
 ## Verification evidence
 
 Append before/after traces, runtime hashes, and failure-control artifacts.
+
+- `pnpm verify:runtime-observation-budget` passes a representative 120-tick,
+  384-writes-per-tick workload. The retained report records 46,080 base writes:
+  normal mode measured 34.50 ms with zero retained observations and zero
+  serialized detail bytes; full audit measured 259.79 ms with the bounded
+  2,000-row window and 479,699 serialized bytes. Both modes emitted the same
+  eight final-tick conflict signatures. Artifact:
+  `tools/verify/artifacts/runtime-observation-budget/verification-report.json`.
+- `pnpm verify:runtime-preview-freshness` edits an observable live source entry
+  from `one` to `two`. Chromium observed two total page loads (initial plus
+  exactly one rebuild reload), and the executed hash advanced from
+  `211cb3e3...9637` to the current `68e36385...0430` without restarting the
+  server. Artifact:
+  `tools/verify/artifacts/runtime-preview-freshness/verification-report.json`.
+- The stale-runtime parity negative returns
+  `TN_PARITY_VISUAL_RUNTIME_STALE` before capture, independently of
+  `TN_PARITY_VISUAL_PREVIEW_STALE` and `TN_PARITY_VISUAL_SOURCE_STALE`.
+- Focused runtime/dev/write-audit tests pass 36/36, parity tests pass 4/4,
+  verifier negative controls pass 4/4, and the retained runtime write-audit
+  gate passes. `pnpm verify:conformance` and `pnpm check:docs` also pass.
+- The matched Battle traces retained in
+  `examples/battle-of-pacific/artifacts/performance-trace-after-lightweight-write-audit-2026-07-23.json.gz`
+  and
+  `examples/battle-of-pacific/artifacts/performance-trace-after-state-shadow-log-playwright-fresh-2026-07-23.json.gz`
+  use the same ten-second Playwright/CDP workflow; their normalized
+  clone/effect/state/cascade comparisons are recorded in the systems quality
+  status.

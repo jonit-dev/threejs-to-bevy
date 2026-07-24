@@ -31,6 +31,7 @@ export interface IRuntimeWriteLedger {
   observationsSince(index: number): IRuntimeWriteObservation[];
   record(input: IRuntimeWriteRecordInput): IRuntimeWriteObservation | undefined;
   reset(): void;
+  snapshot(): ReturnType<typeof serializeRuntimeWriteAudit>;
 }
 
 interface IActiveWrite {
@@ -128,6 +129,9 @@ export function createRuntimeWriteLedger(options: IRuntimeWriteLedgerOptions = {
       writers.clear();
       conflicts.length = 0;
       currentTick = undefined;
+    },
+    snapshot() {
+      return serializeRuntimeWriteAudit(observations);
     },
   };
 }

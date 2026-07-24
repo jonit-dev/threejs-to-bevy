@@ -703,7 +703,7 @@ export async function renderLoadedBundle(bundle: IWebBundle, container: HTMLElem
       return collectWebRuntimeProbeObservations(bundle);
     },
     writeAuditSnapshot() {
-      return serializeRuntimeWriteAudit(runtimeState.writeLedger.observations());
+      return runtimeState.writeLedger.snapshot();
     },
     runtimeDiagnostics: collectWebRuntimeDiagnostics(mapped, bundle, resourceObservations),
     runtimeDiagnosticsSnapshot() {

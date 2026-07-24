@@ -56,6 +56,17 @@ export async function parityVisualCommand(
     if (previewState.bundleHash !== localBundleHash || previewState.sourceBuildStatus === "stale") {
       return visualFailure("TN_PARITY_VISUAL_PREVIEW_STALE", "The preview is serving a stale bundle. Rebuild and restart 'tn dev --target web' before measuring parity.", json);
     }
+    if (
+      previewState.runtimeBuildHash === undefined
+      || previewState.executedRuntimeBuildHash === undefined
+      || previewState.runtimeBuildHash !== previewState.executedRuntimeBuildHash
+    ) {
+      return visualFailure(
+        "TN_PARITY_VISUAL_RUNTIME_STALE",
+        "The preview has not executed the current web runtime build. Wait for the automatic full reload or restart 'tn dev --target web' before measuring parity.",
+        json,
+      );
+    }
 
     const newerSource = await findNewerSource(projectPath, (await stat(manifestPath)).mtimeMs);
     if (newerSource !== undefined) {
@@ -137,7 +148,12 @@ export async function parityVisualCommand(
   }
 }
 
-async function readPreviewState(url: string, fetcher: typeof fetch): Promise<{ bundleHash: string; sourceBuildStatus?: string }> {
+async function readPreviewState(url: string, fetcher: typeof fetch): Promise<{
+  bundleHash: string;
+  executedRuntimeBuildHash?: string;
+  runtimeBuildHash?: string;
+  sourceBuildStatus?: string;
+}> {
   let response: Response;
   try {
     response = await fetcher(new URL("/__threenative/dev-state.json", url));
@@ -153,6 +169,8 @@ async function readPreviewState(url: string, fetcher: typeof fetch): Promise<{ b
   }
   return {
     bundleHash: parsed.bundleHash,
+    ...(typeof parsed.executedRuntimeBuildHash === "string" ? { executedRuntimeBuildHash: parsed.executedRuntimeBuildHash } : {}),
+    ...(typeof parsed.runtimeBuildHash === "string" ? { runtimeBuildHash: parsed.runtimeBuildHash } : {}),
     ...(typeof parsed.sourceBuildStatus === "string" ? { sourceBuildStatus: parsed.sourceBuildStatus } : {}),
   };
 }
