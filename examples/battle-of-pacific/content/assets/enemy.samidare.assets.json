@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "enemy.samidare",
+      "path": "assets/generated/enemy.samidare.optimized.glb",
+      "source": "generator:enemy.samidare.optimized; source preserved at assets/imported/enemy.samidare.source.glb",
+      "type": "model"
+    }
+  ],
+  "id": "enemy.samidare",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

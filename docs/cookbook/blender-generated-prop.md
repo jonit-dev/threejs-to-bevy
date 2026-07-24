@@ -93,7 +93,21 @@ the source recipe may separate them without creating replacement geometry:
 `{"kind":"split-by-axis","node":"Ailerons","axis":"x","threshold":0,"negative":"aileron.left","positive":"aileron.right"}`.
 The threshold uses authored Y-up coordinates and must not intersect a vertex or
 face. Output ids must be unique, and animation tracks may target those outputs.
-No other operation is accepted in source mode.
+Source-backed recipes may also normalize one exact imported node and reduce
+static mesh density before animation:
+
+```json
+{
+  "operations": [
+    {"kind":"transform","node":"AircraftRoot","rotation":[0,180,0]},
+    {"kind":"decimate","ratio":0.6}
+  ]
+}
+```
+
+`transform` applies bounded authored-space position, rotation, or scale offsets.
+`decimate` applies Blender's collapse modifier to every imported mesh with a
+ratio in `(0, 1]`; the output polygon budget remains the final hard limit.
 
 The retained Douglas SBD-3 example uses this contract for rigid wing-flap
 deployment, paired elevator pitch, rudder yaw, and inverse roll ailerons, while

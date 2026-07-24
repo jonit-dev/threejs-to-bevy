@@ -1,0 +1,4544 @@
+{
+  "id": "aircraft.mitsubishi-a6m3",
+  "inputHash": "sha256:e1070b0c60aa8925bf8565d0930437d9ba0fb1bb798593ef90a18abc5dbd36d5",
+  "lastRun": {
+    "completedAt": "2026-07-24T02:26:38.295Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/aircraft.mitsubishi-a6m3.glb",
+      "content/assets/aircraft.mitsubishi-a6m3.assets.json",
+      "content/generators/aircraft.mitsubishi-a6m3.generator.json"
+    ],
+    "inputHash": "sha256:e1070b0c60aa8925bf8565d0930437d9ba0fb1bb798593ef90a18abc5dbd36d5",
+    "inspection": {
+      "animationClips": [
+        {
+          "channels": 1,
+          "name": "flight.cruise",
+          "samplers": 1
+        }
+      ],
+      "bounds": {
+        "center": [
+          0.002674,
+          0,
+          0.000062
+        ],
+        "max": [
+          5.56742612621747,
+          1.6651551699846396,
+          4.519390849739075
+        ],
+        "min": [
+          -5.562078554416075,
+          -1.665154589100348,
+          -4.519267388846609
+        ],
+        "size": [
+          11.129505,
+          3.33031,
+          9.038658
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 100,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 20.033109
+        },
+        "collider": {
+          "height": 3.33031,
+          "radiusForXZ": 5.564752
+        },
+        "fitScales": {
+          "targetHeight2m": 0.600545,
+          "targetLength4m": 0.359405,
+          "targetWidth1m": 0.089851
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "too-large",
+          "widthToLaneRatio": 3.179859
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 366,
+        "animations": 1,
+        "buffers": 1,
+        "images": 8,
+        "materials": 73,
+        "meshes": 73,
+        "nodes": 306,
+        "scenes": 1,
+        "textures": 16,
+        "triangles": 14540
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_0"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_6"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_1"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_3"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_5"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_2"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_7"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_4"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "TN_ASSET_GAMEPLAY_TOO_LARGE",
+          "message": "Model width is larger than expected for a 3.5m gameplay lane; consider down-scaling or widening authored gameplay units.",
+          "severity": "warning"
+        }
+      ],
+      "file": {
+        "byteSize": 1063148,
+        "path": "assets/generated/aircraft.mitsubishi-a6m3.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:aircraft.mitsubishi-a6m3.glb.staging-1140569-1784859995458-8f8edbf1fd97b",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "name": "Sketchfab_model",
+            "path": "/Sketchfab_model",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ],
+              "translation": [
+                0,
+                3.372004985809326,
+                -0.291592001914978
+              ]
+            }
+          },
+          {
+            "name": "A6M3.wrl.cleaner.gles",
+            "parentPath": "/Sketchfab_model",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ]
+            }
+          },
+          {
+            "name": "ANTENNA",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "ANTENNA_",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_259",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_/Object_259",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -1.806920051574707,
+                1.8205699920654297
+              ]
+            }
+          },
+          {
+            "name": "ANTENNA_-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_/Object_259",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_/Object_259/ANTENNA_-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:ANTENNA_-FACES"
+            ],
+            "mesh": "mesh:ANTENNA_-FACES",
+            "name": "ANTENNA_-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_/Object_259/ANTENNA_-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA_/Object_259/ANTENNA_-FACES/ANTENNA_-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_263",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA/Object_263",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.00760238990187645,
+                -2.171250104904175,
+                -0.05734139680862427
+              ]
+            }
+          },
+          {
+            "name": "ANTENNA-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA/Object_263",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA/Object_263/ANTENNA-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:ANTENNA-FACES"
+            ],
+            "mesh": "mesh:ANTENNA-FACES",
+            "name": "ANTENNA-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA/Object_263/ANTENNA-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/ANTENNA/Object_263/ANTENNA-FACES/ANTENNA-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "BAK",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_221",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -4.351960182189941,
+                -1.1543400287628174
+              ]
+            }
+          },
+          {
+            "name": "Capsule01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_227",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01/Object_227",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.6962070465087891,
+                0,
+                0,
+                0.7178410291671753
+              ],
+              "translation": [
+                0,
+                -0.08649063110351562,
+                -1.0451301336288452
+              ]
+            }
+          },
+          {
+            "name": "Capsule01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01/Object_227",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01/Object_227/Capsule01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Capsule01-FACES"
+            ],
+            "mesh": "mesh:Capsule01-FACES",
+            "name": "Capsule01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01/Object_227/Capsule01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Capsule01/Object_227/Capsule01-FACES/Capsule01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Ellipse02",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_223",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02/Object_223",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0,
+                -0.7071080803871155,
+                0,
+                0.7071054577827454
+              ],
+              "translation": [
+                0,
+                0.18705415725708008,
+                -0.16603195667266846
+              ]
+            }
+          },
+          {
+            "name": "Ellipse02-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02/Object_223",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02/Object_223/Ellipse02-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Ellipse02-FACES"
+            ],
+            "mesh": "mesh:Ellipse02-FACES",
+            "name": "Ellipse02-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02/Object_223/Ellipse02-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/BAK/Object_221/Ellipse02/Object_223/Ellipse02-FACES/Ellipse02-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "COC",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_303",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC/Object_303",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.5004000663757324,
+                -3.6573996543884277
+              ]
+            }
+          },
+          {
+            "name": "COC-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC/Object_303",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC/Object_303/COC-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:COC-FACES"
+            ],
+            "mesh": "mesh:COC-FACES",
+            "name": "COC-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC/Object_303/COC-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COC/Object_303/COC-FACES/COC-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "COMP",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_267",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP/Object_267",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.03706210106611252,
+                -4.0901899337768555,
+                -2.5471396446228027
+              ]
+            }
+          },
+          {
+            "name": "COMP-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP/Object_267",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP/Object_267/COMP-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:COMP-FACES"
+            ],
+            "mesh": "mesh:COMP-FACES",
+            "name": "COMP-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP/Object_267/COMP-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/COMP/Object_267/COMP-FACES/COMP-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "CRUK",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_249",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.3889061510562897,
+                0,
+                0,
+                0.9212774038314819
+              ],
+              "translation": [
+                -0.0013888500398024917,
+                -3.626919984817505,
+                3.274670124053955
+              ]
+            }
+          },
+          {
+            "name": "Line01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_255",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01/Object_255",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000000596046448,
+                0.4999998211860657
+              ],
+              "translation": [
+                0.01089830044656992,
+                -0.029995054006576538,
+                -0.03554448485374451
+              ]
+            }
+          },
+          {
+            "name": "Line01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01/Object_255",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01/Object_255/Line01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Line01-FACES"
+            ],
+            "mesh": "mesh:Line01-FACES",
+            "name": "Line01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01/Object_255/Line01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line01/Object_255/Line01-FACES/Line01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Line02",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_251",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02/Object_251",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000000596046448,
+                0.4999998211860657
+              ],
+              "translation": [
+                0.014870399609208107,
+                -0.20727284252643585,
+                0.22787605226039886
+              ]
+            }
+          },
+          {
+            "name": "Line02-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02/Object_251",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02/Object_251/Line02-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Line02-FACES"
+            ],
+            "mesh": "mesh:Line02-FACES",
+            "name": "Line02-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02/Object_251/Line02-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/CRUK/Object_249/Line02/Object_251/Line02-FACES/Line02-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Cylinder02",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_217",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02/Object_217",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -4.886020183563232,
+                -3.4663400650024414,
+                -2.801949977874756
+              ]
+            }
+          },
+          {
+            "name": "Cylinder02-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02/Object_217",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02/Object_217/Cylinder02-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Cylinder02-FACES"
+            ],
+            "mesh": "mesh:Cylinder02-FACES",
+            "name": "Cylinder02-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02/Object_217/Cylinder02-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder02/Object_217/Cylinder02-FACES/Cylinder02-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Cylinder03",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_21",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03/Object_21",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.485599994659424,
+                -3.665019989013672
+              ]
+            }
+          },
+          {
+            "name": "Cylinder03-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03/Object_21",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03/Object_21/Cylinder03-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Cylinder03-FACES"
+            ],
+            "mesh": "mesh:Cylinder03-FACES",
+            "name": "Cylinder03-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03/Object_21/Cylinder03-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/Cylinder03/Object_21/Cylinder03-FACES/Cylinder03-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "DVIG",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_41",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG/Object_41",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.479480028152466,
+                -3.654819965362549
+              ]
+            }
+          },
+          {
+            "name": "DVIG-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG/Object_41",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG/Object_41/DVIG-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:DVIG-FACES"
+            ],
+            "mesh": "mesh:DVIG-FACES",
+            "name": "DVIG-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG/Object_41/DVIG-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/DVIG/Object_41/DVIG-FACES/DVIG-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "FUZEL",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_299",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL/Object_299",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.479480028152466,
+                -3.654819965362549
+              ]
+            }
+          },
+          {
+            "name": "FUZEL-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL/Object_299",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL/Object_299/FUZEL-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:FUZEL-FACES"
+            ],
+            "mesh": "mesh:FUZEL-FACES",
+            "name": "FUZEL-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL/Object_299/FUZEL-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/FUZEL/Object_299/FUZEL-FACES/FUZEL-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "GOR_LEV",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_287",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV/Object_287",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.00225662998855114,
+                -3.3008298873901367,
+                3.0551300048828125
+              ]
+            }
+          },
+          {
+            "name": "GOR_LEV-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV/Object_287",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV/Object_287/GOR_LEV-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:GOR_LEV-FACES"
+            ],
+            "mesh": "mesh:GOR_LEV-FACES",
+            "name": "GOR_LEV-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV/Object_287/GOR_LEV-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_LEV/Object_287/GOR_LEV-FACES/GOR_LEV-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "GOR_PRAV",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_283",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV/Object_283",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.00225662998855114,
+                -3.3008298873901367,
+                3.0551300048828125
+              ]
+            }
+          },
+          {
+            "name": "GOR_PRAV-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV/Object_283",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV/Object_283/GOR_PRAV-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:GOR_PRAV-FACES"
+            ],
+            "mesh": "mesh:GOR_PRAV-FACES",
+            "name": "GOR_PRAV-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV/Object_283/GOR_PRAV-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/GOR_PRAV/Object_283/GOR_PRAV-FACES/GOR_PRAV-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KABINA_A6M01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_3",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.0007466819952242076,
+                -2.6654000282287598,
+                -0.7824169397354126
+              ]
+            }
+          },
+          {
+            "name": "KABINA01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_5",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01/Object_5",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.35443899035453796,
+                0.007077693939208984,
+                -0.013173341751098633
+              ]
+            }
+          },
+          {
+            "name": "KABINA01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01/Object_5",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01/Object_5/KABINA01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KABINA01-FACES"
+            ],
+            "mesh": "mesh:KABINA01-FACES",
+            "name": "KABINA01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01/Object_5/KABINA01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/KABINA01/Object_5/KABINA01-FACES/KABINA01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "STECLO01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_9",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01/Object_9",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.35443899035453796,
+                0.007077693939208984,
+                -0.013173341751098633
+              ]
+            }
+          },
+          {
+            "name": "STECLO01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01/Object_9",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01/Object_9/STECLO01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:STECLO01-FACES"
+            ],
+            "mesh": "mesh:STECLO01-FACES",
+            "name": "STECLO01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01/Object_9/STECLO01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M01/Object_3/STECLO01/Object_9/STECLO01-FACES/STECLO01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KABINA_A6M3",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_203",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.0007466819952242076,
+                -2.6654000282287598,
+                -0.7824169397354126
+              ]
+            }
+          },
+          {
+            "name": "KABINA",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_209",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA/Object_209",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.35443899035453796,
+                0.007077693939208984,
+                -0.013173341751098633
+              ]
+            }
+          },
+          {
+            "name": "KABINA-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA/Object_209",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA/Object_209/KABINA-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KABINA-FACES"
+            ],
+            "mesh": "mesh:KABINA-FACES",
+            "name": "KABINA-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA/Object_209/KABINA-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/KABINA/Object_209/KABINA-FACES/KABINA-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "STECLO",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_205",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO/Object_205",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.35443899035453796,
+                0.007077693939208984,
+                -0.013173341751098633
+              ]
+            }
+          },
+          {
+            "name": "STECLO-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO/Object_205",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO/Object_205/STECLO-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:STECLO-FACES"
+            ],
+            "mesh": "mesh:STECLO-FACES",
+            "name": "STECLO-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO/Object_205/STECLO-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KABINA_A6M3/Object_203/STECLO/Object_205/STECLO-FACES/STECLO-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KIL",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_275",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL/Object_275",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.0003991090052295476,
+                -3.028549909591675,
+                3.5988001823425293
+              ]
+            }
+          },
+          {
+            "name": "KIL-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL/Object_275",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL/Object_275/KIL-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KIL-FACES"
+            ],
+            "mesh": "mesh:KIL-FACES",
+            "name": "KIL-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL/Object_275/KIL-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KIL/Object_275/KIL-FACES/KIL-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KRESLO",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_199",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO/Object_199",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.003795499913394451,
+                -3.185889959335327,
+                -1.2244000434875488
+              ]
+            }
+          },
+          {
+            "name": "KRESLO-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO/Object_199",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO/Object_199/KRESLO-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KRESLO-FACES"
+            ],
+            "mesh": "mesh:KRESLO-FACES",
+            "name": "KRESLO-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO/Object_199/KRESLO-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRESLO/Object_199/KRESLO-FACES/KRESLO-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KRILO_PRAV",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_291",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV/Object_291",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.002232949947938323,
+                -3.385890007019043,
+                -1.5790799856185913
+              ]
+            }
+          },
+          {
+            "name": "KRILO_PRAV-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV/Object_291",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV/Object_291/KRILO_PRAV-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KRILO_PRAV-FACES"
+            ],
+            "mesh": "mesh:KRILO_PRAV-FACES",
+            "name": "KRILO_PRAV-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV/Object_291/KRILO_PRAV-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRILO_PRAV/Object_291/KRILO_PRAV-FACES/KRILO_PRAV-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "KRULO_LEV",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_295",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV/Object_295",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.002232949947938323,
+                -3.3925600051879883,
+                -1.5790799856185913
+              ]
+            }
+          },
+          {
+            "name": "KRULO_LEV-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV/Object_295",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV/Object_295/KRULO_LEV-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:KRULO_LEV-FACES"
+            ],
+            "mesh": "mesh:KRULO_LEV-FACES",
+            "name": "KRULO_LEV-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV/Object_295/KRULO_LEV-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/KRULO_LEV/Object_295/KRULO_LEV-FACES/KRULO_LEV-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "P02",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_13",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02/Object_13",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -1.9453599452972412,
+                -3.722209930419922,
+                -2.242259979248047
+              ]
+            }
+          },
+          {
+            "name": "P02-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02/Object_13",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02/Object_13/P02-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:P02-FACES"
+            ],
+            "mesh": "mesh:P02-FACES",
+            "name": "P02-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02/Object_13/P02-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P02/Object_13/P02-FACES/P02-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "P1",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_17",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1/Object_17",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                1.9329500198364258,
+                -3.722209930419922,
+                -2.242259979248047
+              ]
+            }
+          },
+          {
+            "name": "P1-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1/Object_17",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1/Object_17/P1-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:P1-FACES"
+            ],
+            "mesh": "mesh:P1-FACES",
+            "name": "P1-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1/Object_17/P1-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/P1/Object_17/P1-FACES/P1-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "PILOT",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_45",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.002406779211014509,
+                0.9469661712646484,
+                0.3212459683418274,
+                0.007096304092556238
+              ],
+              "scale": [
+                0.9609323143959045,
+                0.9609320163726807,
+                0.9609321355819702
+              ],
+              "translation": [
+                0.003289879998192191,
+                -3.227530002593994,
+                -1.239150047302246
+              ]
+            }
+          },
+          {
+            "name": "cmjbrow",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_63",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow/Object_63",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485299095511436,
+                0.5477591156959534,
+                0.31675422191619873
+              ]
+            }
+          },
+          {
+            "name": "cmjbrow-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow/Object_63",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow/Object_63/cmjbrow-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjbrow-FACES"
+            ],
+            "mesh": "mesh:cmjbrow-FACES",
+            "name": "cmjbrow-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow/Object_63/cmjbrow-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjbrow/Object_63/cmjbrow-FACES/cmjbrow-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjeyeball",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_71",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball/Object_71",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485297232866287,
+                0.530489981174469,
+                0.2978251278400421
+              ]
+            }
+          },
+          {
+            "name": "cmjeyeball-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball/Object_71",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball/Object_71/cmjeyeball-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjeyeball-FACES"
+            ],
+            "mesh": "mesh:cmjeyeball-FACES",
+            "name": "cmjeyeball-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball/Object_71/cmjeyeball-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjeyeball/Object_71/cmjeyeball-FACES/cmjeyeball-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjface",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_51",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface/Object_51",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485297232866287,
+                0.5410100817680359,
+                0.23200228810310364
+              ]
+            }
+          },
+          {
+            "name": "cmjface-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface/Object_51",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface/Object_51/cmjface-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjface-FACES"
+            ],
+            "mesh": "mesh:cmjface-FACES",
+            "name": "cmjface-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface/Object_51/cmjface-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjface/Object_51/cmjface-FACES/cmjface-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjhair",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_55",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair/Object_55",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485298164188862,
+                0.6121898889541626,
+                0.23173008859157562
+              ]
+            }
+          },
+          {
+            "name": "cmjhair-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair/Object_55",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair/Object_55/cmjhair-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjhair-FACES"
+            ],
+            "mesh": "mesh:cmjhair-FACES",
+            "name": "cmjhair-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair/Object_55/cmjhair-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjhair/Object_55/cmjhair-FACES/cmjhair-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjiris",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_67",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris/Object_67",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485297232866287,
+                0.5278028845787048,
+                0.3021600544452667
+              ]
+            }
+          },
+          {
+            "name": "cmjiris-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris/Object_67",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris/Object_67/cmjiris-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjiris-FACES"
+            ],
+            "mesh": "mesh:cmjiris-FACES",
+            "name": "cmjiris-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris/Object_67/cmjiris-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjiris/Object_67/cmjiris-FACES/cmjiris-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlbicep",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_163",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep/Object_163",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.03817567229270935,
+                -0.11162132024765015,
+                -0.5706733465194702,
+                0.8126593828201294
+              ],
+              "translation": [
+                0.24553696811199188,
+                0.16339600086212158,
+                0.09380638599395752
+              ]
+            }
+          },
+          {
+            "name": "cmjlbicep-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep/Object_163",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep/Object_163/cmjlbicep-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlbicep-FACES"
+            ],
+            "mesh": "mesh:cmjlbicep-FACES",
+            "name": "cmjlbicep-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep/Object_163/cmjlbicep-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlbicep/Object_163/cmjlbicep-FACES/cmjlbicep-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlcalf",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_107",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf/Object_107",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.1975545883178711,
+                0.144789457321167,
+                -0.21590836346149445,
+                0.9451940655708313
+              ],
+              "translation": [
+                0.23233799636363983,
+                -0.3923570215702057,
+                0.18166527152061462
+              ]
+            }
+          },
+          {
+            "name": "cmjlcalf-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf/Object_107",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf/Object_107/cmjlcalf-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlcalf-FACES"
+            ],
+            "mesh": "mesh:cmjlcalf-FACES",
+            "name": "cmjlcalf-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf/Object_107/cmjlcalf-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlcalf/Object_107/cmjlcalf-FACES/cmjlcalf-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlforarm",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_87",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm/Object_87",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.06437034904956818,
+                -0.2891789376735687,
+                -0.5061661005020142,
+                0.8099554777145386
+              ],
+              "translation": [
+                0.2757429778575897,
+                0.06259593367576599,
+                0.20402707159519196
+              ]
+            }
+          },
+          {
+            "name": "cmjlforarm-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm/Object_87",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm/Object_87/cmjlforarm-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlforarm-FACES"
+            ],
+            "mesh": "mesh:cmjlforarm-FACES",
+            "name": "cmjlforarm-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm/Object_87/cmjlforarm-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlforarm/Object_87/cmjlforarm-FACES/cmjlforarm-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlhand",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_79",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand/Object_79",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.06437034904956818,
+                -0.2891789376735687,
+                -0.5061661005020142,
+                0.8099554777145386
+              ],
+              "translation": [
+                0.2634830176830292,
+                -0.061026960611343384,
+                0.3828963339328766
+              ]
+            }
+          },
+          {
+            "name": "cmjlhand-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand/Object_79",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand/Object_79/cmjlhand-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlhand-FACES"
+            ],
+            "mesh": "mesh:cmjlhand-FACES",
+            "name": "cmjlhand-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand/Object_79/cmjlhand-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhand/Object_79/cmjlhand-FACES/cmjlhand-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlhandnl",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_83",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl/Object_83",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.06437034904956818,
+                -0.2891789376735687,
+                -0.5061661005020142,
+                0.8099554777145386
+              ],
+              "translation": [
+                0.24898101389408112,
+                -0.0897144302725792,
+                0.41794511675834656
+              ]
+            }
+          },
+          {
+            "name": "cmjlhandnl-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl/Object_83",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl/Object_83/cmjlhandnl-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlhandnl-FACES"
+            ],
+            "mesh": "mesh:cmjlhandnl-FACES",
+            "name": "cmjlhandnl-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl/Object_83/cmjlhandnl-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlhandnl/Object_83/cmjlhandnl-FACES/cmjlhandnl-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlips",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_59",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips/Object_59",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485298164188862,
+                0.4572961628437042,
+                0.2727371156215668
+              ]
+            }
+          },
+          {
+            "name": "cmjlips-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips/Object_59",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips/Object_59/cmjlips-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlips-FACES"
+            ],
+            "mesh": "mesh:cmjlips-FACES",
+            "name": "cmjlips-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips/Object_59/cmjlips-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlips/Object_59/cmjlips-FACES/cmjlips-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjllaces",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_91",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces/Object_91",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.22718511521816254,
+                0.1671169549226761,
+                -0.1931011974811554,
+                0.9397716522216797
+              ],
+              "translation": [
+                0.25467801094055176,
+                -0.6025969982147217,
+                0.3082621991634369
+              ]
+            }
+          },
+          {
+            "name": "cmjllaces-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces/Object_91",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces/Object_91/cmjllaces-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjllaces-FACES"
+            ],
+            "mesh": "mesh:cmjllaces-FACES",
+            "name": "cmjllaces-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces/Object_91/cmjllaces-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjllaces/Object_91/cmjllaces-FACES/cmjllaces-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlshoe",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_99",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe/Object_99",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.22718511521816254,
+                0.1671169549226761,
+                -0.1931011974811554,
+                0.9397716522216797
+              ],
+              "translation": [
+                0.24845097959041595,
+                -0.6350170969963074,
+                0.29822415113449097
+              ]
+            }
+          },
+          {
+            "name": "cmjlshoe-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe/Object_99",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe/Object_99/cmjlshoe-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlshoe-FACES"
+            ],
+            "mesh": "mesh:cmjlshoe-FACES",
+            "name": "cmjlshoe-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe/Object_99/cmjlshoe-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshoe/Object_99/cmjlshoe-FACES/cmjlshoe-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlshold",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_159",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold/Object_159",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.05865870788693428,
+                -0.12597759068012238,
+                -0.5676746964454651,
+                0.8114396333694458
+              ],
+              "translation": [
+                0.1867309957742691,
+                0.3154090642929077,
+                0.06079588830471039
+              ]
+            }
+          },
+          {
+            "name": "cmjlshold-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold/Object_159",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold/Object_159/cmjlshold-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlshold-FACES"
+            ],
+            "mesh": "mesh:cmjlshold-FACES",
+            "name": "cmjlshold-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold/Object_159/cmjlshold-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshold/Object_159/cmjlshold-FACES/cmjlshold-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlshstrp",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_167",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp/Object_167",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.02851829305291176,
+                -0.10483364760875702,
+                -0.5719594359397888,
+                0.8130553960800171
+              ],
+              "translation": [
+                0.23465001583099365,
+                0.1995951235294342,
+                0.0833454579114914
+              ]
+            }
+          },
+          {
+            "name": "cmjlshstrp-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp/Object_167",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp/Object_167/cmjlshstrp-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlshstrp-FACES"
+            ],
+            "mesh": "mesh:cmjlshstrp-FACES",
+            "name": "cmjlshstrp-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp/Object_167/cmjlshstrp-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlshstrp/Object_167/cmjlshstrp-FACES/cmjlshstrp-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlsock",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_95",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock/Object_95",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.1975545883178711,
+                0.144789457321167,
+                -0.21590836346149445,
+                0.9451940655708313
+              ],
+              "translation": [
+                0.23515500128269196,
+                -0.5829518437385559,
+                0.2722591757774353
+              ]
+            }
+          },
+          {
+            "name": "cmjlsock-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock/Object_95",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock/Object_95/cmjlsock-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlsock-FACES"
+            ],
+            "mesh": "mesh:cmjlsock-FACES",
+            "name": "cmjlsock-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock/Object_95/cmjlsock-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsock/Object_95/cmjlsock-FACES/cmjlsock-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlsole",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_103",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole/Object_103",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.22718511521816254,
+                0.1671169549226761,
+                -0.1931011974811554,
+                0.9397716522216797
+              ],
+              "translation": [
+                0.24442201852798462,
+                -0.6727040410041809,
+                0.3166022002696991
+              ]
+            }
+          },
+          {
+            "name": "cmjlsole-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole/Object_103",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole/Object_103/cmjlsole-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlsole-FACES"
+            ],
+            "mesh": "mesh:cmjlsole-FACES",
+            "name": "cmjlsole-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole/Object_103/cmjlsole-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlsole/Object_103/cmjlsole-FACES/cmjlsole-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjlthigh",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_171",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh/Object_171",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.5244156718254089,
+                0.12204454094171524,
+                0.009403271600604057,
+                0.8426180481910706
+              ],
+              "translation": [
+                0.1348310112953186,
+                -0.10552491992712021,
+                -0.06293097883462906
+              ]
+            }
+          },
+          {
+            "name": "cmjlthigh-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh/Object_171",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh/Object_171/cmjlthigh-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjlthigh-FACES"
+            ],
+            "mesh": "mesh:cmjlthigh-FACES",
+            "name": "cmjlthigh-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh/Object_171/cmjlthigh-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjlthigh/Object_171/cmjlthigh-FACES/cmjlthigh-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjneck",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_119",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck/Object_119",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.010377001017332077,
+                0.47178494930267334,
+                0.12386219948530197
+              ]
+            }
+          },
+          {
+            "name": "cmjneck-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck/Object_119",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck/Object_119/cmjneck-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjneck-FACES"
+            ],
+            "mesh": "mesh:cmjneck-FACES",
+            "name": "cmjneck-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck/Object_119/cmjneck-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjneck/Object_119/cmjneck-FACES/cmjneck-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjplvbelt",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_143",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt/Object_143",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.14369285106658936,
+                0,
+                0,
+                0.9896223545074463
+              ],
+              "translation": [
+                0.010562998242676258,
+                0.07635042071342468,
+                -0.11525285243988037
+              ]
+            }
+          },
+          {
+            "name": "cmjplvbelt-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt/Object_143",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt/Object_143/cmjplvbelt-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjplvbelt-FACES"
+            ],
+            "mesh": "mesh:cmjplvbelt-FACES",
+            "name": "cmjplvbelt-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt/Object_143/cmjplvbelt-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbelt/Object_143/cmjplvbelt-FACES/cmjplvbelt-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjplvbuk",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_151",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk/Object_151",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.14369285106658936,
+                0,
+                0,
+                0.9896223545074463
+              ],
+              "translation": [
+                0.022885099053382874,
+                0.03843291848897934,
+                -0.00956722255796194
+              ]
+            }
+          },
+          {
+            "name": "cmjplvbuk-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk/Object_151",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk/Object_151/cmjplvbuk-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjplvbuk-FACES"
+            ],
+            "mesh": "mesh:cmjplvbuk-FACES",
+            "name": "cmjplvbuk-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk/Object_151/cmjplvbuk-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvbuk/Object_151/cmjplvbuk-FACES/cmjplvbuk-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjplvjean",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_139",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean/Object_139",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.14369285106658936,
+                0,
+                0,
+                0.9896223545074463
+              ],
+              "translation": [
+                0.010643799789249897,
+                -0.043319787830114365,
+                -0.17415089905261993
+              ]
+            }
+          },
+          {
+            "name": "cmjplvjean-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean/Object_139",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean/Object_139/cmjplvjean-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjplvjean-FACES"
+            ],
+            "mesh": "mesh:cmjplvjean-FACES",
+            "name": "cmjplvjean-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean/Object_139/cmjplvjean-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvjean/Object_139/cmjplvjean-FACES/cmjplvjean-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjplvloop",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_155",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop/Object_155",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.14369285106658936,
+                0,
+                0,
+                0.9896223545074463
+              ],
+              "translation": [
+                0.010643797926604748,
+                0.07965807616710663,
+                -0.12146178632974625
+              ]
+            }
+          },
+          {
+            "name": "cmjplvloop-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop/Object_155",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop/Object_155/cmjplvloop-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjplvloop-FACES"
+            ],
+            "mesh": "mesh:cmjplvloop-FACES",
+            "name": "cmjplvloop-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop/Object_155/cmjplvloop-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvloop/Object_155/cmjplvloop-FACES/cmjplvloop-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjplvtop",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_147",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop/Object_147",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.14369285106658936,
+                0,
+                0,
+                0.9896223545074463
+              ],
+              "translation": [
+                0.010562000796198845,
+                0.10368992388248444,
+                -0.108787901699543
+              ]
+            }
+          },
+          {
+            "name": "cmjplvtop-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop/Object_147",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop/Object_147/cmjplvtop-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjplvtop-FACES"
+            ],
+            "mesh": "mesh:cmjplvtop-FACES",
+            "name": "cmjplvtop-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop/Object_147/cmjplvtop-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjplvtop/Object_147/cmjplvtop-FACES/cmjplvtop-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjpupil",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_75",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil/Object_75",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.27389970421791077,
+                0,
+                0,
+                0.9617582559585571
+              ],
+              "translation": [
+                0.011485297232866287,
+                0.5273981690406799,
+                0.302864134311676
+              ]
+            }
+          },
+          {
+            "name": "cmjpupil-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil/Object_75",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil/Object_75/cmjpupil-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjpupil-FACES"
+            ],
+            "mesh": "mesh:cmjpupil-FACES",
+            "name": "cmjpupil-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil/Object_75/cmjpupil-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjpupil/Object_75/cmjpupil-FACES/cmjpupil-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrbicep",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_179",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep/Object_179",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.35802146792411804,
+                0.4954405128955841,
+                0.3988267779350281,
+                0.6835908889770508
+              ],
+              "translation": [
+                -0.22926098108291626,
+                0.14011898636817932,
+                0.132748082280159
+              ]
+            }
+          },
+          {
+            "name": "cmjrbicep-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep/Object_179",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep/Object_179/cmjrbicep-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrbicep-FACES"
+            ],
+            "mesh": "mesh:cmjrbicep-FACES",
+            "name": "cmjrbicep-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep/Object_179/cmjrbicep-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrbicep/Object_179/cmjrbicep-FACES/cmjrbicep-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrcalf",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_47",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf/Object_47",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.19857072830200195,
+                -0.16931672394275665,
+                0.23370616137981415,
+                0.936633825302124
+              ],
+              "translation": [
+                -0.23020198941230774,
+                -0.40459805727005005,
+                0.1801271289587021
+              ]
+            }
+          },
+          {
+            "name": "cmjrcalf-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf/Object_47",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf/Object_47/cmjrcalf-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrcalf-FACES"
+            ],
+            "mesh": "mesh:cmjrcalf-FACES",
+            "name": "cmjrcalf-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf/Object_47/cmjrcalf-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrcalf/Object_47/cmjrcalf-FACES/cmjrcalf-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrforarm",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_115",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm/Object_115",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.03787330538034439,
+                0.3127041161060333,
+                0.6829305291175842,
+                0.659080982208252
+              ],
+              "translation": [
+                -0.20871803164482117,
+                0.05694463104009628,
+                0.21038910746574402
+              ]
+            }
+          },
+          {
+            "name": "cmjrforarm-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm/Object_115",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm/Object_115/cmjrforarm-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrforarm-FACES"
+            ],
+            "mesh": "mesh:cmjrforarm-FACES",
+            "name": "cmjrforarm-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm/Object_115/cmjrforarm-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrforarm/Object_115/cmjrforarm-FACES/cmjrforarm-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrhand",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_111",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand/Object_111",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.30302488803863525,
+                0.1350681483745575,
+                0.7092441320419312,
+                0.6220172047615051
+              ],
+              "translation": [
+                -0.1444850116968155,
+                -0.04724074900150299,
+                0.3861691653728485
+              ]
+            }
+          },
+          {
+            "name": "cmjrhand-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand/Object_111",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand/Object_111/cmjrhand-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrhand-FACES"
+            ],
+            "mesh": "mesh:cmjrhand-FACES",
+            "name": "cmjrhand-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand/Object_111/cmjrhand-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrhand/Object_111/cmjrhand-FACES/cmjrhand-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrlaces",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_123",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces/Object_123",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.2337692528963089,
+                -0.17310978472232819,
+                0.16785751283168793,
+                0.9419176578521729
+              ],
+              "translation": [
+                -0.2444159835577011,
+                -0.6183000802993774,
+                0.2964622974395752
+              ]
+            }
+          },
+          {
+            "name": "cmjrlaces-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces/Object_123",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces/Object_123/cmjrlaces-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrlaces-FACES"
+            ],
+            "mesh": "mesh:cmjrlaces-FACES",
+            "name": "cmjrlaces-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces/Object_123/cmjrlaces-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrlaces/Object_123/cmjrlaces-FACES/cmjrlaces-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrshoe",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_131",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe/Object_131",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.2337692528963089,
+                -0.17310978472232819,
+                0.16785751283168793,
+                0.9419176578521729
+              ],
+              "translation": [
+                -0.23949898779392242,
+                -0.6509920954704285,
+                0.28658226132392883
+              ]
+            }
+          },
+          {
+            "name": "cmjrshoe-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe/Object_131",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe/Object_131/cmjrshoe-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrshoe-FACES"
+            ],
+            "mesh": "mesh:cmjrshoe-FACES",
+            "name": "cmjrshoe-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe/Object_131/cmjrshoe-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshoe/Object_131/cmjrshoe-FACES/cmjrshoe-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrshold",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_175",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold/Object_175",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.35802146792411804,
+                0.4954405128955841,
+                0.3988267779350281,
+                0.6835908889770508
+              ],
+              "translation": [
+                -0.1860640048980713,
+                0.29767706990242004,
+                0.06580772995948792
+              ]
+            }
+          },
+          {
+            "name": "cmjrshold-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold/Object_175",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold/Object_175/cmjrshold-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrshold-FACES"
+            ],
+            "mesh": "mesh:cmjrshold-FACES",
+            "name": "cmjrshold-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold/Object_175/cmjrshold-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshold/Object_175/cmjrshold-FACES/cmjrshold-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrshstrp",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_183",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp/Object_183",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.35802146792411804,
+                0.4954405128955841,
+                0.3988267779350281,
+                0.6835908889770508
+              ],
+              "translation": [
+                -0.22405098378658295,
+                0.17205415666103363,
+                0.1188652291893959
+              ]
+            }
+          },
+          {
+            "name": "cmjrshstrp-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp/Object_183",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp/Object_183/cmjrshstrp-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrshstrp-FACES"
+            ],
+            "mesh": "mesh:cmjrshstrp-FACES",
+            "name": "cmjrshstrp-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp/Object_183/cmjrshstrp-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrshstrp/Object_183/cmjrshstrp-FACES/cmjrshstrp-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrsock",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_127",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock/Object_127",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.19857072830200195,
+                -0.16931672394275665,
+                0.23370616137981415,
+                0.936633825302124
+              ],
+              "translation": [
+                -0.20862901210784912,
+                -0.5975079536437988,
+                0.23952822387218475
+              ]
+            }
+          },
+          {
+            "name": "cmjrsock-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock/Object_127",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock/Object_127/cmjrsock-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrsock-FACES"
+            ],
+            "mesh": "mesh:cmjrsock-FACES",
+            "name": "cmjrsock-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock/Object_127/cmjrsock-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsock/Object_127/cmjrsock-FACES/cmjrsock-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrsole",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_135",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole/Object_135",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.2337692528963089,
+                -0.17310978472232819,
+                0.16785751283168793,
+                0.9419176578521729
+              ],
+              "translation": [
+                -0.23772701621055603,
+                -0.6888049244880676,
+                0.30505627393722534
+              ]
+            }
+          },
+          {
+            "name": "cmjrsole-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole/Object_135",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole/Object_135/cmjrsole-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrsole-FACES"
+            ],
+            "mesh": "mesh:cmjrsole-FACES",
+            "name": "cmjrsole-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole/Object_135/cmjrsole-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrsole/Object_135/cmjrsole-FACES/cmjrsole-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjrthigh",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_187",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh/Object_187",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.5238267183303833,
+                -0.1487022042274475,
+                -0.026149332523345947,
+                0.8383373022079468
+              ],
+              "translation": [
+                -0.13056999444961548,
+                -0.11092598736286163,
+                -0.05960210785269737
+              ]
+            }
+          },
+          {
+            "name": "cmjrthigh-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh/Object_187",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh/Object_187/cmjrthigh-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjrthigh-FACES"
+            ],
+            "mesh": "mesh:cmjrthigh-FACES",
+            "name": "cmjrthigh-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh/Object_187/cmjrthigh-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjrthigh/Object_187/cmjrthigh-FACES/cmjrthigh-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjtorshrt",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_191",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt/Object_191",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.3208985924720764,
+                0,
+                0,
+                0.947113573551178
+              ],
+              "translation": [
+                0.010643798857927322,
+                0.25561806559562683,
+                -0.012867783196270466
+              ]
+            }
+          },
+          {
+            "name": "cmjtorshrt-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt/Object_191",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt/Object_191/cmjtorshrt-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjtorshrt-FACES"
+            ],
+            "mesh": "mesh:cmjtorshrt-FACES",
+            "name": "cmjtorshrt-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt/Object_191/cmjtorshrt-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorshrt/Object_191/cmjtorshrt-FACES/cmjtorshrt-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "cmjtorskin",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_195",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin/Object_195",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.3208985924720764,
+                0,
+                0,
+                0.947113573551178
+              ],
+              "translation": [
+                0.010560598224401474,
+                0.4053250551223755,
+                0.10631617903709412
+              ]
+            }
+          },
+          {
+            "name": "cmjtorskin-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin/Object_195",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin/Object_195/cmjtorskin-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:cmjtorskin-FACES"
+            ],
+            "mesh": "mesh:cmjtorskin-FACES",
+            "name": "cmjtorskin-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin/Object_195/cmjtorskin-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PILOT/Object_45/cmjtorskin/Object_195/cmjtorskin-FACES/cmjtorskin-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "PUSHKA02",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_25",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02/Object_25",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.2230830043554306,
+                -2.84443998336792,
+                -2.4982099533081055
+              ]
+            }
+          },
+          {
+            "name": "PUSHKA02-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02/Object_25",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02/Object_25/PUSHKA02-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:PUSHKA02-FACES"
+            ],
+            "mesh": "mesh:PUSHKA02-FACES",
+            "name": "PUSHKA02-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02/Object_25/PUSHKA02-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA02/Object_25/PUSHKA02-FACES/PUSHKA02-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "PUSHKA1",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_29",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1/Object_29",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.22837600111961365,
+                -2.84443998336792,
+                -2.4982099533081055
+              ]
+            }
+          },
+          {
+            "name": "PUSHKA1-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1/Object_29",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1/Object_29/PUSHKA1-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:PUSHKA1-FACES"
+            ],
+            "mesh": "mesh:PUSHKA1-FACES",
+            "name": "PUSHKA1-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1/Object_29/PUSHKA1-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/PUSHKA1/Object_29/PUSHKA1-FACES/PUSHKA1-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "RADIATOR",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_37",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR/Object_37",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.479480028152466,
+                -3.654819965362549
+              ]
+            }
+          },
+          {
+            "name": "RADIATOR-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR/Object_37",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR/Object_37/RADIATOR-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:RADIATOR-FACES"
+            ],
+            "mesh": "mesh:RADIATOR-FACES",
+            "name": "RADIATOR-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR/Object_37/RADIATOR-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RADIATOR/Object_37/RADIATOR-FACES/RADIATOR-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "RUL_NAPR",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_33",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR/Object_33",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0.0014503200072795153,
+                -3.028549909591675,
+                3.643630027770996
+              ]
+            }
+          },
+          {
+            "name": "RUL_NAPR-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR/Object_33",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR/Object_33/RUL_NAPR-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:RUL_NAPR-FACES"
+            ],
+            "mesh": "mesh:RUL_NAPR-FACES",
+            "name": "RUL_NAPR-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR/Object_33/RUL_NAPR-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/RUL_NAPR/Object_33/RUL_NAPR-FACES/RUL_NAPR-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "SHASSI_ZAD",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_231",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.2697010934352875,
+                0,
+                0,
+                0.9629442095756531
+              ],
+              "translation": [
+                -0.0002672970003914088,
+                -3.5292699337005615,
+                4.170770168304443
+              ]
+            }
+          },
+          {
+            "name": "Box01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_245",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01/Object_245",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000002384185791,
+                0.4999998211860657
+              ],
+              "scale": [
+                1,
+                0.7268532514572144,
+                1
+              ],
+              "translation": [
+                0.02750919945538044,
+                0.033366188406944275,
+                -0.06614333391189575
+              ]
+            }
+          },
+          {
+            "name": "Box01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01/Object_245",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01/Object_245/Box01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Box01-FACES"
+            ],
+            "mesh": "mesh:Box01-FACES",
+            "name": "Box01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01/Object_245/Box01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Box01/Object_245/Box01-FACES/Box01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "ChamferBox01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_241",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01/Object_241",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000000596046448,
+                0.4999998211860657
+              ],
+              "scale": [
+                0.47214198112487793,
+                0.5401319861412048,
+                0.7626240253448486
+              ],
+              "translation": [
+                0.018200300633907318,
+                -0.05207337439060211,
+                0.04699911177158356
+              ]
+            }
+          },
+          {
+            "name": "ChamferBox01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01/Object_241",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01/Object_241/ChamferBox01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:ChamferBox01-FACES"
+            ],
+            "mesh": "mesh:ChamferBox01-FACES",
+            "name": "ChamferBox01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01/Object_241/ChamferBox01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/ChamferBox01/Object_241/ChamferBox01-FACES/ChamferBox01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Cylinder01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_237",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01/Object_237",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000000596046448,
+                0.4999998211860657
+              ],
+              "translation": [
+                -0.007739239372313023,
+                -0.07814259082078934,
+                0.1753946840763092
+              ]
+            }
+          },
+          {
+            "name": "Object_238",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01/Object_237",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01/Object_237/Object_238",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -0.008520640432834625,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:material_0"
+            ],
+            "mesh": "mesh:Object_56",
+            "name": "Object_239",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01/Object_237/Object_238",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Cylinder01/Object_237/Object_238/Object_239",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Torus01",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_233",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01/Object_233",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.5000000596046448,
+                -0.5000000596046448,
+                0.5000002384185791,
+                0.4999998211860657
+              ],
+              "scale": [
+                1,
+                0.8225603103637695,
+                1
+              ],
+              "translation": [
+                0.00026710701058618724,
+                -0.0783163532614708,
+                0.17469874024391174
+              ]
+            }
+          },
+          {
+            "name": "Torus01-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01/Object_233",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01/Object_233/Torus01-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Torus01-FACES"
+            ],
+            "mesh": "mesh:Torus01-FACES",
+            "name": "Torus01-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01/Object_233/Torus01-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/SHASSI_ZAD/Object_231/Torus01/Object_233/Torus01-FACES/Torus01-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "V_TRUBA",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_213",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA/Object_213",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -0.0008191469823941588,
+                -3.5026800632476807,
+                -2.7567896842956543
+              ]
+            }
+          },
+          {
+            "name": "V_TRUBA-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA/Object_213",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA/Object_213/V_TRUBA-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:V_TRUBA-FACES"
+            ],
+            "mesh": "mesh:V_TRUBA-FACES",
+            "name": "V_TRUBA-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA/Object_213/V_TRUBA-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/V_TRUBA/Object_213/V_TRUBA-FACES/V_TRUBA-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "VINT",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_279",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -3.5038199424743652,
+                -3.850399971008301
+              ]
+            }
+          },
+          {
+            "name": "VINT-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:VINT-FACES"
+            ],
+            "mesh": "mesh:VINT-FACES",
+            "name": "VINT-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VINT/Object_279/VINT-FACES/VINT-FACES.001",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "VOZD_ZAB",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object_271",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB/Object_271",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                0,
+                -4.05033016204834,
+                -2.8143796920776367
+              ]
+            }
+          },
+          {
+            "name": "VOZD_ZAB-FACES",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB/Object_271",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB/Object_271/VOZD_ZAB-FACES",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:VOZD_ZAB-FACES"
+            ],
+            "mesh": "mesh:VOZD_ZAB-FACES",
+            "name": "VOZD_ZAB-FACES.001",
+            "parentPath": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB/Object_271/VOZD_ZAB-FACES",
+            "path": "/Sketchfab_model/A6M3.wrl.cleaner.gles/VOZD_ZAB/Object_271/VOZD_ZAB-FACES/VOZD_ZAB-FACES.001",
+            "spawnedHandleEligible": true
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "ANTENNA-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "ANTENNA_-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Capsule01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Ellipse02-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "COC-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "COMP-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Line01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Line02-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Cylinder02-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Cylinder03-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "DVIG-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "FUZEL-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "GOR_LEV-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "GOR_PRAV-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.35686299204826355,
+            0.36078399419784546,
+            0.18431399762630463,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KABINA01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.34117600321769714,
+            0.47058799862861633,
+            0.7098039984703064,
+            0.5
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "STECLO01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KABINA-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.34117600321769714,
+            0.47058799862861633,
+            0.7098039984703064,
+            0.5
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "STECLO-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KIL-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KRESLO-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KRILO_PRAV-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "KRULO_LEV-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "P02-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "P1-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.10196100175380707,
+            0.02745099924504757,
+            0.02745099924504757,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjbrow-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.9686279892921448,
+            0.9529410004615784,
+            0.9568629860877991,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjeyeball-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjface-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.10196100175380707,
+            0.02745099924504757,
+            0.02745099924504757,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjhair-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0,
+            0.4352940022945404,
+            0.19215700030326843,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjiris-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlbicep-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlcalf-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlforarm-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlhand-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8117650151252747,
+            0.7764710187911987,
+            0.7764710187911987,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlhandnl-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.7372549772262573,
+            0.33725500106811523,
+            0.33725500106811523,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlips-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4196079969406128,
+            0.2627449929714203,
+            0.2509799897670746,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjllaces-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlshoe-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.11764699965715408,
+            0.03921569883823395,
+            0.521569013595581,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlshold-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlshstrp-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlsock-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlsole-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjlthigh-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjneck-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4196079969406128,
+            0.2627449929714203,
+            0.2509799897670746,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjplvbelt-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjplvbuk-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjplvjean-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjplvloop-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjplvtop-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjpupil-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrbicep-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrcalf-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrforarm-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrhand-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4196079969406128,
+            0.2627449929714203,
+            0.2509799897670746,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrlaces-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrshoe-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.11764699965715408,
+            0.03921569883823395,
+            0.521569013595581,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrshold-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrshstrp-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrsock-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrsole-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.22352899610996246,
+            0.22352899610996246,
+            0.22352899610996246,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjrthigh-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.11764699965715408,
+            0.03921569883823395,
+            0.521569013595581,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjtorshrt-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.8274509906768799,
+            0.6823530197143555,
+            0.5843139886856079,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "cmjtorskin-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "PUSHKA02-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "PUSHKA1-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "RADIATOR-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "RUL_NAPR-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Box01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "ChamferBox01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.4392159879207611,
+            0.4392159879207611,
+            0.4392159879207611,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "material_0",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.03137259930372238,
+            0.03137259930372238,
+            0.03137259930372238,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "Torus01-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            0.2627449929714203,
+            0.2627449929714203,
+            0.2627449929714203,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "V_TRUBA-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            0.30000001192092896
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "VINT-FACES",
+          "roughness": 0.6000000238418579
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "VOZD_ZAB-FACES",
+          "roughness": 0.6000000238418579
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            0.002674,
+            0.000062
+          ],
+          "max": [
+            5.56742612621747,
+            4.519390849739075
+          ],
+          "min": [
+            -5.562078554416075,
+            -4.519267388846609
+          ],
+          "size": [
+            11.129505,
+            9.038658
+          ]
+        },
+        "originCorrection": [
+          -0.002674,
+          0,
+          -0.000062
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          0.002674,
+          0.000062
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -0.002674,
+                0,
+                -0.000062
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -0.000062,
+                0,
+                0.002674
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0.002674,
+                0,
+                0.000062
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0.000062,
+                0,
+                -0.002674
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            11.129505,
+            9.038658
+          ],
+          "halfExtents": [
+            5.564752,
+            4.519329
+          ],
+          "suggestedCellSize": 11.129505
+        },
+        "y": {
+          "center": 0,
+          "max": 1.6651551699846396,
+          "min": -1.665154589100348,
+          "size": 3.33031
+        }
+      },
+      "namedNodes": [
+        "A6M3.wrl.cleaner.gles",
+        "ANTENNA",
+        "ANTENNA-FACES",
+        "ANTENNA-FACES.001",
+        "ANTENNA_",
+        "ANTENNA_-FACES",
+        "ANTENNA_-FACES.001",
+        "BAK",
+        "Box01",
+        "Box01-FACES",
+        "Box01-FACES.001",
+        "COC",
+        "COC-FACES",
+        "COC-FACES.001",
+        "COMP",
+        "COMP-FACES",
+        "COMP-FACES.001",
+        "CRUK",
+        "Capsule01",
+        "Capsule01-FACES",
+        "Capsule01-FACES.001",
+        "ChamferBox01",
+        "ChamferBox01-FACES",
+        "ChamferBox01-FACES.001",
+        "Cylinder01",
+        "Cylinder02",
+        "Cylinder02-FACES",
+        "Cylinder02-FACES.001",
+        "Cylinder03",
+        "Cylinder03-FACES",
+        "Cylinder03-FACES.001",
+        "DVIG",
+        "DVIG-FACES",
+        "DVIG-FACES.001",
+        "Ellipse02",
+        "Ellipse02-FACES",
+        "Ellipse02-FACES.001",
+        "FUZEL",
+        "FUZEL-FACES",
+        "FUZEL-FACES.001",
+        "GOR_LEV",
+        "GOR_LEV-FACES",
+        "GOR_LEV-FACES.001",
+        "GOR_PRAV",
+        "GOR_PRAV-FACES",
+        "GOR_PRAV-FACES.001",
+        "KABINA",
+        "KABINA-FACES",
+        "KABINA-FACES.001",
+        "KABINA01",
+        "KABINA01-FACES",
+        "KABINA01-FACES.001",
+        "KABINA_A6M01",
+        "KABINA_A6M3",
+        "KIL",
+        "KIL-FACES",
+        "KIL-FACES.001",
+        "KRESLO",
+        "KRESLO-FACES",
+        "KRESLO-FACES.001",
+        "KRILO_PRAV",
+        "KRILO_PRAV-FACES",
+        "KRILO_PRAV-FACES.001",
+        "KRULO_LEV",
+        "KRULO_LEV-FACES",
+        "KRULO_LEV-FACES.001",
+        "Line01",
+        "Line01-FACES",
+        "Line01-FACES.001",
+        "Line02",
+        "Line02-FACES",
+        "Line02-FACES.001",
+        "Object_103",
+        "Object_107",
+        "Object_111",
+        "Object_115",
+        "Object_119",
+        "Object_123",
+        "Object_127",
+        "Object_13",
+        "Object_131",
+        "Object_135",
+        "Object_139",
+        "Object_143",
+        "Object_147",
+        "Object_151",
+        "Object_155",
+        "Object_159",
+        "Object_163",
+        "Object_167",
+        "Object_17",
+        "Object_171",
+        "Object_175",
+        "Object_179",
+        "Object_183",
+        "Object_187",
+        "Object_191",
+        "Object_195",
+        "Object_199",
+        "Object_203",
+        "Object_205",
+        "Object_209",
+        "Object_21",
+        "Object_213",
+        "Object_217",
+        "Object_221",
+        "Object_223",
+        "Object_227",
+        "Object_231",
+        "Object_233",
+        "Object_237",
+        "Object_238",
+        "Object_239",
+        "Object_241",
+        "Object_245",
+        "Object_249",
+        "Object_25",
+        "Object_251",
+        "Object_255",
+        "Object_259",
+        "Object_263",
+        "Object_267",
+        "Object_271",
+        "Object_275",
+        "Object_279",
+        "Object_283",
+        "Object_287",
+        "Object_29",
+        "Object_291",
+        "Object_295",
+        "Object_299",
+        "Object_3",
+        "Object_303",
+        "Object_33",
+        "Object_37",
+        "Object_41",
+        "Object_45",
+        "Object_47",
+        "Object_5",
+        "Object_51",
+        "Object_55",
+        "Object_59",
+        "Object_63",
+        "Object_67",
+        "Object_71",
+        "Object_75",
+        "Object_79",
+        "Object_83",
+        "Object_87",
+        "Object_9",
+        "Object_91",
+        "Object_95",
+        "Object_99",
+        "P02",
+        "P02-FACES",
+        "P02-FACES.001",
+        "P1",
+        "P1-FACES",
+        "P1-FACES.001",
+        "PILOT",
+        "PUSHKA02",
+        "PUSHKA02-FACES",
+        "PUSHKA02-FACES.001",
+        "PUSHKA1",
+        "PUSHKA1-FACES",
+        "PUSHKA1-FACES.001",
+        "RADIATOR",
+        "RADIATOR-FACES",
+        "RADIATOR-FACES.001",
+        "RUL_NAPR",
+        "RUL_NAPR-FACES",
+        "RUL_NAPR-FACES.001",
+        "SHASSI_ZAD",
+        "STECLO",
+        "STECLO-FACES",
+        "STECLO-FACES.001",
+        "STECLO01",
+        "STECLO01-FACES",
+        "STECLO01-FACES.001",
+        "Sketchfab_model",
+        "Torus01",
+        "Torus01-FACES",
+        "Torus01-FACES.001",
+        "VINT",
+        "VINT-FACES",
+        "VINT-FACES.001",
+        "VOZD_ZAB",
+        "VOZD_ZAB-FACES",
+        "VOZD_ZAB-FACES.001",
+        "V_TRUBA",
+        "V_TRUBA-FACES",
+        "V_TRUBA-FACES.001",
+        "cmjbrow",
+        "cmjbrow-FACES",
+        "cmjbrow-FACES.001",
+        "cmjeyeball",
+        "cmjeyeball-FACES",
+        "cmjeyeball-FACES.001",
+        "cmjface",
+        "cmjface-FACES",
+        "cmjface-FACES.001",
+        "cmjhair",
+        "cmjhair-FACES",
+        "cmjhair-FACES.001",
+        "cmjiris",
+        "cmjiris-FACES",
+        "cmjiris-FACES.001",
+        "cmjlbicep",
+        "cmjlbicep-FACES",
+        "cmjlbicep-FACES.001",
+        "cmjlcalf",
+        "cmjlcalf-FACES",
+        "cmjlcalf-FACES.001",
+        "cmjlforarm",
+        "cmjlforarm-FACES",
+        "cmjlforarm-FACES.001",
+        "cmjlhand",
+        "cmjlhand-FACES",
+        "cmjlhand-FACES.001",
+        "cmjlhandnl",
+        "cmjlhandnl-FACES",
+        "cmjlhandnl-FACES.001",
+        "cmjlips",
+        "cmjlips-FACES",
+        "cmjlips-FACES.001",
+        "cmjllaces",
+        "cmjllaces-FACES",
+        "cmjllaces-FACES.001",
+        "cmjlshoe",
+        "cmjlshoe-FACES",
+        "cmjlshoe-FACES.001",
+        "cmjlshold",
+        "cmjlshold-FACES",
+        "cmjlshold-FACES.001",
+        "cmjlshstrp",
+        "cmjlshstrp-FACES",
+        "cmjlshstrp-FACES.001",
+        "cmjlsock",
+        "cmjlsock-FACES",
+        "cmjlsock-FACES.001",
+        "cmjlsole",
+        "cmjlsole-FACES",
+        "cmjlsole-FACES.001",
+        "cmjlthigh",
+        "cmjlthigh-FACES",
+        "cmjlthigh-FACES.001",
+        "cmjneck",
+        "cmjneck-FACES",
+        "cmjneck-FACES.001",
+        "cmjplvbelt",
+        "cmjplvbelt-FACES",
+        "cmjplvbelt-FACES.001",
+        "cmjplvbuk",
+        "cmjplvbuk-FACES",
+        "cmjplvbuk-FACES.001",
+        "cmjplvjean",
+        "cmjplvjean-FACES",
+        "cmjplvjean-FACES.001",
+        "cmjplvloop",
+        "cmjplvloop-FACES",
+        "cmjplvloop-FACES.001",
+        "cmjplvtop",
+        "cmjplvtop-FACES",
+        "cmjplvtop-FACES.001",
+        "cmjpupil",
+        "cmjpupil-FACES",
+        "cmjpupil-FACES.001",
+        "cmjrbicep",
+        "cmjrbicep-FACES",
+        "cmjrbicep-FACES.001",
+        "cmjrcalf",
+        "cmjrcalf-FACES",
+        "cmjrcalf-FACES.001",
+        "cmjrforarm",
+        "cmjrforarm-FACES",
+        "cmjrforarm-FACES.001",
+        "cmjrhand",
+        "cmjrhand-FACES",
+        "cmjrhand-FACES.001",
+        "cmjrlaces",
+        "cmjrlaces-FACES",
+        "cmjrlaces-FACES.001",
+        "cmjrshoe",
+        "cmjrshoe-FACES",
+        "cmjrshoe-FACES.001",
+        "cmjrshold",
+        "cmjrshold-FACES",
+        "cmjrshold-FACES.001",
+        "cmjrshstrp",
+        "cmjrshstrp-FACES",
+        "cmjrshstrp-FACES.001",
+        "cmjrsock",
+        "cmjrsock-FACES",
+        "cmjrsock-FACES.001",
+        "cmjrsole",
+        "cmjrsole-FACES",
+        "cmjrsole-FACES.001",
+        "cmjrthigh",
+        "cmjrthigh-FACES",
+        "cmjrthigh-FACES.001",
+        "cmjtorshrt",
+        "cmjtorshrt-FACES",
+        "cmjtorshrt-FACES.001",
+        "cmjtorskin",
+        "cmjtorskin-FACES",
+        "cmjtorskin-FACES.001"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:15b4ef0eac96c81bf81b1ae0c681e18c2fc43e7b1dfe00eca3d440590a0b460f",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:a19dec84992bc87e4650cb99a201a084b984562a0fa9ddd93bfa589a267bdb09",
+    "startedAt": "2026-07-24T02:26:35.459Z"
+  },
+  "outputHash": "sha256:15b4ef0eac96c81bf81b1ae0c681e18c2fc43e7b1dfe00eca3d440590a0b460f",
+  "outputs": [
+    "assets/generated/aircraft.mitsubishi-a6m3.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/aircraft.mitsubishi-a6m3.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

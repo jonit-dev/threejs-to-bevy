@@ -4,6 +4,7 @@ export type FlightTelemetry = {
   airspeed: string;
   altitude: string;
   flaps: string;
+  integrity: string;
   objective: string;
   phase: string;
   progress: number;

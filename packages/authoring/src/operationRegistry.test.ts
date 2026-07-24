@@ -682,6 +682,13 @@ test("should accept bounded source GLB animation recipes and reject mixed genera
       node: "Ailerons",
       positive: "aileron.right",
       threshold: 0,
+    }, {
+      kind: "transform",
+      node: "AircraftRoot",
+      rotation: [0, 180, 0],
+    }, {
+      kind: "decimate",
+      ratio: 0.6,
     }],
     parts: undefined,
     source: "assets/source/aircraft.glb",
@@ -706,6 +713,26 @@ test("should accept bounded source GLB animation recipes and reject mixed genera
       projectPath: root,
     });
     assert.equal(accepted.ok, true, JSON.stringify(accepted.diagnostics));
+
+    const invalidOptimization = await dispatchAuthoringOperation({
+      args: {
+        generatorId: "aircraft.invalid-optimization",
+        output: "assets/generated/aircraft.invalid-optimization.glb",
+        recipe: {
+          ...sourceRecipe,
+          id: "aircraft.invalid-optimization",
+          operations: [
+            { kind: "transform", node: "AircraftRoot" },
+            { kind: "decimate", ratio: 0 },
+          ],
+        },
+      },
+      name: "generator.record_blender",
+      projectPath: root,
+    });
+    assert.equal(invalidOptimization.ok, false);
+    assert.equal(invalidOptimization.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID" && item.path === "/operations/0"), true);
+    assert.equal(invalidOptimization.diagnostics.some((item) => item.code === "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID" && item.path === "/operations/1/ratio"), true);
 
     const mixed = await dispatchAuthoringOperation({
       args: {

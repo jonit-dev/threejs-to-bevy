@@ -1,0 +1,29 @@
+{
+  "assets": [
+    {
+      "animationGraph": {
+        "initialState": "flight.cruise",
+        "states": [
+          {
+            "clip": "flight.cruise",
+            "id": "flight.cruise"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "id": "flight.cruise",
+          "loop": true,
+          "sourceClip": "flight.cruise"
+        }
+      ],
+      "id": "aircraft.mitsubishi-a6m3",
+      "path": "assets/generated/aircraft.mitsubishi-a6m3.glb",
+      "source": "generator:aircraft.mitsubishi-a6m3",
+      "type": "model"
+    }
+  ],
+  "id": "aircraft.mitsubishi-a6m3",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

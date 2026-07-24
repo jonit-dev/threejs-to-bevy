@@ -22,6 +22,16 @@
       "id": "mesh.gun-smoke",
       "kind": "primitive",
       "primitive": "plane"
+    },
+    {
+      "id": "mesh.destroyer-fire",
+      "kind": "primitive",
+      "primitive": "plane"
+    },
+    {
+      "id": "mesh.destroyer-flash",
+      "kind": "primitive",
+      "primitive": "sphere"
     }
   ]
 }

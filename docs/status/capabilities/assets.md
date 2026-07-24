@@ -24,7 +24,10 @@ Current support:
   node names and local transform offsets; source rotation tracks may declare an
   authored Y-up hinge pivot. A bounded `split-by-axis` operation can separate
   existing disconnected mesh halves across a strict authored-space threshold
-  into two animation targets without adding polygons. Source bytes participate
+  into two animation targets without adding polygons. Exact unique imported
+  nodes can also receive permanent authored-space transform offsets, and a
+  bounded global collapse-decimation ratio can reduce static mesh density
+  before export. Source bytes participate
   in the input hash,
   existing clips are retained, and external dependencies, generated/source
   mode mixtures, missing or ambiguous targets, conflicting pivots, clip

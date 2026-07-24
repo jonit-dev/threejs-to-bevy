@@ -5,6 +5,7 @@ const initialTelemetry: FlightTelemetry = {
   airspeed: "140 KT",
   altitude: "295 FT",
   flaps: "UP",
+  integrity: "100%",
   objective: "Hold controlled flight for 45 seconds",
   phase: "CRUISE",
   progress: 0,
@@ -91,6 +92,7 @@ export function App() {
       <aside className="instrument-stack" aria-label="Flight instruments">
         <Gauge label="AIRSPEED" value={telemetry.airspeed} detail="INDICATED" />
         <Gauge label="ALTITUDE" value={telemetry.altitude} detail="SEA LEVEL" />
+        <Gauge label="AIRFRAME" value={telemetry.integrity} detail="INTEGRITY" />
         <section className="engine-card">
           <div>
             <span>ENGINE</span>

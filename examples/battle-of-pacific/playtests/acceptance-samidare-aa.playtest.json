@@ -1,0 +1,75 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "samidare-aa",
+  "name": "acceptance-samidare-aa",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "destroyer.aa.00",
+  "warmupFrames": 10,
+  "setup": {
+    "entities": [
+      {
+        "entity": "aircraft",
+        "position": [
+          0,
+          120,
+          -650
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "enter Samidare anti-air envelope",
+      "waitTicks": 180,
+      "screenshot": "01-aa-barrage"
+    },
+    {
+      "label": "observe airframe damage",
+      "waitTicks": 120,
+      "screenshot": "02-aa-hit"
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "destroyer.aa.00",
+      "minDistance": 20,
+      "maxDistance": 20000
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "aaHitsTaken",
+        "gte": 1,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "playerIntegrity",
+        "changed": true
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    }
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

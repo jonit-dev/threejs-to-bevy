@@ -1,0 +1,29 @@
+{
+  "assets": [
+    {
+      "animationGraph": {
+        "initialState": "ship.idle",
+        "states": [
+          {
+            "clip": "ship.idle",
+            "id": "ship.idle"
+          }
+        ]
+      },
+      "animations": [
+        {
+          "id": "ship.idle",
+          "loop": true,
+          "sourceClip": "ship.idle"
+        }
+      ],
+      "id": "enemy.samidare.optimized",
+      "path": "assets/generated/enemy.samidare.optimized.glb",
+      "source": "generator:enemy.samidare.optimized",
+      "type": "model"
+    }
+  ],
+  "id": "enemy.samidare.optimized",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

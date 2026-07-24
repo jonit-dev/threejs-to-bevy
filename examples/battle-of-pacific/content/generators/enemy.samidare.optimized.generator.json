@@ -1,0 +1,863 @@
+{
+  "id": "enemy.samidare.optimized",
+  "inputHash": "sha256:43c0addd55c9dc549179f60780b5f5a2733bb0bc81683bca050ffcdf493e1d06",
+  "lastRun": {
+    "completedAt": "2026-07-24T02:14:24.962Z",
+    "diagnostics": [],
+    "filesWritten": [
+      "assets/generated/enemy.samidare.optimized.glb",
+      "content/assets/enemy.samidare.optimized.assets.json",
+      "content/generators/enemy.samidare.optimized.generator.json"
+    ],
+    "inputHash": "sha256:43c0addd55c9dc549179f60780b5f5a2733bb0bc81683bca050ffcdf493e1d06",
+    "inspection": {
+      "animationClips": [
+        {
+          "channels": 1,
+          "name": "ship.idle",
+          "samplers": 1
+        }
+      ],
+      "bounds": {
+        "center": [
+          -6.014939,
+          10.814866,
+          -0.000004
+        ],
+        "max": [
+          66.65475423085536,
+          26.560830172531222,
+          7.287627850728734
+        ],
+        "min": [
+          -78.68463185533074,
+          -4.931097778392432,
+          -7.287635988368401
+        ],
+        "size": [
+          145.339386,
+          31.491928,
+          14.575264
+        ],
+        "source": "accessor-min-max"
+      },
+      "calibration": {
+        "camera": {
+          "far": 1046.44358,
+          "fovDegrees": 50,
+          "near": 0.01,
+          "recommendedDistance": 261.610895
+        },
+        "collider": {
+          "height": 31.491928,
+          "radiusForXZ": 72.669693
+        },
+        "fitScales": {
+          "targetHeight2m": 0.063508,
+          "targetLength4m": 0.027522,
+          "targetWidth1m": 0.00688
+        },
+        "gameplay": {
+          "laneWidthMeters": 3.5,
+          "verdict": "too-large",
+          "widthToLaneRatio": 41.525539
+        }
+      },
+      "code": "TN_ASSET_INSPECT_OK",
+      "counts": {
+        "accessors": 76,
+        "animations": 1,
+        "buffers": 1,
+        "images": 23,
+        "materials": 11,
+        "meshes": 17,
+        "nodes": 28,
+        "scenes": 1,
+        "textures": 23,
+        "triangles": 26032
+      },
+      "dependencies": [
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_12"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_10"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_11"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_15"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_13"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_14"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_2"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_0"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_1"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_22"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_18"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_16"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_17"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_9"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_7"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_8"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_3"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_4"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_21"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_19"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_20"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_5"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "image",
+          "uri": "Image_6"
+        },
+        {
+          "embedded": true,
+          "exists": true,
+          "kind": "buffer"
+        }
+      ],
+      "diagnostics": [
+        {
+          "code": "TN_ASSET_GAMEPLAY_TOO_LARGE",
+          "message": "Model width is larger than expected for a 3.5m gameplay lane; consider down-scaling or widening authored gameplay units.",
+          "severity": "warning"
+        }
+      ],
+      "file": {
+        "byteSize": 11446096,
+        "path": "assets/generated/enemy.samidare.optimized.glb",
+        "type": "glb"
+      },
+      "gltf": {
+        "assetId": "asset:enemy.samidare.optimized.glb.staging-1088139-1784859262821-0ed3f520ed943",
+        "customAttributes": [],
+        "materials": [],
+        "morphTargets": [],
+        "nodes": [
+          {
+            "name": "Sketchfab_model",
+            "path": "/Sketchfab_model",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ],
+              "scale": [
+                2.2055020332336426,
+                2.2055022716522217,
+                2.2055022716522217
+              ]
+            }
+          },
+          {
+            "name": "6a258a874c3741a9bc69ab5151c9a2af.fbx",
+            "parentPath": "/Sketchfab_model",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ]
+            }
+          },
+          {
+            "name": "RootNode",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Line005",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line005",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -1.7828007936477661,
+                6.68086051940918,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:stropes"
+            ],
+            "mesh": "mesh:Line005_stropes_0",
+            "name": "Line005_stropes_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line005",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line005/Line005_stropes_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Line006",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line006",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -1.7828007936477661,
+                6.68086051940918,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:stropes"
+            ],
+            "mesh": "mesh:Line006_stropes_0",
+            "name": "Line006_stropes_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line006",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Line006/Line006_stropes_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Object001",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:10_-_Default"
+            ],
+            "mesh": "mesh:Object001_10 - Default_0",
+            "name": "Object001_10 - Default_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_10 - Default_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:antiaircraft"
+            ],
+            "mesh": "mesh:Object001_antiaircraft_0",
+            "name": "Object001_antiaircraft_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_antiaircraft_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:hull"
+            ],
+            "mesh": "mesh:Object001_hull_0",
+            "name": "Object001_hull_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_hull_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:jp_navy"
+            ],
+            "mesh": "mesh:Object001_jp navy_0",
+            "name": "Object001_jp navy_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_jp navy_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:maingun"
+            ],
+            "mesh": "mesh:Object001_maingun_0",
+            "name": "Object001_maingun_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_maingun_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:metal"
+            ],
+            "mesh": "mesh:Object001_metal_0",
+            "name": "Object001_metal_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_metal_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:metal"
+            ],
+            "mesh": "mesh:Object001_metal_0.001",
+            "name": "Object001_metal_0.2",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_metal_0.2",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:Minelauncher"
+            ],
+            "mesh": "mesh:Object001_Minelauncher_0",
+            "name": "Object001_Minelauncher_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_Minelauncher_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:staf2"
+            ],
+            "mesh": "mesh:Object001_staf2_0",
+            "name": "Object001_staf2_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_staf2_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:staff_1"
+            ],
+            "mesh": "mesh:Object001_staff 1_0",
+            "name": "Object001_staff 1_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_staff 1_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:staff3"
+            ],
+            "mesh": "mesh:Object001_staff3_0",
+            "name": "Object001_staff3_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_staff3_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "materials": [
+              "material:stropes"
+            ],
+            "mesh": "mesh:Object001_stropes_0",
+            "name": "Object001_stropes_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Object001/Object001_stropes_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Shape001",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape001",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "scale": [
+                0.9530504941940308,
+                1,
+                0.9530504941940308
+              ],
+              "translation": [
+                9.174090385437012,
+                4.688055515289307,
+                0
+              ]
+            }
+          },
+          {
+            "name": "Object_17",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape001",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape001/Object_17",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                3.1187429428100586,
+                -1.204575777053833,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal"
+            ],
+            "mesh": "mesh:Shape001_metal_0",
+            "name": "Shape001_metal_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape001/Object_17",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape001/Object_17/Shape001_metal_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Shape002",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape002",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ],
+              "scale": [
+                0.9687477946281433,
+                0.9687479734420776,
+                1
+              ],
+              "translation": [
+                0,
+                0.3375854790210724,
+                0
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal"
+            ],
+            "mesh": "mesh:Shape002_metal_0",
+            "name": "Shape002_metal_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape002",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape002/Shape002_metal_0",
+            "spawnedHandleEligible": true
+          },
+          {
+            "name": "Shape004",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape004",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "rotation": [
+                -0.70710688829422,
+                0,
+                0,
+                0.7071066498756409
+              ],
+              "translation": [
+                16.066635131835938,
+                2.46763277053833,
+                2.3677382469177246
+              ]
+            }
+          },
+          {
+            "name": "Object_26",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape004",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape004/Object_26",
+            "spawnedHandleEligible": true,
+            "transform": {
+              "translation": [
+                -16.066635131835938,
+                2.3677380084991455,
+                -2.310894727706909
+              ]
+            }
+          },
+          {
+            "materials": [
+              "material:metal"
+            ],
+            "mesh": "mesh:Shape004_metal_0",
+            "name": "Shape004_metal_0",
+            "parentPath": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape004/Object_26",
+            "path": "/Sketchfab_model/6a258a874c3741a9bc69ab5151c9a2af.fbx/RootNode/Shape004/Object_26/Shape004_metal_0",
+            "spawnedHandleEligible": true
+          }
+        ]
+      },
+      "materials": [
+        {
+          "baseColor": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "stropes",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "10_-_Default",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "antiaircraft",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0.4224466383457184,
+          "metallicRoughnessTexture": true,
+          "name": "hull",
+          "roughness": 0.8065930008888245
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "jp_navy",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "maingun",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            0.2099684774875641,
+            0.2020297646522522,
+            0.2020297646522522,
+            1
+          ],
+          "baseColorTexture": false,
+          "metallic": 0,
+          "metallicRoughnessTexture": false,
+          "name": "metal",
+          "roughness": 0.4616996943950653
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "Minelauncher",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "staf2",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "staff_1",
+          "roughness": 1
+        },
+        {
+          "baseColor": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "baseColorTexture": true,
+          "metallic": 1,
+          "metallicRoughnessTexture": true,
+          "name": "staff3",
+          "roughness": 1
+        }
+      ],
+      "message": "Asset inspection completed.",
+      "modular": {
+        "footprint": {
+          "axes": [
+            "x",
+            "z"
+          ],
+          "center": [
+            -6.014939,
+            -0.000004
+          ],
+          "max": [
+            66.65475423085536,
+            7.287627850728734
+          ],
+          "min": [
+            -78.68463185533074,
+            -7.287635988368401
+          ],
+          "size": [
+            145.339386,
+            14.575264
+          ]
+        },
+        "originCorrection": [
+          6.014939,
+          -10.814866,
+          0.000004
+        ],
+        "pivotOffsetFromFootprintCenter": [
+          -6.014939,
+          -0.000004
+        ],
+        "placement": {
+          "cardinalYaw": [
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                6.014939,
+                -10.814866,
+                0.000004
+              ],
+              "yawDegrees": 0,
+              "yawRadians": 0
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                0.000004,
+                -10.814866,
+                -6.014939
+              ],
+              "yawDegrees": 90,
+              "yawRadians": 1.570796
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -6.014939,
+                -10.814866,
+                -0.000004
+              ],
+              "yawDegrees": 180,
+              "yawRadians": 3.141593
+            },
+            {
+              "entityPositionForFootprintCenterAtOrigin": [
+                -0.000004,
+                -10.814866,
+                6.014939
+              ],
+              "yawDegrees": 270,
+              "yawRadians": 4.712389
+            }
+          ]
+        },
+        "snap": {
+          "gridSize": [
+            145.339386,
+            14.575264
+          ],
+          "halfExtents": [
+            72.669693,
+            7.287632
+          ],
+          "suggestedCellSize": 145.339386
+        },
+        "y": {
+          "center": 10.814866,
+          "max": 26.560830172531222,
+          "min": -4.931097778392432,
+          "size": 31.491928
+        }
+      },
+      "namedNodes": [
+        "6a258a874c3741a9bc69ab5151c9a2af.fbx",
+        "Line005",
+        "Line005_stropes_0",
+        "Line006",
+        "Line006_stropes_0",
+        "Object001",
+        "Object001_10 - Default_0",
+        "Object001_Minelauncher_0",
+        "Object001_antiaircraft_0",
+        "Object001_hull_0",
+        "Object001_jp navy_0",
+        "Object001_maingun_0",
+        "Object001_metal_0",
+        "Object001_metal_0.2",
+        "Object001_staf2_0",
+        "Object001_staff 1_0",
+        "Object001_staff3_0",
+        "Object001_stropes_0",
+        "Object_17",
+        "Object_26",
+        "RootNode",
+        "Shape001",
+        "Shape001_metal_0",
+        "Shape002",
+        "Shape002_metal_0",
+        "Shape004",
+        "Shape004_metal_0",
+        "Sketchfab_model"
+      ]
+    },
+    "ok": true,
+    "outputHash": "sha256:5aa13d521b808c0c945ea11f3c86e46bd4e7d5d464abde64f17f56d3b4814617",
+    "provider": "blender",
+    "providerVersion": "4.5.11",
+    "runnerHash": "sha256:a19dec84992bc87e4650cb99a201a084b984562a0fa9ddd93bfa589a267bdb09",
+    "startedAt": "2026-07-24T02:14:22.821Z"
+  },
+  "outputHash": "sha256:5aa13d521b808c0c945ea11f3c86e46bd4e7d5d464abde64f17f56d3b4814617",
+  "outputs": [
+    "assets/generated/enemy.samidare.optimized.glb"
+  ],
+  "overwritePolicy": "replace",
+  "provider": "blender",
+  "providerVersion": "4.5.11",
+  "recipe": "content/generators/enemy.samidare.recipe.json",
+  "schema": "threenative.generator-provenance",
+  "version": "0.1.0"
+}

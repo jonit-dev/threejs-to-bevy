@@ -11,6 +11,15 @@
         "export": "updatePacificFlight"
       },
       "source": "behavior-metadata"
+    },
+    {
+      "id": "enemy-zero-ai",
+      "schedule": "fixedUpdate",
+      "script": {
+        "module": "src/scripts/enemy-zero.ts",
+        "export": "updateEnemyZero"
+      },
+      "source": "behavior-metadata"
     }
   ]
 }

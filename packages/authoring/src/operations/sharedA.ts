@@ -1324,7 +1324,15 @@ function validateBlenderSourceOperations(
       diagnostics.push(typeDiagnostic(file, path, "Source-backed Blender recipe operation must be an object.", operation));
       return;
     }
-    diagnostics.push(...unknownBlenderKeys(file, path, operation, new Set(["kind", "node", "axis", "threshold", "negative", "positive"])));
+    const kind = typeof operation.kind === "string" ? operation.kind : "";
+    const operationKeys = kind === "split-by-axis"
+      ? new Set(["kind", "node", "axis", "threshold", "negative", "positive"])
+      : kind === "transform"
+        ? new Set(["kind", "node", "position", "rotation", "scale"])
+        : kind === "decimate"
+          ? new Set(["kind", "ratio"])
+          : new Set(["kind"]);
+    diagnostics.push(...unknownBlenderKeys(file, path, operation, operationKeys));
     validateEnumString(
       diagnostics,
       file,
@@ -1334,9 +1342,26 @@ function validateBlenderSourceOperations(
       "Source-backed Blender recipe operation",
       `Use one of: ${[...supportedBlenderSourceRecipeOperations].join(", ")}.`,
     );
+    if (kind === "decimate") {
+      if (typeof operation.ratio !== "number" || !Number.isFinite(operation.ratio) || operation.ratio <= 0 || operation.ratio > 1) {
+        diagnostics.push(blenderRecipeDiagnostic(file, `${path}/ratio`, "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID", "Source decimate ratio must be finite and greater than zero through one.", operation.ratio, ["number in (0, 1]"]));
+      }
+      return;
+    }
     if (typeof operation.node !== "string" || operation.node.length === 0 || operation.node.length > 128 || /[\u0000-\u001f]/u.test(operation.node)) {
       diagnostics.push(blenderRecipeDiagnostic(file, `${path}/node`, "TN_AUTHORING_BLENDER_RECIPE_REFERENCE_INVALID", "Source operation node must be an exact non-empty imported node name of at most 128 characters.", operation.node, ["exact imported node name"]));
     }
+    if (kind === "transform") {
+      const fields = ["position", "rotation", "scale"] as const;
+      if (!fields.some((field) => operation[field] !== undefined)) {
+        diagnostics.push(blenderRecipeDiagnostic(file, path, "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID", "Source transform must declare position, rotation, or scale.", operation, fields));
+      }
+      validateBlenderVec3(diagnostics, file, `${path}/position`, operation.position, false, false);
+      validateBlenderVec3(diagnostics, file, `${path}/rotation`, operation.rotation, false, false);
+      validateBlenderVec3(diagnostics, file, `${path}/scale`, operation.scale, false, true);
+      return;
+    }
+    if (kind !== "split-by-axis") return;
     validateEnumString(diagnostics, file, `${path}/axis`, operation.axis, new Set(["x", "y", "z"]), "source split axis", "Use 'x', 'y', or 'z'.");
     if (typeof operation.threshold !== "number" || !Number.isFinite(operation.threshold)) {
       diagnostics.push(blenderRecipeDiagnostic(file, `${path}/threshold`, "TN_AUTHORING_BLENDER_RECIPE_VALUE_INVALID", "Source split threshold must be a finite authored-space number.", operation.threshold, ["finite number"]));

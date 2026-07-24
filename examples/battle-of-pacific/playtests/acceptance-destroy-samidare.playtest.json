@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "destroy-samidare",
+  "name": "acceptance-destroy-samidare",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "enemy.samidare",
+  "warmupFrames": 10,
+  "setup": {
+    "entities": [
+      {
+        "entity": "aircraft",
+        "position": [
+          0,
+          29,
+          -700
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "label": "attack Samidare",
+      "press": "Space",
+      "holdFrames": 90,
+      "release": true,
+      "screenshot": "01-attack"
+    },
+    {
+      "label": "observe fire smoke and sinking",
+      "waitTicks": 240,
+      "screenshot": "02-destroyed"
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "enemy.samidare",
+      "minDistance": 2,
+      "maxDistance": 40
+    },
+    "resources": [
+      {
+        "id": "FlightState",
+        "path": "enemyHealth",
+        "equals": 0,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "targetDestroyed",
+        "equals": true,
+        "changed": true
+      },
+      {
+        "id": "FlightState",
+        "path": "enemyStatus",
+        "equals": "SINKING",
+        "changed": true
+      }
+    ],
+    "diagnostics": {
+      "runtimeReady": true,
+      "noConsoleErrors": true,
+      "noNetworkErrors": true,
+      "noRuntimeDiagnostics": true
+    },
+    "visual": [
+      {
+        "entityVisible": {
+          "entity": "enemy.samidare",
+          "minProjectedPixels": 1000
+        }
+      },
+      {
+        "entityVisible": {
+          "entity": "destroyer.fire.0",
+          "minProjectedPixels": 40
+        }
+      },
+      {
+        "entityVisible": {
+          "entity": "destroyer.smoke.0",
+          "minProjectedPixels": 40
+        }
+      }
+    ]
+  },
+  "artifacts": {
+    "screenshots": "per-step",
+    "console": true,
+    "network": true,
+    "runtimeTrace": true,
+    "effectLog": "focused"
+  }
+}

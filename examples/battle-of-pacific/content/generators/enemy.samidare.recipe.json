@@ -1,0 +1,49 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "enemy.samidare.optimized",
+  "source": "assets/imported/enemy.samidare.source.glb",
+  "operations": [
+    {
+      "kind": "decimate",
+      "ratio": 0.35
+    }
+  ],
+  "animations": [
+    {
+      "id": "ship.idle",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "Sketchfab_model",
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "budgets": {
+    "maxOutputBytes": 33554432,
+    "maxPolygons": 60000
+  }
+}

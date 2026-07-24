@@ -340,3 +340,243 @@ What this session should have looked like, condensed:
 6. Record scope blockers immediately when the genre diverges from the generic
    gate expectations; keep `AGENT_GAME_PLAN.md` checklist current — it was the
    single best resume/handoff artifact all session.
+
+---
+
+# Addendum — mined from the 7/22 evening + 7/23 afternoon/evening sessions
+
+Everything below comes from mining the parallel Codex and Claude sessions
+that ran after the morning flight-slice session: the 7/22 advanced-physics
+PRD execution/review, and the 7/23 visual-parity / gunfire / destroyer /
+audio push. Only NEW learnings; the morning items above still stand.
+
+## Materials, glTF, and PBR — the biggest new failure cluster
+
+- **glTF `metallicFactor` defaults to 1.0.** A GLB material with no explicit
+  metallic value renders as full metal — near-black under a weak environment,
+  and it integrates the entire IBL. Both the "flat dark plane" and the
+  "olive navy paint" bugs bottomed out here. Assume unset metallic = 1, and
+  encode `metallicFactor: 0` on painted materials in the recipe.
+- **The Blender runner's `roughness` override silently strips packed
+  metallic-roughness textures.** Setting the `roughness` key in
+  `override_source_material` replaces the node link with a constant, so the
+  glTF exporter drops the whole MR texture (20/20 materials lost theirs →
+  plasticky flat look, matte-black canopy). Leave the socket linked; never
+  blanket-override.
+- **Override PBR surgically, not globally.** The SBD-3 look is
+  metalness-driven by design (canopy glass + navy panel sheen are metallic;
+  only ~8 materials are true paint). Blanket `metallic:0` destroyed the
+  canopy and the sheen. Sample the source channels first, then override only
+  the genuinely-painted materials.
+- **Environment-map ground tint bleeds into all metal.** The
+  kloofendal-48d HDRI's lower hemisphere is green grassland; metallic navy
+  paint integrated it and rendered olive (measured wing pixel (36,34,19) —
+  green > blue, impossible for navy). `tn model-test` never shows this
+  because its viewer uses a neutral studio env. Fix: replace the
+  below-horizon hemisphere of the derived env map with a feathered
+  ocean-blue gradient. Rule: validate HDRIs in the actual gameplay camera,
+  not the catalog thumbnail or the model viewer.
+- **Verify "Poly Haven" assets against the official API hashes.** Two
+  pending panoramas claimed Poly Haven provenance but were synthetic
+  (dimensions + MD5 disagreed). Check provider hash/author/license metadata
+  before trusting an asset's claimed source.
+
+## Blender/asset pipeline — new contract bugs and limits
+
+- **Frame-0 NLA bake corrupted the bind pose (the real "stuck flaps" root
+  cause).** The generator exported frame 0 with every authored NLA strip
+  active, baking the first frame of `flaps-down`/`rudder-right` into the
+  neutral node transforms — cruise could never return to neutral. Fixed at
+  the owner: the runner now mutes overlapping strips and restores the
+  authored pose before export (regression test in place). Related: a clip
+  does not implicitly re-key surfaces a previous clip moved — `cruise` must
+  explicitly key them back to neutral.
+- **Import-to-animate rotation-mode trap.** The recipe contract was extended
+  to import an existing GLB and animate its nodes (built for the SBD-3
+  prop/flaps ask). First runs exported ZERO clips silently: imported glTF
+  nodes keep quaternion rotation mode while the runner keyed Euler tracks;
+  Blender warns and drops the channels. The runner must switch targeted
+  nodes to XYZ Euler and key relative offsets. Any Blender rotation-track
+  authoring on imported glTF must reconcile rotation mode or channels vanish.
+- **`split-by-axis` is the right pattern for control surfaces packed into
+  one mesh node.** The ailerons were two disconnected halves in a single
+  node, so node rotation moved both together. A bounded split op (cut at
+  x=0, ±18 degree opposite tracks, tri count unchanged) fixed it. Limit: it
+  refuses to cut welded vertices, so the main wing stays one piece. Do NOT
+  add duplicate overlay geometry — the user rejected that hard, twice.
+- **`tn asset generate` resetting `initialState` is not just annoying — it
+  cascades.** A regen silently flipped `flight.cruise` → `flaps.deploy`,
+  destabilized flight, tripped the failure path that stops engine audio,
+  and the user experienced it as two unrelated bugs ("engine cutting off",
+  "you fucked up the plane movement"). After ANY regen: re-assert
+  `initialState`, then re-playtest.
+- Smaller contract edges: hinge pivots are only allowed on nodes from an
+  imported source GLB (not newly-generated parts); source-backed recipes
+  must name imported materials exactly; `tn model-test` refuses to render a
+  GLB with duplicate node paths (blocked SBD-3 turntable evidence);
+  `MeshRenderer` requires both mesh AND material to resolve even when the
+  GLB carries its own materials; `doubleSided` is not an authored
+  portable-material field; the GLB exporter flattens smoke alpha to opaque
+  (reapply translucency as a scene material).
+
+## Audio — loop mastering and runtime gaps
+
+- **"Engine cutting off" inside a loop was phase cancellation, not
+  loudness.** The 1 s equal-power crossfade over a tonal drone produced a
+  ~3.5 dB / ~400 ms notch at every wrap even with a continuous seam sample.
+  Fix: choose the loop body length by maximizing head/tail phase
+  correlation (residual dip 0.5 dB). Companion failure: a body 9-10 dB
+  louder than its head/tail reads as a pulse at every wrap — master to a
+  target LUFS and verify the decoded wrap deltas fall within
+  adjacent-sample variance.
+- **Regenerate rather than rescue.** When mastering could not remove the
+  source's objectionable character, one regeneration with a seam-oriented
+  prompt ("steady cockpit rumble", not "harsh drone") beat every rescue
+  attempt.
+- **Engine gaps found:** the web runtime accepted an audio `pitch` option
+  and silently ignored it (now mapped to `playbackRate`); scripts cannot
+  modulate a playing sound's volume/pitch, so RPM-follows-throttle needs
+  discrete bands with hysteresis (rig-helper candidate); browsers block
+  autoplay until a user gesture, so the runtime needed an explicit
+  gesture-unlock + queued-play path plus `.mp3`/`.m4a` MIME types in the
+  dev server (`TN_AUDIO_PLAYBACK_REJECTED` is the new diagnostic).
+
+## Visual debugging — new diagnostics that worked
+
+- **"Blue airplane" = collider debug wireframe.** Saturated cyan bands on
+  the fuselage were the physics-box debug wireframe drawn with
+  `depthTest:false` while `?debugColliders=1` was set. The diagnostic that
+  cracked it: the band geometry matched the collider dimensions exactly.
+  When a color artifact aligns with a physics box, suspect debug rendering.
+- **Perf complaints: profile before blaming the shader.** The reported
+  "game perf issue" traced to the engine's own instrumentation — 58% of CPU
+  in `runtimeWriteObservationSort` and ~18% in audit serialization;
+  rendering and physics were each <0.1% self-time. Observation/audit
+  recording is a first-class perf suspect during playtests/traces.
+- **Diagnose color complaints with sampled pixels, not eyeballing.**
+  Quantified deltas (reference (0,25,53) vs current (40,92,148)) turned
+  "looks like SHIT" into closable numeric targets for subagents.
+- **Sun glitter must be distance-gated** or it reads as single-pixel
+  "sprinkles" (user reported it three times before the fix landed): no
+  glitter within ~350 m, faded past ~1.4 km, glints softened.
+- **`tn parity visual` viewport trap:** capture defaults to 1280x720;
+  `tn compare-images` returns maximal difference for unequal dimensions, so
+  parity silently scored ~0 until the harness captured at the reference
+  image's size. Parity capture should adopt reference dimensions
+  automatically.
+- **OPEN BUG at session end: ocean recenter vs transform sync.** The
+  camera-following "infinite ocean" recenter fights the engine's per-frame
+  transform sync — position ping-pongs between camera-centered and authored
+  values on alternate frames ("ocean is flashing fast", "reflections are
+  crazy"). Concrete new manifestation of the missing additive-transform
+  layer. Candidate fixes: win the write order, recenter an inner mesh, or
+  let an entity opt out of transform sync.
+
+## The prototype-scaffold trap (hit three times in Codex)
+
+`tn game plan` → `tn authoring prototype --from-plan --run-proof` is
+destructive on a project with existing custom work: it overwrote the
+authored `arena.scene.json` with a generic wave-defense scaffold, and the
+`--run-proof` subprocess kept running in the background and REGENERATED the
+deleted files while the agent was restoring the scene (required a ps-hunt
+and kill). The planner's instruction "run nextAuthoringCommand exactly, do
+not inspect source first" walks a compliant agent straight into it.
+Compounding bug: auto-discovery bundles any stray `prototype.*` structured
+source into the real scene. Until fixed: never run the prototype command on
+a project with authored content, and grep for leaked `prototype.*` docs
+after any planner interaction.
+
+## Staleness, round two — the fixes have their own edges
+
+- **The strict-port fix itself shipped three regressions** (commit
+  01a043db): it broke the `port: 0` ephemeral sentinel tests rely on, a
+  failed `listen()` left Vite's watcher open so test processes hung, and
+  `tn dev --watch` leaked its source watcher on failed startup. All fixed —
+  lesson: strict ports need an ephemeral-sentinel carve-out plus
+  failure-path cleanup, or you trade silent-wrong-port for silent-hang.
+- **Bundle-hash equality is necessary but not sufficient.** The bundle
+  manifest is content-stable, so it cannot catch "source edited, never
+  rebuilt". The parity harness added a source-mtime-newer-than-manifest
+  guard; use both checks.
+- **Stale servers also pin deleted assets in memory:** after a rollback, an
+  orphaned 5174 server still served the deleted aileron overlay model. The
+  strict-port fix correctly refused to layer a new preview over it, but
+  orphaned PIDs kept reappearing — check for them after any rollback.
+- **Linked CLI vs repo CLI drift:** `pnpm exec tn` (linked) knew commands
+  the source tree didn't and vice versa. When a `tn` subcommand "doesn't
+  exist", suspect a stale link first; `pnpm tn -- ...` (build-backed) is
+  authoritative. Same family: a project-local `tn` wrapper older than the
+  repo CLI wrote provenance that looked wrong — rebuild, don't "repair"
+  valid source.
+
+## Gate-design flaws (from the 7/22 physics-PRD reviews)
+
+The advanced-physics review sessions found a pattern worth engraving:
+**a gate that feeds its expected value into the thing it checks proves
+nothing.**
+
+- The destruction gate passed `expected` outcomes INTO the web trace
+  generator it later compared against, and both runtimes echoed
+  harness-computed hashes — the provenance check could never fail.
+- Drift protection exempted `stage:"contract"` descriptors, which was
+  exactly the stage of every descriptor the PRD cited as PASS evidence.
+- A negative-control loop in the drift test always `continue`d — dead code
+  posing as coverage. A static-gate positive test hard-coded a hash that
+  production derives — two-place updates, latent drift.
+- The same PRD assertion used different per-adapter tolerance bands (web
+  `<= 5000 N`, native `150-700 N` — and native failed its own band; brakes
+  increased speed). Tolerances belong in one owned registry.
+- Silent-fallback divergence: Bevy dropped a malformed fracture manifest
+  with a bare `continue` (wall never fractures, no diagnostic); web threw.
+  Debug primitives diverged four ways between runtimes (COM source, sensor
+  pairs in contacts, bond representation, piece accounting) — telemetry
+  needs the same conformance discipline as gameplay or it lies exactly
+  where you point it.
+- Runtime bugs found the same way: fracture pieces inherit a tick-0
+  transform snapshot (moving destructibles shatter at their spawn pose);
+  Bevy picks the lexicographically-first contact bond while web picks
+  nearest (divergent piece-ID streams for any 2+ bond assembly).
+- Also: importing through the `packages/ir` root barrel dragged Node-only
+  code into the browser bundle — typecheck missed it, the playtest at the
+  adapter boundary caught it. Import browser-safe submodules directly.
+
+## Multi-agent / multi-session operations
+
+- **Concurrent sessions on one worktree sabotage each other.** Repeated
+  `exit 143` (SIGTERM) on iterate/proof runs traced to other concurrent
+  ThreeNative browser runs slowing headless startup past the harness
+  timeout; one session's dev/perf work killed another's browser phase. If
+  parallel sessions are unavoidable, only one may run iterate/build/dev at
+  a time — same rule as subagents, now proven at the session level.
+- **Partial commits in a shared dirty tree are hazardous.** A
+  `--no-verify` commit swept in unrelated already-staged work from another
+  session; required reset-to-parent + restage + amend. Always restage
+  explicitly from a clean index when the tree holds others' work.
+- **Reviewing a live checkout gives snapshot findings.** A review agent
+  watched a compile break appear and get fixed mid-review while another
+  session mutated the tree. Re-verify findings on a quiescent tree before
+  acting on them.
+- **Idle is not done-and-reported.** One subagent landed its deliverable on
+  disk but went idle without reporting; verify subagent output on disk, not
+  from the report. And when the user accidentally stops agents, each task
+  must be self-contained enough to resend with full context.
+- Codex-specific observations: its reviewer FAIL'd a phase solely for one
+  out-of-scope untracked file (stricter scope posture worth copying); it
+  repeatedly refused to trust a green iterate summary and inspected focused
+  evidence instead; but its default obedience to imperative planner output
+  is what walked it into the prototype-scaffold trap. Instruction text that
+  says "run this exactly, don't look first" is an anti-pattern for agent
+  consumers.
+
+## User-feedback patterns worth internalizing
+
+The user's corrections this cycle were consistent: **the model already has
+it — stop adding things.** "Flaps were already on the model, REMOVE THIS
+GARBAGE" (overlay geometry), "it should be from the wings — check history"
+(muzzle origins moved during unrelated work), "just rollback" (aileron
+overlay). The recurring failure was agents reaching for additive
+workarounds (new geometry, new assets) instead of inspecting and animating
+what the model/git history already contained. Check history and the asset's
+actual node/clip inventory before authoring anything new. When a regression
+is reported, diff against the last user-approved state byte-for-byte rather
+than re-deriving values.

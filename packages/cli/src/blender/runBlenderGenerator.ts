@@ -83,12 +83,11 @@ interface IBlenderRecipe {
   animations?: IBlenderRecipeAnimation[];
   budgets: Record<string, unknown>;
   id: string;
-  operations?: Array<{
-    kind: "split-by-axis";
-    negative: string;
-    node: string;
-    positive: string;
-  }>;
+  operations?: Array<
+    | { kind: "decimate"; ratio: number }
+    | { kind: "split-by-axis"; negative: string; node: string; positive: string }
+    | { kind: "transform"; node: string; position?: number[]; rotation?: number[]; scale?: number[] }
+  >;
   source?: string;
 }
 
@@ -328,7 +327,12 @@ function inspectSourceDiagnostics(recipe: IBlenderRecipe, inspection: IInspectio
   const nodeCounts = new Map<string, number>();
   for (const name of inspection.namedNodes ?? []) nodeCounts.set(name, (nodeCounts.get(name) ?? 0) + 1);
   for (const operation of recipe.operations ?? []) {
-    if (operation.kind !== "split-by-axis") continue;
+    if (operation.kind === "decimate") continue;
+    if (operation.kind === "transform") {
+      const matches = nodeCounts.get(operation.node) ?? 0;
+      if (matches !== 1) diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_OPERATION_NODE_UNRESOLVED", `Source transform target '${operation.node}' resolved to ${matches} source nodes; exactly one is required.`, "Use an exact unique node name reported by 'tn asset inspect <source.glb> --json'."));
+      continue;
+    }
     const matches = nodeCounts.get(operation.node) ?? 0;
     if (matches !== 1) {
       diagnostics.push(diagnostic(recipe.source ?? "", "TN_BLENDER_SOURCE_OPERATION_NODE_UNRESOLVED", `Source split target '${operation.node}' resolved to ${matches} source nodes; exactly one is required.`, "Use an exact unique mesh node name reported by 'tn asset inspect <source.glb> --json'."));

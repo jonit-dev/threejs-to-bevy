@@ -213,6 +213,33 @@ def retain_source_split_side(obj, axis, threshold, positive):
 
 def apply_source_operations(recipe, objects):
     for row in recipe.get("operations", []):
+        if row["kind"] == "decimate":
+            ratio = float(row["ratio"])
+            for source_name in sorted(objects):
+                source = objects[source_name]
+                if source.type != "MESH" or len(source.data.polygons) == 0:
+                    continue
+                modifier = source.modifiers.new(name="ThreeNativeDecimate", type="DECIMATE")
+                modifier.decimate_type = "COLLAPSE"
+                modifier.ratio = ratio
+                modifier.use_collapse_triangulate = True
+                bpy.context.view_layer.objects.active = source
+                source.select_set(True)
+                bpy.ops.object.modifier_apply(modifier=modifier.name)
+                source.select_set(False)
+            continue
+        if row["kind"] == "transform":
+            source = objects[row["node"]]
+            if "position" in row:
+                source.location = relative_transform("location", row["position"], source.location.copy())
+            if "rotation" in row:
+                source.rotation_mode = "XYZ"
+                baseline = source.matrix_basis.to_quaternion()
+                source.rotation_euler = relative_transform("rotation_euler", row["rotation"], baseline)
+            if "scale" in row:
+                source.scale = relative_transform("scale", row["scale"], source.scale.copy())
+            bpy.context.view_layer.update()
+            continue
         if row["kind"] != "split-by-axis":
             raise ValueError("unsupported source operation: " + str(row["kind"]))
         source_name = row["node"]

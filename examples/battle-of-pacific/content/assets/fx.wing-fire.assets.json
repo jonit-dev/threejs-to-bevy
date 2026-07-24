@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "fx.wing-fire.texture",
+      "path": "assets/textures/wing-fire.png",
+      "type": "texture"
+    }
+  ],
+  "id": "fx.wing-fire",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

@@ -12,7 +12,7 @@ export const updatePacificFlight = defineBehavior(
     id: "pacific-flight",
     eventReads: ["flight:restart", "flight:toggle-flaps"],
     eventWrites: ["flight:telemetry"],
-    reads: ["RigidBody", "Transform"],
+    reads: ["Health", "RigidBody", "Transform"],
     resourceReads: ["FlightState"],
     resourceWrites: ["FlightState"],
     schedule: "fixedUpdate",
@@ -25,16 +25,26 @@ export const updatePacificFlight = defineBehavior(
       "physics.setAngularVelocity",
       "physics.setLinearVelocity"
     ],
-    writes: ["Transform"]
+    writes: ["Health", "Transform"]
   },
   (rawContext: ScriptContext): void => {
     const context = rawContext as FlightContext;
     const aircraft = context.entity("aircraft");
     const visual = context.entity("aircraft.visual");
-    if (aircraft === undefined || visual === undefined) return;
+    const destroyer = context.entity("enemy.samidare");
+    if (aircraft === undefined || visual === undefined || destroyer === undefined) return;
 
     const control = context.state("pacific-flight-control", {
       activeClip: "",
+      aaFireCooldown: 0.8,
+      aaHitFlash: 0,
+      aaHitsTaken: 0,
+      aaMuzzleFlash: 0,
+      aaNextTracer: 0,
+      aaTracers: Array.from(
+        { length: 10 },
+        () => ({ life: 0, px: 0, py: -9999, pz: 0, vx: 0, vy: 0, vz: 0 })
+      ),
       enginePlaybackId: "",
       engineStartAt: -1,
       engineBand: -1,
@@ -44,8 +54,12 @@ export const updatePacificFlight = defineBehavior(
       flapsDown: false,
       retracting: false,
       discBlend: 0,
+      destroyerDestroyedAt: -1,
+      destroyerHealth: 120,
+      destroyerHits: 0,
       fireCooldown: 0,
       gunRecoil: 0,
+      impactFlash: 0,
       lastGunSfx: -1,
       muzzleFlash: 0,
       musicStarted: false,
@@ -53,6 +67,7 @@ export const updatePacificFlight = defineBehavior(
       nextTracer: 0,
       prevFailed: false,
       prevStall: false,
+      playerIntegrity: 100,
       retryCount: 0,
       throttle: 0.82,
       smokePuffs: Array.from(
@@ -85,20 +100,59 @@ export const updatePacificFlight = defineBehavior(
         position: [0, 260, 0],
         rotation: [0, 0, 0, 1]
       });
+      aircraft.patch("Health", { current: 100, max: 100 });
       context.physics.setLinearVelocity("aircraft", [0, 0, -72]);
       context.physics.setAngularVelocity("aircraft", [0, 0, 0]);
       control.activeClip = "";
+      control.aaFireCooldown = 0.8;
+      control.aaHitFlash = 0;
+      control.aaHitsTaken = 0;
+      control.aaMuzzleFlash = 0;
+      control.aaNextTracer = 0;
       control.elapsed = 0;
       control.flapTransitionUntil = 0;
       control.flapsDown = false;
       control.retracting = false;
       control.retryCount += 1;
+      control.destroyerDestroyedAt = -1;
+      control.destroyerHealth = 120;
+      control.destroyerHits = 0;
+      control.impactFlash = 0;
+      control.playerIntegrity = 100;
+      destroyer.patch("Health", { current: 120, max: 120 });
+      destroyer.patch("Transform", {
+        position: [0, 4.95, -900],
+        rotation: [0, 0, 0, 1]
+      });
+      for (const effectId of [
+        "destroyer.fire.0",
+        "destroyer.fire.1",
+        "destroyer.smoke.0",
+        "destroyer.smoke.1",
+        "destroyer.smoke.2",
+        "destroyer.smoke.3",
+        "destroyer.impact-flash",
+        "destroyer.aa-flash.0",
+        "destroyer.aa-flash.1"
+      ]) {
+        context.entity(effectId)?.patch("Transform", {
+          position: [0, -100, -900],
+          scale: [0.001, 0.001, 0.001]
+        });
+      }
+      for (let index = 0; index < control.aaTracers.length; index += 1) {
+        control.aaTracers[index]!.life = 0;
+        context.entity(`destroyer.aa.${String(index).padStart(2, "0")}`)?.patch("Transform", {
+          position: [0, -100, -900]
+        });
+      }
       for (const puff of control.smokePuffs) puff.life = 0;
       control.throttle = 0.82;
       control.visualBank = 0;
     }
 
     const dt = context.time.fixedDelta;
+    control.playerIntegrity = aircraft.get("Health", { current: 100, max: 100 }).current ?? 100;
     if (context.input.getButton("throttle-up")) {
       control.throttle = Mathf.clamp(control.throttle + dt * 0.22, 0, 1);
     }
@@ -327,7 +381,177 @@ export const updatePacificFlight = defineBehavior(
           tracer.life = 0;
           tracer.py = -9999;
         }
+        const hitDestroyer = control.destroyerHealth > 0
+          && Math.abs(tracer.px) <= 74
+          && tracer.py >= 2
+          && tracer.py <= 36
+          && Math.abs(tracer.pz + 900) <= 8.5;
+        if (hitDestroyer) {
+          tracer.life = 0;
+          tracer.py = -9999;
+          control.destroyerHealth = Math.max(0, control.destroyerHealth - 10);
+          control.destroyerHits += 1;
+          control.impactFlash = 0.12;
+          destroyer.patch("Health", {
+            current: control.destroyerHealth,
+            max: 120
+          });
+          if (control.destroyerHealth === 0 && control.destroyerDestroyedAt < 0) {
+            control.destroyerDestroyedAt = context.time.elapsed;
+          }
+        }
         entity.patch("Transform", { position: [tracer.px, tracer.py, tracer.pz] });
+      }
+    }
+
+    // The source GLB has no embedded clips. Its combat death is therefore a
+    // deterministic portable state transition: hit flash, sustained deck
+    // fires and rising smoke, then an authored starboard roll and sink.
+    control.impactFlash = Math.max(0, control.impactFlash - dt);
+    const destroyerFlashEnvelope = control.impactFlash > 0
+      ? Math.sin((control.impactFlash / 0.12) * Math.PI)
+      : 0;
+    context.entity("destroyer.impact-flash")?.patch("Transform", {
+      position: [0, 22, -900],
+      scale: [
+        Math.max(0.001, destroyerFlashEnvelope * 8),
+        Math.max(0.001, destroyerFlashEnvelope * 5),
+        Math.max(0.001, destroyerFlashEnvelope * 8)
+      ]
+    });
+    const targetDestroyed = control.destroyerDestroyedAt >= 0;
+
+    // Samidare's intact AA battery leads the aircraft with an authored,
+    // recycled tracer pool. The deterministic sphere test and Health patch
+    // are portable across the web and Bevy adapters.
+    control.aaFireCooldown = Math.max(0, control.aaFireCooldown - dt);
+    control.aaMuzzleFlash = Math.max(0, control.aaMuzzleFlash - dt);
+    control.aaHitFlash = Math.max(0, control.aaHitFlash - dt);
+    const destroyerPosition = destroyer.transform().position;
+    const aaDx = aircraftPosition[0] - destroyerPosition[0];
+    const aaDy = aircraftPosition[1] - destroyerPosition[1];
+    const aaDz = aircraftPosition[2] - destroyerPosition[2];
+    const aaDistance = Math.hypot(aaDx, aaDy, aaDz);
+    if (!targetDestroyed && aaDistance <= 1200 && aircraftPosition[1] > 18 && control.aaFireCooldown <= 0) {
+      const tracerIndex = control.aaNextTracer % control.aaTracers.length;
+      const tracer = control.aaTracers[tracerIndex]!;
+      const gunIndex = control.aaNextTracer % 2;
+      control.aaNextTracer += 1;
+      control.aaFireCooldown = 0.24;
+      control.aaMuzzleFlash = 0.07;
+      tracer.px = gunIndex === 0 ? -30 : 30;
+      tracer.py = 23;
+      tracer.pz = -898;
+      const leadTime = Mathf.clamp(aaDistance / 280, 0.2, 2.8);
+      const aimX = aircraftPosition[0] + velocityNow[0] * leadTime - tracer.px;
+      const aimY = aircraftPosition[1] + velocityNow[1] * leadTime - tracer.py;
+      const aimZ = aircraftPosition[2] + velocityNow[2] * leadTime - tracer.pz;
+      const aimLength = Math.max(0.001, Math.hypot(aimX, aimY, aimZ));
+      tracer.vx = aimX / aimLength * 280;
+      tracer.vy = aimY / aimLength * 280;
+      tracer.vz = aimZ / aimLength * 280;
+      tracer.life = 4.5;
+      const dirX = tracer.vx / 280;
+      const dirY = tracer.vy / 280;
+      const dirZ = tracer.vz / 280;
+      const yawAngle = Math.atan2(-dirX, -dirZ);
+      const pitchAngle = Math.asin(Mathf.clamp(dirY, -1, 1));
+      const cy = Math.cos(yawAngle / 2);
+      const sy = Math.sin(yawAngle / 2);
+      const cp = Math.cos(pitchAngle / 2);
+      const sp = Math.sin(pitchAngle / 2);
+      context.entity(`destroyer.aa.${String(tracerIndex).padStart(2, "0")}`)?.patch("Transform", {
+        rotation: [sp * cy, sy * cp, -sy * sp, cy * cp]
+      });
+    }
+    for (let index = 0; index < control.aaTracers.length; index += 1) {
+      const tracer = control.aaTracers[index]!;
+      const entity = context.entity(`destroyer.aa.${String(index).padStart(2, "0")}`);
+      if (entity === undefined) continue;
+      if (targetDestroyed) tracer.life = 0;
+      if (tracer.life > 0) {
+        tracer.life -= dt;
+        tracer.px += tracer.vx * dt;
+        tracer.py += tracer.vy * dt;
+        tracer.pz += tracer.vz * dt;
+        const hitX = tracer.px - aircraftPosition[0];
+        const hitY = tracer.py - aircraftPosition[1];
+        const hitZ = tracer.pz - aircraftPosition[2];
+        if (hitX * hitX + hitY * hitY + hitZ * hitZ <= 64) {
+          tracer.life = 0;
+          control.playerIntegrity = Math.max(0, control.playerIntegrity - 6);
+          control.aaHitsTaken += 1;
+          control.aaHitFlash = 0.18;
+          aircraft.patch("Health", { current: control.playerIntegrity, max: 100 });
+        }
+      }
+      if (tracer.life <= 0 || tracer.py < 1) {
+        tracer.life = 0;
+        tracer.py = -9999;
+      }
+      entity.patch("Transform", { position: [tracer.px, tracer.py, tracer.pz] });
+    }
+    const aaFlash = control.aaMuzzleFlash > 0
+      ? Math.sin((control.aaMuzzleFlash / 0.07) * Math.PI) * 2.8
+      : 0.001;
+    for (let index = 0; index < 2; index += 1) {
+      context.entity(`destroyer.aa-flash.${index}`)?.patch("Transform", {
+        position: [index === 0 ? -30 : 30, 23, -898],
+        scale: [Math.max(0.001, aaFlash), Math.max(0.001, aaFlash), Math.max(0.001, aaFlash)]
+      });
+    }
+
+    if (targetDestroyed) {
+      const destroyedTime = context.time.elapsed - control.destroyerDestroyedAt;
+      const sink = Mathf.clamp(destroyedTime / 10, 0, 1);
+      const roll = Mathf.clamp(destroyedTime / 7, 0, 1) * 0.52;
+      const halfRoll = roll / 2;
+      const sinRoll = Math.sin(halfRoll);
+      const cosRoll = Math.cos(halfRoll);
+      destroyer.patch("Transform", {
+        position: [0, 4.95 - sink * 22, -900 - sink * 7],
+        rotation: [
+          sinRoll,
+          0,
+          0,
+          cosRoll
+        ]
+      });
+      for (let index = 0; index < 2; index += 1) {
+        const pulse = 0.82 + Math.sin(context.time.elapsed * (7.5 + index) + index * 2.1) * 0.18;
+        const fireFade = 1 - Mathf.clamp((destroyedTime - 12) / 8, 0, 0.72);
+        const fireScale = pulse * fireFade;
+        context.entity(`destroyer.fire.${index}`)?.patch("Transform", {
+          position: [
+            index === 0 ? -28 : 24,
+            17 - sink * 5 + index * 3,
+            -900 + index * 2
+          ],
+          scale: [
+            Math.max(0.001, fireScale * (10 + index * 2)),
+            Math.max(0.001, fireScale * (15 + index * 3)),
+            1
+          ]
+        });
+      }
+      for (let index = 0; index < 4; index += 1) {
+        const cycle = (destroyedTime * 0.2 + index * 0.24) % 1;
+        const smokeScale = (5 + cycle * 18) * Math.sin(cycle * Math.PI);
+        const sideDrift = Math.sin(destroyedTime * 0.7 + index * 1.9) * (2 + cycle * 7);
+        const halfTwist = Math.sin(destroyedTime * 0.15 + index) * 0.25;
+        context.entity(`destroyer.smoke.${index}`)?.patch("Transform", {
+          position: [
+            (index % 2 === 0 ? -28 : 24) + sideDrift,
+            20 + cycle * 42 - sink * 6,
+            -900 + (index % 2) * 2
+          ],
+          rotation: [0, 0, Math.sin(halfTwist), Math.cos(halfTwist)],
+          scale: [
+            Math.max(0.001, smokeScale * 0.8),
+            Math.max(0.001, smokeScale),
+            1
+          ]
+        });
       }
     }
 
@@ -342,12 +566,12 @@ export const updatePacificFlight = defineBehavior(
     });
     const camera = context.entity("camera.main");
     if (camera !== undefined) {
-      const shake = control.gunRecoil * 0.025;
+      const shake = control.gunRecoil * 0.025 + control.aaHitFlash * 0.28;
       camera.patch("Transform", {
         position: [
           Math.sin(context.time.elapsed * 137) * shake,
           4.6 + Math.cos(context.time.elapsed * 113) * shake,
-          15 + control.gunRecoil * 0.045
+          15 + control.gunRecoil * 0.045 + control.aaHitFlash * 0.35
         ]
       });
     }
@@ -397,7 +621,7 @@ export const updatePacificFlight = defineBehavior(
     const velocity = body.velocity ?? [0, 0, -72];
     const speed = Math.hypot(velocity[0], velocity[1], velocity[2]);
     const altitude = position[1];
-    const failed = altitude < 5 || (altitude < 22 && speed < 24);
+    const failed = control.playerIntegrity <= 0 || altitude < 5 || (altitude < 22 && speed < 24);
     if (!failed) control.elapsed += dt;
     const complete = control.elapsed >= 45;
     const stall = speed < 36;
@@ -419,32 +643,54 @@ export const updatePacificFlight = defineBehavior(
     }
     if (failed && !control.prevFailed) context.audio.play("crash.splash");
     control.prevFailed = failed;
-    const phase = failed ? "DITCHED" : stall ? "STALL" : complete ? "PATROL COMPLETE" : "CRUISE";
-    const progress = Mathf.clamp(control.elapsed / 45, 0, 1);
+    const phase = failed
+      ? control.playerIntegrity <= 0
+        ? "SHOT DOWN"
+        : "DITCHED"
+      : stall
+        ? "STALL"
+        : targetDestroyed
+          ? "TARGET DESTROYED"
+          : complete
+            ? "PATROL COMPLETE"
+            : "CRUISE";
+    const flightProgress = Mathf.clamp(control.elapsed / 45, 0, 1);
+    const damageProgress = 1 - control.destroyerHealth / 120;
+    const progress = Math.max(flightProgress, damageProgress);
     const airspeedKnots = Math.round(speed * 1.94384);
     const altitudeFeet = Math.max(0, Math.round(altitude * 3.28084));
     const throttlePercent = Math.round(control.throttle * 100);
     const objective = failed
-      ? "Press R or RETRY FLIGHT"
-      : complete
+      ? control.playerIntegrity <= 0
+        ? "Zero got you - press R or RETRY FLIGHT"
+        : "Press R or RETRY FLIGHT"
+      : targetDestroyed
+        ? "IJN Samidare destroyed - return to patrol"
+        : complete
         ? "Maintain patrol altitude"
-        : `Controlled flight ${Math.round(control.elapsed)} / 45 sec`;
+        : `Destroy IJN Samidare - hull ${control.destroyerHealth} / 120`;
 
     context.resources.patch("FlightState", {
+      aaHitsTaken: control.aaHitsTaken,
       airspeedKnots,
       altitudeFeet,
+      enemyHealth: control.destroyerHealth,
+      enemyStatus: targetDestroyed ? "SINKING" : control.destroyerHealth < 120 ? "DAMAGED" : "COMBAT READY",
       flaps: control.flapsDown ? "DOWN" : "UP",
       objective,
       phase,
+      playerIntegrity: control.playerIntegrity,
       progress,
       retryCount: control.retryCount,
       stall,
+      targetDestroyed,
       throttlePercent
     });
     context.events.emit("flight:telemetry", {
       airspeed: `${airspeedKnots} KT`,
       altitude: `${altitudeFeet} FT`,
       flaps: control.flapsDown ? "DOWN" : "UP",
+      integrity: `${Math.round(control.playerIntegrity)}%`,
       objective,
       phase,
       progress,

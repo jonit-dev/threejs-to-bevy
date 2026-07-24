@@ -1,10 +1,6 @@
 {
-  "schema": "threenative.scene",
-  "version": "0.1.0",
-  "id": "pacific-flight",
   "entities": [
     {
-      "id": "camera.main",
       "components": {
         "Camera": {
           "active": true,
@@ -32,20 +28,20 @@
             0.995884
           ]
         }
-      }
+      },
+      "id": "camera.main"
     },
     {
-      "id": "light.ambient",
       "components": {
         "Light": {
           "color": "#bcd1da",
           "intensity": 2.6,
           "kind": "ambient"
         }
-      }
+      },
+      "id": "light.ambient"
     },
     {
-      "id": "light.sun",
       "components": {
         "Light": {
           "color": "#fff1c7",
@@ -67,10 +63,10 @@
             0.886
           ]
         }
-      }
+      },
+      "id": "light.sun"
     },
     {
-      "id": "ocean.visual",
       "components": {
         "OceanWater": {
           "color": "#021d41",
@@ -100,10 +96,10 @@
             1
           ]
         }
-      }
+      },
+      "id": "ocean.visual"
     },
     {
-      "id": "ocean.collider",
       "components": {
         "Collider": {
           "kind": "box",
@@ -116,21 +112,21 @@
         "RigidBody": {
           "kind": "static"
         },
-        "VisualProvenance": {
-          "status": "non-rendered physics boundary",
-          "notes": "The visible ocean is owned by ocean.visual; this collider must not synthesize fallback geometry."
-        },
         "Transform": {
           "position": [
             0,
             -1.05,
             -3500
           ]
+        },
+        "VisualProvenance": {
+          "notes": "The visible ocean is owned by ocean.visual; this collider must not synthesize fallback geometry.",
+          "status": "non-rendered physics boundary"
         }
-      }
+      },
+      "id": "ocean.collider"
     },
     {
-      "id": "pacific.wind",
       "components": {
         "Transform": {
           "position": [
@@ -138,6 +134,10 @@
             500,
             -3500
           ]
+        },
+        "VisualProvenance": {
+          "notes": "Wind is simulation-only and must not synthesize fallback geometry.",
+          "status": "non-rendered environmental volume"
         },
         "WindVolume": {
           "airDensity": 1.18,
@@ -161,15 +161,11 @@
             0,
             0
           ]
-        },
-        "VisualProvenance": {
-          "status": "non-rendered environmental volume",
-          "notes": "Wind is simulation-only and must not synthesize fallback geometry."
         }
-      }
+      },
+      "id": "pacific.wind"
     },
     {
-      "id": "aircraft",
       "components": {
         "AerodynamicBody": {
           "dragArea": [
@@ -409,7 +405,7 @@
                 },
                 {
                   "angle": 0,
-                  "coefficient": 0.0
+                  "coefficient": 0
                 },
                 {
                   "angle": 1.2,
@@ -449,6 +445,10 @@
             10.1
           ]
         },
+        "Health": {
+          "current": 100,
+          "max": 100
+        },
         "RigidBody": {
           "ccd": {
             "enabled": true,
@@ -465,10 +465,6 @@
             -72
           ]
         },
-        "VisualProvenance": {
-          "status": "model-backed physics parent",
-          "notes": "Rendering is owned by aircraft.visual; the physics parent must not synthesize a blue fallback mesh."
-        },
         "Transform": {
           "position": [
             0,
@@ -481,12 +477,15 @@
             0,
             1
           ]
+        },
+        "VisualProvenance": {
+          "notes": "Rendering is owned by aircraft.visual; the physics parent must not synthesize a blue fallback mesh.",
+          "status": "model-backed physics parent"
         }
-      }
+      },
+      "id": "aircraft"
     },
     {
-      "id": "aircraft.visual",
-      "prefab": "prefab.aircraft",
       "components": {
         "Hierarchy": {
           "parent": "aircraft"
@@ -509,17 +508,18 @@
             6.325
           ]
         }
-      }
+      },
+      "id": "aircraft.visual",
+      "prefab": "prefab.aircraft"
     },
     {
-      "id": "aircraft.propdisc",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.propdisc",
-          "material": "mat.propdisc"
+          "material": "mat.propdisc",
+          "mesh": "mesh.propdisc"
         },
         "Transform": {
           "position": [
@@ -539,14 +539,14 @@
             0.5
           ]
         }
-      }
+      },
+      "id": "aircraft.propdisc"
     },
     {
-      "id": "tracer.00",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -560,14 +560,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.00"
     },
     {
-      "id": "tracer.01",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -581,14 +581,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.01"
     },
     {
-      "id": "tracer.02",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -602,14 +602,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.02"
     },
     {
-      "id": "tracer.03",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -623,14 +623,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.03"
     },
     {
-      "id": "tracer.04",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -644,14 +644,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.04"
     },
     {
-      "id": "tracer.05",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -665,14 +665,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.05"
     },
     {
-      "id": "tracer.06",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -686,14 +686,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.06"
     },
     {
-      "id": "tracer.07",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -707,14 +707,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.07"
     },
     {
-      "id": "tracer.08",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -728,14 +728,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.08"
     },
     {
-      "id": "tracer.09",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -749,14 +749,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.09"
     },
     {
-      "id": "tracer.10",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -770,14 +770,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.10"
     },
     {
-      "id": "tracer.11",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -791,14 +791,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.11"
     },
     {
-      "id": "tracer.12",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -812,14 +812,14 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.12"
     },
     {
-      "id": "tracer.13",
       "components": {
         "MeshRenderer": {
-          "mesh": "fx.tracer-bolt",
-          "material": "mat.tracer"
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
         },
         "Transform": {
           "position": [
@@ -833,17 +833,17 @@
             2.2
           ]
         }
-      }
+      },
+      "id": "tracer.13"
     },
     {
-      "id": "muzzle.left",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "fx.muzzle-flash",
-          "material": "mat.muzzleflash"
+          "material": "mat.muzzleflash",
+          "mesh": "fx.muzzle-flash"
         },
         "Transform": {
           "position": [
@@ -857,17 +857,17 @@
             0.001
           ]
         }
-      }
+      },
+      "id": "muzzle.left"
     },
     {
-      "id": "muzzle.right",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "fx.muzzle-flash",
-          "material": "mat.muzzleflash"
+          "material": "mat.muzzleflash",
+          "mesh": "fx.muzzle-flash"
         },
         "Transform": {
           "position": [
@@ -881,163 +881,1076 @@
             0.001
           ]
         }
-      }
+      },
+      "id": "muzzle.right"
     },
     {
-      "id": "smoke.left.0",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.left.0"
     },
     {
-      "id": "smoke.left.1",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.left.1"
     },
     {
-      "id": "smoke.left.2",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.left.2"
     },
     {
-      "id": "smoke.left.3",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.left.3"
     },
     {
-      "id": "smoke.right.0",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [-0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            -0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.right.0"
     },
     {
-      "id": "smoke.right.1",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [-0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            -0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.right.1"
     },
     {
-      "id": "smoke.right.2",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [-0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            -0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.right.2"
     },
     {
-      "id": "smoke.right.3",
       "components": {
         "Hierarchy": {
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.gun-smoke",
-          "material": "mat.gunsmoke"
+          "material": "mat.gunsmoke",
+          "mesh": "mesh.gun-smoke"
         },
         "Transform": {
-          "position": [-0.5375, -0.15, 0.13],
-          "scale": [0.001, 0.001, 0.001]
+          "position": [
+            -0.5375,
+            -0.15,
+            0.13
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
         }
-      }
+      },
+      "id": "smoke.right.3"
+    },
+    {
+      "components": {
+        "AerodynamicBody": {
+          "dragArea": [
+            2.6,
+            4.3,
+            1.7
+          ],
+          "maxForce": 155000,
+          "surfaces": [
+            {
+              "area": 21.3,
+              "aspectRatio": 5.6,
+              "centerOfPressure": [
+                0,
+                0,
+                0
+              ],
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.22
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.28
+                }
+              ],
+              "id": "main-wing",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.78
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.55
+                },
+                {
+                  "angle": 0.24,
+                  "coefficient": 1.42
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.18
+                }
+              ],
+              "recoveryAngle": 0.32,
+              "stallAngle": 0.4
+            },
+            {
+              "area": 3.8,
+              "aspectRatio": 4.2,
+              "centerOfPressure": [
+                0,
+                0,
+                3.7
+              ],
+              "control": {
+                "binding": "Pitch",
+                "input": 0,
+                "maxDeflection": 0.18,
+                "response": 3.4
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.16
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.032
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.16
+                }
+              ],
+              "id": "elevator",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.9
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.9
+                }
+              ],
+              "recoveryAngle": 0.3,
+              "stallAngle": 0.42
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                -3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.left",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            },
+            {
+              "area": 1.6,
+              "aspectRatio": 4.4,
+              "centerOfPressure": [
+                3.8,
+                0,
+                0
+              ],
+              "control": {
+                "binding": "Roll",
+                "input": 0,
+                "maxDeflection": 0.12,
+                "response": 4.5
+              },
+              "dragCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": 0.12
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0.024
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.12
+                }
+              ],
+              "id": "aileron.right",
+              "liftCurve": [
+                {
+                  "angle": -1.2,
+                  "coefficient": -0.82
+                },
+                {
+                  "angle": 0,
+                  "coefficient": 0
+                },
+                {
+                  "angle": 1.2,
+                  "coefficient": 0.82
+                }
+              ],
+              "recoveryAngle": 0.31,
+              "stallAngle": 0.43
+            }
+          ],
+          "thrusters": [
+            {
+              "binding": "Throttle",
+              "direction": [
+                0,
+                0,
+                -1
+              ],
+              "fuelHook": "fuel.avgas",
+              "id": "nakajima-sakae",
+              "maxForce": 14500,
+              "point": [
+                0,
+                0,
+                -3.8
+              ],
+              "response": 0.65,
+              "throttle": 0.9
+            }
+          ]
+        },
+        "Collider": {
+          "kind": "box",
+          "size": [
+            11.13,
+            3.33,
+            9.04
+          ]
+        },
+        "Health": {
+          "current": 60,
+          "max": 60
+        },
+        "RigidBody": {
+          "ccd": {
+            "enabled": true,
+            "maxSubsteps": 4,
+            "mode": "swept-aabb"
+          },
+          "damping": 0.006,
+          "gravityScale": 1,
+          "kind": "dynamic",
+          "mass": 2500,
+          "velocity": [
+            0,
+            0,
+            78
+          ]
+        },
+        "Transform": {
+          "position": [
+            105,
+            285,
+            -420
+          ],
+          "rotation": [
+            0,
+            1,
+            0,
+            0
+          ]
+        },
+        "VisualProvenance": {
+          "notes": "Rendering is owned by enemy.zero.visual; the dynamic parent carries portable aircraft physics and AI.",
+          "status": "model-backed enemy aircraft"
+        }
+      },
+      "id": "enemy.zero"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero"
+        },
+        "Transform": {
+          "position": [
+            0,
+            0,
+            0
+          ],
+          "rotation": [
+            0,
+            0,
+            0,
+            1
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "enemy.zero.visual",
+      "prefab": "prefab.enemy.zero"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            -3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.fire.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            3.1,
+            0.1,
+            0.2
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.fire.right"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            -2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.smoke.left"
+    },
+    {
+      "components": {
+        "Hierarchy": {
+          "parent": "enemy.zero.visual"
+        },
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            2.8,
+            0.35,
+            0.8
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "enemy.zero.smoke.right"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.0"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.1"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.2"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.3"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.4"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.5"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.6"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.tracer",
+          "mesh": "fx.tracer-bolt"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            1.2,
+            1.2,
+            1.8
+          ]
+        }
+      },
+      "id": "enemy.zero.tracer.7"
+    },
+    {
+      "components": {
+        "Collider": {
+          "kind": "box",
+          "size": [
+            145.34,
+            31.49,
+            14.58
+          ]
+        },
+        "Health": {
+          "current": 120,
+          "max": 120
+        },
+        "RigidBody": {
+          "kind": "static"
+        },
+        "Transform": {
+          "position": [
+            0,
+            4.95,
+            -900
+          ],
+          "rotation": [
+            0,
+            0,
+            0
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ]
+        }
+      },
+      "id": "enemy.samidare",
+      "prefab": "prefab.enemy.samidare"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.fire.0"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-fire",
+          "mesh": "mesh.destroyer-fire"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.fire.1"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.smoke.0"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.smoke.1"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.smoke.2"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-smoke",
+          "mesh": "mesh.gun-smoke"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.smoke.3"
+    },
+    {
+      "components": {
+        "MeshRenderer": {
+          "material": "mat.destroyer-flash",
+          "mesh": "mesh.destroyer-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -100,
+            -900
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      },
+      "id": "destroyer.impact-flash"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.00"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.01"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.02"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.03"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.04"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.05"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.06"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.07"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.08"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-aa", "mesh": "mesh.tracer" },
+        "Transform": { "position": [0, -100, -900], "scale": [0.3, 0.3, 3.2] }
+      },
+      "id": "destroyer.aa.09"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-flash", "mesh": "mesh.destroyer-flash" },
+        "Transform": { "position": [-30, -100, -900], "scale": [0.001, 0.001, 0.001] }
+      },
+      "id": "destroyer.aa-flash.0"
+    },
+    {
+      "components": {
+        "MeshRenderer": { "material": "mat.destroyer-flash", "mesh": "mesh.destroyer-flash" },
+        "Transform": { "position": [30, -100, -900], "scale": [0.001, 0.001, 0.001] }
+      },
+      "id": "destroyer.aa-flash.1"
     }
   ],
+  "id": "pacific-flight",
+  "instances": [],
   "prefabs": [
     {
       "asset": "assets/generated/aircraft.douglas-sbd3.glb",
       "id": "prefab.aircraft"
+    },
+    {
+      "asset": "assets/generated/enemy.samidare.optimized.glb",
+      "id": "prefab.enemy.samidare"
+    },
+    {
+      "asset": "assets/generated/aircraft.mitsubishi-a6m3.glb",
+      "id": "prefab.enemy.zero"
     }
   ],
-  "instances": [],
   "resources": [
     {
       "id": "FlightState",
       "value": {
+        "aaHitsTaken": 0,
         "airspeedKnots": 140,
         "altitudeFeet": 295,
+        "enemyHealth": 120,
+        "enemyStatus": "COMBAT READY",
         "flaps": "UP",
-        "objective": "Hold controlled flight for 45 seconds",
+        "objective": "Destroy IJN Samidare",
         "phase": "CRUISE",
+        "playerIntegrity": 100,
         "progress": 0,
         "retryCount": 0,
         "stall": false,
+        "targetDestroyed": false,
         "throttlePercent": 82
+      }
+    },
+    {
+      "id": "EnemyState",
+      "value": {
+        "distance": 432,
+        "health": 60,
+        "hitsOnPlayer": 0,
+        "phase": "INTERCEPT",
+        "targetId": "aircraft"
       }
     }
   ],
+  "schema": "threenative.scene",
   "systems": [],
   "ui": {
-    "nodes": [],
-    "bindings": []
-  }
+    "bindings": [],
+    "nodes": []
+  },
+  "version": "0.1.0"
 }

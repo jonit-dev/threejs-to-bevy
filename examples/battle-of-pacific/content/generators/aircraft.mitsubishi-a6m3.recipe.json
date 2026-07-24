@@ -1,0 +1,85 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "aircraft.mitsubishi-a6m3",
+  "source": "assets/imported/aircraft.mitsubishi-a6m3.source.glb",
+  "operations": [
+    {
+      "kind": "transform",
+      "node": "Sketchfab_model",
+      "position": [
+        0,
+        3.372005,
+        -0.291592
+      ]
+    },
+    {
+      "kind": "decimate",
+      "ratio": 0.6
+    }
+  ],
+  "animations": [
+    {
+      "id": "flight.cruise",
+      "duration": 1,
+      "loop": true,
+      "tracks": [
+        {
+          "node": "VINT",
+          "property": "rotation",
+          "keyframes": [
+            {
+              "time": 0,
+              "value": [
+                0,
+                0,
+                0
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.25,
+              "value": [
+                0,
+                0,
+                90
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.5,
+              "value": [
+                0,
+                0,
+                180
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 0.75,
+              "value": [
+                0,
+                0,
+                270
+              ],
+              "interpolation": "linear"
+            },
+            {
+              "time": 1,
+              "value": [
+                0,
+                0,
+                360
+              ],
+              "interpolation": "linear"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "budgets": {
+    "maxOutputBytes": 16777216,
+    "maxPolygons": 16000
+  }
+}

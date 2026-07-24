@@ -48,6 +48,44 @@
       "alphaMode": "blend",
       "metalness": 0.0,
       "roughness": 1.0
+    },
+    {
+      "id": "mat.destroyer-fire",
+      "color": "#fff0b0",
+      "baseColorTexture": "fx.wing-fire.texture",
+      "emissive": "#ff4a0a",
+      "emissiveIntensity": 5.5,
+      "opacity": 0.96,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "id": "mat.destroyer-smoke",
+      "color": "#25292b",
+      "baseColorTexture": "fx.gun-smoke.texture",
+      "opacity": 0.72,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "id": "mat.destroyer-flash",
+      "color": "#fff4c2",
+      "emissive": "#ff6a12",
+      "emissiveIntensity": 7.0,
+      "opacity": 0.92,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
+    },
+    {
+      "id": "mat.destroyer-aa",
+      "color": "#fff0a8",
+      "emissive": "#ff5a16",
+      "emissiveIntensity": 5.2,
+      "metalness": 0.0,
+      "roughness": 0.35
     }
   ]
 }
