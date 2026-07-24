@@ -676,7 +676,7 @@ function validateSystemOrdering(systems: ISystemsIr["systems"], path: string, di
 
 const SUPPORTED_SYSTEM_SERVICES = PROMOTED_SCRIPT_SERVICES;
 
-const AUDIO_SYSTEM_SERVICES = new Set<IrSystemService>(["audio.play", "audio.query", "audio.stop"]);
+const AUDIO_SYSTEM_SERVICES = new Set<IrSystemService>(["audio.play", "audio.query", "audio.stop", "audio.update"]);
 const SCRIPT_AUDIO_EXTERNAL_FIELDS = new Set(["decoderPlugin", "device", "deviceId", "nativeHandle", "networkStream", "networkUrl", "platformHandle", "src", "stream", "streaming", "streamingUrl", "url"]);
 
 export function validateSystemAudioContract(

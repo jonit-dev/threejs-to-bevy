@@ -53,3 +53,6 @@ export function soundCue(context: ScriptContext): void {
 tn authoring validate --project . --json
 tn build --project . --json
 ```
+
+For continuous control of a playing loop, see
+[`vehicle-audio-modulation`](vehicle-audio-modulation.md).

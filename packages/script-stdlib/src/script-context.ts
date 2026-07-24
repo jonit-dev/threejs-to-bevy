@@ -14,6 +14,8 @@ import type {
   IScriptAudioPlayResult,
   IScriptAudioQueryResult,
   IScriptAudioStopResult,
+  IScriptAudioUpdateOptions,
+  IScriptAudioUpdateResult,
   IScriptCameraShakeOptions,
   IScriptCameraShakeResult,
   IScriptCharacterMoveRequest,
@@ -118,6 +120,7 @@ export interface ScriptAudioFacade {
   play(soundId: string, options?: IScriptAudioPlayOptions): IScriptAudioPlayResult;
   query(playbackId: string): IScriptAudioQueryResult;
   stop(playbackId: string): IScriptAudioStopResult;
+  update(playbackId: string, options: IScriptAudioUpdateOptions): IScriptAudioUpdateResult;
 }
 
 export interface ScriptCamerasFacade {

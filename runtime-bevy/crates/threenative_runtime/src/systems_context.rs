@@ -66,6 +66,8 @@ pub struct NativeDelayedCommandDeclaration {
 pub struct NativeScriptAudioSound {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub pitch: Option<f32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub volume: Option<f32>,
 }
 
@@ -519,6 +521,7 @@ pub fn audio_sounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeScriptAudio
             music.id.clone(),
             NativeScriptAudioSound {
                 kind: "loop".to_owned(),
+                pitch: music.pitch,
                 volume: music.volume,
             },
         );
@@ -528,6 +531,7 @@ pub fn audio_sounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeScriptAudio
             one_shot.id.clone(),
             NativeScriptAudioSound {
                 kind: "oneShot".to_owned(),
+                pitch: one_shot.pitch,
                 volume: one_shot.volume,
             },
         );
@@ -537,6 +541,7 @@ pub fn audio_sounds(bundle: &LoadedBundle) -> BTreeMap<String, NativeScriptAudio
             tone.id.clone(),
             NativeScriptAudioSound {
                 kind: "tone".to_owned(),
+                pitch: tone.pitch,
                 volume: tone.volume,
             },
         );

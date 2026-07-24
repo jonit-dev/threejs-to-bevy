@@ -5,6 +5,7 @@ pub const PROMOTED_SCRIPT_SERVICES: &[&str] = &[
     "audio.play",
     "audio.query",
     "audio.stop",
+    "audio.update",
     "assets.load",
     "camera.shake",
     "character.move",

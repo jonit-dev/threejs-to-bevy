@@ -17,7 +17,7 @@
       "eventWrites": [],
       "resourceReads": ["AudioReport"],
       "resourceWrites": ["AudioReport"],
-      "services": ["audio.play", "audio.query", "audio.stop"],
+      "services": ["audio.play", "audio.query", "audio.stop", "audio.update"],
       "script": {
         "bundle": "scripts.bundle.js",
         "exportName": "system_audioFacade"

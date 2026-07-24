@@ -96,10 +96,13 @@ Current support:
   warnings for script/physics transform double ownership; `tn playtest` and
   `tn iterate` accept `--audit-writes` to write deterministic `write-audit.json`
   artifacts containing accepted, composed, overwritten, and dropped writes.
-- `ctx.audio.play`, `ctx.audio.stop`, and `ctx.audio.query` operate on
+- `ctx.audio.play`, `ctx.audio.stop`, `ctx.audio.query`, and
+  `ctx.audio.update` operate on
   declared audio IR and return logical playback IDs/status without exposing web
-  or native handles; streaming, network audio, custom decoders, and platform
-  handles remain diagnostic-only boundaries.
+  or native handles. Active updates accept bounded absolute volume/pitch
+  targets and an observed ramp duration; missing, stopped, empty, and invalid
+  updates return non-success results. Streaming, network audio, custom
+  decoders, and platform handles remain diagnostic-only boundaries.
 - `ctx.particles.play`, `ctx.particles.emit`, `ctx.particles.clear`, and
   `ctx.particles.stop` operate only on declared bounded particle emitters with
   finite lifetimes, rates, and max live counts. `start`, `burst`, and `reset`

@@ -1,4 +1,5 @@
 import type { IScriptAudioRuntimeState } from "../../audio.js";
+import type { IScriptAudioUpdateOptions } from "@threenative/ir";
 
 export interface IAudioPlayRequest {
   options: Record<string, unknown>;
@@ -22,6 +23,11 @@ export interface IAudioQueryRequest {
 }
 
 export type IAudioQueryResult = IScriptAudioRuntimeState;
+
+export interface IAudioUpdateRequest {
+  options: IScriptAudioUpdateOptions;
+  playbackId: string;
+}
 
 export function audioPlayPayload(request: IAudioPlayRequest, result: IScriptAudioRuntimeState): {
   request: IAudioPlayRequest;
@@ -51,4 +57,11 @@ export function audioQueryPayload(request: IAudioQueryRequest, result: IScriptAu
     request,
     result,
   };
+}
+
+export function audioUpdatePayload(request: IAudioUpdateRequest, result: IScriptAudioRuntimeState): {
+  request: IAudioUpdateRequest;
+  result: IScriptAudioRuntimeState;
+} {
+  return { request, result };
 }

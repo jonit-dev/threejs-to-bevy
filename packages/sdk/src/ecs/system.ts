@@ -12,6 +12,7 @@ export type SystemService =
   | "audio.play"
   | "audio.query"
   | "audio.stop"
+  | "audio.update"
   | "camera.shake"
   | "effects.play"
   | "assets.load"

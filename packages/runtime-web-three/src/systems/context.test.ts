@@ -604,9 +604,11 @@ test("should log script audio service calls", () => {
   });
 
   const play = context.audio.play("sound.hit", { entity: "player" });
+  const update = context.audio.update(play.playbackId, { pitch: 1.25, rampSeconds: 0.1, volume: 0.5 });
   const stop = context.audio.stop(play.playbackId);
 
   assert.equal(play.playbackId, "sound.hit#1");
+  assert.equal(update.pitch, 1.25);
   assert.equal(stop.status, "stopped");
   assert.deepEqual(services, [
     {
@@ -615,6 +617,13 @@ test("should log script audio service calls", () => {
         result: play,
       },
       service: "audio.play",
+    },
+    {
+      payload: {
+        request: { options: { pitch: 1.25, rampSeconds: 0.1, volume: 0.5 }, playbackId: "sound.hit#1" },
+        result: update,
+      },
+      service: "audio.update",
     },
     {
       payload: {

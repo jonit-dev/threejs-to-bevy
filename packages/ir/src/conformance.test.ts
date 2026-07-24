@@ -412,6 +412,7 @@ test("should include capability tags for each conformance fixture", async () => 
     "scripting:service.audio.play",
     "scripting:service.audio.query",
     "scripting:service.audio.stop",
+    "scripting:service.audio.update",
     "scripting:systems",
   ]);
   assertFixtureCapabilities(byName, "particle-commands", [

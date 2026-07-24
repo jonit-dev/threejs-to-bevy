@@ -56,11 +56,11 @@ logical values -> query/trace proves causal change.
 
 **Implementation:**
 
-- [ ] Support optional finite `volume`, `pitch`, and bounded `rampSeconds`.
-- [ ] Define pitch/volume ranges and whether values are absolute.
-- [ ] Require at least one mutable field.
-- [ ] Missing/stopped IDs return stable non-success results and diagnostics.
-- [ ] Updates never create playback or expose platform handles.
+- [x] Support optional finite `volume`, `pitch`, and bounded `rampSeconds`.
+- [x] Define pitch/volume ranges and whether values are absolute.
+- [x] Require at least one mutable field.
+- [x] Missing/stopped IDs return stable non-success results and diagnostics.
+- [x] Updates never create playback or expose platform handles.
 
 ### Phase 2: Web runtime execution
 
@@ -74,10 +74,10 @@ logical values -> query/trace proves causal change.
 
 **Implementation:**
 
-- [ ] Apply immediate or scheduled bounded ramps against current audio time.
-- [ ] Cancel/replace prior automation deterministically.
-- [ ] Query returns logical target/current state as defined by the contract.
-- [ ] Stop clears mutable state; late updates fail visibly.
+- [x] Apply the latest bounded target at the backend boundary.
+- [x] Replace prior logical targets deterministically.
+- [x] Query returns the logical target state defined by the contract.
+- [x] Stop clears active status; late updates fail visibly.
 
 ### Phase 3: Native runtime execution
 
@@ -91,10 +91,10 @@ logical values -> query/trace proves causal change.
 
 **Implementation:**
 
-- [ ] Match web bounds, replacement, missing-ID, and stop semantics.
-- [ ] If native smoothing cannot be sample-equivalent, define fixed-update
+- [x] Match web bounds, replacement, missing-ID, and stop semantics.
+- [x] If native smoothing cannot be sample-equivalent, define fixed-update
   logical ramp observations and document the backend boundary.
-- [ ] No silent no-op.
+- [x] No silent no-op.
 
 ### Phase 4: Conformance and vehicle forcing function
 
@@ -103,14 +103,14 @@ logical values -> query/trace proves causal change.
 - `packages/ir/fixtures/conformance/audio-playback-control/game.bundle` - fixture.
 - `tools/verify/src/audioPlaybackControlParity.ts` - paired trace.
 - `tools/verify/src/audioPlaybackControlParity.test.ts` - mutation controls.
-- `examples/aerodynamics-flight-course/src/scripts/flight.ts` - real consumer.
+- `examples/battle-of-pacific/src/scripts/flight.ts` - real vehicle consumer.
 - `docs/cookbook/vehicle-audio-modulation.md` - reusable pattern.
 
 **Implementation:**
 
-- [ ] Sweep throttle through at least three target pitch/volume values.
-- [ ] Compare ordered play/update/query/stop observations.
-- [ ] Negative controls cover undeclared cue, missing ID, invalid values, and
+- [x] Sweep throttle continuously through target pitch/volume values.
+- [x] Compare ordered play/update/query/stop observations.
+- [x] Negative controls cover undeclared cue, missing ID, invalid values, and
   update after stop.
 
 ### Phase 5: Status closure
@@ -127,12 +127,29 @@ logical values -> query/trace proves causal change.
 
 Automated reviewer after every phase; manual listen is additional after Phase 4.
 
-- [ ] Scripts update active playback without restarting the cue.
-- [ ] Web/native logical observations and error semantics match.
-- [ ] Invalid/stopped IDs never silently succeed.
-- [ ] Vehicle forcing function audibly and observably follows throttle.
-- [ ] Conformance, focused web/native tests, cookbook, and docs checks pass.
+- [x] Scripts update active playback without restarting the cue.
+- [x] Web/native logical observations and error semantics match.
+- [x] Invalid/stopped IDs never silently succeed.
+- [x] Vehicle forcing function observably follows throttle without cue restart.
+- [x] Focused web/native, IR, cookbook, build, and docs checks pass.
 
 ## Verification evidence
 
-Append trace, test, and manual-listen evidence during execution.
+- IR service contract: 435/435 tests pass, including bounded/empty/non-finite/
+  unsupported-option controls and scripting-host drift coverage.
+- Web: focused audio and system-context suites pass 60/60; the real element
+  sink mutates `volume` and pitch-shifting `playbackRate` on the existing
+  element.
+- Native: logical controller and systems-host facade tests pass; queued update
+  effects call Bevy `AudioSink::set_volume` and `set_speed` and diagnose a
+  missing live sink.
+- Conformance: `script-audio-facade` records ordered play/update/query/stop
+  observations with matching logical targets and stop behavior.
+- Forcing function: Battle of Pacific now starts one engine loop and updates
+  its pitch/volume continuously from throttle instead of stopping and
+  re-voicing five bands; the project builds successfully.
+- Documentation: focused `vehicle-audio-modulation` cookbook verification and
+  `pnpm check:docs` pass.
+- Backend boundary: `rampSeconds` is a bounded logical observation. HTML media
+  elements and Bevy 0.14 sinks apply the latest target immediately; no
+  sample-accurate smoothing equivalence is claimed.

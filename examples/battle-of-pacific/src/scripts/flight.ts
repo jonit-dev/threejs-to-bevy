@@ -47,6 +47,7 @@ export const updatePacificFlight = defineBehavior(
       "animation.play",
       "audio.play",
       "audio.stop",
+      "audio.update",
       "physics.addTorque",
       "physics.aerodynamics.setInputs",
       "physics.setAngularVelocity",
@@ -127,12 +128,11 @@ export const updatePacificFlight = defineBehavior(
 
     const restartFromOverlay = context.events.read("flight:restart").length > 0;
     const retryRequested = context.input.pressed("retry") || restartFromOverlay;
-    const voiceEngineBand = (band: number) => {
-      const bandThrottle = (band + 0.5) * 0.2;
+    const startEngineLoop = () => {
       return context.audio.play("engine.loop", {
         loop: true,
-        volume: 0.45 + 0.35 * bandThrottle,
-        pitch: 0.85 + 0.35 * bandThrottle
+        volume: 0.45 + 0.35 * control.throttle,
+        pitch: 0.85 + 0.35 * control.throttle
       });
     };
 
@@ -226,35 +226,22 @@ export const updatePacificFlight = defineBehavior(
     }
 
     const stepEngineAudio = (): void => {
-      // Bring the sustained loop in once the spool-up has taken hold, voiced
-      // at the current throttle band.
+      // Bring the sustained loop in once the spool-up has taken hold.
       if (control.engineStartAt >= 0 && context.time.elapsed >= control.engineStartAt + 1) {
-        const band = Mathf.clamp(Math.floor(control.throttle / 0.2), 0, 4);
-        const engine = voiceEngineBand(band);
+        const engine = startEngineLoop();
         if (engine.accepted) {
           control.enginePlaybackId = engine.playbackId;
-          control.engineBand = band;
-          control.engineBandChangedAt = context.time.elapsed;
         }
         control.engineStartAt = -1;
       }
-      // Re-voice per throttle band with hysteresis so the loop does not
-      // chatter at band boundaries.
-      if (control.enginePlaybackId !== "" && control.engineBand >= 0) {
-        const rawBand = Mathf.clamp(Math.floor(control.throttle / 0.2), 0, 4);
-        let switchTo = -1;
-        if (rawBand > control.engineBand && control.throttle >= (control.engineBand + 1) * 0.2 + 0.04) {
-          switchTo = rawBand;
-        } else if (rawBand < control.engineBand && control.throttle <= control.engineBand * 0.2 - 0.04) {
-          switchTo = rawBand;
-        }
-        if (switchTo >= 0 && context.time.elapsed - control.engineBandChangedAt >= 0.7) {
-          context.audio.stop(control.enginePlaybackId);
-          const engine = voiceEngineBand(switchTo);
-          control.enginePlaybackId = engine.accepted ? engine.playbackId : "";
-          control.engineBand = switchTo;
-          control.engineBandChangedAt = context.time.elapsed;
-        }
+      // Absolute targets update the active loop without restarting it. The
+      // bounded ramp keeps fixed-step changes smooth and deterministic.
+      if (control.enginePlaybackId !== "") {
+        context.audio.update(control.enginePlaybackId, {
+          pitch: 0.85 + 0.35 * control.throttle,
+          rampSeconds: 0.08,
+          volume: 0.45 + 0.35 * control.throttle
+        });
       }
     };
     stepEngineAudio();

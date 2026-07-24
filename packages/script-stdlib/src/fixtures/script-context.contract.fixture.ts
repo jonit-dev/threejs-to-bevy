@@ -8,6 +8,7 @@ context.animation.stop("hero");
 context.assets.load("hero-model");
 context.audio.play("jump");
 context.audio.query("jump:1");
+context.audio.update("jump:1", { pitch: 1.25, rampSeconds: 0.1, volume: 0.8 });
 context.audio.stop("jump:1");
 context.cameras.shake({ amplitude: 0.25, duration: 0.1 });
 context.character.move("hero", { direction: [1, 0], speed: 4 });

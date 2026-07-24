@@ -35,10 +35,17 @@ enum NativeAudioServiceCommand {
         playback_id: String,
         sound_id: String,
         loop_: Option<bool>,
+        pitch: Option<f32>,
         volume: Option<f32>,
     },
     Stop {
         playback_id: String,
+    },
+    Update {
+        pitch: Option<f32>,
+        playback_id: String,
+        ramp_seconds: Option<f32>,
+        volume: Option<f32>,
     },
 }
 
@@ -167,6 +174,7 @@ fn spawn_audio(
     playback_id: String,
     sound: &NativeAudioSound,
     loop_: Option<bool>,
+    pitch: Option<f32>,
     volume: Option<f32>,
 ) {
     commands.spawn((
@@ -175,7 +183,7 @@ fn spawn_audio(
             settings: playback_settings(
                 loop_.unwrap_or(sound.loop_),
                 volume.or(sound.volume),
-                sound.pitch,
+                pitch.or(sound.pitch),
             ),
         },
         Name::new(playback_id.clone()),
@@ -200,6 +208,7 @@ pub fn play_new_native_audio_events(
                     &asset_server,
                     command.id.clone(),
                     sound,
+                    None,
                     None,
                     None,
                 );
@@ -236,6 +245,7 @@ fn queue_audio_play(queue: &mut NativeAudioServiceQueue, result: &serde_json::Va
         playback_id: playback_id.to_owned(),
         sound_id: sound_id.to_owned(),
         loop_: result["loop"].as_bool(),
+        pitch: result["pitch"].as_f64().map(|value| value as f32),
         volume: result["volume"].as_f64().map(|value| value as f32),
     });
 }
@@ -261,6 +271,16 @@ pub fn queue_native_audio_service_effects(
                     });
                 }
             }
+            "audio.update" if payload["result"]["accepted"].as_bool() == Some(true) => {
+                if let Some(playback_id) = payload["result"]["playbackId"].as_str() {
+                    queue.0.push(NativeAudioServiceCommand::Update {
+                        pitch: payload["result"]["pitch"].as_f64().map(|value| value as f32),
+                        playback_id: playback_id.to_owned(),
+                        ramp_seconds: payload["result"]["rampSeconds"].as_f64().map(|value| value as f32),
+                        volume: payload["result"]["volume"].as_f64().map(|value| value as f32),
+                    });
+                }
+            }
             _ => {}
         }
     }
@@ -281,6 +301,7 @@ pub fn apply_native_audio_service_effects(
                 playback_id,
                 sound_id,
                 loop_,
+                pitch,
                 volume,
             } => {
                 if let Some(sound) = runtime.sounds.get(&sound_id) {
@@ -290,6 +311,7 @@ pub fn apply_native_audio_service_effects(
                         playback_id.clone(),
                         sound,
                         loop_,
+                        pitch,
                         volume,
                     );
                     states.0.insert(playback_id, "playing".to_owned());
@@ -322,6 +344,35 @@ pub fn apply_native_audio_service_effects(
                     commands.entity(entity).despawn();
                 }
                 states.0.insert(playback_id, "stopped".to_owned());
+            }
+            NativeAudioServiceCommand::Update {
+                pitch,
+                playback_id,
+                ramp_seconds: _,
+                volume,
+            } => {
+                let mut applied = false;
+                for (_, _, sink) in playbacks
+                    .iter()
+                    .filter(|(_, playback, _)| playback.0 == playback_id)
+                {
+                    let Some(sink) = sink else { continue };
+                    if let Some(volume) = volume {
+                        sink.set_volume(volume);
+                    }
+                    if let Some(pitch) = pitch {
+                        sink.set_speed(pitch);
+                    }
+                    applied = true;
+                }
+                if !applied {
+                    diagnostics.0.push(NativeAudioDiagnostic {
+                        code: "TN_AUDIO_PLAYBACK_NOT_FOUND".to_owned(),
+                        message: format!("Audio playback '{playback_id}' cannot be updated because it is no longer active."),
+                        path: format!("audio/{playback_id}"),
+                        severity: "warning".to_owned(),
+                    });
+                }
             }
         }
     }
@@ -957,7 +1008,11 @@ pub struct ScriptAudioRuntimeState {
     pub kind: Option<String>,
     #[serde(rename = "loop", skip_serializing_if = "Option::is_none")]
     pub loop_: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub pitch: Option<f32>,
     pub playback_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ramp_seconds: Option<f32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<String>,
     pub sound_id: String,
@@ -969,6 +1024,7 @@ pub struct ScriptAudioRuntimeState {
 #[derive(Clone, Debug)]
 struct ScriptAudioCatalogEntry {
     kind: String,
+    pitch: Option<f32>,
     volume: Option<f32>,
 }
 
@@ -977,7 +1033,9 @@ struct ScriptAudioPlaybackRecord {
     entity: Option<String>,
     kind: String,
     loop_: bool,
+    pitch: Option<f32>,
     playback_id: String,
+    ramp_seconds: Option<f32>,
     sound_id: String,
     status: String,
     volume: Option<f32>,
@@ -1014,12 +1072,15 @@ impl ScriptAudioRuntimeController {
         self.sequence += 1;
         let playback_id = format!("{sound_id}#{}", self.sequence);
         let volume = options.volume.or(declared.volume);
+        let pitch = options.pitch.or(declared.pitch);
         let loop_ = options.loop_.unwrap_or(declared.kind == "loop");
         let record = ScriptAudioPlaybackRecord {
             entity: options.entity,
             kind: declared.kind.clone(),
             loop_,
+            pitch,
             playback_id: playback_id.clone(),
+            ramp_seconds: None,
             sound_id: sound_id.clone(),
             status: "playing".to_owned(),
             volume,
@@ -1035,7 +1096,9 @@ impl ScriptAudioRuntimeController {
                 entity: None,
                 kind: None,
                 loop_: None,
+                pitch: None,
                 playback_id: playback_id.to_owned(),
+                ramp_seconds: None,
                 reason: Some("not-found".to_owned()),
                 sound_id: String::new(),
                 status: "stopped".to_owned(),
@@ -1052,7 +1115,9 @@ impl ScriptAudioRuntimeController {
                 entity: None,
                 kind: None,
                 loop_: None,
+                pitch: None,
                 playback_id: playback_id.to_owned(),
+                ramp_seconds: None,
                 reason: Some("not-found".to_owned()),
                 sound_id: String::new(),
                 status: "stopped".to_owned(),
@@ -1065,13 +1130,62 @@ impl ScriptAudioRuntimeController {
             .insert(playback_id.to_owned(), stopped.clone());
         serialize_script_audio_playback(&stopped, true)
     }
+
+    pub fn update(
+        &mut self,
+        playback_id: &str,
+        options: ScriptAudioUpdateOptions,
+    ) -> ScriptAudioRuntimeState {
+        let Some(record) = self.playbacks.get(playback_id) else {
+            return missing_script_audio_playback(playback_id, false);
+        };
+        if record.status != "playing" {
+            let mut state = serialize_script_audio_playback(record, false);
+            state.reason = Some("stopped".to_owned());
+            return state;
+        }
+        let reason = if options.volume.is_none() && options.pitch.is_none() {
+            Some("empty-update")
+        } else if options.volume.is_some_and(|value| !value.is_finite() || !(0.0..=4.0).contains(&value)) {
+            Some("invalid-volume")
+        } else if options.pitch.is_some_and(|value| !value.is_finite() || !(0.25..=4.0).contains(&value)) {
+            Some("invalid-pitch")
+        } else if options.ramp_seconds.is_some_and(|value| !value.is_finite() || !(0.0..=10.0).contains(&value)) {
+            Some("invalid-ramp-seconds")
+        } else {
+            None
+        };
+        if let Some(reason) = reason {
+            let mut state = serialize_script_audio_playback(record, false);
+            state.reason = Some(reason.to_owned());
+            return state;
+        }
+        let mut updated = record.clone();
+        if options.volume.is_some() {
+            updated.volume = options.volume;
+        }
+        if options.pitch.is_some() {
+            updated.pitch = options.pitch;
+        }
+        updated.ramp_seconds = options.ramp_seconds;
+        self.playbacks.insert(playback_id.to_owned(), updated.clone());
+        serialize_script_audio_playback(&updated, true)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
 pub struct ScriptAudioPlayOptions {
     pub entity: Option<String>,
     pub loop_: Option<bool>,
+    pub pitch: Option<f32>,
     pub raw: std::collections::BTreeMap<String, serde_json::Value>,
+    pub volume: Option<f32>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ScriptAudioUpdateOptions {
+    pub pitch: Option<f32>,
+    pub ramp_seconds: Option<f32>,
     pub volume: Option<f32>,
 }
 
@@ -1084,6 +1198,7 @@ fn build_script_audio_catalog(
             music.id.clone(),
             ScriptAudioCatalogEntry {
                 kind: "loop".to_owned(),
+                pitch: music.pitch,
                 volume: music.volume,
             },
         );
@@ -1093,6 +1208,7 @@ fn build_script_audio_catalog(
             one_shot.id.clone(),
             ScriptAudioCatalogEntry {
                 kind: "oneShot".to_owned(),
+                pitch: one_shot.pitch,
                 volume: one_shot.volume,
             },
         );
@@ -1102,6 +1218,7 @@ fn build_script_audio_catalog(
             tone.id.clone(),
             ScriptAudioCatalogEntry {
                 kind: "tone".to_owned(),
+                pitch: tone.pitch,
                 volume: tone.volume,
             },
         );
@@ -1143,7 +1260,9 @@ fn reject_script_audio_play(
         entity: None,
         kind: None,
         loop_: None,
+        pitch: None,
         playback_id: String::new(),
+        ramp_seconds: None,
         reason: Some(reason.to_owned()),
         sound_id: sound_id.to_owned(),
         status: "rejected".to_owned(),
@@ -1160,10 +1279,28 @@ fn serialize_script_audio_playback(
         entity: record.entity.clone(),
         kind: Some(record.kind.clone()),
         loop_: Some(record.loop_),
+        pitch: record.pitch,
         playback_id: record.playback_id.clone(),
+        ramp_seconds: record.ramp_seconds,
         reason: None,
         sound_id: record.sound_id.clone(),
         status: record.status.clone(),
         volume: record.volume,
+    }
+}
+
+fn missing_script_audio_playback(playback_id: &str, accepted: bool) -> ScriptAudioRuntimeState {
+    ScriptAudioRuntimeState {
+        accepted,
+        entity: None,
+        kind: None,
+        loop_: None,
+        pitch: None,
+        playback_id: playback_id.to_owned(),
+        ramp_seconds: None,
+        reason: Some("not-found".to_owned()),
+        sound_id: String::new(),
+        status: "stopped".to_owned(),
+        volume: None,
     }
 }

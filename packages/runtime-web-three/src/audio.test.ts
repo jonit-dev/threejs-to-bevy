@@ -260,6 +260,17 @@ test("audio element sink should render script services and resume loops after ap
     { loop: false, plays: 1, src: "/game.bundle/assets/hit.wav", volume: 0.75 },
   ]);
 
+  sink.handleServices([{
+    payload: {
+      request: { options: { pitch: 1.35, rampSeconds: 0.2, volume: 0.55 }, playbackId: "music.arena#1" },
+      result: { accepted: true, kind: "loop", loop: true, pitch: 1.35, playbackId: "music.arena#1", rampSeconds: 0.2, soundId: "music.arena", status: "playing", volume: 0.55 },
+    },
+    service: "audio.update",
+  }], audio);
+  assert.equal(elements[0]?.volume, 0.55);
+  assert.equal(elements[0]?.playbackRate, 1.35);
+  assert.equal(elements[0]?.preservesPitch, false);
+
   sink.pauseLoops();
   assert.equal(elements[0]?.pauses, 1);
   assert.equal(elements[1]?.pauses, 0);
@@ -310,6 +321,27 @@ test("should play and stop declared logical audio", () => {
     volume: 0.75,
   });
   assert.deepEqual(query, stop);
+});
+
+test("should update active logical audio and reject invalid or stopped playback", () => {
+  const audio = new ScriptAudioRuntimeController({
+    schema: "threenative.audio",
+    version: "0.1.0",
+    music: [{ id: "engine.loop", asset: "engine.audio", autoplay: false, loop: true, volume: 0.4 }],
+    oneShots: [],
+  });
+  const play = audio.play("engine.loop", { pitch: 1 });
+
+  assert.deepEqual(audio.update(play.playbackId, { pitch: 1.5, rampSeconds: 0.25, volume: 0.8 }), {
+    ...play,
+    pitch: 1.5,
+    rampSeconds: 0.25,
+    volume: 0.8,
+  });
+  assert.equal(audio.update(play.playbackId, { pitch: Number.NaN }).reason, "invalid-pitch");
+  audio.stop(play.playbackId);
+  assert.equal(audio.update(play.playbackId, { pitch: 1.2 }).reason, "stopped");
+  assert.equal(audio.update("missing#1", { volume: 0.5 }).reason, "not-found");
 });
 
 test("audio element sink should retry autoplay-blocked playback on the first user gesture", async () => {

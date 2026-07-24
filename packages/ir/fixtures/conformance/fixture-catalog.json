@@ -660,7 +660,8 @@
       "promotedCapabilities": [
         "scripting:service.audio.play",
         "scripting:service.audio.query",
-        "scripting:service.audio.stop"
+        "scripting:service.audio.stop",
+        "scripting:service.audio.update"
       ],
       "reportArtifacts": [
         "packages/ir/artifacts/conformance/conformance-report.json",

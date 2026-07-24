@@ -93,6 +93,60 @@ export interface IScriptAudioPlayOptions {
   volume?: number;
 }
 
+export const SCRIPT_AUDIO_PLAYBACK_LIMITS = Object.freeze({
+  pitch: Object.freeze({ min: 0.25, max: 4 }),
+  rampSeconds: Object.freeze({ min: 0, max: 10 }),
+  volume: Object.freeze({ min: 0, max: 4 }),
+});
+
+export interface IScriptAudioUpdateOptions {
+  pitch?: number;
+  rampSeconds?: number;
+  volume?: number;
+}
+
+export type ScriptAudioUpdateValidation =
+  | { accepted: true; options: IScriptAudioUpdateOptions }
+  | { accepted: false; reason: "empty-update" | "invalid-pitch" | "invalid-ramp-seconds" | "invalid-volume" | "unsupported-option" };
+
+export function validateScriptAudioUpdateOptions(value: unknown): ScriptAudioUpdateValidation {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return { accepted: false, reason: "empty-update" };
+  }
+  const options = value as Record<string, unknown>;
+  if (Object.keys(options).some((key) => !["pitch", "rampSeconds", "volume"].includes(key))) {
+    return { accepted: false, reason: "unsupported-option" };
+  }
+  const volume = options.volume;
+  const pitch = options.pitch;
+  const rampSeconds = options.rampSeconds;
+  if (volume === undefined && pitch === undefined) {
+    return { accepted: false, reason: "empty-update" };
+  }
+  if (!isFiniteInRange(volume, SCRIPT_AUDIO_PLAYBACK_LIMITS.volume)) {
+    return { accepted: false, reason: "invalid-volume" };
+  }
+  if (!isFiniteInRange(pitch, SCRIPT_AUDIO_PLAYBACK_LIMITS.pitch)) {
+    return { accepted: false, reason: "invalid-pitch" };
+  }
+  if (rampSeconds !== undefined && !isFiniteInRange(rampSeconds, SCRIPT_AUDIO_PLAYBACK_LIMITS.rampSeconds)) {
+    return { accepted: false, reason: "invalid-ramp-seconds" };
+  }
+  return {
+    accepted: true,
+    options: {
+      ...(typeof pitch === "number" ? { pitch } : {}),
+      ...(typeof rampSeconds === "number" ? { rampSeconds } : {}),
+      ...(typeof volume === "number" ? { volume } : {}),
+    },
+  };
+}
+
+function isFiniteInRange(value: unknown, range: { min: number; max: number }): boolean {
+  return value === undefined
+    || (typeof value === "number" && Number.isFinite(value) && value >= range.min && value <= range.max);
+}
+
 export interface IScriptAudioRuntimeState {
   accepted: boolean;
   entity?: string;
@@ -100,6 +154,7 @@ export interface IScriptAudioRuntimeState {
   loop?: boolean;
   pitch?: number;
   playbackId: string;
+  rampSeconds?: number;
   reason?: string;
   soundId: string;
   status: ScriptAudioPlaybackStatus;
@@ -109,6 +164,7 @@ export interface IScriptAudioRuntimeState {
 export type IScriptAudioPlayResult = IScriptAudioRuntimeState;
 export type IScriptAudioQueryResult = IScriptAudioRuntimeState;
 export type IScriptAudioStopResult = IScriptAudioRuntimeState & { accepted: true };
+export type IScriptAudioUpdateResult = IScriptAudioRuntimeState;
 
 export interface IScriptCameraShakeOptions {
   amplitude?: number;

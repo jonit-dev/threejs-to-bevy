@@ -284,6 +284,10 @@ export {
   type IScriptHostServiceMatrixEntry,
   type ScriptHostSupport,
 } from "./scriptingHost.js";
+export {
+  SCRIPT_AUDIO_PLAYBACK_LIMITS,
+  validateScriptAudioUpdateOptions,
+} from "./scriptServices.js";
 export type {
   IScriptAnimationPlayResult,
   IScriptAnimationQueryResult,
@@ -296,6 +300,8 @@ export type {
   IScriptAudioQueryResult,
   IScriptAudioRuntimeState,
   IScriptAudioStopResult,
+  IScriptAudioUpdateOptions,
+  IScriptAudioUpdateResult,
   IScriptCameraShakeOptions,
   IScriptCameraShakeResult,
   IScriptCharacterContactObservation,
@@ -349,6 +355,7 @@ export type {
   IScriptWorldTextCommandResult,
   ScriptAudioPlaybackKind,
   ScriptAudioPlaybackStatus,
+  ScriptAudioUpdateValidation,
   ScriptPhysicsQueryShape,
   ScriptSettingValue,
   ScriptVec3,

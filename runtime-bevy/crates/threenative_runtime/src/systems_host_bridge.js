@@ -770,7 +770,9 @@ function __tnInvokeSystem(options) {
       ...(state.entity === undefined ? {} : { entity: state.entity }),
       ...(state.kind === undefined ? {} : { kind: state.kind }),
       ...(state.loop === undefined ? {} : { loop: state.loop }),
+      ...(state.pitch === undefined ? {} : { pitch: state.pitch }),
       playbackId: state.playbackId,
+      ...(state.rampSeconds === undefined ? {} : { rampSeconds: state.rampSeconds }),
       ...(state.reason === undefined ? {} : { reason: state.reason }),
       soundId: state.soundId,
       status: state.status,
@@ -788,12 +790,14 @@ function __tnInvokeSystem(options) {
       audioSequence += 1;
       const playbackId = `${soundId}#${audioSequence}`;
       const volume = Number.isFinite(Number(options.volume)) ? Number(options.volume) : declared.volume;
+      const pitch = Number.isFinite(Number(options.pitch)) ? Number(options.pitch) : declared.pitch;
       const loop = typeof options.loop === "boolean" ? options.loop : declared.kind === "loop";
       const state = {
         accepted: true,
         ...(typeof options.entity === "string" ? { entity: options.entity } : {}),
         kind: declared.kind,
         loop,
+        ...(pitch === undefined ? {} : { pitch }),
         playbackId,
         soundId,
         status: "playing",
@@ -817,6 +821,33 @@ function __tnInvokeSystem(options) {
       const stopped = { ...state, status: "stopped" };
       audioPlaybacks[playbackId] = stopped;
       return serializeAudioState(stopped);
+    };
+    const audioUpdate = (playbackId, options = {}) => {
+      const state = audioPlaybacks[playbackId];
+      if (!state) {
+        return { accepted: false, playbackId, reason: "not-found", soundId: "", status: "stopped" };
+      }
+      if (state.status !== "playing") {
+        return { ...serializeAudioState(state), accepted: false, reason: "stopped" };
+      }
+      const hasVolume = Object.prototype.hasOwnProperty.call(options, "volume");
+      const hasPitch = Object.prototype.hasOwnProperty.call(options, "pitch");
+      const hasUnsupported = Object.keys(options).some((key) => !["pitch", "rampSeconds", "volume"].includes(key));
+      const validVolume = !hasVolume || (Number.isFinite(options.volume) && options.volume >= 0 && options.volume <= 4);
+      const validPitch = !hasPitch || (Number.isFinite(options.pitch) && options.pitch >= 0.25 && options.pitch <= 4);
+      const validRamp = options.rampSeconds === undefined || (Number.isFinite(options.rampSeconds) && options.rampSeconds >= 0 && options.rampSeconds <= 10);
+      const reason = hasUnsupported ? "unsupported-option" : !hasVolume && !hasPitch ? "empty-update" : !validVolume ? "invalid-volume" : !validPitch ? "invalid-pitch" : !validRamp ? "invalid-ramp-seconds" : undefined;
+      if (reason !== undefined) {
+        return { ...serializeAudioState(state), accepted: false, reason };
+      }
+      const updated = {
+        ...state,
+        ...(hasPitch ? { pitch: options.pitch } : {}),
+        ...(options.rampSeconds === undefined ? {} : { rampSeconds: options.rampSeconds }),
+        ...(hasVolume ? { volume: options.volume } : {})
+      };
+      audioPlaybacks[playbackId] = updated;
+      return serializeAudioState(updated);
     };
     const persistenceStore = {
       saves: clone(data.localData.persistedSaves || {}),
@@ -1646,6 +1677,12 @@ function __tnInvokeSystem(options) {
         const request = { playbackId };
         const result = audioStop(playbackId);
         effects.services.push({ service: "audio.stop", payload: { request, result: clone(result) } });
+        return clone(result);
+      },
+      update(playbackId, options = {}) {
+        const request = { options: clone(options), playbackId };
+        const result = audioUpdate(playbackId, options);
+        effects.services.push({ service: "audio.update", payload: { request, result: clone(result) } });
         return clone(result);
       }
     },

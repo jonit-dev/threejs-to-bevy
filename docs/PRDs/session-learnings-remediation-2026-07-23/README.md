@@ -18,7 +18,7 @@ documents, completed PRDs, and active PRDs before inclusion.
 | [PRD-005](../done/session-learnings-remediation-2026-07-23/PRD-005-safe-prototypes-and-agent-authoring-contract.md) | Plan-derived authoring transaction and generated agent guidance | Complete: non-destructive prototypes, process cleanup, capability/direct-edit truth, focused inner loops, compact CLI summaries |
 | [PRD-006](../done/session-learnings-remediation-2026-07-23/PRD-006-runtime-proof-cost-and-preview-freshness.md) | Runtime observation modes and preview module graph | Complete: bounded normal/full audit cost, live runtime reload, executed-build freshness proof |
 | [PRD-007](PRD-007-portable-shader-expression-grammar-v2.md) | Versioned portable shader IR | Missing arithmetic/vector/operator grammar for portable animated materials |
-| [PRD-008](PRD-008-runtime-audio-playback-control.md) | Portable audio service contract | Runtime volume/pitch modulation with web/native conformance |
+| [PRD-008](../done/session-learnings-remediation-2026-07-23/PRD-008-runtime-audio-playback-control.md) | Portable audio service contract | Complete: bounded active-playback volume/pitch targets, matching failure semantics, real web/native sink mutation, and continuous Battle engine modulation |
 
 ## Excluded: already fixed
 
@@ -63,7 +63,8 @@ shows a render-scale requirement.
    the runtime build they actually executed.
 6. PRD-002 is complete: transform/history ownership is explicit before more
    camera-relative rendering behaviors are added.
-7. PRD-008 adds cross-runtime live audio control.
+7. PRD-008 is complete: cross-runtime live audio control updates active
+   playback without cue restarts.
 8. PRD-007 proceeds only when a second shipped material besides water requires
    portable expression composition.
 

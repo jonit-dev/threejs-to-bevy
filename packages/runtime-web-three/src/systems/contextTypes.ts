@@ -12,6 +12,8 @@ import type {
   IScriptAudioPlayResult,
   IScriptAudioQueryResult,
   IScriptAudioStopResult,
+  IScriptAudioUpdateOptions,
+  IScriptAudioUpdateResult,
   IScriptAssetLoadResult,
   IScriptCameraShakeOptions,
   IScriptCameraShakeResult,
@@ -128,6 +130,7 @@ export interface ISystemContext {
     play(soundId: string, options?: IScriptAudioPlayOptions): IScriptAudioPlayResult;
     query(playbackId: string): IScriptAudioQueryResult;
     stop(playbackId: string): IScriptAudioStopResult;
+    update(playbackId: string, options: IScriptAudioUpdateOptions): IScriptAudioUpdateResult;
   };
   cameras: {
     shake(options?: ICameraShakeOptions): ICameraShakeResult;

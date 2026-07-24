@@ -11,6 +11,7 @@
       "service.audio.play",
       "service.audio.query",
       "service.audio.stop",
+      "service.audio.update",
       "systems"
     ]
   },

@@ -291,7 +291,7 @@ test("should accept declared script audio services", async () => {
           eventWrites: [],
           resourceReads: [],
           resourceWrites: [],
-          services: ["audio.play", "audio.stop", "audio.query"],
+          services: ["audio.play", "audio.stop", "audio.query", "audio.update"],
         },
       ],
     });

@@ -13,8 +13,14 @@ Current support:
 - Web and native execute bundle-local startup music. Web consumes event-driven
   one-shots in its frame loop; native now queues each newly emitted event once
   and spawns auto-despawning Bevy audio entities with authored volume and pitch.
+- Script `audio.update` applies bounded absolute volume (`0..4`) and pitch
+  (`0.25..4`) targets to active logical playback IDs on web and native.
+  `rampSeconds` (`0..10`) is retained in logical observations; the current
+  HTML audio element and Bevy 0.14 sink backends apply the latest target
+  immediately because neither exposes a shared sample-accurate ramp contract.
+  Missing, stopped, empty, and invalid updates fail visibly.
 - Native script `audio.play`, `audio.stop`, and feedback-preset audio effects
-  now spawn and stop playback-id-tagged Bevy audio entities.
+  spawn and stop playback-id-tagged Bevy audio entities.
 - Authored native pause, resume, stop, and query controls operate on Bevy
   `AudioSink` state. The script-facing `context.audio.query()` remains logical
   until completed-sink feedback is added; it does not expose a public native
@@ -47,7 +53,8 @@ Current support:
   not claim a synthesized native waveform backend beyond the traced command.
 
 Native execution evidence is intentionally headless and asserts the scheduled
-creation of event/script Bevy audio entities plus script stop dispatch. Actual
+creation and volume/speed mutation of event/script Bevy audio entities plus
+script stop dispatch. Actual
 audible device output remains hardware-dependent and is not claimed by the
 headless gate.
 

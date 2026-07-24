@@ -20,6 +20,7 @@ export const SCRIPT_HOST_SERVICE_MATRIX = [
   { bevy: "implemented", contract: "shared", context: "ctx.audio.play", domain: "audio", service: "audio.play", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.audio.query", domain: "audio", service: "audio.query", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.audio.stop", domain: "audio", service: "audio.stop", web: "implemented" },
+  { bevy: "implemented", contract: "shared", context: "ctx.audio.update", domain: "audio", service: "audio.update", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.cameras.shake", domain: "camera", service: "camera.shake", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.character.move", domain: "character", service: "character.move", web: "implemented" },
   { bevy: "implemented", contract: "shared", context: "ctx.effects.play", domain: "effects", service: "effects.play", web: "implemented" },

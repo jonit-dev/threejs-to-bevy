@@ -1,6 +1,6 @@
 import { buildComponentReflectionRegistry, type IComponentReflectionRegistry, type IComponentReflectionType } from "@threenative/ir/reflection";
 import { feedbackPresetById } from "@threenative/ir/feedback";
-import type { IAssetsManifest, IAerodynamicBodyComponent, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptAerodynamicsInputs, IScriptAerodynamicsSetInputsResult, IScriptSystemQuery, IScriptVehicleSetInputsResult, ISystemsIr, IUiIr, IUiNodeIr, IVehicleControllerInput, IWorldEntity, IWorldIr } from "@threenative/ir";
+import type { IAssetsManifest, IAerodynamicBodyComponent, IIrDelayedCommandDeclaration, IIrSchemaFile, IIrStateSource, IIrSystemDeclaration, ILocalDataIr, IPrefabsIr, IRuntimeDiagnostic, IScriptAerodynamicsInputs, IScriptAerodynamicsSetInputsResult, IScriptAudioUpdateOptions, IScriptSystemQuery, IScriptVehicleSetInputsResult, ISystemsIr, IUiIr, IUiNodeIr, IVehicleControllerInput, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { AnimationRuntimeController, ParticleRuntimeController } from "../animation.js";
 import { ScriptAudioRuntimeController, type IScriptAudioPlayOptions } from "../audio.js";
 import { traceCharacterControllers, type ICharacterTraceObservation } from "../character.js";
@@ -9,7 +9,7 @@ import { queryNavigationPath, type INavigationPathRequest, type INavigationPathR
 import { createPhysicsSensorRuntimeState, type IPhysicsSensorEvent } from "../sensors.js";
 import type { IRenderedUi } from "../ui/renderUi.js";
 import { animationPlayPayload, animationQueryPayload, animationStopPayload } from "./services/animation.js";
-import { audioPlayPayload, audioQueryPayload, audioStopPayload } from "./services/audio.js";
+import { audioPlayPayload, audioQueryPayload, audioStopPayload, audioUpdatePayload } from "./services/audio.js";
 import { createWebPersistenceService, type IWebPersistenceService } from "./services/persistence.js";
 import { pickMesh, pointerRay, type IPickMeshRequest, type IPickMeshResult, type IPointerRayRequest, type IPointerRayResult } from "./services/picking.js";
 import {
@@ -440,6 +440,12 @@ export function createSystemContext(
           const payload = audioStopPayload({ playbackId }, scriptAudio.stop(playbackId));
           services.push({ payload, service: "audio.stop" });
           return cloneValue(payload.result) as ReturnType<typeof audioStopPayload>["result"];
+        },
+        update(playbackId, updateOptions) {
+          const options = cloneValue(updateOptions) as IScriptAudioUpdateOptions;
+          const payload = audioUpdatePayload({ options, playbackId }, scriptAudio.update(playbackId, options));
+          services.push({ payload, service: "audio.update" });
+          return cloneValue(payload.result);
         },
       },
       cameras: {

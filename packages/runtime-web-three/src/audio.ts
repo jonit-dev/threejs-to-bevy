@@ -1,4 +1,10 @@
-import type { IAssetsManifest, IAudioIr, IRuntimeDiagnostic } from "@threenative/ir";
+import {
+  validateScriptAudioUpdateOptions,
+  type IAssetsManifest,
+  type IAudioIr,
+  type IRuntimeDiagnostic,
+  type IScriptAudioUpdateOptions,
+} from "@threenative/ir";
 import { resolveWebAssets } from "./assets.js";
 import type { IQueuedEvent, IQueuedServiceCall } from "./systems/context.js";
 
@@ -317,6 +323,25 @@ export function createWebAudioElementSink(
         const result = service.payload.result;
         const playbackId = readString(result.playbackId);
         if (playbackId === undefined) continue;
+        if (service.service === "audio.update") {
+          if (result.accepted !== true || result.status !== "playing") continue;
+          const element = playbacks.get(playbackId);
+          if (element === undefined) {
+            diagnostics.push({
+              code: "TN_AUDIO_PLAYBACK_NOT_FOUND",
+              message: `Audio playback '${playbackId}' cannot be updated because it is no longer active.`,
+              path: `audio/${playbackId}`,
+              severity: "warning",
+            });
+            continue;
+          }
+          if (typeof result.volume === "number") element.volume = result.volume;
+          if (typeof result.pitch === "number") {
+            element.preservesPitch = false;
+            element.playbackRate = result.pitch;
+          }
+          continue;
+        }
         if (service.service === "audio.stop") {
           const element = playbacks.get(playbackId);
           if (element !== undefined) {
@@ -414,6 +439,7 @@ export interface IScriptAudioRuntimeState {
   loop?: boolean;
   pitch?: number;
   playbackId: string;
+  rampSeconds?: number;
   reason?: string;
   soundId: string;
   status: ScriptAudioPlaybackStatus;
@@ -514,6 +540,32 @@ export class ScriptAudioRuntimeController {
     this.#playbacks.set(playbackId, stopped);
     return serializeScriptAudioPlayback(stopped);
   }
+
+  update(playbackId: string, options: IScriptAudioUpdateOptions): IScriptAudioRuntimeState {
+    const record = this.#playbacks.get(playbackId);
+    if (record === undefined) {
+      return {
+        accepted: false,
+        playbackId,
+        reason: "not-found",
+        soundId: "",
+        status: "stopped",
+      };
+    }
+    if (record.status !== "playing") {
+      return { ...serializeScriptAudioPlayback(record), accepted: false, reason: "stopped" };
+    }
+    const validation = validateScriptAudioUpdateOptions(options);
+    if (!validation.accepted) {
+      return { ...serializeScriptAudioPlayback(record), accepted: false, reason: validation.reason };
+    }
+    const updated: IScriptAudioPlaybackRecord = {
+      ...record,
+      ...validation.options,
+    };
+    this.#playbacks.set(playbackId, updated);
+    return serializeScriptAudioPlayback(updated);
+  }
 }
 
 function buildScriptAudioCatalog(audio: IAudioIr | undefined): Map<string, IScriptAudioCatalogEntry> {
@@ -555,6 +607,7 @@ function serializeScriptAudioPlayback(record: IScriptAudioPlaybackRecord): IScri
     ...(record.loop === undefined ? {} : { loop: record.loop }),
     ...(record.pitch === undefined ? {} : { pitch: record.pitch }),
     playbackId: record.playbackId,
+    ...(record.rampSeconds === undefined ? {} : { rampSeconds: record.rampSeconds }),
     ...(record.reason === undefined ? {} : { reason: record.reason }),
     soundId: record.soundId,
     status: record.status,

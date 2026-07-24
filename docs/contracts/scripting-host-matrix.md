@@ -34,6 +34,7 @@ depend on `window`, `document`, workers, `fetch`, websockets, timers, `process`,
 | `audio.play` | `ctx.audio.play` | implemented | implemented | Declared script audio playback. |
 | `audio.query` | `ctx.audio.query` | implemented | implemented | Script audio playback query. |
 | `audio.stop` | `ctx.audio.stop` | implemented | implemented | Script audio playback stop. |
+| `audio.update` | `ctx.audio.update` | implemented | implemented | Bounded absolute volume/pitch target update. |
 | `camera.shake` | `ctx.cameras.shake` | implemented | implemented | Deterministic bounded camera shake request. |
 | `character.move` | `ctx.character.move` | implemented | implemented | Bounded character movement observation. |
 | `effects.play` | `ctx.effects.play` | implemented | implemented | Registry-backed portable feedback preset. |

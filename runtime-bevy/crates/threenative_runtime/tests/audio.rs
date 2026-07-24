@@ -14,7 +14,8 @@ use threenative_loader::{
 use threenative_runtime::audio::{
     NativeAudioCommandKind, NativeAudioDiagnostics, NativeAudioEventCursors, NativeAudioEventQueue,
     NativeAudioPlayback, NativeAudioPlaybackStates, NativeAudioRuntime, NativeAudioServiceQueue,
-    ScriptAudioPlayOptions, ScriptAudioRuntimeController, apply_native_audio_service_effects,
+    ScriptAudioPlayOptions, ScriptAudioRuntimeController, ScriptAudioUpdateOptions,
+    apply_native_audio_service_effects,
     handle_audio_events, observe_audio, play_new_native_audio_events,
     queue_native_audio_service_effects, queue_new_native_audio_events, start_audio,
     trace_audio_lifecycle, trace_audio_support,
@@ -679,8 +680,17 @@ fn should_play_and_stop_declared_logical_audio() {
         ScriptAudioPlayOptions {
             entity: Some("player".to_owned()),
             loop_: None,
+            pitch: None,
             raw: Default::default(),
             volume: None,
+        },
+    );
+    let update = audio.update(
+        &play.playback_id,
+        ScriptAudioUpdateOptions {
+            pitch: Some(1.5),
+            ramp_seconds: Some(0.25),
+            volume: Some(0.8),
         },
     );
     let stop = audio.stop(&play.playback_id);
@@ -688,6 +698,22 @@ fn should_play_and_stop_declared_logical_audio() {
 
     assert_eq!(play.playback_id, "sound.hit#1");
     assert_eq!(play.status, "playing");
+    assert_eq!(update.pitch, Some(1.5));
+    assert_eq!(update.volume, Some(0.8));
+    assert_eq!(update.ramp_seconds, Some(0.25));
     assert_eq!(stop.status, "stopped");
     assert_eq!(query.status, "stopped");
+    assert_eq!(
+        audio
+            .update(
+                &play.playback_id,
+                ScriptAudioUpdateOptions {
+                    pitch: Some(1.2),
+                    ..Default::default()
+                },
+            )
+            .reason
+            .as_deref(),
+        Some("stopped")
+    );
 }

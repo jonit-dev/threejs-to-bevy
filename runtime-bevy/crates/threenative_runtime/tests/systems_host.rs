@@ -928,6 +928,7 @@ fn systems_host_should_expose_audio_facade() {
         Some(&serde_json::json!({
             "playbackId": "sound.hit#1",
             "playStatus": "playing",
+            "pitch": 1.25,
             "stopStatus": "stopped"
         }))
     );
@@ -936,7 +937,7 @@ fn systems_host_should_expose_audio_facade() {
         .iter()
         .filter_map(|entry| entry.service.as_deref())
         .collect();
-    assert_eq!(service_names, vec!["audio.play", "audio.stop"]);
+    assert_eq!(service_names, vec!["audio.play", "audio.stop", "audio.update"]);
 }
 
 #[test]
@@ -2962,7 +2963,7 @@ fn write_audio_facade_service_bundle(name: &str) -> PathBuf {
       "eventWrites": [],
       "resourceReads": ["AudioReport"],
       "resourceWrites": ["AudioReport"],
-      "services": ["audio.play", "audio.stop"],
+      "services": ["audio.play", "audio.update", "audio.stop"],
       "script": { "bundle": "scripts.bundle.js", "exportName": "system_audioFacade" }
     }
   ]
@@ -2972,10 +2973,12 @@ fn write_audio_facade_service_bundle(name: &str) -> PathBuf {
         root.join("scripts.bundle.js"),
         r#"const system_audioFacade = (ctx) => {
   const play = ctx.audio.play("sound.hit", { entity: "player" });
+  const update = ctx.audio.update(play.playbackId, { pitch: 1.25, rampSeconds: 0.1, volume: 0.5 });
   const stop = ctx.audio.stop(play.playbackId);
   ctx.resources.set("AudioReport", {
     playbackId: play.playbackId,
     playStatus: play.status,
+    pitch: update.pitch,
     stopStatus: stop.status
   });
 };
