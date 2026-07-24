@@ -152,8 +152,9 @@ function bundlePlugin(bundlePath: string, metadata: IWebPreviewMetadata, runtime
             const parsed = JSON.parse(body) as unknown;
             if (isRecord(parsed) && typeof parsed.runtimeBuildHash === "string" && /^[a-f0-9]{64}$/u.test(parsed.runtimeBuildHash)) {
               metadata.executedRuntimeBuildHash = parsed.runtimeBuildHash;
-              response.statusCode = 204;
-              response.end();
+              response.setHeader("Content-Type", "application/json; charset=utf-8");
+              response.statusCode = 200;
+              response.end('{"ok":true}\n');
               return;
             }
           } catch {

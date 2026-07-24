@@ -1,10 +1,5 @@
-import {
-  validateScriptAudioUpdateOptions,
-  type IAssetsManifest,
-  type IAudioIr,
-  type IRuntimeDiagnostic,
-  type IScriptAudioUpdateOptions,
-} from "@threenative/ir";
+import type { IAssetsManifest, IAudioIr, IRuntimeDiagnostic, IScriptAudioUpdateOptions } from "@threenative/ir";
+import { validateScriptAudioUpdateOptions } from "@threenative/ir/scriptServices";
 import { resolveWebAssets } from "./assets.js";
 import type { IQueuedEvent, IQueuedServiceCall } from "./systems/context.js";
 

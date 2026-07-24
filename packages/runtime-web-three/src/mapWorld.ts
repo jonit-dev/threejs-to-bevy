@@ -2,7 +2,7 @@ import * as THREE from "three";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { generatePortableShaderMaterial } from "@threenative/ir/shaderCodegen";
-import { composeTransformLayers } from "@threenative/ir";
+import { composeTransformLayers } from "@threenative/ir/transformLayers";
 import type { IAssetIr, IMaterialIr, IRuntimeDiagnostic, IShaderMaterialIr, IWorldEntity, IWorldIr } from "@threenative/ir";
 import { advanceAnimationPlaybackState, animationPlaybackState, type IAnimationPlaybackState } from "./animation.js";
 import {

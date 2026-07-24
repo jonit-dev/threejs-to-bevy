@@ -144,5 +144,6 @@ async function reportExecutedRuntime(url: string, runtimeBuildHash: string): Pro
     headers: { "Content-Type": "application/json" },
     method: "POST",
   });
-  assert.equal(response.status, 204);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { ok: true });
 }

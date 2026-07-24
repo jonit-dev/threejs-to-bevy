@@ -60,9 +60,17 @@
       "types": "./dist/runtimeTraces.d.ts",
       "default": "./dist/runtimeTraces.js"
     },
+    "./scriptServices": {
+      "types": "./dist/scriptServices.d.ts",
+      "default": "./dist/scriptServices.js"
+    },
     "./shaderCodegen": {
       "types": "./dist/shaderCodegen.d.ts",
       "default": "./dist/shaderCodegen.js"
+    },
+    "./transformLayers": {
+      "types": "./dist/transformLayers.d.ts",
+      "default": "./dist/transformLayers.js"
     },
     "./uiEffects": {
       "types": "./dist/uiEffects.d.ts",
