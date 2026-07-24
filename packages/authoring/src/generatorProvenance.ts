@@ -27,6 +27,39 @@ export interface IGeneratorProvenanceIndex {
   ownersByOutput: ReadonlyMap<string, IGeneratorOutputOwner>;
 }
 
+export interface IResolvedGeneratorOverwritePolicy {
+  owner: "default" | "existing-provenance" | "explicit-flag";
+  policy: "manual" | "replace" | "skip";
+}
+
+export async function resolveGeneratorOverwritePolicy(
+  projectPath: string,
+  generatorId: string,
+  requested?: string,
+): Promise<IResolvedGeneratorOverwritePolicy> {
+  if (requested === "manual" || requested === "replace" || requested === "skip") {
+    return { owner: "explicit-flag", policy: requested };
+  }
+  if (requested !== undefined) {
+    throw new Error(`Unsupported generator overwrite policy '${requested}'.`);
+  }
+  try {
+    const data = JSON.parse(
+      await readFile(resolve(projectPath, "content/generators", `${generatorId}.generator.json`), "utf8"),
+    ) as unknown;
+    if (
+      isRecord(data)
+      && data.id === generatorId
+      && (data.overwritePolicy === "manual" || data.overwritePolicy === "replace" || data.overwritePolicy === "skip")
+    ) {
+      return { owner: "existing-provenance", policy: data.overwritePolicy };
+    }
+  } catch (error) {
+    if (!isMissing(error) && !(error instanceof SyntaxError)) throw error;
+  }
+  return { owner: "default", policy: "manual" };
+}
+
 export async function resolveGeneratorProvenance(projectPath: string): Promise<IGeneratorProvenanceIndex> {
   const directory = resolve(projectPath, "content/generators");
   let entries;

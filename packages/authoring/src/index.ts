@@ -28,11 +28,13 @@ export type {
   IGeneratorOwnerAuthorization,
   IGeneratorOutputOwner,
   IGeneratorProvenanceIndex,
+  IResolvedGeneratorOverwritePolicy,
 } from "./generatorProvenance.js";
 export {
   advanceGeneratorOutputHash,
   generatedOutputOwnershipDiagnostic,
   hashGeneratorOutputs,
+  resolveGeneratorOverwritePolicy,
   resolveGeneratorProvenance,
 } from "./generatorProvenance.js";
 export type {

@@ -605,7 +605,7 @@ test("should roll back Blender recipe and provenance when asset generation fails
   try {
     const recipe = { schema: "threenative.blender-recipe", version: "0.1.0", id: "crate", budgets: { maxOutputBytes: 1_000_000, maxPolygons: 10_000 }, parts: [{ id: "body", primitive: "cube" }] };
     const priorRecipe = `${JSON.stringify({ ...recipe, parts: [{ id: "prior-body", primitive: "sphere" }] }, null, 2)}\n`;
-    const priorProvenance = `${JSON.stringify({ schema: "threenative.generator-provenance", version: "0.1.0", id: "crate", provider: "blender", providerVersion: "4.5.11", recipe: "content/generators/crate.recipe.json", outputs: ["assets/generated/crate.glb"], overwritePolicy: "manual" }, null, 2)}\n`;
+    const priorProvenance = `${JSON.stringify({ schema: "threenative.generator-provenance", version: "0.1.0", id: "crate", provider: "blender", providerVersion: "4.5.11", recipe: "content/generators/crate.recipe.json", outputs: ["assets/generated/crate.glb"], overwritePolicy: "replace" }, null, 2)}\n`;
     await mkdir(join(root, "content/generators"), { recursive: true });
     await writeFile(join(root, "content/generators/crate.recipe.json"), priorRecipe);
     await writeFile(join(root, "content/generators/crate.generator.json"), priorProvenance);

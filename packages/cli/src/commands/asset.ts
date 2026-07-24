@@ -1,7 +1,7 @@
 import { access, mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, isAbsolute, join, resolve } from "node:path";
 
-import { addAsset, dispatchAuthoringOperation, recordBlenderGenerator, type IAuthoringOperationResult } from "@threenative/authoring";
+import { addAsset, dispatchAuthoringOperation, recordBlenderGenerator, resolveGeneratorOverwritePolicy, type IAuthoringOperationResult } from "@threenative/authoring";
 import { extractGltfAssetMetadata } from "@threenative/compiler";
 import type { IGltfSceneAssetIr } from "@threenative/ir";
 
@@ -287,7 +287,12 @@ export async function assetCommand(argv: readonly string[], options: IAssetComma
     }
     const projectPath = resolveProjectPath(normalizedArgv, options.cwd);
     const output = readFlag(normalizedArgv, "--out") ?? `assets/generated/${assetId}.glb`;
-    const overwritePolicy = readFlag(normalizedArgv, "--overwrite-policy") ?? "manual";
+    const overwritePolicyResolution = await resolveGeneratorOverwritePolicy(
+      projectPath,
+      assetId,
+      readFlag(normalizedArgv, "--overwrite-policy"),
+    );
+    const overwritePolicy = overwritePolicyResolution.policy;
     const assetConflict = await findAssetRegistrationConflict(projectPath, assetId, output);
     if (assetConflict !== undefined) {
       return diagnosticResult({

@@ -65,10 +65,10 @@ publishes or rolls back without changing unrelated author edits.
 
 **Implementation:**
 
-- [ ] Omitted flag preserves existing policy; first run uses documented default.
-- [ ] Explicit flag is the only way to change policy.
+- [x] Omitted flag preserves existing policy; first run uses documented default.
+- [x] Explicit flag is the only way to change policy.
 - [ ] Dry run reports the resolved policy and owner.
-- [ ] Failed generation leaves provenance and outputs byte-identical.
+- [x] Failed generation leaves provenance and outputs byte-identical.
 
 ### Phase 2: Exact animation reconciliation
 
@@ -132,3 +132,12 @@ regenerated Pacific aircraft is additional after Phase 2.
 ## Verification evidence
 
 Append repeat-run hashes, diffs, commands, and artifact paths during execution.
+
+### Phase 1
+
+- The authoring-owned `resolveGeneratorOverwritePolicy` truth table resolves
+  explicit intent first, then matching durable provenance, then the documented
+  `manual` first-run default.
+- The complete authoring suite passes 152 tests and the focused asset command
+  suite passes 44 tests. The asset failure regression preserves prior recipe
+  and `replace` provenance bytes when generation cannot start.
