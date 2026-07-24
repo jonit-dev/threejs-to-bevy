@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "geography.kure-atol",
+      "path": "assets/imported/geography/kure-atol.glb",
+      "source": "user-provided:kure-atol.glb",
+      "type": "model"
+    }
+  ],
+  "id": "geography.kure-atol",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

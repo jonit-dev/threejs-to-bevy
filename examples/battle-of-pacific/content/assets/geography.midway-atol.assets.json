@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "geography.midway-atol",
+      "path": "assets/imported/geography/midway-atol.glb",
+      "source": "user-provided:midway-atol.glb",
+      "type": "model"
+    }
+  ],
+  "id": "geography.midway-atol",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

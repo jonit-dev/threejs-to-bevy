@@ -6293,6 +6293,42 @@
           ]
         }
       }
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            4500,
+            21.3,
+            -3000
+          ],
+          "scale": [
+            500,
+            500,
+            500
+          ]
+        }
+      },
+      "id": "geography.midway-atol",
+      "prefab": "prefab.geography.midway-atol"
+    },
+    {
+      "components": {
+        "Transform": {
+          "position": [
+            -4500,
+            24.8,
+            -5700
+          ],
+          "scale": [
+            500,
+            500,
+            500
+          ]
+        }
+      },
+      "id": "geography.kure-atol",
+      "prefab": "prefab.geography.kure-atol"
     }
   ],
   "id": "pacific-flight",
@@ -6313,6 +6349,14 @@
     {
       "asset": "assets/generated/fx.flak-burst.glb",
       "id": "prefab.fx.flak"
+    },
+    {
+      "asset": "assets/imported/geography/midway-atol.glb",
+      "id": "prefab.geography.midway-atol"
+    },
+    {
+      "asset": "assets/imported/geography/kure-atol.glb",
+      "id": "prefab.geography.kure-atol"
     }
   ],
   "resources": [

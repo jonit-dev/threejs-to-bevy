@@ -35,3 +35,14 @@
   candidate, whose cloud canopy rendered gray-green in the gameplay view.
   The selected panorama gives metallic aircraft and ocean surfaces coherent
   reflection lighting without terrestrial horizon geometry.
+
+## Midway and Kure Atolls
+
+- Role: geographic landmarks in the Pacific battle space.
+- Source: user-provided `midway-atol.glb` and `kure-atol.glb`.
+- Runtime assets: `assets/imported/geography/midway-atol.glb` and
+  `assets/imported/geography/kure-atol.glb`.
+- Embedded content: baked base-color and metallic/roughness textures.
+- Placement: Midway anchors the east-southeast end of the map; Kure is placed
+  west-northwest of Midway, preserving the real-world bearing and relative
+  approximately 100 km separation at the scene's compressed geographic scale.
