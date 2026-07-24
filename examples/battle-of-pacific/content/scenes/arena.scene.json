@@ -3225,6 +3225,10 @@
     {
       "id": "destroyer.flak.0",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3237,12 +3241,36 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.0.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "id": "destroyer.flak.1",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3255,12 +3283,36 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.1.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "id": "destroyer.flak.2",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3273,12 +3325,36 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.2.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "id": "destroyer.flak.3",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3291,12 +3367,36 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.3.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "id": "destroyer.flak.4",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3309,12 +3409,36 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.4.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "id": "destroyer.flak.5",
       "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.destroyer-smoke"
+        },
         "Transform": {
           "position": [
             0,
@@ -3327,8 +3451,28 @@
             0.001
           ]
         }
-      },
-      "prefab": "prefab.fx.flak"
+      }
+    },
+    {
+      "id": "destroyer.flak.5.flash",
+      "components": {
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.flak-flash"
+        },
+        "Transform": {
+          "position": [
+            0,
+            -9999,
+            0
+          ],
+          "scale": [
+            0.001,
+            0.001,
+            0.001
+          ]
+        }
+      }
     },
     {
       "components": {

@@ -29,6 +29,10 @@
     {
       "asset": "engine-stop",
       "id": "engine.stop"
+    },
+    {
+      "asset": "flak-airburst",
+      "id": "flak.airburst"
     }
   ],
   "version": "0.1.0"

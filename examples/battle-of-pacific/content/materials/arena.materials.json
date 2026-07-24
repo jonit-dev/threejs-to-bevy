@@ -70,6 +70,17 @@
       "roughness": 1.0
     },
     {
+      "id": "mat.flak-flash",
+      "color": "#ffb13b",
+      "baseColorTexture": "fx.gun-smoke.texture",
+      "emissive": "#ff5a0a",
+      "emissiveIntensity": 7.0,
+      "opacity": 0.96,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
+    },
+    {
       "id": "mat.destroyer-flash",
       "color": "#fff4c2",
       "emissive": "#ff6a12",

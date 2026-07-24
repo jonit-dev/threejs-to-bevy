@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "flak-airburst",
+      "path": "assets/generated/audio/flak-airburst.mp3",
+      "source": "generated:elevenlabs",
+      "type": "audio"
+    }
+  ],
+  "id": "flak-airburst",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

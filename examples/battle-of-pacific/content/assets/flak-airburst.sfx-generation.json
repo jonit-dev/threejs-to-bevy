@@ -1,0 +1,16 @@
+{
+  "schema": "threenative/sfx-generation",
+  "version": "0.1.0",
+  "assetId": "flak-airburst",
+  "generation": {
+    "characterCost": "15",
+    "durationSeconds": 1.5,
+    "generatedAt": "2026-07-24T04:47:03.599Z",
+    "loop": false,
+    "model": "eleven_text_to_sound_v2",
+    "outputFormat": "mp3_44100_128",
+    "prompt": "Distant World War II anti-aircraft flak shell airburst: one sharp dry crack, a compact low boom, and a very short smoky decay in open sky; single detonation, no machine-gun burst, no voices, no music",
+    "promptInfluence": 0.8,
+    "provider": "elevenlabs"
+  }
+}

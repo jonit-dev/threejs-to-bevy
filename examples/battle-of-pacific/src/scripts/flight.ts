@@ -154,10 +154,12 @@ export const updatePacificFlight = defineBehavior(
       }
       for (let index = 0; index < control.flakBursts.length; index += 1) {
         control.flakBursts[index]!.life = 0;
-        context.entity(`destroyer.flak.${index}`)?.patch("Transform", {
-          position: [0, -9999, 0],
-          scale: [0.001, 0.001, 0.001]
-        });
+        for (const suffix of ["", ".flash"]) {
+          context.entity(`destroyer.flak.${index}${suffix}`)?.patch("Transform", {
+            position: [0, -9999, 0],
+            scale: [0.001, 0.001, 0.001]
+          });
+        }
       }
       control.playerExplosion.life = 0;
       context.entity("player.explosion")?.patch("Transform", {
@@ -513,6 +515,10 @@ export const updatePacificFlight = defineBehavior(
           burst.x = tracer.px;
           burst.y = tracer.py;
           burst.z = tracer.pz;
+          context.audio.play("flak.airburst", {
+            volume: 0.52,
+            pitch: 0.94 + (control.nextFlak % 3) * 0.05
+          });
           const burstDistance = Math.sqrt(proximitySq);
           const burstDamage = burstDistance < 18 ? 9 : burstDistance < 34 ? 4 : 0;
           if (burstDamage > 0 && control.playerIntegrity > 0) {
@@ -530,23 +536,33 @@ export const updatePacificFlight = defineBehavior(
       }
       entity.patch("Transform", { position: [tracer.px, tracer.py, tracer.pz] });
     }
-    // Flak bursts pop as a fireball-and-smoke cluster, drift up slightly, and
-    // park when spent.
+    // Flak is a layered transparent VFX: a brief hot flash gives way to an
+    // expanding charcoal smoke bloom. The cards stay visually soft instead of
+    // reading as a solid shell or sculpted 3D object.
     for (let index = 0; index < control.flakBursts.length; index += 1) {
       const burst = control.flakBursts[index]!;
-      const entity = context.entity(`destroyer.flak.${index}`);
-      if (entity === undefined) continue;
+      const smoke = context.entity(`destroyer.flak.${index}`);
+      const flash = context.entity(`destroyer.flak.${index}.flash`);
+      if (smoke === undefined || flash === undefined) continue;
       if (burst.life > 0) {
         burst.life = Math.max(0, burst.life - dt);
         const age = 1 - burst.life / 0.8;
-        const flare = Math.sin(Math.min(1, age * 1.2) * Math.PI);
-        const size = Math.max(0.001, flare * (3.5 + age * 6));
-        entity.patch("Transform", {
-          position: [burst.x, burst.y + age * 4, burst.z],
-          scale: [size, size, size]
+        const smokeRise = age * 4;
+        const smokeSize = 2.5 + Math.sin(Math.min(1, age) * Math.PI * 0.5) * 10;
+        const flashPulse = age < 0.28
+          ? Math.sin((age / 0.28) * Math.PI) * 7
+          : 0.001;
+        smoke.patch("Transform", {
+          position: [burst.x, burst.y + smokeRise, burst.z],
+          scale: [smokeSize, smokeSize, 1]
+        });
+        flash.patch("Transform", {
+          position: [burst.x, burst.y + 0.3 + smokeRise * 0.35, burst.z + 0.15],
+          scale: [Math.max(0.001, flashPulse), Math.max(0.001, flashPulse), 1]
         });
       } else {
-        entity.patch("Transform", { position: [0, -9999, 0], scale: [0.001, 0.001, 0.001] });
+        smoke.patch("Transform", { position: [0, -9999, 0], scale: [0.001, 0.001, 0.001] });
+        flash.patch("Transform", { position: [0, -9999, 0], scale: [0.001, 0.001, 0.001] });
       }
     }
     const aaFlash = control.aaMuzzleFlash > 0
