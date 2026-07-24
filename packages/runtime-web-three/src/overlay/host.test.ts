@@ -70,22 +70,24 @@ test("publishes game snapshots to a loaded overlay", () => {
   assert.deepEqual(windowBridge.snapshot("inventory:snapshot")?.payload, { gold: 12 });
 });
 
-test("forwards keyboard events from pointer overlays to the game window", () => {
-  const documentRef = new FakeDocument();
-  const host = createWebOverlayHost(makeOverlays("pointer"), "/bundle", documentRef as unknown as Document);
-  const frame = host.frames[0] as unknown as FakeElement;
-  frame.listeners.get("load")?.[0]?.();
+test("forwards keyboard events from none and pointer overlays but not keyboard-capturing overlays", () => {
+  for (const input of ["none", "pointer"] as const) {
+    const documentRef = new FakeDocument();
+    const host = createWebOverlayHost(makeOverlays(input), "/bundle", documentRef as unknown as Document);
+    const frame = host.frames[0] as unknown as FakeElement;
+    frame.listeners.get("load")?.[0]?.();
 
-  const keydownListeners = frame.contentWindow.document.listeners.get("keydown") ?? [];
-  assert.equal(keydownListeners.length, 1);
-  keydownListeners[0]?.({ altKey: false, code: "KeyW", ctrlKey: false, key: "w", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
-  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
-  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.code, "KeyW");
-  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.type, "keydown");
+    const keydownListeners = frame.contentWindow.document.listeners.get("keydown") ?? [];
+    assert.equal(keydownListeners.length, 1);
+    keydownListeners[0]?.({ altKey: false, code: "KeyW", ctrlKey: false, key: "w", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
+    assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
+    assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.code, "KeyW");
+    assert.equal(documentRef.defaultView.dispatchedKeyboardEvents[0]?.type, "keydown");
 
-  host.setInput("inventory", "pointer-and-keyboard");
-  keydownListeners[0]?.({ altKey: false, code: "KeyS", ctrlKey: false, key: "s", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
-  assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
+    host.setInput("inventory", "pointer-and-keyboard");
+    keydownListeners[0]?.({ altKey: false, code: "KeyS", ctrlKey: false, key: "s", metaKey: false, repeat: false, shiftKey: false, type: "keydown" });
+    assert.equal(documentRef.defaultView.dispatchedKeyboardEvents.length, 1);
+  }
 });
 
 test("mounts a representative built React entry and publishes bridge readiness", () => {

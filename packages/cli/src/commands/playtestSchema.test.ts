@@ -35,8 +35,22 @@ test("should accept visual assertion block in scenario schema", async () => {
 
 test("gameplay parity schema should describe optional parity comparison fields", async () => {
   const result = await playtestSchemaCommand(["--json"]);
-  const payload = JSON.parse(result.stdout) as { parity: { fields: Array<{ name: string }> } };
+  const payload = JSON.parse(result.stdout) as { inputDelivery: { default: string; values: string[] }; parity: { fields: Array<{ name: string }> } };
 
+  assert.equal(payload.inputDelivery.default, "deterministic");
+  assert.deepEqual(payload.inputDelivery.values, ["deterministic", "focused-dom"]);
   assert.equal(payload.parity.fields.some((field) => field.name === "parity.compare.movementDistance.maxDelta"), true);
   assert.equal(payload.parity.fields.some((field) => field.name === "parity.compare.resources[]"), true);
+});
+
+test("playtest scenario should normalize and validate input delivery", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-input-delivery-schema-"));
+  const base = { schemaVersion: 1, name: "focus", target: "web", viewport: { width: 100, height: 100 }, warmupFrames: 0, steps: [{ holdTicks: 1, press: "KeyW", release: true }] };
+  await writeFile(join(root, "focused.playtest.json"), JSON.stringify({ ...base, inputDelivery: "focused-dom" }));
+  await writeFile(join(root, "default.playtest.json"), JSON.stringify(base));
+  await writeFile(join(root, "invalid.playtest.json"), JSON.stringify({ ...base, inputDelivery: "synthetic-window" }));
+
+  assert.equal((await loadPlaytestScenario(root, "focused.playtest.json")).inputDelivery, "focused-dom");
+  assert.equal((await loadPlaytestScenario(root, "default.playtest.json")).inputDelivery, "deterministic");
+  await assert.rejects(loadPlaytestScenario(root, "invalid.playtest.json"), /inputDelivery must be deterministic or focused-dom/u);
 });

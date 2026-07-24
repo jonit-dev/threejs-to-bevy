@@ -126,13 +126,13 @@ known-stable and deliberately impossible scene.
 
 **Implementation:**
 
-- [ ] Add `inputDelivery: "deterministic" | "focused-dom"` with deterministic
+- [x] Add `inputDelivery: "deterministic" | "focused-dom"` with deterministic
   default.
-- [ ] In focused mode, focus the preview/overlay surface and send actual
+- [x] In focused mode, focus the preview/overlay surface and send actual
   `KeyboardEvent.code` transitions through the browser path.
-- [ ] Fail with an actionable diagnostic on desktop/headless targets that
+- [x] Fail with an actionable diagnostic on desktop/headless targets that
   cannot provide this mode.
-- [ ] Prove pointer and none overlays forward input; prove a deliberately
+- [x] Prove pointer and none overlays forward input; prove a deliberately
   keyboard-capturing overlay causes the negative control to fail.
 
 **Verification:** Focused CLI tests plus one Playwright scenario with overlay
@@ -208,3 +208,13 @@ Append per-phase commands, outputs, and artifact paths here during execution.
   green. The required independent Phase 1 review completed clean after
   zero-density, force-cap, supported-launch, terminal-speed, and direction
   false-green controls were added.
+- Phase 2 (2026-07-24): CLI focused tests passed 51/51 and web overlay tests
+  passed 10/10, including explicit `none`/`pointer` forwarding and
+  `pointer-and-keyboard` capture. A fresh visible-browser checkpoint loaded
+  Battle of Pacific with one canvas and one React overlay, runtime ready, and
+  the focus hook installed. The committed focused-DOM Battle scenario passed
+  all 6 assertions with zero playtest diagnostics at
+  `examples/battle-of-pacific/artifacts/playtest/acceptance-input-caused-action/2026-07-24T09-52-46-534Z`.
+  The browser check also caught and closed an eager Node-only IR root import
+  regression by routing runtime values through browser-safe IR subpaths. The
+  required independent Phase 2 review completed clean.

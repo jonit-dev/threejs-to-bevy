@@ -25,6 +25,7 @@ declare global {
   // Browser preview global exposed by @threenative/runtime-web-three.
   // The CLI reads it through Playwright to verify gameplay effects.
   var __THREENATIVE_EFFECT_LOG__: unknown;
+  var __THREENATIVE_FOCUS_INPUT_SURFACE__: (() => boolean) | undefined;
   var __THREENATIVE_READY__: {
     runtimeDiagnostics?: unknown;
   } | undefined;
@@ -342,6 +343,17 @@ export async function playtestCommand(
           ...(viewport === undefined ? {} : { viewport }),
         })
       : applyScenarioOverrides(await loadPlaytestScenario(projectPath, scenarioPath), { target, viewport });
+    if (scenario.inputDelivery === "focused-dom" && scenario.target !== "web") {
+      return diagnosticResult(
+        {
+          code: "TN_PLAYTEST_INPUT_DELIVERY_UNSUPPORTED",
+          message: `Playtest inputDelivery 'focused-dom' is unavailable for target '${scenario.target}'.`,
+          severity: "error",
+          suggestion: "Use inputDelivery 'deterministic' for desktop/Bevy proof, and keep focused-dom as the web focus-realism lane.",
+        },
+        { exitCode: 2, json, stderr: !json },
+      );
+    }
     const selectedRunner = createPlaytestTargetRunner(
       scenario.target,
       options.runner ?? runWebPlaytest,
@@ -1308,6 +1320,14 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
       });
     }
     await page.waitForTimeout(120);
+    if (options.scenario.inputDelivery === "focused-dom" && !await focusWebPlaytestSurface(page)) {
+      diagnostics.push({
+        code: "TN_PLAYTEST_FOCUSED_SURFACE_UNAVAILABLE",
+        message: "Focused-DOM input could not focus the preview or overlay surface.",
+        severity: "error",
+        suggestion: "Ensure the preview canvas or declared web overlay is visible and focusable before the scenario starts.",
+      });
+    }
     await resetWebPerformanceTrace(page);
     diagnostics.push(...await applyWebScenarioSetup(page, options.scenario));
     await waitForWebFrameSamples(page, options.scenario.warmupFrames, Math.max(1_000, options.scenario.warmupFrames * (1000 / 15)));
@@ -1335,7 +1355,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
         }
       }
       if (step.press !== undefined) {
-        await dispatchPlaytestInput(page, "down", step.press);
+        await dispatchPlaytestInput(page, "down", step.press, options.scenario.inputDelivery);
         const holdTicks = playtestStepHoldTicks(step, options.frames);
         if (step.holdTicks !== undefined) {
           await advanceWebFixedTicks(page, holdTicks);
@@ -1346,7 +1366,7 @@ async function probePreview(options: IPlaytestRunOptions & { url: string }): Pro
           });
         }
         if (step.release) {
-          await dispatchPlaytestInput(page, "up", step.press);
+          await dispatchPlaytestInput(page, "up", step.press, options.scenario.inputDelivery);
         }
         completedTicks += holdTicks;
       }
@@ -1708,7 +1728,11 @@ async function dispatchKeyboardCode(page: import("playwright").Page, type: "keyd
   );
 }
 
-async function dispatchPlaytestInput(page: import("playwright").Page, type: "down" | "up", control: string): Promise<void> {
+export async function focusWebPlaytestSurface(page: Pick<import("playwright").Page, "evaluate">): Promise<boolean> {
+  return page.evaluate(() => globalThis.__THREENATIVE_FOCUS_INPUT_SURFACE__?.() === true);
+}
+
+async function dispatchPlaytestInput(page: import("playwright").Page, type: "down" | "up", control: string, delivery: IPlaytestScenario["inputDelivery"] = "deterministic"): Promise<void> {
   const pointer = /^pointer\.([0-4])$/u.exec(control);
   if (pointer !== null) {
     await page.evaluate(
@@ -1721,6 +1745,11 @@ async function dispatchPlaytestInput(page: import("playwright").Page, type: "dow
       },
       { button: Number(pointer[1]), eventType: type === "down" ? "pointerdown" : "pointerup" },
     );
+    return;
+  }
+  if (delivery === "focused-dom") {
+    if (type === "down") await page.keyboard.down(control);
+    else await page.keyboard.up(control);
     return;
   }
   await dispatchKeyboardCode(page, type === "down" ? "keydown" : "keyup", control);

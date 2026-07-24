@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 
 import { NativeHeadlessUnsupportedError } from "../native/bevy.js";
 
-import { advanceWebFixedTicks, evaluateMovementDiagnostics, nativeAnimationEffectLogEntries, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, playtestPreviewUrl, resourceObservationDiagnostics } from "./playtest.js";
+import { advanceWebFixedTicks, evaluateMovementDiagnostics, focusWebPlaytestSurface, nativeAnimationEffectLogEntries, nativeHarnessCommandStream, nativeSceneQueryEffectLog, parseAxisExpectation, playtestCommand, playtestPreviewUrl, resourceObservationDiagnostics } from "./playtest.js";
 
 test("web playtest enables detailed runtime write capture only when requested", () => {
   assert.equal(playtestPreviewUrl("http://127.0.0.1:5173", false, false), "http://127.0.0.1:5173/");
@@ -61,6 +61,39 @@ test("web playtest exact stepping retains the older-runtime frame fallback", asy
   } finally {
     globalThis.__THREENATIVE_RUNTIME__ = previousRuntime;
   }
+});
+
+test("focused DOM playtest should invoke the runtime focus surface hook", async () => {
+  const previous = globalThis.__THREENATIVE_FOCUS_INPUT_SURFACE__;
+  let focused = false;
+  globalThis.__THREENATIVE_FOCUS_INPUT_SURFACE__ = () => {
+    focused = true;
+    return true;
+  };
+  const page = { evaluate: async <T>(fn: () => T): Promise<T> => fn() };
+  try {
+    assert.equal(await focusWebPlaytestSurface(page as never), true);
+    assert.equal(focused, true);
+  } finally {
+    globalThis.__THREENATIVE_FOCUS_INPUT_SURFACE__ = previous;
+  }
+});
+
+test("focused DOM input should fail closed on native targets", async () => {
+  const root = await mkdtemp(join(tmpdir(), "tn-focused-native-"));
+  await writeFile(join(root, "focused.playtest.json"), JSON.stringify({
+    inputDelivery: "focused-dom",
+    name: "focused-native",
+    schemaVersion: 1,
+    steps: [{ holdTicks: 1, press: "KeyW", release: true }],
+    subject: "player",
+    target: "desktop",
+    viewport: { height: 100, width: 100 },
+    warmupFrames: 0,
+  }));
+  const result = await playtestCommand(["--project", ".", "--scenario", "focused.playtest.json", "--json"], root);
+  assert.equal(result.exitCode, 2);
+  assert.match(result.stdout, /TN_PLAYTEST_INPUT_DELIVERY_UNSUPPORTED/u);
 });
 
 test("native playtest should route occlusion assertions through rendered scene queries", () => {

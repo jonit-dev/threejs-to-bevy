@@ -11,6 +11,11 @@ export interface IPlaytestSchemaPayload {
     stepSequence: IPlaytestScenario["steps"];
   };
   message: string;
+  inputDelivery: {
+    default: "deterministic";
+    description: string;
+    values: Array<"deterministic" | "focused-dom">;
+  };
   parity: {
     description: string;
     fields: Array<{ description: string; name: string; type: string }>;
@@ -84,6 +89,11 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
       ],
     },
     schema: "threenative.playtest-schema",
+    inputDelivery: {
+      default: "deterministic",
+      description: "Input routing policy. focused-dom focuses the real preview or overlay surface and uses browser keyboard delivery; it is web-only.",
+      values: ["deterministic", "focused-dom"],
+    },
     setup: {
       description: "Optional initial runtime Transform overrides applied before warmup and baseline sampling.",
       fields: [
@@ -118,5 +128,5 @@ export function playtestSchemaPayload(): IPlaytestSchemaPayload {
 
 function renderHumanSchema(payload: IPlaytestSchemaPayload): string {
   const assertions = payload.assertions.map((entry) => `  ${entry.kind}: ${entry.description}`).join("\n");
-  return `${payload.message}\n\nAssertions:\n${assertions}\n\nTiming:\n  ${payload.timing.relation}\n\nParity:\n  ${payload.parity.description}\n\nUse --json for field definitions and examples.\n`;
+  return `${payload.message}\n\nAssertions:\n${assertions}\n\nInput delivery:\n  ${payload.inputDelivery.description}\n\nTiming:\n  ${payload.timing.relation}\n\nParity:\n  ${payload.parity.description}\n\nUse --json for field definitions and examples.\n`;
 }

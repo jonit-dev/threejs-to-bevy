@@ -3,6 +3,7 @@
   "acceptanceId": "input-caused-action",
   "name": "acceptance-input-caused-action",
   "target": "web",
+  "inputDelivery": "focused-dom",
   "viewport": {
     "width": 1280,
     "height": 720

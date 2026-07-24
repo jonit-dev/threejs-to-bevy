@@ -17,6 +17,7 @@ declare global {
     };
     __THREENATIVE_DEBUG_OVERLAY__?: unknown;
     __THREENATIVE_EFFECT_LOG__?: ISystemEffectLog;
+    __THREENATIVE_FOCUS_INPUT_SURFACE__?: () => boolean;
     __THREENATIVE_RUNTIME__?: {
       aerodynamicSnapshot?(id?: string): IAerodynamicObservation[];
       debugColliderCount?: number;
@@ -97,6 +98,15 @@ window.__THREENATIVE_RUNTIME__ = {
   uiNodeSnapshot: result.uiNodeSnapshot,
   vehicleControllerSnapshot: result.vehicleControllerSnapshot,
   vehicleWheelSnapshot: result.vehicleWheelSnapshot,
+};
+window.__THREENATIVE_FOCUS_INPUT_SURFACE__ = () => {
+  const overlayFrames = Array.from(document.querySelectorAll<HTMLIFrameElement>("iframe[data-threenative-overlay-id]"))
+    .filter((frame) => frame.style.display !== "none")
+    .sort((left, right) => Number(right.style.zIndex || 0) - Number(left.style.zIndex || 0));
+  const surface = overlayFrames[0] ?? result.canvas;
+  if (surface instanceof HTMLCanvasElement && surface.tabIndex < 0) surface.tabIndex = 0;
+  surface.focus();
+  return document.activeElement === surface;
 };
 
 if (debugVehicle !== null) mountVehicleDebugHud(debugVehicle, result);

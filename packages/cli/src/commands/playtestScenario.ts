@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 export type PlaytestTarget = "web" | "desktop" | "bevy";
+export type PlaytestInputDelivery = "deterministic" | "focused-dom";
 
 export interface IPlaytestViewport {
   height: number;
@@ -161,6 +162,7 @@ export interface IPlaytestScenario {
   acceptanceId?: string;
   artifacts?: IPlaytestArtifactRequest;
   assert?: IPlaytestScenarioAssertions;
+  inputDelivery?: PlaytestInputDelivery;
   name: string;
   parity?: IPlaytestParityConfig;
   schemaVersion: 1;
@@ -292,6 +294,10 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
   if (target !== "web" && target !== "desktop" && target !== "bevy") {
     throw invalidScenario(scenarioPath, "Scenario target must be one of: web, desktop, bevy.");
   }
+  const inputDelivery = value.inputDelivery ?? "deterministic";
+  if (inputDelivery !== "deterministic" && inputDelivery !== "focused-dom") {
+    throw invalidScenario(scenarioPath, "Scenario inputDelivery must be deterministic or focused-dom.");
+  }
   if (!Array.isArray(value.steps) || value.steps.length === 0) {
     throw invalidStep(scenarioPath, "Scenario steps[] must contain at least one step.");
   }
@@ -300,6 +306,7 @@ function validatePlaytestScenario(value: unknown, scenarioPath: string, absolute
     ...(typeof value.acceptanceId === "string" ? { acceptanceId: value.acceptanceId } : {}),
     ...(isRecord(value.artifacts) ? { artifacts: value.artifacts as IPlaytestArtifactRequest } : {}),
     ...(isRecord(value.assert) ? { assert: validateAssertions(value.assert) } : {}),
+    inputDelivery,
     name,
     ...(isRecord(value.parity) ? { parity: validateParityConfig(value.parity) } : {}),
     schemaVersion: 1,
