@@ -1,4 +1,4 @@
-import { PHYSICS_CAPABILITY_DESCRIPTORS, PHYSICS_CAPABILITY_LIMITS, validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent, type IWorldIr } from "@threenative/ir";
+import { aerodynamicWorldViabilityDiagnostics, analyzeAerodynamicWorldEntityViability, PHYSICS_CAPABILITY_DESCRIPTORS, PHYSICS_CAPABILITY_LIMITS, validateAerodynamicBody, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume, type IAerodynamicBodyComponent, type IIrDiagnostic, type IVehicleControllerComponent, type IWindVolumeComponent, type IWorldIr } from "@threenative/ir";
 import { authoringDiagnostic } from "../diagnostics.js";
 import { loadAuthoringProject } from "../project.js";
 import { isRecord, type ISceneDocument, type ISceneEntity } from "../schemas.js";
@@ -77,6 +77,19 @@ function physicsValidationEntities(scene: ISceneDocument): IWorldIr["entities"] 
         : { Transform: structuredClone(candidate.transform) }),
     },
   })) as unknown as IWorldIr["entities"];
+}
+
+export function aerodynamicViabilityDiagnosticsForScene(scene: ISceneDocument, file: string): ReturnType<typeof authoringDiagnostic>[] {
+  const world: IWorldIr = { entities: physicsValidationEntities(scene), schema: "threenative.world", version: "0.1.0" };
+  return aerodynamicWorldViabilityDiagnostics(world, "").map((diagnostic) => authoringDiagnostic({
+    code: diagnostic.code,
+    file,
+    fix: diagnostic.fix,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    severity: diagnostic.severity,
+    suggestion: diagnostic.suggestion,
+  }));
 }
 
 function attachStructuredPhysicsFixes(
@@ -286,8 +299,26 @@ export async function inspectWindVolume(options: IPortableAerodynamicsOperationO
 export async function validateAerodynamicBodySource(options: IPortableAerodynamicsOperationOptions): Promise<IAuthoringOperationResult> {
   const loaded = await findPhysicsComponent(options, "AerodynamicBody");
   if (loaded.result !== undefined) return loaded.result;
-  const result = aerodynamicValidationFailure(options, loaded.scene!, loaded.entity!, loaded.component!)
-    ?? { ...authoringOperationResult({ projectPath: options.projectPath }), body: structuredClone(loaded.component), valid: true };
+  const structuralFailure = aerodynamicValidationFailure(options, loaded.scene!, loaded.entity!, loaded.component!);
+  if (structuralFailure !== undefined) return structuralFailure;
+  const entities = physicsValidationEntities(loaded.scene!);
+  const entityIndex = Math.max(0, entities.findIndex((entity) => entity.id === loaded.entity!.id));
+  const world: IWorldIr = { entities, schema: "threenative.world", version: "0.1.0" };
+  const viability = analyzeAerodynamicWorldEntityViability(world, entityIndex, physicsComponentPath(loaded.scene!, loaded.entity!, "AerodynamicBody"));
+  const diagnostics = viability.diagnostics.map((diagnostic) => authoringDiagnostic({
+    code: diagnostic.code,
+    fix: diagnostic.fix,
+    message: diagnostic.message,
+    path: diagnostic.path,
+    severity: diagnostic.severity,
+    suggestion: diagnostic.suggestion,
+  }));
+  const result = {
+    ...authoringOperationResult({ diagnostics, projectPath: options.projectPath }),
+    body: structuredClone(loaded.component),
+    valid: !viability.diagnostics.some((diagnostic) => diagnostic.severity !== "warning"),
+    viability,
+  };
   return result;
 }
 

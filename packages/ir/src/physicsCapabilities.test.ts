@@ -141,12 +141,13 @@ test("should fail descriptor drift when an adapter consumer is absent", () => {
 });
 
 test("physics descriptors should match checked-in public contract adapter fixture and gate consumers", async () => {
-  const [webPhysics, webJoints, webDestruction, webVehicle, webAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeDestruction, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, destructionGate, catalogSource] = await Promise.all([
+  const [webPhysics, webJoints, webDestruction, webVehicle, webAerodynamics, sharedAerodynamics, webContext, webEffects, nativeMatrix, nativeBridge, nativeContext, nativeEffects, nativeLoader, nativePhysics, nativeJoints, nativeDestruction, nativeVehicle, nativeAerodynamics, nativeLib, authoring, compilerPhysics, irTypes, irSystems, sdkPhysics, sdkSystems, stdlibContext, foundationGate, wheelGate, drivetrainGate, aerodynamicsGate, jointsGate, destructionGate, catalogSource] = await Promise.all([
     readFile(resolve(root, "packages/runtime-web-three/src/physics.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsJoints.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsDestruction.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsVehicle.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/physicsAerodynamics.ts"), "utf8"),
+    readFile(resolve(root, "packages/ir/src/aerodynamicViability.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/systems/context.ts"), "utf8"),
     readFile(resolve(root, "packages/runtime-web-three/src/systems/effects.ts"), "utf8"),
     readFile(resolve(root, "runtime-bevy/crates/threenative_runtime/src/scripting_host_matrix.rs"), "utf8"),
@@ -175,6 +176,7 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     readFile(resolve(root, "tools/verify/src/advancedPhysicsDestruction.ts"), "utf8"),
     readFile(resolve(root, "packages/ir/fixtures/conformance/fixture-catalog.json"), "utf8"),
   ]);
+  const webAerodynamicRuntime = `${webAerodynamics}\n${sharedAerodynamics}`;
   const catalog = JSON.parse(catalogSource) as { fixtures: Array<{ aggregateGate: string; bundlePath: string; canonicalId: string }> };
   const cookbookEntries = (await readdir(resolve(root, "docs/cookbook")))
     .filter((file) => file.endsWith(".md"))
@@ -194,8 +196,8 @@ test("physics descriptors should match checked-in public contract adapter fixtur
     .filter((candidate) => foundationGate.includes(`const gate = "${candidate}"`) || wheelGate.includes(`const gate = "${candidate}"`) || drivetrainGate.includes(`conformance/${candidate}/game.bundle`) || aerodynamicsGate.includes(`conformance/${candidate}/game.bundle`) || jointsGate.includes(`conformance/${candidate}/game.bundle`) || destructionGate.includes(`conformance/${candidate}/game.bundle`));
   const nativeVisualSyncCount = nativeLib.match(/sync_physics_vehicle_visuals/g)?.length ?? 0;
   const webRuntimeSources: Readonly<Record<string, string>> = {
-    AerodynamicBody: webAerodynamics,
-    WindVolume: webAerodynamics,
+    AerodynamicBody: webAerodynamicRuntime,
+    WindVolume: webAerodynamicRuntime,
     CompoundCollider: webPhysics,
     Destructible: webDestruction,
     PhysicsJoint: webJoints,
@@ -257,8 +259,8 @@ test("physics descriptors should match checked-in public contract adapter fixtur
       .filter((descriptor) => descriptor.context.endsWith(".setInputs") ? stdlibContext.includes(`${descriptor.context.split(".").at(-2)}:`) && stdlibContext.includes("setInputs(") : stdlibContext.includes(`${descriptor.context.slice("ctx.physics.".length)}(`))
       .map((descriptor) => descriptor.context),
     webComponents: [
-      ...(webAerodynamics.includes("components.AerodynamicBody") ? ["AerodynamicBody"] : []),
-      ...(webAerodynamics.includes("components.WindVolume") ? ["WindVolume"] : []),
+      ...(webAerodynamicRuntime.includes("components.AerodynamicBody") ? ["AerodynamicBody"] : []),
+      ...(webAerodynamicRuntime.includes("components.WindVolume") ? ["WindVolume"] : []),
       ...(webPhysics.includes("const compound = entity.components.CompoundCollider") && webPhysics.includes("compoundColliderDescs(compound)") ? ["CompoundCollider"] : []),
       ...(webDestruction.includes("IPhysicsDestructibleComponent") && webDestruction.includes("registerPhysicsDestructible") ? ["Destructible"] : []),
       ...(webJoints.includes("entity.components.PhysicsJoint") && webJoints.includes("createImpulseJoint") ? ["PhysicsJoint"] : []),

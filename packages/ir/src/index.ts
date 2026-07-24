@@ -28,6 +28,7 @@ export {
   type PhysicsDebugPrimitiveKind,
 } from "./physicsDebug.js";
 export { validateAerodynamicBody, validateDestructible, validatePhysicsComponents, validatePhysicsJointGraph, validateVehicleController, validateWindVolume } from "./physicsValidation.js";
+export { aerodynamicWorldViabilityDiagnostics, analyzeAerodynamicViability, analyzeAerodynamicWorldEntityViability, evaluateAerodynamicForces, resolveAerodynamicWind, sampleAerodynamicCurve, type IAerodynamicForceEvaluation, type IAerodynamicViabilityMeasurements, type IAerodynamicViabilityResult } from "./aerodynamicViability.js";
 export {
   DISTRIBUTION_ARCHITECTURES,
   DISTRIBUTION_CAPABILITIES,

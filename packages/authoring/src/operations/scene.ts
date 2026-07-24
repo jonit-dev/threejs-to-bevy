@@ -3,6 +3,7 @@ import { dirname, relative, resolve } from "node:path";
 import { isGeneratedArtifactPath, normalizeRelativePath, writeAuthoringJsonDocument, type AuthoringDocumentKind, type IAuthoringDocument } from "../documents.js";
 import { authoringDiagnostic, hasAuthoringErrors, sortAuthoringDiagnostics, type IAuthoringDiagnostic } from "../diagnostics.js";
 import { validateMaterialDocument } from "./materialValidation.js";
+import { aerodynamicViabilityDiagnosticsForScene } from "./physics.js";
 import { buildUiSourceRecipe, mergeById } from "./uiRecipes.js";
 import { generatedPathDiagnostic, typeDiagnostic, validateGeneratedPathString } from "./validationHelpers.js";
 import { loadAuthoringProject, type IAuthoringProject } from "../project.js";
@@ -621,6 +622,9 @@ export async function validateAuthoringProject(options: IValidateAuthoringProjec
     diagnostics.push(
       ...(await validateAuthoringDocument(project.projectPath, document.projectRelativePath, document.kind, document.data, context)),
     );
+    if (document.kind === "scene" && isRecord(document.data)) {
+      diagnostics.push(...aerodynamicViabilityDiagnosticsForScene(document.data as unknown as ISceneDocument, document.projectRelativePath));
+    }
   }
   diagnostics.push(...registryOwnershipDiagnostics(project.documents));
 

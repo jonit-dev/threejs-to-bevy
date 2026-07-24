@@ -33,6 +33,7 @@ import { validateManifest, validateV10BoundaryCapabilities } from "./manifestVal
 import { validateScenes } from "./scenesValidation.js";
 import { validateSequences } from "./sequencesValidation.js";
 import { validateCharacterComponents, validatePhysicsComponents, validatePhysicsJointGraph } from "./physicsValidation.js";
+import { aerodynamicWorldViabilityDiagnostics } from "./aerodynamicViability.js";
 import { validateRenderingLightBudget, validateRuntimeConfig } from "./runtimeConfigValidation.js";
 import { validateContactShadows } from "./rendering.js";
 import { validateInteractions } from "./interactionsValidation.js";
@@ -805,6 +806,7 @@ function validateWorld(world: IWorldIr, path: string, diagnostics: IIrDiagnostic
   const rigidBodyEntityIds = new Set(world.entities.filter((entity) => entity.components.RigidBody !== undefined).map((entity) => entity.id));
   const tireModelEntityIds = new Set(world.entities.filter((entity) => entity.components.TireModel !== undefined).map((entity) => entity.id));
   world.entities.forEach((entity, index) => validatePhysicsComponents(entity, `${path}/entities/${index}`, entityIds, rigidBodyEntityIds, tireModelEntityIds, diagnostics));
+  diagnostics.push(...aerodynamicWorldViabilityDiagnostics(world, path));
   validatePhysicsJointGraph(world, path, diagnostics);
   world.entities.forEach((entity, index) => validateCharacterComponents(entity, `${path}/entities/${index}`, input, diagnostics));
 }

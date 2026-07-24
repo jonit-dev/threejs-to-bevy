@@ -61,6 +61,34 @@ test("aerodynamics operations and project validation reject invalid bounded payl
   } finally { await rm(root, { force: true, recursive: true }); }
 });
 
+test("aerodynamic validation projects spawn viability and preserves not-applicable state", async () => {
+  const root = await project();
+  try {
+    const scenePath = join(root, "content/scenes/arena.scene.json");
+    const scene = JSON.parse(await readFile(scenePath, "utf8")) as { entities: Array<{ components?: Record<string, unknown>; id: string }> };
+    const craft = scene.entities.find((entity) => entity.id === "craft")!;
+    craft.components = {
+      AerodynamicBody: body,
+      RigidBody: { kind: "dynamic", mass: 1_000, velocity: [0, 0, -20] },
+      Transform: {},
+    };
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+
+    const impossible = await dispatchAuthoringOperation({ args: { entityId: "craft", sceneId: "arena" }, name: "physics.aerodynamics.validate", projectPath: root });
+    assert.equal(impossible.ok, false);
+    assert.ok(impossible.diagnostics.some((item) => item.code === "TN_IR_PHYSICS_AERODYNAMIC_LIFT_BUDGET_INSUFFICIENT" && item.path?.endsWith("/surfaces") === true));
+    const projectValidation = await validateAuthoringProject({ projectPath: root });
+    assert.ok(projectValidation.diagnostics.some((item) => item.code === "TN_IR_PHYSICS_AERODYNAMIC_LIFT_BUDGET_INSUFFICIENT"));
+
+    craft.components.RigidBody = { kind: "dynamic", mass: 1_000 };
+    await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`);
+    const absentState = await dispatchAuthoringOperation({ args: { entityId: "craft", sceneId: "arena" }, name: "physics.aerodynamics.validate", projectPath: root }) as typeof impossible & { valid: boolean; viability: { reason?: string; status: string } };
+    assert.equal(absentState.ok, true);
+    assert.equal(absentState.valid, true);
+    assert.deepEqual(absentState.viability, { diagnostics: [], reason: "spawn-velocity-missing", status: "not-applicable" });
+  } finally { await rm(root, { force: true, recursive: true }); }
+});
+
 async function project(): Promise<string> {
   const root = await mkdtemp(join(tmpdir(), "tn-aerodynamics-ops-"));
   await mkdir(join(root, "content/scenes"), { recursive: true });

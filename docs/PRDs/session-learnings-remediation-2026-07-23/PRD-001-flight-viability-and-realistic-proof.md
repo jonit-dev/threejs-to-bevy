@@ -93,13 +93,13 @@ desktop.
 
 **Implementation:**
 
-- [ ] Compute weight, lift and drag at declared spawn velocity/orientation.
-- [ ] Compute available thrust versus drag at declared cruise speed.
-- [ ] Report rigid-body damping combined with authored aerodynamic drag.
-- [ ] Sum baseline surface force moments and flag materially untrimmed stowed
+- [x] Compute weight, lift and drag at declared spawn velocity/orientation.
+- [x] Compute available thrust versus drag at declared cruise speed.
+- [x] Report rigid-body damping combined with authored aerodynamic drag.
+- [x] Sum baseline surface force moments and flag materially untrimmed stowed
   controls.
-- [ ] Emit stable codes, paths, measured values, thresholds, and fixes.
-- [ ] Return `not-applicable` rather than guessing when required state is absent.
+- [x] Emit stable codes, paths, measured values, thresholds, and fixes.
+- [x] Return `not-applicable` rather than guessing when required state is absent.
 
 **Tests required:**
 
@@ -194,3 +194,17 @@ number. Phases 2 and 3 also require manual visible-browser review.
 ## Verification evidence
 
 Append per-phase commands, outputs, and artifact paths here during execution.
+
+- Phase 1 (2026-07-24): `pnpm --filter @threenative/ir test` passed
+  429/429; focused aerodynamic analyzer tests passed 14/14; authoring
+  aerodynamic operation tests passed 3/3; runtime aerodynamic tests passed
+  7/7. `tn authoring validate` passed for both
+  `examples/aerodynamics-flight-course` and `examples/battle-of-pacific`.
+  Full web-runtime verification reached 561/564 with three unrelated concurrent
+  ocean-shader assertion mismatches. `pnpm verify:conformance` reached the V9
+  rendering-lights comparison before failing on the concurrent rendering
+  branch; the focused advanced-aerodynamics gate also reported integrated
+  maneuver parity failures while all shared-kernel unit boundaries remained
+  green. The required independent Phase 1 review completed clean after
+  zero-density, force-cap, supported-launch, terminal-speed, and direction
+  false-green controls were added.
