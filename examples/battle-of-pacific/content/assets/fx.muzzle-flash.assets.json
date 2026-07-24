@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "fx.muzzle-flash",
+      "path": "assets/generated/fx.muzzle-flash.glb",
+      "source": "generator:fx.muzzle-flash",
+      "type": "model"
+    }
+  ],
+  "id": "fx.muzzle-flash",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

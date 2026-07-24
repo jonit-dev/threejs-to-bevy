@@ -1,0 +1,85 @@
+{
+  "schema": "threenative.blender-recipe",
+  "version": "0.1.0",
+  "id": "fx.muzzle-flash",
+  "materials": [
+    {
+      "id": "flash.white-hot",
+      "baseColor": [1.0, 0.98, 0.82, 1.0],
+      "metallic": 0.0,
+      "roughness": 0.2,
+      "emissive": [1.0, 0.9, 0.56]
+    },
+    {
+      "id": "flash.orange",
+      "baseColor": [1.0, 0.42, 0.06, 1.0],
+      "metallic": 0.0,
+      "roughness": 0.65,
+      "emissive": [1.0, 0.18, 0.015]
+    }
+  ],
+  "parts": [
+    {
+      "id": "hot-core",
+      "primitive": "cone",
+      "material": "flash.white-hot",
+      "position": [0, 0, 0.16],
+      "rotation": [90, 0, 0],
+      "scale": [0.055, 0.3, 0.055],
+      "segments": 12,
+      "shading": "smooth"
+    },
+    {
+      "id": "flame-top",
+      "primitive": "cone",
+      "material": "flash.orange",
+      "position": [0, 0.055, 0.12],
+      "rotation": [72, 0, 0],
+      "scale": [0.035, 0.2, 0.035],
+      "segments": 8,
+      "shading": "smooth"
+    },
+    {
+      "id": "flame-bottom",
+      "primitive": "cone",
+      "material": "flash.orange",
+      "position": [0, -0.055, 0.12],
+      "rotation": [108, 0, 0],
+      "scale": [0.035, 0.2, 0.035],
+      "segments": 8,
+      "shading": "smooth"
+    },
+    {
+      "id": "flame-left",
+      "primitive": "cone",
+      "material": "flash.orange",
+      "position": [-0.055, 0, 0.12],
+      "rotation": [90, -18, 0],
+      "scale": [0.035, 0.2, 0.035],
+      "segments": 8,
+      "shading": "smooth"
+    },
+    {
+      "id": "flame-right",
+      "primitive": "cone",
+      "material": "flash.orange",
+      "position": [0.055, 0, 0.12],
+      "rotation": [90, 18, 0],
+      "scale": [0.035, 0.2, 0.035],
+      "segments": 8,
+      "shading": "smooth"
+    }
+  ],
+  "budgets": {
+    "maxAnimations": 2,
+    "maxKeyframesPerTrack": 8,
+    "maxMaterials": 4,
+    "maxModifiersPerPart": 2,
+    "maxOperations": 12,
+    "maxOutputBytes": 1000000,
+    "maxParts": 12,
+    "maxPolygons": 1500,
+    "maxSegments": 16,
+    "maxTracksPerAnimation": 4
+  }
+}

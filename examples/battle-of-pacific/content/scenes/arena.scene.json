@@ -23,13 +23,13 @@
           "position": [
             0,
             4.6,
-            16
+            15
           ],
           "rotation": [
-            -0.130526,
+            -0.090633,
             0,
             0,
-            0.991445
+            0.995884
           ]
         }
       }
@@ -73,7 +73,7 @@
       "id": "ocean.visual",
       "components": {
         "OceanWater": {
-          "color": "#0a4a94",
+          "color": "#042143",
           "size": 24000,
           "sunColor": "#fdf6e3",
           "sunDirection": [
@@ -842,14 +842,14 @@
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.tracer",
+          "mesh": "fx.muzzle-flash",
           "material": "mat.muzzleflash"
         },
         "Transform": {
           "position": [
-            0.5375,
-            -0.024,
-            0.21
+            0.105,
+            0.07,
+            0.68
           ],
           "scale": [
             0.001,
@@ -866,14 +866,14 @@
           "parent": "aircraft.visual"
         },
         "MeshRenderer": {
-          "mesh": "mesh.tracer",
+          "mesh": "fx.muzzle-flash",
           "material": "mat.muzzleflash"
         },
         "Transform": {
           "position": [
-            -0.5375,
-            -0.024,
-            0.21
+            -0.105,
+            0.07,
+            0.68
           ],
           "scale": [
             0.001,

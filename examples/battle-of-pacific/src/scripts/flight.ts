@@ -19,6 +19,7 @@ export const updatePacificFlight = defineBehavior(
     services: [
       "animation.play",
       "audio.play",
+      "audio.stop",
       "physics.addTorque",
       "physics.aerodynamics.setInputs",
       "physics.setAngularVelocity",
@@ -34,15 +35,17 @@ export const updatePacificFlight = defineBehavior(
 
     const control = context.state("pacific-flight-control", {
       activeClip: "",
-      audioStarted: false,
+      enginePlaybackId: "",
       elapsed: 0,
       flapTransitionUntil: 0,
       flapsDown: false,
       retracting: false,
       discBlend: 0,
       fireCooldown: 0,
+      gunRecoil: 0,
       lastGunSfx: -1,
       muzzleFlash: 0,
+      musicStarted: false,
       nextTracer: 0,
       prevFailed: false,
       prevStall: false,
@@ -52,15 +55,20 @@ export const updatePacificFlight = defineBehavior(
       visualBank: 0
     });
 
-    // Start the looping ambience once: the audio document stores flat sound cues
-    // with no autoplay, so the looping music and engine drone are runtime plays.
-    if (!control.audioStarted) {
-      context.audio.play("music.battle", { loop: true, volume: 0.5 });
-      context.audio.play("engine.loop", { loop: true, volume: 0.7 });
-      control.audioStarted = true;
-    }
     const restartFromOverlay = context.events.read("flight:restart").length > 0;
-    if (context.input.pressed("retry") || restartFromOverlay) {
+    const retryRequested = context.input.pressed("retry") || restartFromOverlay;
+
+    // The music is session ambience, while the engine follows the aircraft
+    // lifecycle. Keep the radial engine well behind the music and flight cues.
+    if (!control.musicStarted) {
+      context.audio.play("music.battle", { loop: true, volume: 0.5 });
+      control.musicStarted = true;
+    }
+    if (control.enginePlaybackId === "" && (!control.prevFailed || retryRequested)) {
+      const engine = context.audio.play("engine.loop", { loop: true, volume: 0.22 });
+      if (engine.accepted) control.enginePlaybackId = engine.playbackId;
+    }
+    if (retryRequested) {
       aircraft.patch("Transform", {
         position: [0, 260, 0],
         rotation: [0, 0, 0, 1]
@@ -152,12 +160,13 @@ export const updatePacificFlight = defineBehavior(
       ];
     };
     while (control.tracers.length < TRACER_POOL) control.tracers.push({ life: 0, px: 0, py: -9999, pz: 0, vx: 0, vy: 0, vz: 0 });
-    control.fireCooldown = Math.max(0, control.fireCooldown - dt);
+      control.fireCooldown = Math.max(0, control.fireCooldown - dt);
+    control.gunRecoil = Math.max(0, control.gunRecoil - dt * 9);
     const aircraftPosition = aircraft.transform().position;
     if (context.input.getButton("fire") && control.fireCooldown <= 0) {
-      control.fireCooldown = 0.18;
-      // The 0.18s gun cadence would trigger the burst clip ~5.5x/sec; rate-limit
-      // the audio cue to ~3x/sec so overlapping one-shots stay legible.
+      // The SBD-3's paired forward Browning guns read as a fast mechanical
+      // burst. Visual rounds run faster than the longer recorded audio cue.
+      control.fireCooldown = 0.09;
       if (context.time.elapsed - control.lastGunSfx >= 0.34) {
         context.audio.play("guns.burst");
         control.lastGunSfx = context.time.elapsed;
@@ -168,8 +177,8 @@ export const updatePacificFlight = defineBehavior(
         aircraftPosition[1] + forwardWorld[1] * 500,
         aircraftPosition[2] + forwardWorld[2] * 500
       ];
-      for (const wing of [-3.4, 3.4]) {
-        const muzzleOffset = rotate([wing, -0.15, -1.2]);
+      for (const gunX of [-0.68, 0.68]) {
+        const muzzleOffset = rotate([gunX, 0.44, -4.3]);
         const px = aircraftPosition[0] + muzzleOffset[0];
         const py = aircraftPosition[1] + muzzleOffset[1];
         const pz = aircraftPosition[2] + muzzleOffset[2];
@@ -180,7 +189,7 @@ export const updatePacificFlight = defineBehavior(
         const tracer = control.tracers[control.nextTracer % TRACER_POOL]!;
         const tracerIndex = control.nextTracer % TRACER_POOL;
         control.nextTracer += 1;
-        tracer.life = 1.1;
+        tracer.life = 0.6;
         tracer.px = px;
         tracer.py = py;
         tracer.pz = pz;
@@ -203,13 +212,17 @@ export const updatePacificFlight = defineBehavior(
           rotation: [sp * cy, sy * cp, -sy * sp, cy * cp]
         });
       }
-      control.muzzleFlash = 0.07;
+      control.muzzleFlash = 0.055;
+      control.gunRecoil = 1;
     }
     control.muzzleFlash = Math.max(0, control.muzzleFlash - dt);
-    const flashScale = control.muzzleFlash > 0 ? 0.085 : 0.001;
+    const flashPhase = Mathf.clamp(control.muzzleFlash / 0.055, 0, 1);
+    const flashEnvelope = Math.sin(flashPhase * Math.PI);
+    const flashWidth = control.muzzleFlash > 0 ? 0.34 + flashEnvelope * 0.2 : 0.001;
+    const flashLength = control.muzzleFlash > 0 ? 0.72 + flashEnvelope * 0.34 : 0.001;
     for (const side of ["left", "right"]) {
       context.entity(`muzzle.${side}`)?.patch("Transform", {
-        scale: [flashScale, flashScale, flashScale * 1.6]
+        scale: [flashWidth, flashWidth, flashLength]
       });
     }
     for (let index = 0; index < control.tracers.length; index += 1) {
@@ -235,8 +248,20 @@ export const updatePacificFlight = defineBehavior(
     // ([0,1,0,0]): yaw180 * rollZ(bank) = [sin(b/2), cos(b/2), 0, 0].
     const halfBank = control.visualBank / 2;
     visual.patch("Transform", {
+      position: [0, 0, control.gunRecoil * 0.012],
       rotation: [Math.sin(halfBank), Math.cos(halfBank), 0, 0]
     });
+    const camera = context.entity("camera.main");
+    if (camera !== undefined) {
+      const shake = control.gunRecoil * 0.025;
+      camera.patch("Transform", {
+        position: [
+          Math.sin(context.time.elapsed * 137) * shake,
+          4.6 + Math.cos(context.time.elapsed * 113) * shake,
+          15 + control.gunRecoil * 0.045
+        ]
+      });
+    }
 
     // Propeller speed follows throttle: near-idle shows readable blades,
     // full power spins into a strobe hidden behind the translucent blur disc.
@@ -289,6 +314,10 @@ export const updatePacificFlight = defineBehavior(
     // event rather than every fixed tick the condition stays true.
     if (stall && !control.prevStall) context.audio.play("warning.stall");
     control.prevStall = stall;
+    if (failed && control.enginePlaybackId !== "") {
+      context.audio.stop(control.enginePlaybackId);
+      control.enginePlaybackId = "";
+    }
     if (failed && !control.prevFailed) context.audio.play("crash.splash");
     control.prevFailed = failed;
     const phase = failed ? "DITCHED" : stall ? "STALL" : complete ? "PATROL COMPLETE" : "CRUISE";
