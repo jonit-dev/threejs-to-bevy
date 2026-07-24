@@ -16,7 +16,7 @@
         "position": [
           0,
           29,
-          -700
+          -300
         ],
         "rotation": [
           0,
@@ -29,15 +29,21 @@
   },
   "steps": [
     {
-      "label": "attack Samidare",
+      "label": "attack Samidare on the approach",
       "press": "Space",
-      "holdFrames": 90,
+      "holdFrames": 35,
       "release": true,
       "screenshot": "01-attack"
     },
     {
-      "label": "observe fire smoke and sinking",
-      "waitTicks": 240,
+      "label": "bank around toward the wreck",
+      "press": "KeyA",
+      "holdFrames": 14,
+      "release": true
+    },
+    {
+      "label": "observe the burning sinking wreck",
+      "waitTicks": 40,
       "screenshot": "02-destroyed"
     }
   ],

@@ -308,3 +308,7 @@ kbd {
   letter-spacing: .12em;
 }
 .radar__caption b { color: #eee2bd; font-size: 10px; }
+.radar__blip--friendly {
+  background: #5fb4ff;
+  box-shadow: 0 0 8px #5fb4ffcc;
+}

@@ -17,12 +17,11 @@ aircraft materials, motion-blurred prop) at 60 FPS in the browser, with audio
 working, and with the reusable pieces promoted into the engine rather than
 left as example-local hacks.
 
-**North-star loop (all visual phases):** screenshot → `tn compare-images` vs
-the reference → change one thing → repeat, using the `pnpm run parity`
-harness from the groundwork PRD (build it yourself in Phase 0 if the light
-track failed to).
+**North-star loop (all visual phases):** `tn parity visual` against the
+reference → inspect the score/artifact → change one thing → repeat. Do not
+create a project-local screenshot/compare wrapper.
 
-**Current state (post-groundwork assumptions):** parity harness exists; easy
+**Current state (post-groundwork assumptions):** parity history exists; easy
 perf wins measured; sky swapped; audio either fixed or root-caused in
 `artifacts/visual-parity/handoff.md`.
 
@@ -63,7 +62,7 @@ flowchart LR
 **Files:** none expected (fix-forward only where drift found).
 
 **Implementation:**
-- [ ] Re-run `pnpm run parity`, `tn iterate`, `tn performance proof`; diff the
+- [ ] Re-run `tn parity visual`, `tn iterate`, `tn performance proof`; diff the
   results against `artifacts/visual-parity/handoff.md` claims.
 - [ ] Verify the parity script's stale-build guard actually refuses a stale
   server (touch a content file, don't rebuild, expect exit 1).
@@ -98,22 +97,21 @@ console artifacts show no audio errors.
 #### Phase 2: 60 FPS on web
 
 **Files (max 5):**
-- `packages/ir/src/runtimeConfig.ts` + validation — add
-  `renderer.maxPixelRatio?: number`.
-- `packages/runtime-web-three/src/render.ts` — clamp
-  `renderer.setPixelRatio(min(devicePixelRatio, maxPixelRatio))`.
-- `content/runtime/default.runtime.json` — set `maxPixelRatio: 1.5`.
-- `packages/runtime-web-three/src/worldMapping/stylizedNature.ts` — half-res
-  reflection target derived from canvas size instead of fixed 512.
+- `packages/runtime-web-three/src/render.ts` — only a profile-proven renderer
+  bottleneck fix.
+- `packages/runtime-web-three/src/worldMapping/oceanWater.ts` — only a
+  profile-proven water geometry/reflection fix.
+- `content/runtime/default.runtime.json` — accepted authored performance choice.
 - `artifacts/visual-parity/perf.md` — extend the measurement table.
 
 **Implementation:**
-- [ ] Instrument first: capture a Chrome performance profile (headless trace
-  via the playtest browser or manual devtools) to find the actual top cost —
-  do not assume; SESSION-LEARNINGS lists suspects (DPR, post stack, water
-  reflection scene re-render).
-- [ ] Land the pixel-ratio clamp (schema + validation + runtime + conformance
-  note); this is the expected big win on high-DPR displays.
+- [ ] Instrument first with `tn performance trace` to find the actual top cost.
+  Current source leaves Three.js at pixel ratio 1, so do not add
+  `maxPixelRatio` unless a fresh trace and measured render-scale experiment
+  establish that contract is needed.
+- [ ] Treat runtime observation/audit overhead as a first-class suspect. Route
+  a systemic fix through
+  `session-learnings-remediation-2026-07-23/PRD-006-runtime-proof-cost-and-preview-freshness.md`.
 - [ ] Iterate remaining hotspots until `tn performance proof --target web`
   reports ≥ 55 fps p95 at 1080p; record every A/B row.
 - [ ] Guard: parity score must not drop more than 0.03 for any accepted perf
@@ -151,10 +149,10 @@ handoff.md; iterate 7/7.
 
 **Files (max 5):**
 - `packages/authoring/src/operations/sharedA.ts` — allow `parts` +
-  `materials` in source-mode recipes; allow `scale` property tracks for
-  source animations; raise clip budget to 14.
+  `materials` in source-mode recipes. Scale animation and a 16-clip budget
+  already exist and need regression coverage, not reimplementation.
 - `packages/cli/src/blender/runner.py` — build parts alongside imported
-  source; support scale tracks on pivot nodes.
+  source.
 - `packages/authoring/src/operationRegistry.test.ts` — contract tests for the
   new allowances (positive + negative).
 - `content/generators/aircraft.douglas-sbd3.recipe.json` — add: in-model
@@ -167,9 +165,9 @@ handoff.md; iterate 7/7.
 - [ ] Contract change first with tests (this is a reusable-pattern change:
   update the matching cookbook entry and run `pnpm verify:cookbook` per repo
   rule).
-- [ ] Regenerate the GLB; remember the assets-doc merge bug from
-  SESSION-LEARNINGS (re-clean `animations`/`initialState` after generation,
-  or fix the merge in the same phase if small).
+- [ ] Regenerate the GLB. Do not hand-clean the known assets-doc merge and
+  `initialState` corruption as completion evidence; execute or depend on
+  `session-learnings-remediation-2026-07-23/PRD-004-generator-regeneration-integrity.md`.
 - [ ] Material pass on the aircraft: verify source GLB textures carry
   metalness/roughness; tune sun intensity/exposure so the livery reads like
   the reference (dark glossy navy with legible insignia).

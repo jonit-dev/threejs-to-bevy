@@ -51,7 +51,11 @@ function Radar({ frame }: { frame: RadarFrame | undefined }) {
           const angle = (contact.bearingDeg * Math.PI) / 180;
           const x = Math.sin(angle) * clamped * RADAR_RADIUS;
           const y = -Math.cos(angle) * clamped * RADAR_RADIUS;
-          const kindClass = contact.kind === "ship" ? "radar__blip--ship" : "radar__blip--zero";
+          const kindClass = contact.kind === "ship"
+            ? "radar__blip--ship"
+            : contact.kind === "friendly"
+              ? "radar__blip--friendly"
+              : "radar__blip--zero";
           const stateClass = contact.alive ? "" : " radar__blip--down";
           return (
             <span

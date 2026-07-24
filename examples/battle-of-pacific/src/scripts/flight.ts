@@ -45,6 +45,12 @@ export const updatePacificFlight = defineBehavior(
         { length: 10 },
         () => ({ life: 0, px: 0, py: -9999, pz: 0, vx: 0, vy: 0, vz: 0 })
       ),
+      flakBursts: Array.from(
+        { length: 6 },
+        () => ({ life: 0, x: 0, y: -9999, z: 0 })
+      ),
+      nextFlak: 0,
+      playerExplosion: { life: 0, x: 0, y: -9999, z: 0 },
       enginePlaybackId: "",
       engineStartAt: -1,
       engineBand: -1,
@@ -146,6 +152,18 @@ export const updatePacificFlight = defineBehavior(
           position: [0, -100, -900]
         });
       }
+      for (let index = 0; index < control.flakBursts.length; index += 1) {
+        control.flakBursts[index]!.life = 0;
+        context.entity(`destroyer.flak.${index}`)?.patch("Transform", {
+          position: [0, -9999, 0],
+          scale: [0.001, 0.001, 0.001]
+        });
+      }
+      control.playerExplosion.life = 0;
+      context.entity("player.explosion")?.patch("Transform", {
+        position: [0, -9999, 0],
+        scale: [0.001, 0.001, 0.001]
+      });
       for (const puff of control.smokePuffs) puff.life = 0;
       control.throttle = 0.82;
       control.visualBank = 0;
@@ -442,15 +460,23 @@ export const updatePacificFlight = defineBehavior(
       tracer.px = gunIndex === 0 ? -30 : 30;
       tracer.py = 23;
       tracer.pz = -898;
+      // Flak gunnery: each shell is aimed at the predicted intercept point
+      // with deterministic dispersion, then time-fuzed to burst there. The
+      // burst does the damage, not the shell body, matching real AA fire.
       const leadTime = Mathf.clamp(aaDistance / 280, 0.2, 2.8);
-      const aimX = aircraftPosition[0] + velocityNow[0] * leadTime - tracer.px;
-      const aimY = aircraftPosition[1] + velocityNow[1] * leadTime - tracer.py;
-      const aimZ = aircraftPosition[2] + velocityNow[2] * leadTime - tracer.pz;
+      const seed = control.aaNextTracer;
+      const scatter = (offset: number): number => {
+        const noise = Math.sin((seed + offset) * 12.9898) * 43758.5453;
+        return (noise - Math.floor(noise) - 0.5) * 2;
+      };
+      const aimX = aircraftPosition[0] + velocityNow[0] * leadTime + scatter(1) * 20 - tracer.px;
+      const aimY = aircraftPosition[1] + velocityNow[1] * leadTime + scatter(2) * 14 - tracer.py;
+      const aimZ = aircraftPosition[2] + velocityNow[2] * leadTime + scatter(3) * 20 - tracer.pz;
       const aimLength = Math.max(0.001, Math.hypot(aimX, aimY, aimZ));
       tracer.vx = aimX / aimLength * 280;
       tracer.vy = aimY / aimLength * 280;
       tracer.vz = aimZ / aimLength * 280;
-      tracer.life = 4.5;
+      tracer.life = Mathf.clamp(aimLength / 280, 0.5, 3.5);
       const dirX = tracer.vx / 280;
       const dirY = tracer.vy / 280;
       const dirZ = tracer.vz / 280;
@@ -477,12 +503,25 @@ export const updatePacificFlight = defineBehavior(
         const hitX = tracer.px - aircraftPosition[0];
         const hitY = tracer.py - aircraftPosition[1];
         const hitZ = tracer.pz - aircraftPosition[2];
-        if (hitX * hitX + hitY * hitY + hitZ * hitZ <= 64) {
+        const proximitySq = hitX * hitX + hitY * hitY + hitZ * hitZ;
+        // Proximity or time fuze: the shell detonates near the aircraft or at
+        // the end of its fuze run, whichever comes first.
+        if (proximitySq <= 484 || tracer.life <= 0) {
+          const burst = control.flakBursts[control.nextFlak % control.flakBursts.length]!;
+          control.nextFlak += 1;
+          burst.life = 0.8;
+          burst.x = tracer.px;
+          burst.y = tracer.py;
+          burst.z = tracer.pz;
+          const burstDistance = Math.sqrt(proximitySq);
+          const burstDamage = burstDistance < 18 ? 9 : burstDistance < 34 ? 4 : 0;
+          if (burstDamage > 0 && control.playerIntegrity > 0) {
+            control.playerIntegrity = Math.max(0, control.playerIntegrity - burstDamage);
+            control.aaHitsTaken += 1;
+            control.aaHitFlash = 0.18;
+            aircraft.patch("Health", { current: control.playerIntegrity, max: 100 });
+          }
           tracer.life = 0;
-          control.playerIntegrity = Math.max(0, control.playerIntegrity - 6);
-          control.aaHitsTaken += 1;
-          control.aaHitFlash = 0.18;
-          aircraft.patch("Health", { current: control.playerIntegrity, max: 100 });
         }
       }
       if (tracer.life <= 0 || tracer.py < 1) {
@@ -490,6 +529,25 @@ export const updatePacificFlight = defineBehavior(
         tracer.py = -9999;
       }
       entity.patch("Transform", { position: [tracer.px, tracer.py, tracer.pz] });
+    }
+    // Flak bursts pop as a fireball-and-smoke cluster, drift up slightly, and
+    // park when spent.
+    for (let index = 0; index < control.flakBursts.length; index += 1) {
+      const burst = control.flakBursts[index]!;
+      const entity = context.entity(`destroyer.flak.${index}`);
+      if (entity === undefined) continue;
+      if (burst.life > 0) {
+        burst.life = Math.max(0, burst.life - dt);
+        const age = 1 - burst.life / 0.8;
+        const flare = Math.sin(Math.min(1, age * 1.2) * Math.PI);
+        const size = Math.max(0.001, flare * (3.5 + age * 6));
+        entity.patch("Transform", {
+          position: [burst.x, burst.y + age * 4, burst.z],
+          scale: [size, size, size]
+        });
+      } else {
+        entity.patch("Transform", { position: [0, -9999, 0], scale: [0.001, 0.001, 0.001] });
+      }
     }
     const aaFlash = control.aaMuzzleFlash > 0
       ? Math.sin((control.aaMuzzleFlash / 0.07) * Math.PI) * 2.8
@@ -519,7 +577,9 @@ export const updatePacificFlight = defineBehavior(
       });
       for (let index = 0; index < 2; index += 1) {
         const pulse = 0.82 + Math.sin(context.time.elapsed * (7.5 + index) + index * 2.1) * 0.18;
-        const fireFade = 1 - Mathf.clamp((destroyedTime - 12) / 8, 0, 0.72);
+        // The burning oil slick outlives the hull: fires settle to half
+        // strength and keep marking the wreck instead of fading out.
+        const fireFade = 1 - Mathf.clamp((destroyedTime - 12) / 8, 0, 0.5);
         const fireScale = pulse * fireFade;
         context.entity(`destroyer.fire.${index}`)?.patch("Transform", {
           position: [
@@ -528,8 +588,8 @@ export const updatePacificFlight = defineBehavior(
             -900 + index * 2
           ],
           scale: [
-            Math.max(0.001, fireScale * (10 + index * 2)),
-            Math.max(0.001, fireScale * (15 + index * 3)),
+            Math.max(0.001, fireScale * (16 + index * 3)),
+            Math.max(0.001, fireScale * (24 + index * 4)),
             1
           ]
         });
@@ -641,8 +701,46 @@ export const updatePacificFlight = defineBehavior(
       control.engineStartAt = -1;
       control.engineBand = -1;
     }
-    if (failed && !control.prevFailed) context.audio.play("crash.splash");
+    if (failed && !control.prevFailed) {
+      context.audio.play("crash.splash");
+      // Going in — sea impact or airframe loss reads as a fireball at the
+      // aircraft, not a quiet state change.
+      control.playerExplosion.life = 0.7;
+      control.playerExplosion.x = position[0];
+      control.playerExplosion.y = Math.max(3, position[1]);
+      control.playerExplosion.z = position[2];
+    }
     control.prevFailed = failed;
+    const playerExplosion = control.playerExplosion;
+    const explosionEntity = context.entity("player.explosion");
+    if (explosionEntity !== undefined) {
+      if (playerExplosion.life > 0) {
+        playerExplosion.life = Math.max(0, playerExplosion.life - dt);
+        const age = 1 - playerExplosion.life / 0.7;
+        const flare = Math.sin(Math.min(1, age * 1.15) * Math.PI);
+        const size = Math.max(0.001, flare * (8 + age * 10));
+        explosionEntity.patch("Transform", {
+          position: [playerExplosion.x, playerExplosion.y + age * 5, playerExplosion.z],
+          scale: [size, size, size]
+        });
+      } else {
+        explosionEntity.patch("Transform", { position: [0, -9999, 0], scale: [0.001, 0.001, 0.001] });
+      }
+    }
+    // Airframe fire: below 40% integrity the wings trail flame that grows as
+    // damage worsens.
+    const integrityBurn = control.playerIntegrity <= 40 && !failed
+      ? (1 - control.playerIntegrity / 40) * (0.82 + Math.sin(context.time.elapsed * 9) * 0.18)
+      : 0;
+    for (const side of ["left", "right"]) {
+      context.entity(`aircraft.fire.${side}`)?.patch("Transform", {
+        scale: [
+          Math.max(0.001, integrityBurn * 1.6),
+          Math.max(0.001, integrityBurn * 2.4),
+          1
+        ]
+      });
+    }
     const phase = failed
       ? control.playerIntegrity <= 0
         ? "SHOT DOWN"

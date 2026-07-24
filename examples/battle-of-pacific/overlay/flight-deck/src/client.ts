@@ -16,7 +16,7 @@ export type RadarContact = {
   alive: boolean;
   bearingDeg: number;
   distance: number;
-  kind: "zero" | "ship";
+  kind: "zero" | "ship" | "friendly";
 };
 
 export type RadarFrame = {

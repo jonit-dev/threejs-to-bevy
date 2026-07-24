@@ -22,7 +22,8 @@
                 "phase": "string",
                 "progress": "number",
                 "stall": "boolean",
-                "throttle": "string"
+                "throttle": "string",
+                "integrity": "string"
               },
               "kind": "object",
               "required": [
@@ -33,7 +34,8 @@
                 "phase",
                 "progress",
                 "stall",
-                "throttle"
+                "throttle",
+                "integrity"
               ]
             }
           },

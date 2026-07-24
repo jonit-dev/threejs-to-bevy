@@ -37,12 +37,9 @@ READ IT FIRST; it contains the fix recipes and the staleness traps).
 ```bash
 # 1. capture the current state (dev server must be freshly started —
 #    see SESSION-LEARNINGS: runtime dist changes REQUIRE a tn dev restart)
-node bin/tn screenshot --project . --url http://127.0.0.1:5173 \
-  --out artifacts/visual-parity/current.png --wait-ready --json
-# 2. compare with the reference
-node bin/tn compare-images artifacts/visual-parity/current.png \
-  docs/reference/target-visual.png --json
-# 3. record the score, tweak ONE thing, repeat.
+node bin/tn parity visual --project . --url http://127.0.0.1:5173 \
+  --reference docs/reference/target-visual.png --json
+# 2. inspect the score/artifact, tweak ONE thing, repeat.
 ```
 
 All commands run from `examples/battle-of-pacific/`.
@@ -50,8 +47,7 @@ All commands run from `examples/battle-of-pacific/`.
 ## 2. Solution
 
 **Approach:**
-- Build a tiny repeatable parity harness first so every later change has a
-  number attached.
+- Use the generic parity command so every later change has a number attached.
 - Fix audio (diagnose in a fixed order; escalate engine-level causes).
 - Take the cheap, well-understood performance wins.
 - Swap the sky environment texture — the single biggest visual delta that
@@ -59,8 +55,8 @@ All commands run from `examples/battle-of-pacific/`.
 - Keep `tn iterate` green after every phase; never edit `dist/**`.
 
 **Key decisions:**
-- Reuse `tn screenshot`, `tn compare-images`, `tn performance proof` — no new
-  tooling.
+- Reuse `tn parity visual` and `tn performance proof` — no project-local
+  screenshot/compare wrapper.
 - Sky sourcing: Poly Haven CC0 equirect (same provenance pattern as the
   existing `pacific-sky` asset — see `content/assets/pacific-sky.assets.json`
   and `docs/asset-provenance.md`).
@@ -69,30 +65,22 @@ All commands run from `examples/battle-of-pacific/`.
 
 ## 3. Execution Phases
 
-#### Phase 1: Parity harness — one command produces a comparison score
+#### Phase 1: Parity baseline — the generic command records a comparison score
 
-**Files (max 5):**
-- `examples/battle-of-pacific/scripts/visual-parity.mjs` (new) — node script:
-  captures screenshot via `tn screenshot`, runs `tn compare-images`, appends
-  `{timestamp, similarity, screenshotPath}` to
-  `artifacts/visual-parity/history.json`, prints the score.
-- `examples/battle-of-pacific/package.json` — add `"parity": "node
-  scripts/visual-parity.mjs"` script.
+**Files:** No source files expected. The generic command writes evidence under
+`artifacts/visual-parity/`.
 
 **Implementation:**
-- [ ] Script asserts the dev server is serving a fresh bundle: fetch
-  `http://127.0.0.1:5173/__threenative/dev-state.json` and compare
-  `bundleHash` with a sha256 of `dist/battle-of-pacific.bundle/manifest.json`;
-  refuse to run (exit 1, clear message) on mismatch. This kills the stale-build
-  trap from SESSION-LEARNINGS.
-- [ ] Capture + compare + append history as above.
+- [ ] Run `tn parity visual`; rely on its bundle-hash and source-mtime freshness
+  guards, reference-sized capture, numeric result, and shared history artifact.
+- [ ] Do not add a project-local wrapper around generic capture/compare.
 
 **Verification plan:**
-- Run `pnpm run parity` twice; `artifacts/visual-parity/history.json` gains
+- Run the generic command twice; `artifacts/visual-parity/history.json` gains
   two entries with a numeric similarity; tamper the bundle (touch a content
   file without rebuild) and confirm the stale-build refusal fires.
 
-**User verification:** `pnpm run parity` prints a similarity score.
+**User verification:** `tn parity visual` prints a similarity score.
 
 #### Phase 2: Audio actually plays
 
@@ -143,12 +131,12 @@ All commands run from `examples/battle-of-pacific/`.
 - [ ] Keep the combination with the best fps-per-visual-cost; note rejected
   combos. Restart `tn dev` after every runtime-package change
   (SESSION-LEARNINGS staleness rule).
-- [ ] If still far from 60: document the devicePixelRatio clamp idea
-  (`renderer.maxPixelRatio` — engine schema change) in handoff for the mastery
-  PRD. Do NOT attempt the schema change here.
+- [ ] If still far from 60: capture `tn performance trace` evidence and record
+  the actual top costs. Current source leaves Three.js at pixel ratio 1, so do
+  not propose a `maxPixelRatio` schema without a measured render-scale need.
 
 **Verification plan:** perf.md has a table with ≥4 measured rows; final
-config committed; `pnpm run parity` score did not regress by more than 0.02.
+config committed; `tn parity visual` score did not regress by more than 0.02.
 
 #### Phase 4: Vivid cumulus sky
 
@@ -164,7 +152,7 @@ config committed; `pnpm run parity` score did not regress by more than 0.02.
 **Implementation:**
 - [ ] Source and place the texture; keep resolution ≤ 4k to protect FPS.
 - [ ] `node bin/tn iterate --project . --json` must stay green.
-- [ ] `pnpm run parity` — expect a meaningful score jump (sky is ~40% of the
+- [ ] `tn parity visual` — expect a meaningful score jump (sky is ~40% of the
   reference frame).
 
 **User verification:** screenshot shows vivid blue sky with defined cumulus
@@ -183,19 +171,20 @@ instead of the milky backdrop.
 - [ ] Compute `light.sun` position from the same direction vector used by
   `OceanWater.sunDirection` (scale by ~300) so model lighting and water
   glitter agree.
-- [ ] Final `tn iterate` + `pnpm run parity` + `tn performance proof` runs;
+- [ ] Final `tn iterate` + `tn parity visual` + `tn performance proof` runs;
   record all three in handoff.md.
 
 ## 4. Checkpoints
 
 After EACH phase: run `node bin/tn iterate --project . --json` (must stay
-`TN_ITERATE_OK`, 7/7 scenarios) and `pnpm run parity`, then spawn
+`TN_ITERATE_OK`, 7/7 scenarios) and `tn parity visual`, then spawn
 `prd-work-reviewer` with this PRD's path and the phase number. Continue only
 on PASS.
 
 ## 5. Acceptance Criteria
 
-- [ ] `pnpm run parity` exists, guards against stale builds, and logs history.
+- [ ] `tn parity visual` guards against stale builds and logs history; no local
+      wrapper duplicates it.
 - [ ] Audio audible in browser OR a precise engine-level root cause documented
       in handoff.md.
 - [ ] Measured perf table exists; best cheap configuration applied; FPS

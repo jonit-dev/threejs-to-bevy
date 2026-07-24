@@ -1,0 +1,13 @@
+{
+  "assets": [
+    {
+      "id": "fx.flak-burst",
+      "path": "assets/generated/fx.flak-burst.glb",
+      "source": "generator:fx.flak-burst",
+      "type": "model"
+    }
+  ],
+  "id": "fx.flak-burst",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}
