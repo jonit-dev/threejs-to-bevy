@@ -46,11 +46,16 @@ export const updatePacificFlight = defineBehavior(
       lastGunSfx: -1,
       muzzleFlash: 0,
       musicStarted: false,
+      nextSmoke: 0,
       nextTracer: 0,
       prevFailed: false,
       prevStall: false,
       retryCount: 0,
       throttle: 0.82,
+      smokePuffs: Array.from(
+        { length: 8 },
+        () => ({ driftX: 0, driftY: 0, life: 0, twist: 0 })
+      ),
       tracers: [] as Array<{ life: number; px: number; py: number; pz: number; vx: number; vy: number; vz: number }>,
       visualBank: 0
     });
@@ -81,6 +86,7 @@ export const updatePacificFlight = defineBehavior(
       control.flapsDown = false;
       control.retracting = false;
       control.retryCount += 1;
+      for (const puff of control.smokePuffs) puff.life = 0;
       control.throttle = 0.82;
       control.visualBank = 0;
     }
@@ -177,8 +183,8 @@ export const updatePacificFlight = defineBehavior(
         aircraftPosition[1] + forwardWorld[1] * 500,
         aircraftPosition[2] + forwardWorld[2] * 500
       ];
-      for (const gunX of [-0.68, 0.68]) {
-        const muzzleOffset = rotate([gunX, 0.44, -4.3]);
+      for (const wing of [-3.4, 3.4]) {
+        const muzzleOffset = rotate([wing, -0.75, -1.2]);
         const px = aircraftPosition[0] + muzzleOffset[0];
         const py = aircraftPosition[1] + muzzleOffset[1];
         const pz = aircraftPosition[2] + muzzleOffset[2];
@@ -213,16 +219,49 @@ export const updatePacificFlight = defineBehavior(
         });
       }
       control.muzzleFlash = 0.055;
+      const smokeSlot = control.nextSmoke % 4;
+      for (let sideIndex = 0; sideIndex < 2; sideIndex += 1) {
+        const puff = control.smokePuffs[sideIndex * 4 + smokeSlot]!;
+        const seed = control.nextSmoke * 2 + sideIndex + 1;
+        const noise = Math.sin(seed * 12.9898) * 43758.5453;
+        const variation = noise - Math.floor(noise);
+        puff.life = 0.38;
+        puff.driftX = (variation - 0.5) * 0.055;
+        puff.driftY = 0.018 + variation * 0.035;
+        puff.twist = (variation - 0.5) * 2.6;
+      }
+      control.nextSmoke += 1;
       control.gunRecoil = 1;
     }
     control.muzzleFlash = Math.max(0, control.muzzleFlash - dt);
     const flashPhase = Mathf.clamp(control.muzzleFlash / 0.055, 0, 1);
     const flashEnvelope = Math.sin(flashPhase * Math.PI);
-    const flashWidth = control.muzzleFlash > 0 ? 0.34 + flashEnvelope * 0.2 : 0.001;
-    const flashLength = control.muzzleFlash > 0 ? 0.72 + flashEnvelope * 0.34 : 0.001;
+    const flashWidth = control.muzzleFlash > 0 ? 0.17 + flashEnvelope * 0.1 : 0.001;
+    const flashLength = control.muzzleFlash > 0 ? 0.5 + flashEnvelope * 0.22 : 0.001;
     for (const side of ["left", "right"]) {
       context.entity(`muzzle.${side}`)?.patch("Transform", {
         scale: [flashWidth, flashWidth, flashLength]
+      });
+    }
+    for (let index = 0; index < control.smokePuffs.length; index += 1) {
+      const puff = control.smokePuffs[index]!;
+      puff.life = Math.max(0, puff.life - dt);
+      const smokeAge = 1 - Mathf.clamp(puff.life / 0.38, 0, 1);
+      const smokeEnvelope = puff.life > 0 ? Math.sin(smokeAge * Math.PI) : 0;
+      const smokeScale = puff.life > 0
+        ? smokeEnvelope * (0.11 + smokeAge * 0.2)
+        : 0.001;
+      const left = index < 4;
+      const slot = index % 4;
+      const halfTwist = (puff.twist + smokeAge * (left ? 1.2 : -1.2)) / 2;
+      context.entity(`smoke.${left ? "left" : "right"}.${slot}`)?.patch("Transform", {
+        position: [
+          (left ? 0.5375 : -0.5375) + puff.driftX * smokeAge,
+          -0.15 - puff.driftY * smokeAge,
+          0.13 - smokeAge * 0.19
+        ],
+        rotation: [Math.sin(halfTwist), Math.cos(halfTwist), 0, 0],
+        scale: [smokeScale * (0.78 + smokeAge * 0.32), smokeScale, smokeScale]
       });
     }
     for (let index = 0; index < control.tracers.length; index += 1) {

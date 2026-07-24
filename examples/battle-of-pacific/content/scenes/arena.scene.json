@@ -847,9 +847,9 @@
         },
         "Transform": {
           "position": [
-            0.105,
-            0.07,
-            0.68
+            0.5375,
+            -0.12,
+            0.2
           ],
           "scale": [
             0.001,
@@ -871,15 +871,143 @@
         },
         "Transform": {
           "position": [
-            -0.105,
-            0.07,
-            0.68
+            -0.5375,
+            -0.12,
+            0.2
           ],
           "scale": [
             0.001,
             0.001,
             0.001
           ]
+        }
+      }
+    },
+    {
+      "id": "smoke.left.0",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.left.1",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.left.2",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.left.3",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.right.0",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [-0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.right.1",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [-0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.right.2",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [-0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
+        }
+      }
+    },
+    {
+      "id": "smoke.right.3",
+      "components": {
+        "Hierarchy": {
+          "parent": "aircraft.visual"
+        },
+        "MeshRenderer": {
+          "mesh": "mesh.gun-smoke",
+          "material": "mat.gunsmoke"
+        },
+        "Transform": {
+          "position": [-0.5375, -0.15, 0.13],
+          "scale": [0.001, 0.001, 0.001]
         }
       }
     }

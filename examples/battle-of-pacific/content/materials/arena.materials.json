@@ -39,6 +39,15 @@
       "alphaMode": "blend",
       "metalness": 0.0,
       "roughness": 1.0
+    },
+    {
+      "id": "mat.gunsmoke",
+      "color": "#8a9090",
+      "baseColorTexture": "fx.gun-smoke.texture",
+      "opacity": 0.34,
+      "alphaMode": "blend",
+      "metalness": 0.0,
+      "roughness": 1.0
     }
   ]
 }

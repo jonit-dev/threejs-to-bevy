@@ -17,6 +17,11 @@
       "id": "mesh.tracer",
       "kind": "primitive",
       "primitive": "sphere"
+    },
+    {
+      "id": "mesh.gun-smoke",
+      "kind": "primitive",
+      "primitive": "plane"
     }
   ]
 }

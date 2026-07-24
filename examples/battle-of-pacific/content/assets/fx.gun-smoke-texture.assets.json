@@ -1,0 +1,12 @@
+{
+  "assets": [
+    {
+      "id": "fx.gun-smoke.texture",
+      "path": "assets/textures/gun-smoke-wisp.png",
+      "type": "texture"
+    }
+  ],
+  "id": "fx.gun-smoke-texture",
+  "schema": "threenative.assets",
+  "version": "0.1.0"
+}

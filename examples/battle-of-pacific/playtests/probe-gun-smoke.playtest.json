@@ -1,0 +1,34 @@
+{
+  "schemaVersion": 1,
+  "acceptanceId": "probe-gun-smoke",
+  "name": "probe-gun-smoke",
+  "target": "web",
+  "viewport": {
+    "width": 1280,
+    "height": 720
+  },
+  "subject": "smoke.left.0",
+  "warmupFrames": 10,
+  "steps": [
+    {
+      "label": "sustained-fire",
+      "press": "Space",
+      "holdFrames": 24,
+      "release": true
+    }
+  ],
+  "assert": {
+    "movement": {
+      "entity": "smoke.left.0",
+      "minDistance": 0.001,
+      "maxDistance": 1000
+    }
+  },
+  "artifacts": {
+    "screenshots": "before-after",
+    "console": false,
+    "network": false,
+    "runtimeTrace": false,
+    "effectLog": "focused"
+  }
+}
